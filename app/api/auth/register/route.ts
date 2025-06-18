@@ -36,14 +36,22 @@ export async function POST(request: NextRequest) {
 
   if (profileError) {
     console.error(
-      "❌ Error creating profile:",
-      profileError.message,
-      profileError.code,
-      profileError.details,
-      return NextResponse.json({
+    console.error(
+  "❌ Error creating profile:",
+  profileError.message,
+  profileError.code,
+  profileError.details,
+  profileError.hint
+)
+
+return NextResponse.json({
   success: false,
   message: `Error creando perfil: ${profileError.message}`,
   code: profileError.code,
+  details: profileError.details,
+  hint: profileError.hint,
+})
+
   details: profileError.details,
   hint: profileError.hint,
 })
