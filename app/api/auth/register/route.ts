@@ -34,15 +34,24 @@ export async function POST(request: NextRequest) {
     membership_status: "free",
   });
 
-  if (profileError) {
-    console.error(
-    console.error(
-  "❌ Error creating profile:",
-  profileError.message,
-  profileError.code,
-  profileError.details,
-  profileError.hint
-)
+ if (profileError) {
+  console.error(
+    "❌ Error creating profile:",
+    profileError.message,
+    profileError.code,
+    profileError.details,
+    profileError.hint
+  )
+
+  return NextResponse.json({
+    success: false,
+    message: `Error creando perfil: ${profileError.message}`,
+    code: profileError.code,
+    details: profileError.details,
+    hint: profileError.hint,
+  })
+}
+
 
 return NextResponse.json({
   success: false,
