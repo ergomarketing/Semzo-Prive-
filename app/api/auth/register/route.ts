@@ -48,30 +48,25 @@ export async function POST(request: NextRequest) {
     message: `Error creando perfil: ${profileError.message}`,
     code: profileError.code,
     details: profileError.details,
-    hint: profileError.hint,
+    hint: profileError.hint
   })
 }
 
 
-return NextResponse.json({
-  success: false,
-  message: `Error creando perfil: ${profileError.message}`,
-  code: profileError.code,
-  details: profileError.details,
-  hint: profileError.hint,
-})
+if (profileError) {
+  console.error(
+    "Error creating profile:",
+    profileError.message,
+    profileError.code,
+    profileError.details,
+    profileError.hint
+  )
 
-  details: profileError.details,
-  hint: profileError.hint,
-})
-
-      message: `Error creando perfil: ${profileError.message}`,
-      details: profileError.details,
-      code: profileError.code,
-      hint: profileError.hint,
-    });
-  }
+  return NextResponse.json({
+    success: false,
+    message: `Error creando perfil: ${profileError.message}`,
+    code: profileError.code,
+    details: profileError.details,
+    hint: profileError.hint
+  })
 }
-
-    
-    
