@@ -24,54 +24,37 @@ export async function POST(request: NextRequest) {
     console.log("Usuario creado en Auth:", authData.user?.id)
 
     // Crear perfil de usuario
-    if (profileError) {
-  console.error(
-    "Error creating profile:",
-    profileError.message,
-    profileError.code,
-    profileError.details,
-    profileError.hint
-  );
-  return NextResponse.json({
-    success: false,
-    if (profileError) {
-  console.error(
-    "❌ Error creating profile:",
-    profileError.message,
-    profileError.code,
-    profileError.details,
-    profileError.hint
-  )
-  return NextResponse.json({
-    success: false,
-    message: `Error creando perfil: ${profileError.message}`,
-    details: profileError.details,
-    code: profileError.code,
-    hint: profileError.hint,
-  })
-}
+    if (authData.user) {
+  const { error: profileError } = await supabase.from("users").insert({
+    id: authData.user.id,
+    email,
+    first_name: firstName,
+    last_name: lastName,
+    phone: phone || null,
+    membership_status: "free",
+  });
 
-        console.error("Error creating profile:", profileError)
-        return NextResponse.json({
-          success: false,
-          message: `Error creando perfil: ${profileError.message}`,
-        })
-      }
-    }
+  if (profileError) {
+    console.error(
+      "❌ Error creating profile:",
+      profileError.message,
+      profileError.code,
+      profileError.details,
+      return NextResponse.json({
+  success: false,
+  message: `Error creando perfil: ${profileError.message}`,
+  code: profileError.code,
+  details: profileError.details,
+  hint: profileError.hint,
+})
 
-    return NextResponse.json({
-      success: true,
-      message: "Cuenta creada exitosamente. Revisa tu email para confirmar.",
-      user: {
-        id: authData.user?.id,
-        email: authData.user?.email,
-      },
-    })
-  } catch (error) {
-    console.error("Registration error:", error)
-    return NextResponse.json({
-      success: false,
-      message: "Error interno del servidor",
-    })
+      message: `Error creando perfil: ${profileError.message}`,
+      details: profileError.details,
+      code: profileError.code,
+      hint: profileError.hint,
+    });
   }
 }
+
+    
+    
