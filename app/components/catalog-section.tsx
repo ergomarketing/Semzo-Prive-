@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -34,7 +36,7 @@ export default function CatalogSection() {
     }
   }
 
-  // CATÁLOGO COMPLETO CON TODAS LAS IMÁGENES
+  // CATÁLOGO ACTUALIZADO CON IMÁGENES CORRECTAS
   const bags: BagItem[] = [
     // SIGNATURE BAGS (129€/mes)
     {
@@ -73,6 +75,143 @@ export default function CatalogSection() {
       condition: "Excelente",
       availability: true,
     },
+    {
+      id: "celine-teen-triumph",
+      name: "Teen Triumph",
+      brand: "Céline",
+      description:
+        "Elegante bolso crossbody de Céline en cuero suave rosa nude. Diseño minimalista con el icónico logo dorado y correa ajustable. Perfecto para el día a día con un toque de sofisticación parisina.",
+      price: "129€/mes",
+      retailPrice: "2.100€",
+      images: [
+        "/images/celine-teen-triumph-front.jpeg",
+        "/images/celine-teen-triumph-interior.jpeg",
+        "/images/celine-teen-triumph-detail.jpeg",
+      ],
+      membership: "signature",
+      color: "Rosa nude",
+      material: "Cuero suave",
+      dimensions: "19 x 14 x 4.5 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "loewe-gate",
+      name: "Gate",
+      brand: "Loewe",
+      description:
+        "El icónico bolso Gate de Loewe en cuero granulado marrón. Diseño arquitectónico con correas entrelazadas que crean la característica 'puerta'. Artesanía española excepcional con forro en ante suave.",
+      price: "129€/mes",
+      retailPrice: "2.200€",
+      images: ["/images/loewe-gate-front.jpeg", "/images/loewe-gate-texture.jpeg", "/images/loewe-gate-interior.jpeg"],
+      membership: "signature",
+      color: "Marrón",
+      material: "Cuero granulado",
+      dimensions: "24 x 20 x 10 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "gucci-jackie",
+      name: "Jackie",
+      brand: "Gucci",
+      description:
+        "El legendario bolso Jackie de Gucci en canvas GG Supreme con detalles en cuero marrón. Incluye la icónica banda Web verde y roja, y el característico cierre tipo gancho dorado. Un clásico reinventado.",
+      price: "129€/mes",
+      retailPrice: "2.500€",
+      images: [
+        "/images/gucci-jackie-front.jpeg",
+        "/images/gucci-jackie-interior.jpeg",
+        "/images/gucci-jackie-label.jpeg",
+      ],
+      membership: "signature",
+      color: "GG Supreme con marrón",
+      material: "Canvas GG Supreme",
+      dimensions: "30 x 22 x 11 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "prada-hobo",
+      name: "Hobo Bag",
+      brand: "Prada",
+      description:
+        "Elegante bolso hobo de Prada en cuero marrón cognac con forma de media luna. Diseño sofisticado con el icónico triángulo dorado y correa ajustable. Artesanía italiana excepcional con forro negro de lujo.",
+      price: "129€/mes",
+      retailPrice: "2.200€",
+      images: [
+        "/images/prada-hobo-front.jpeg",
+        "/images/prada-hobo-interior-1.jpeg",
+        "/images/prada-hobo-interior-2.jpeg",
+      ],
+      membership: "signature",
+      color: "Marrón cognac",
+      material: "Cuero",
+      dimensions: "22 x 13.5 x 6 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "prada-bucket-saffiano",
+      name: "Bucket Saffiano",
+      brand: "Prada",
+      description:
+        "Bolso bucket de Prada en el icónico cuero Saffiano verde. Diseño funcional con cordón de cierre, compartimento principal espacioso y el distintivo triángulo dorado. Una pieza versátil para el día a día.",
+      price: "129€/mes",
+      retailPrice: "2.000€",
+      images: [
+        "/images/prada-bucket-saffiano-front.jpeg",
+        "/images/prada-bucket-saffiano-logo.jpeg",
+        "/images/prada-bucket-saffiano-interior.jpeg",
+      ],
+      membership: "signature",
+      color: "Verde Saffiano",
+      material: "Cuero Saffiano",
+      dimensions: "22 x 22 x 13.5 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "fendi-ff-logo-pouch",
+      name: "FF Logo Pouch",
+      brand: "Fendi",
+      description:
+        "Elegante pouch de Fendi en cuero negro suave con el icónico logo FF dorado prominente. Diseño contemporáneo con textura fruncida y cadena dorada ajustable. Perfecto como clutch o crossbody.",
+      price: "129€/mes",
+      retailPrice: "2.300€",
+      images: [
+        "/images/fendi-ff-logo-front.jpeg",
+        "/images/fendi-ff-logo-side.jpeg",
+        "/images/fendi-ff-logo-detail.jpeg",
+      ],
+      membership: "signature",
+      color: "Negro con logo dorado",
+      material: "Cuero suave",
+      dimensions: "31.5 x 21 x 10 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "fendi-saddle",
+      name: "Saddle Bag",
+      brand: "Fendi",
+      description:
+        "El icónico bolso Saddle de Fendi en cuero rosa con el distintivo logo FF dorado. Diseño revolucionario que redefinió la moda de bolsos con su forma única de silla de montar. Una pieza de colección contemporánea.",
+      price: "129€/mes",
+      retailPrice: "2.500€",
+      images: [
+        "/images/fendi-saddle-front.jpeg",
+        "/images/fendi-saddle-interior.jpeg",
+        "/images/fendi-saddle-back.jpeg",
+      ],
+      membership: "signature",
+      color: "Rosa",
+      material: "Cuero",
+      dimensions: "19 x 15 x 5 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+
     // L'ESSENTIEL BAGS (59€/mes)
     {
       id: "lv-reverie",
@@ -117,7 +256,11 @@ export default function CatalogSection() {
         "Bolso de diseño geométrico en cuero beige con forma semicircular distintiva. Correa ajustable y herrajes dorados. Marca francesa de lujo contemporáneo.",
       price: "59€/mes",
       retailPrice: "950€",
-      images: ["/images/patou-front-view.png", "/images/patou-side-view.png", "/images/patou-interior-detail.png"],
+      images: [
+        "/images/patou-front-view-real.jpeg",
+        "/images/patou-interior-detail-real.jpeg",
+        "/images/patou-logo-detail.jpeg",
+      ],
       membership: "essentiel",
       color: "Beige",
       material: "Cuero",
@@ -125,6 +268,47 @@ export default function CatalogSection() {
       condition: "Excelente",
       availability: true,
     },
+    {
+      id: "loewe-gate-mini",
+      name: "Gate Mini",
+      brand: "Loewe",
+      description:
+        "La versión compacta del icónico Gate de Loewe en cuero beige. Mantiene el diseño distintivo de correas entrelazadas en un tamaño perfecto para ocasiones especiales. Correa con logo tejido incluida.",
+      price: "59€/mes",
+      retailPrice: "1.500€",
+      images: [
+        "/images/loewe-gate-mini-front.jpeg",
+        "/images/loewe-gate-mini-interior.jpeg",
+        "/images/loewe-gate-mini-logo.jpeg",
+      ],
+      membership: "essentiel",
+      color: "Beige",
+      material: "Cuero suave",
+      dimensions: "20 x 13 x 8 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "prada-structured-bag",
+      name: "Structured Bag",
+      brand: "Prada",
+      description:
+        "Bolso estructurado de Prada en cuero negro con diseño minimalista y sofisticado. El icónico triángulo dorado centra el diseño, mientras que su forma compacta lo hace perfecto para ocasiones especiales.",
+      price: "59€/mes",
+      retailPrice: "1.600€",
+      images: [
+        "/images/prada-structured-front.jpeg",
+        "/images/prada-structured-interior.jpeg",
+        "/images/prada-structured-logo.jpeg",
+      ],
+      membership: "essentiel",
+      color: "Negro",
+      material: "Cuero",
+      dimensions: "28.5 x 13.5 x 6.5 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+
     // PRIVÉ BAGS (189€/mes)
     {
       id: "lv-epi-yellow-handbag",
@@ -135,14 +319,122 @@ export default function CatalogSection() {
       price: "189€/mes",
       retailPrice: "2.950€",
       images: [
-        "/images/lv-epi-yellow-front.png",
-        "/images/lv-epi-yellow-side.png",
-        "/images/lv-epi-yellow-interior.png",
+        "/images/lv-epi-yellow-front-real.jpeg",
+        "/images/lv-epi-yellow-interior-real.jpeg",
+        "/images/lv-epi-yellow-logo-detail.jpeg",
       ],
       membership: "prive",
       color: "Amarillo",
       material: "Cuero Epi",
       dimensions: "24 x 18 x 12 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "lady-dior",
+      name: "Lady Dior",
+      brand: "Dior",
+      description:
+        "El icónico bolso Lady Dior en cuero cannage negro con forro rojo vibrante. Incluye los característicos charms dorados 'D-I-O-R' y asas estructuradas. Una pieza de alta costura francesa que simboliza elegancia atemporal.",
+      price: "189€/mes",
+      retailPrice: "4.200€",
+      images: ["/images/lady-dior-front.jpeg", "/images/lady-dior-interior.jpeg", "/images/lady-dior-charm.jpeg"],
+      membership: "prive",
+      color: "Negro con forro rojo",
+      material: "Cuero Cannage",
+      dimensions: "24 x 20 x 11 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "fendi-peekaboo",
+      name: "Peekaboo",
+      brand: "Fendi",
+      description:
+        "El legendario bolso Peekaboo de Fendi en cuero camel con forro FF signature. Diseño arquitectónico con el característico cierre metálico dorado y compartimentos internos. Una obra maestra de la artesanía italiana.",
+      price: "189€/mes",
+      retailPrice: "4.000€",
+      images: [
+        "/images/fendi-peekaboo-front.jpeg",
+        "/images/fendi-peekaboo-side.jpeg",
+        "/images/fendi-peekaboo-interior.jpeg",
+      ],
+      membership: "prive",
+      color: "Camel",
+      material: "Cuero",
+      dimensions: "31.5 x 21 x 10 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "fendi-croissant",
+      name: "Croissant",
+      brand: "Fendi",
+      description:
+        "El emblemático bolso Croissant de Fendi en cuero blanco con el logo FENDI en relieve dorado. Diseño icónico de los 2000s que ha regresado como símbolo de estatus. Forma de media luna distintiva con asa superior y correa ajustable.",
+      price: "189€/mes",
+      retailPrice: "3.000€",
+      images: [
+        "/images/fendi-croissant-front.jpeg",
+        "/images/fendi-croissant-handle.jpeg",
+        "/images/fendi-croissant-interior.jpeg",
+      ],
+      membership: "prive",
+      color: "Blanco",
+      material: "Cuero",
+      dimensions: "28 x 16.5 x 9 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "dior-saddle",
+      name: "Saddle Bag",
+      brand: "Dior",
+      description:
+        "El revolucionario bolso Saddle de Dior en cuero beige, diseñado por John Galliano. Una pieza que redefinió la moda de bolsos con su forma única inspirada en las sillas de montar. Símbolo de la alta costura francesa contemporánea.",
+      price: "189€/mes",
+      retailPrice: "3.600€",
+      images: ["/images/dior-saddle-front.jpeg", "/images/dior-saddle-label.jpeg", "/images/dior-saddle-side.jpeg"],
+      membership: "prive",
+      color: "Beige",
+      material: "Cuero",
+      dimensions: "24 x 18 x 7 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "dior-vanity-case",
+      name: "Vanity Case",
+      brand: "Dior",
+      description:
+        "Elegante neceser Vanity Case de Dior en cuero cannage beige con logo Christian Dior en relieve. Diseño funcional y sofisticado con compartimentos organizados y cremallera dorada. Perfecto para viajes o como bolso de noche.",
+      price: "189€/mes",
+      retailPrice: "3.300€",
+      images: ["/images/dior-vanity-front.jpeg", "/images/dior-vanity-label.jpeg", "/images/dior-vanity-interior.jpeg"],
+      membership: "prive",
+      color: "Beige cannage",
+      material: "Cuero Cannage",
+      dimensions: "18.5 x 13 x 10 cm",
+      condition: "Excelente",
+      availability: true,
+    },
+    {
+      id: "chanel-classic-flap",
+      name: "Classic Flap",
+      brand: "Chanel",
+      description:
+        "El legendario bolso Classic Flap de Chanel en cuero negro acolchado con forro rojo burgundy. La pieza más icónica de la maison con su cadena dorada entrelazada y el distintivo cierre CC. Una inversión atemporal en elegancia francesa.",
+      price: "189€/mes",
+      retailPrice: "5.500€",
+      images: [
+        "/images/chanel-classic-flap-front.jpeg",
+        "/images/chanel-classic-flap-back.jpeg",
+        "/images/chanel-classic-flap-interior.jpeg",
+      ],
+      membership: "prive",
+      color: "Negro con forro rojo",
+      material: "Cuero acolchado",
+      dimensions: "22 x 17.5 x 6 cm",
       condition: "Excelente",
       availability: true,
     },
@@ -263,6 +555,7 @@ export default function CatalogSection() {
   )
 }
 
+// COMPONENTE BAGCARD COMPLETAMENTE REESCRITO PARA ARREGLAR LA NAVEGACIÓN
 function BagCard({
   bag,
   inWishlist,
@@ -286,23 +579,38 @@ function BagCard({
     prive: "Privé",
   }
 
-  const handleImageChange = (index: number) => {
+  // FUNCIÓN MEJORADA PARA CAMBIAR IMÁGENES
+  const handleImageChange = (index: number, event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    console.log(`🔄 Cambiando imagen de ${bag.name} a índice:`, index)
+    console.log(`📸 Nueva imagen:`, bag.images[index])
     setCurrentImageIndex(index)
   }
 
+  // FUNCIÓN PARA MANEJAR ERRORES DE IMAGEN
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    console.log(`❌ Error cargando imagen:`, bag.images[currentImageIndex])
+    event.currentTarget.src = "/placeholder.svg"
+  }
+
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-md relative">
+    <div className="bg-white rounded-lg overflow-hidden shadow-md relative group">
       {/* Etiqueta de membresía */}
-      <div className="absolute top-3 left-3 z-10">
+      <div className="absolute top-3 left-3 z-20">
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${membershipColors[bag.membership]}`}>
           {membershipNames[bag.membership]}
         </span>
       </div>
 
       {/* Botón de wishlist */}
-      <div className="absolute top-3 right-3 z-10">
+      <div className="absolute top-3 right-3 z-20">
         <button
-          onClick={() => onToggleWishlist(bag.id)}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onToggleWishlist(bag.id)
+          }}
           className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
         >
           <Heart className={`h-5 w-5 ${inWishlist ? "fill-rose-500 text-rose-500" : "text-slate-600"}`} />
@@ -310,50 +618,56 @@ function BagCard({
       </div>
 
       {/* Contenedor de imagen */}
-      <div className="relative aspect-square">
+      <div className="relative aspect-square bg-gray-50">
         <Image
-          src={bag.images[currentImageIndex] || "/placeholder.svg"}
-          alt={`${bag.brand} ${bag.name}`}
+          src={bag.images[currentImageIndex] || bag.images[0] || "/placeholder.svg"}
+          alt={`${bag.brand} ${bag.name} - Vista ${currentImageIndex + 1}`}
           width={500}
           height={500}
-          className="object-contain w-full h-full p-4"
+          className="object-contain w-full h-full p-4 transition-opacity duration-300"
+          onError={handleImageError}
+          priority={currentImageIndex === 0}
         />
 
-        {/* Puntos de navegación */}
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-2">
-          {bag.images.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => handleImageChange(index)}
-              className={`w-3 h-3 rounded-full transition-colors ${
-                currentImageIndex === index ? "bg-indigo-dark" : "bg-gray-300"
-              }`}
-            />
-          ))}
-        </div>
+        {/* Puntos de navegación - MEJORADOS */}
+        {bag.images.length > 1 && (
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center space-x-2 z-10">
+            {bag.images.map((_, index) => (
+              <button
+                key={`${bag.id}-dot-${index}`}
+                onClick={(e) => handleImageChange(index, e)}
+                className={`w-3 h-3 rounded-full transition-all duration-200 hover:scale-125 focus:outline-none focus:ring-2 focus:ring-indigo-dark focus:ring-offset-1 ${
+                  currentImageIndex === index ? "bg-indigo-dark shadow-lg" : "bg-white/70 hover:bg-white/90 shadow-md"
+                }`}
+                aria-label={`Ver imagen ${index + 1} de ${bag.name}`}
+                type="button"
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Información del producto */}
       <div className="p-4">
         <p className="text-sm text-slate-500">{bag.brand}</p>
-        <h3 className="font-serif text-xl text-slate-900">{bag.name}</h3>
-        <div className="mt-2">
+        <h3 className="font-serif text-xl text-slate-900 mb-2">{bag.name}</h3>
+        <div className="mb-4">
           <p className="text-lg font-medium text-slate-900">{bag.price}</p>
           <p className="text-sm text-slate-500">Valor: {bag.retailPrice}</p>
         </div>
 
         {/* Botones */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link href={`/catalog/${bag.id}`}>
+        <div className="grid grid-cols-2 gap-2">
+          <Link href={`/catalog/${bag.id}`} className="block">
             <Button
               variant="outline"
-              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
+              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors"
             >
               <Info className="h-4 w-4 mr-2" />
               Detalles
             </Button>
           </Link>
-          <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+          <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
             <ShoppingBag className="h-4 w-4 mr-2" />
             Reservar
           </Button>

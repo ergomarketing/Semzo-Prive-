@@ -1,119 +1,206 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Crown, Calendar, Gem, Home, Star, Diamond, Mail, CreditCard } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { supabase } from "../lib/supabase"
+import { AuthServiceSupabase } from "../lib/auth-service-supabase"
+import NavbarImproved from "../components/navbar-improved"
+import type { User } from "../lib/supabase"
 
-interface User {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  membership_status: string
-}
-
-export default function Dashboard() {
+export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+    checkAuth()
+  }, [])
 
-      if (!session) {
+  const checkAuth = async () => {
+    try {
+      const currentUser = await AuthServiceSupabase.getCurrentUser()
+
+      if (currentUser) {
+        setUser(currentUser)
+      } else {
         router.push("/auth/login")
-        return
       }
-
-      // Obtener datos del usuario de la tabla users
-      const { data: userData, error } = await supabase.from("users").select("*").eq("id", session.user.id).single()
-
-      if (error) {
-        console.error("Error obteniendo usuario:", error)
-        router.push("/auth/login")
-        return
-      }
-
-      setUser(userData)
-      setLoading(false)
+    } catch (error) {
+      console.error("Error verificando autenticación:", error)
+      router.push("/auth/login")
+    } finally {
+      setIsLoading(false)
     }
-
-    getUser()
-  }, [router])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
   }
 
-  if (loading) {
+  const handleUpgrade = () => {
+    router.push("/membership-signup")
+  }
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-4">Cargando...</h2>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-dark mx-auto mb-4"></div>
+          <p className="text-slate-600">Cargando dashboard...</p>
         </div>
       </div>
     )
   }
 
+  if (!user) {
+    return null // Se redirigirá al login
+  }
+
+  const userName = `${user.first_name} ${user.last_name}`
+  const membershipStatus = user.membership_status
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold">Semzo Privé</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">
-                Hola, {user?.first_name} {user?.last_name}
-              </span>
-              <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-rose-nude/5 to-rose-pastel/3">
+      {/* Header mejorado */}
+      <NavbarImproved />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="font-serif text-3xl text-slate-900 mb-2">¡Bienvenida a tu Dashboard!</h1>
+          <p className="text-slate-600">
+            {membershipStatus === "free"
+              ? "Explora nuestras membresías y elige la perfecta para ti"
+              : "Gestiona tu membresía de Semzo Privé"}
+          </p>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">¡Bienvenido a tu Dashboard!</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-2">Mi Perfil</h3>
-                <p>
-                  <strong>Email:</strong> {user?.email}
-                </p>
-                <p>
-                  <strong>Membresía:</strong> {user?.membership_status}
-                </p>
+        {/* Membership Status */}
+        {membershipStatus === "free" && (
+          <Card className="mb-8 border-0 shadow-lg bg-gradient-to-r from-rose-nude/10 to-rose-pastel/20 border-l-4 border-l-indigo-dark">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-serif text-xl text-slate-900 mb-2">Cuenta Gratuita</h3>
+                  <p className="text-slate-600 mb-4">Explora nuestro catálogo y descubre la experiencia Semzo Privé</p>
+                  <Button onClick={handleUpgrade} className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Elegir Membresía
+                  </Button>
+                </div>
+                <div className="w-16 h-16 rounded-full bg-indigo-dark/10 flex items-center justify-center">
+                  <Crown className="h-8 w-8 text-indigo-dark" />
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-2">Colección</h3>
-                <p>Explora nuestra colección exclusiva de bolsos de lujo</p>
-                <button className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-                  Ver Colección
-                </button>
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-slate-600 mb-1">Estado</p>
+                  <p className="text-xl font-bold text-slate-900 mb-1">
+                    {membershipStatus === "free" ? "Explorador" : "Miembro"}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    {membershipStatus === "free" ? "Cuenta gratuita" : "Membresía activa"}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-indigo-dark/10 flex items-center justify-center flex-shrink-0">
+                  <Crown className="h-6 w-6 text-indigo-dark" />
+                </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-2">Mis Reservas</h3>
-                <p>Gestiona tus reservas y citas</p>
-                <button className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                  Ver Reservas
-                </button>
+          <Card className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-slate-600 mb-1">Bolsos vistos</p>
+                  <p className="text-xl font-bold text-slate-900 mb-1">12</p>
+                  <p className="text-sm text-slate-600">En el catálogo</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-rose-pastel/20 flex items-center justify-center flex-shrink-0">
+                  <Calendar className="h-6 w-6 text-rose-pastel" />
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-slate-600 mb-1">Favoritos</p>
+                  <p className="text-xl font-bold text-slate-900 mb-1">3</p>
+                  <p className="text-sm text-slate-600">En tu wishlist</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-rose-nude/20 flex items-center justify-center flex-shrink-0">
+                  <Gem className="h-6 w-6 text-rose-nude" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+
+        {/* Quick Actions */}
+        <div className="text-center mb-8">
+          <Link href="/">
+            <Button variant="outline" className="mr-4 border-slate-300 text-slate-700 hover:bg-slate-50">
+              <Home className="h-4 w-4 mr-2" />
+              Volver al inicio
+            </Button>
+          </Link>
+          <Button onClick={() => router.push("/catalog")} className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+            Explorar colección
+          </Button>
+        </div>
+
+        {/* Features Section */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card
+            className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/my-account/wishlist")}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-nude/10 flex items-center justify-center">
+                <Star className="h-8 w-8 text-rose-nude" />
+              </div>
+              <h3 className="font-serif text-lg text-slate-900 mb-2">Mi Lista de Deseos</h3>
+              <p className="text-sm text-slate-600">Guarda tus bolsos favoritos y recibe notificaciones</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/my-account/referrals")}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-dark/10 flex items-center justify-center">
+                <Diamond className="h-8 w-8 text-indigo-dark" />
+              </div>
+              <h3 className="font-serif text-lg text-slate-900 mb-2">Programa de Referidos</h3>
+              <p className="text-sm text-slate-600">Invita amigas y gana meses gratis</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/my-account/newsletter")}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/10 flex items-center justify-center">
+                <Mail className="h-8 w-8 text-rose-pastel" />
+              </div>
+              <h3 className="font-serif text-lg text-slate-900 mb-2">Newsletter</h3>
+              <p className="text-sm text-slate-600">Personaliza tus preferencias de contenido</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,8 +1,4 @@
 "use client"
-import { Resend } from 'resend'
-
-const resend = new Resend(process.env.EMAIL_API_KEY!)
-
 
 // Añadir al principio del archivo, después de las importaciones
 declare global {
@@ -226,12 +222,7 @@ export class EmailService {
       console.log(`📧 Asunto: ${template.subject}`)
 
       // Simular envío exitoso
-      const result = await resend.emails.send(emailPayload)
-
-if (result.error) {
-  throw new Error(result.error.message)
-}
-
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // Agregar a la cola para tracking
       this.emailQueue.push({ data, template, type })
