@@ -47,6 +47,11 @@
     "react": "^19",
     "react-dom": "^19",
     "recharts": "latest",
+<<<<<<< HEAD
+=======
+    "resend": "^4.6.0",
+    "sonner": "^1.7.1",
+>>>>>>> 979f09c (fix: actualiza dependencias y lockfile)
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
@@ -61,4 +66,8 @@
     "tailwindcss": "^3.4.15",
     "typescript": "^5"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 979f09c (fix: actualiza dependencias y lockfile)
