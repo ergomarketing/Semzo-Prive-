@@ -47,16 +47,18 @@ export class AuthServiceSupabase {
       // 3. Crear perfil de usuario en nuestra tabla
       const { data: profileData, error: profileError } = await supabase
         .from("users")
-      .insert([
-  {
-    email: formData.email,
-    first_name: formData.firstname,
-    last_name: formData.lastname,
-    phone: formData.phone,
-    membership_status: "free",
-  },
-])
- 
+        .insert([
+          {
+            id: authData.user.id,
+            email: userData.email.toLowerCase(),
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            phone: userData.phone || null,
+            membership_status: "free",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ])
         .select()
         .single()
 
