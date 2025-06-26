@@ -43,4 +43,5 @@ export default function MyAccountPage() {
     </div>
   )
 }
-// Trigger redeploy
+// // Sin cambios funcionales, solo forzamos redeploy
+
