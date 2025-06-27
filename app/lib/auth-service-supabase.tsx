@@ -63,17 +63,19 @@ export class AuthServiceSupabase {
         .single()
 
       if (profileError) {
-        console.error("Error creando perfil:", profileError)
+        console.error("❌ Error creando perfil:", profileError)
         return {
           success: false,
           message: "Error al crear el perfil de usuario",
         }
       }
 
+      console.log("✅ Perfil guardado correctamente:", profileData)
+
       return {
         success: true,
         message: "Usuario registrado exitosamente",
-        user: profileData,
+        user: profileData as User,
         session: authData.session,
       }
     } catch (error) {
@@ -155,7 +157,11 @@ export class AuthServiceSupabase {
 
       if (!authUser) return null
 
-      const { data: userData, error } = await supabase.from("users").select("*").eq("id", authUser.id).single()
+      const { data: userData, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authUser.id)
+        .single()
 
       if (error || !userData) return null
 
