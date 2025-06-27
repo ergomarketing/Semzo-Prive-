@@ -1,127 +1,98 @@
 import { supabase, type User, type AuthResponse } from "./supabase";
 
 export class AuthServiceSupabase {
-  static async registerUser(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-  }): Promise<AuthResponse> {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone || ''
-          }
-        }
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('No se creó el usuario');
-
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: userData.email.toLowerCase(),
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone || null,
-          membership_status: 'free'
-        });
-
-      if (profileError) throw profileError;
-
-      return {
-        success: true,
-        message: 'Registro exitoso',
-        user: {
-          id: authData.user.id,
-          email: userData.email,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone || null,
-          membership_status: 'free',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Error en el registro'
-      };
-    }
-  }
-
   static async loginUser(email: string, password: string): Promise<AuthResponse> {
     try {
+      // 1. Autenticación con Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase(),
-        password
+        password,
       });
 
-      if (authError) throw authError;
-
-      const { data: userData, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profileError || !userData) {
-        await supabase.from('users').insert({
-          id: authData.user.id,
-          email: authData.user.email,
-          first_name: authData.user.user_metadata?.first_name || 'Usuario',
-          last_name: authData.user.user_metadata?.last_name || 'Nuevo',
-          membership_status: 'free'
-        });
+      if (authError) {
+        console.error("Error de autenticación:", authError);
+        return {
+          success: false,
+          message: this.getAuthErrorMessage(authError.message),
+        };
       }
 
+      // 2. Verificar/crear perfil en public.users
+      const userResponse = await this.ensureUserProfile(authData.user);
+      if (!userResponse.success) return userResponse;
+
+      // 3. Guardar sesión
       localStorage.setItem("sb_session", JSON.stringify({
         access_token: authData.session.access_token,
-        refresh_token: authData.session.refresh_token
+        refresh_token: authData.session.refresh_token,
+        expires_at: Date.now() + (authData.session.expires_in * 1000)
       }));
 
       return {
         success: true,
-        message: 'Login exitoso',
-        user: userData,
-        session: authData.session
+        message: "Login exitoso",
+        user: userResponse.user,
+        session: authData.session,
       };
     } catch (error) {
+      console.error("Error en login:", error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Error en login'
+        message: "Error interno del servidor",
       };
     }
   }
 
-  static async getCurrentUser(): Promise<User | null> {
-    const sessionStr = localStorage.getItem("sb_session");
-    if (!sessionStr) return null;
+  private static async ensureUserProfile(authUser: any): Promise<AuthResponse> {
+    try {
+      // 1. Buscar usuario en public.users
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
 
-    const { access_token } = JSON.parse(sessionStr);
-    const { data: { user } } = await supabase.auth.getUser(access_token);
-    if (!user) return null;
+      if (existingUser) {
+        return { success: true, user: existingUser };
+      }
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      // 2. Si no existe, crearlo
+      const { data: newUser } = await supabase
+        .from("users")
+        .insert({
+          id: authUser.id,
+          email: authUser.email,
+          first_name: authUser.user_metadata?.first_name || "Usuario",
+          last_name: authUser.user_metadata?.last_name || "Nuevo",
+          phone: authUser.user_metadata?.phone || null,
+          membership_status: "free",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-    return userData;
+      return { 
+        success: true, 
+        user: newUser 
+      };
+    } catch (error) {
+      console.error("Error en perfil de usuario:", error);
+      return {
+        success: false,
+        message: "Error al acceder al perfil de usuario",
+      };
+    }
   }
 
-  static async logout(): Promise<void> {
-    await supabase.auth.signOut();
-    localStorage.removeItem("sb_session");
+  private static getAuthErrorMessage(error: string): string {
+    const messages: Record<string, string> = {
+      "Invalid login credentials": "Email o contraseña incorrectos",
+      "Email not confirmed": "Por favor verifica tu email primero",
+      "Too many requests": "Demasiados intentos. Intenta más tarde",
+    };
+    return messages[error] || "Error al iniciar sesión";
   }
+
+  //
 }
