@@ -1,41 +1,106 @@
 import { supabase, type User, type AuthResponse } from "./supabase";
 
 export class AuthServiceSupabase {
+  static async registerUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  }): Promise<AuthResponse> {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName
+          }
+        }
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Usuario no creado en Auth');
+
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: userData.email.toLowerCase(),
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          phone: userData.phone || null,
+          membership_status: 'free'
+        });
+
+      if (profileError) throw profileError;
+
+      const { data: sessionData } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: userData.password
+      });
+
+      return {
+        success: true,
+        message: 'Registro exitoso',
+        user: {
+          id: authData.user.id,
+          email: userData.email,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          phone: userData.phone || null,
+          membership_status: 'free'
+        },
+        session: sessionData?.session
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Error en registro'
+      };
+    }
+  }
+
   static async loginUser(email: string, password: string): Promise<AuthResponse> {
     try {
-      // 1. Autenticación con Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase(),
         password,
       });
 
       if (authError) {
-        console.error("Error de autenticación:", authError);
         return {
           success: false,
-          message: this.getAuthErrorMessage(authError.message),
+          message: "Credenciales incorrectas. Verifica tu email y contraseña.",
         };
       }
 
-      // 2. Verificar/crear perfil en public.users
-      const userResponse = await this.ensureUserProfile(authData.user);
-      if (!userResponse.success) return userResponse;
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
 
-      // 3. Guardar sesión
+      if (userError || !userData) {
+        return {
+          success: false,
+          message: "Usuario no encontrado. Por favor regístrate primero.",
+        };
+      }
+
       localStorage.setItem("sb_session", JSON.stringify({
         access_token: authData.session.access_token,
-        refresh_token: authData.session.refresh_token,
-        expires_at: Date.now() + (authData.session.expires_in * 1000)
+        refresh_token: authData.session.refresh_token
       }));
 
       return {
         success: true,
         message: "Login exitoso",
-        user: userResponse.user,
+        user: userData,
         session: authData.session,
       };
-    } catch (error) {
-      console.error("Error en login:", error);
+    } catch (error: any) {
       return {
         success: false,
         message: "Error interno del servidor",
@@ -43,56 +108,44 @@ export class AuthServiceSupabase {
     }
   }
 
-  private static async ensureUserProfile(authUser: any): Promise<AuthResponse> {
+  static async getCurrentUser(): Promise<User | null> {
     try {
-      // 1. Buscar usuario en public.users
-      const { data: existingUser } = await supabase
+      const sessionStr = localStorage.getItem("sb_session");
+      if (!sessionStr) return null;
+      
+      const session = JSON.parse(sessionStr);
+      await supabase.auth.setSession(session);
+      
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return null;
+
+      const { data: userData } = await supabase
         .from("users")
         .select("*")
         .eq("id", authUser.id)
         .single();
 
-      if (existingUser) {
-        return { success: true, user: existingUser };
-      }
-
-      // 2. Si no existe, crearlo
-      const { data: newUser } = await supabase
-        .from("users")
-        .insert({
-          id: authUser.id,
-          email: authUser.email,
-          first_name: authUser.user_metadata?.first_name || "Usuario",
-          last_name: authUser.user_metadata?.last_name || "Nuevo",
-          phone: authUser.user_metadata?.phone || null,
-          membership_status: "free",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      return { 
-        success: true, 
-        user: newUser 
-      };
+      return userData;
     } catch (error) {
-      console.error("Error en perfil de usuario:", error);
-      return {
-        success: false,
-        message: "Error al acceder al perfil de usuario",
-      };
+      return null;
     }
   }
 
-  private static getAuthErrorMessage(error: string): string {
-    const messages: Record<string, string> = {
-      "Invalid login credentials": "Email o contraseña incorrectos",
-      "Email not confirmed": "Por favor verifica tu email primero",
-      "Too many requests": "Demasiados intentos. Intenta más tarde",
-    };
-    return messages[error] || "Error al iniciar sesión";
+  static async logout(): Promise<void> {
+    await supabase.auth.signOut();
+    localStorage.removeItem("sb_session");
   }
 
-  //
+  static async isAuthenticated(): Promise<boolean> {
+    const sessionStr = localStorage.getItem("sb_session");
+    if (!sessionStr) return false;
+    
+    try {
+      const session = JSON.parse(sessionStr);
+      const { data: { user } } = await supabase.auth.getUser(session.access_token);
+      return !!user;
+    } catch (error) {
+      return false;
+    }
+  }
 }
