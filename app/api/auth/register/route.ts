@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
+        email: email //
       })
 
       if (profileError) {
