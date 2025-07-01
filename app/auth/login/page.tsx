@@ -1,63 +1,49 @@
-"use client"
+'use client'
 
-import type React from "react"
+import { useState } from 'react'
+import { createClient } from '@/app/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { AuthServiceSupabase } from "../../lib/auth-service-supabase"
-
-export default function LoginPage() {
-  const [formData, setFormData] = useState({ email: "", password: "" })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+export default function LoginForm() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const supabase = createClient()
 
-  // Verificar si ya está autenticado
-  useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await AuthServiceSupabase.isAuthenticated()
-      if (isAuth) {
-        router.push("/dashboard")
-      }
-    }
-    checkAuth()
-  }, [router])
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setErrors({})
-
-    // Validación
-    const newErrors: Record<string, string> = {}
-    if (!formData.email) newErrors.email = "El email es obligatorio"
-    if (!formData.password) newErrors.password = "La contraseña es obligatoria"
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      setIsLoading(false)
-      return
-    }
+    setLoading(true)
+    setError('')
 
     try {
-      const result = await AuthServiceSupabase.loginUser(formData.email, formData.password)
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
 
-      if (result.success) {
-        router.push("/dashboard")
-      } else {
-        setErrors({ general: result.message })
+      if (authError) {
+        setError(authError.message)
+        return
       }
-    } catch (error) {
-      setErrors({ general: "Error de conexión. Inténtalo de nuevo." })
+
+      if (data.session) {
+        // Esperar a que Supabase actualice el estado de autenticación
+        await new Promise(resolve => setTimeout(resolve, 500));
+        router.refresh(); // Forzar actualización de la aplicación
+      }
+    } catch (err) {
+      setError('Error inesperado. Intenta de nuevo.')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -74,14 +60,14 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="px-8 pb-8">
-            {errors.general && (
+            {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
                 <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-                <span className="text-red-700">{errors.general}</span>
+                <span className="text-red-700">{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-6">
               <div>
                 <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
                   Email
@@ -89,12 +75,11 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
-                  className={`h-12 ${errors.email ? "border-red-300" : ""}`}
+                  className="h-12"
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
               </div>
 
               <div>
@@ -105,10 +90,10 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="Tu contraseña"
-                    className={`h-12 pr-12 ${errors.password ? "border-red-300" : ""}`}
+                    className="h-12 pr-12"
                   />
                   <button
                     type="button"
@@ -118,7 +103,6 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
               </div>
 
               <div className="flex items-center justify-between">
@@ -133,10 +117,10 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={loading}
                 className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
               >
-                {isLoading ? (
+                {loading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
                     Iniciando sesión...
