@@ -43,11 +43,11 @@ export default function SuccessCelebration() {
       {/* 🔴 ENCABEZADO PERSONALIZADO - NUEVA SECCIÓN */}
       <div className="text-right mb-2">
         {user ? (
-          <p className="text-green-800 font-medium">¡Hola, {user.name}! · {user.email}</p>
+          <p className="text-green-800 font-medium">¡Hola, {user.name}! · </p>
         ) : (
           <p className="text-green-800">Cargando datos de usuario...</p>
         )}
-      </div>
+      </div
       {/* FIN DE NUEVA SECCIÓN */}
 
       {/* CONTENIDO EXISTENTE (TODO SE MANTIENE IGUAL) */}
