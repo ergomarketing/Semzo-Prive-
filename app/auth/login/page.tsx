@@ -1,11 +1,8 @@
-'use client'
+"use client"
 
 import { useState } from 'react'
-import { createClient } from '@/app/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import { createClient } from '@/utils/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -16,6 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  
   const router = useRouter()
   const supabase = createClient()
 
@@ -25,143 +23,94 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // 1. Iniciar sesión con email y contraseña
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
-      // 2. Manejar errores de autenticación
-      if (authError) {
-        setError(authError.message || "Credenciales incorrectas. Por favor intenta de nuevo.")
-        return
-      }
-
-      // 3. Si hay sesión, verificar y redirigir
-      if (data.session) {
-        // Esperar a que Supabase establezca la sesión
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // Doble verificación de sesión
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session) {
-          // Redirigir al dashboard con actualización
-          router.push("/admin/success-celebration")
-          router.refresh()
-        } else {
-          setError("La sesión no se estableció correctamente. Intenta de nuevo.")
-        }
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/dashboard')
       }
     } catch (err) {
-      setError('Error inesperado. Por favor intenta más tarde.')
-      console.error("Login error:", err)
+      setError('Error al iniciar sesión')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
-      <div className="container mx-auto px-4 max-w-md">
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="text-center pb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
-              <span className="text-2xl text-indigo-dark font-serif">SP</span>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+            Sign in to your account
+          </h2>
+        </div>
+        {error && (
+          <p className="text-red-500 text-center">{error}</p>
+        )}
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="email-address" className="sr-only">
+                Email address
+              </label>
+              <Input
+                id="email-address"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
             </div>
-            <CardTitle className="font-serif text-3xl text-slate-900">Bienvenida de vuelta</CardTitle>
-            <p className="text-slate-600">Accede a tu cuenta de Semzo Privé</p>
-          </CardHeader>
-
-          <CardContent className="px-8 pb-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
-                <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-                <span className="text-red-700">{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
-                  Email
-                </Label>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <div className="relative">
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu@email.com"
-                  className="h-12"
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
               </div>
-
-              <div>
-                <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
-                  Contraseña
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Tu contraseña"
-                    className="h-12 pr-12"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    className="mr-2"
-                    defaultChecked
-                  />
-                  <span className="text-sm text-slate-600">Recordarme</span>
-                </label>
-                <Link href="/auth/forgot-password" className="text-sm text-indigo-dark hover:underline">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-indigo-dark hover:bg-indigo-800 text-white h-12 transition-colors"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Iniciando sesión...
-                  </>
-                ) : (
-                  "Iniciar sesión"
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-8 text-center">
-              <p className="text-slate-600">
-                ¿No tienes cuenta?{" "}
-                <Link href="/signup" className="text-indigo-dark hover:underline font-medium">
-                  Únete a Semzo Privé
-                </Link>
-              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </div>
+          <div className="text-center">
+            <Link href="/auth/signup" className="text-sm text-indigo-600 hover:text-indigo-500">
+              Don't have an account? Sign up
+            </Link>
+          </div>
+        </form>
       </div>
     </div>
   )
