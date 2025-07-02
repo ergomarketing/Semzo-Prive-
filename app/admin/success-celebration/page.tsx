@@ -13,72 +13,78 @@ export default function SuccessCelebration() {
   useEffect(() => {
     const supabase = createClient();
     
-    // 1. Suscribirse a cambios de estado de autenticación
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          await handleUserData(session.user);
-        } else {
-          router.push("/auth/login");
-        }
-      }
-    );
-
-    // 2. Verificar sesión inicial
-    const checkInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await handleUserData(session.user);
-      } else {
-        router.push("/auth/login");
-      }
-    };
-
-    // Función para manejar datos del usuario (reutilizable)
-    const handleUserData = async (userData: any) => {
+    const fetchUserData = async () => {
       try {
         setIsLoading(true);
         
-        // Intentar obtener datos de perfil
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', userData.id)
-          .maybeSingle();
-
-        // Crear perfil si no existe
-        if (!profile) {
-          const { error } = await supabase
-            .from('profiles')
-            .upsert({
-              id: userData.id,
-              full_name: userData.email,
-              email: userData.email
-            });
-          
-          if (error) console.error("Error creando perfil:", error);
+        // 1. Obtener usuario directamente
+        const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !authUser) {
+          console.log("No hay usuario autenticado");
+          router.push("/auth/login");
+          return;
         }
 
-        // Actualizar estado con datos del usuario
+        // 2. Obtener o crear perfil
+        let userProfile = null;
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', authUser.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error("Error obteniendo perfil:", profileError);
+        }
+        
+        // 3. Si no hay perfil, crearlo
+        if (!profile) {
+          console.log("Creando perfil automáticamente...");
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .insert({
+              id: authUser.id,
+              email: authUser.email,
+              full_name: authUser.email
+            })
+            .select()
+            .single();
+            
+          userProfile = newProfile;
+        } else {
+          userProfile = profile;
+        }
+        
+        // 4. Guardar datos del usuario
         setUser({
-          name: profile?.full_name || userData.email,
-          email: profile?.email || userData.email
+          name: userProfile?.full_name || authUser.email,
+          email: userProfile?.email || authUser.email
         });
         
       } catch (error) {
-        console.error("Error manejando datos de usuario:", error);
+        console.error("Error crítico:", error);
+        router.push("/auth/login");
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkInitialSession();
-
-    // Limpiar suscripción al desmontar
+    fetchUserData();
+    
+    // 5. Suscribirse a cambios de autenticación
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_OUT") {
+          router.push("/auth/login");
+        }
+      }
+    );
+    
     return () => {
       authListener?.subscription.unsubscribe();
     };
   }, [router]);
 
-  // ... [resto del código UI sin cambios] ...
+  // ... [El resto de tu UI permanece igual] ...
 }
