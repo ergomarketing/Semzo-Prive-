@@ -10,40 +10,54 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
-export default function LoginForm() {
+export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
     setError('')
 
     try {
+      // 1. Iniciar sesión con email y contraseña
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
+      // 2. Manejar errores de autenticación
       if (authError) {
-        setError(authError.message)
+        setError(authError.message || "Credenciales incorrectas. Por favor intenta de nuevo.")
         return
       }
 
+      // 3. Si hay sesión, verificar y redirigir
       if (data.session) {
-        // Esperar a que Supabase actualice el estado de autenticación
-        await new Promise(resolve => setTimeout(resolve, 500));
-        router.refresh(); // Forzar actualización de la aplicación
+        // Esperar a que Supabase establezca la sesión
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // Doble verificación de sesión
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session) {
+          // Redirigir al dashboard con actualización
+          router.push("/admin/success-celebration")
+          router.refresh()
+        } else {
+          setError("La sesión no se estableció correctamente. Intenta de nuevo.")
+        }
       }
     } catch (err) {
-      setError('Error inesperado. Intenta de nuevo.')
+      setError('Error inesperado. Por favor intenta más tarde.')
+      console.error("Login error:", err)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -79,6 +93,7 @@ export default function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   className="h-12"
+                  required
                 />
               </div>
 
@@ -94,11 +109,13 @@ export default function LoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Tu contraseña"
                     className="h-12 pr-12"
+                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -107,7 +124,11 @@ export default function LoginForm() {
 
               <div className="flex items-center justify-between">
                 <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
+                  <input 
+                    type="checkbox" 
+                    className="mr-2"
+                    defaultChecked
+                  />
                   <span className="text-sm text-slate-600">Recordarme</span>
                 </label>
                 <Link href="/auth/forgot-password" className="text-sm text-indigo-dark hover:underline">
@@ -117,10 +138,10 @@ export default function LoginForm() {
 
               <Button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
+                disabled={isLoading}
+                className="w-full bg-indigo-dark hover:bg-indigo-800 text-white h-12 transition-colors"
               >
-                {loading ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
                     Iniciando sesión...
