@@ -10,6 +10,10 @@ Crear archivo `.env.local` en la raíz del proyecto:
 EMAIL_API_KEY=tu_api_key_aqui
 EMAIL_PROVIDER=resend
 
+# 🔗 SUPABASE
+NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
+
 # 🔒 ADMIN ACCESS
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=tu_password_seguro_aqui

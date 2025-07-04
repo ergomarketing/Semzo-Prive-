@@ -1,11 +1,19 @@
 import { createClient } from "@supabase/supabase-js"
 
-// VALORES REALES DE TU SUPABASE
-const supabaseUrl = "https://qehractznaktxhyaqqen.supabase.co"
-const supabaseAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaHJhY3R6bmFrdHhoeWFxcWVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NzgyNTgsImV4cCI6MjA2MjM1NDI1OH0.9CfIxbyJ3pLzWN2hDhCKGGAGAQ-JQoJUI8lQ9Kt1_kQ"
+// Read credentials from environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    "Supabase environment variables are missing. Using placeholder values.",
+  )
+}
+
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key",
+)
 
 export type User = {
   id: string
