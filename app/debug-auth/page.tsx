@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "../lib/supabase-direct"
+import { supabase } from "../lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -82,9 +82,10 @@ export default function DebugAuth() {
                   <p>
                     <strong>Total usuarios en DB:</strong> {dbUsers.length}
                   </p>
-                  <p>
-                    <strong>Supabase URL:</strong> https://qehractznaktxhyaqqen.supabase.co
-                  </p>
+                    <p>
+                      <strong>Supabase URL:</strong>{" "}
+                      {process.env.NEXT_PUBLIC_SUPABASE_URL || "N/A"}
+                    </p>
                   <p>
                     <strong>Timestamp:</strong> {new Date().toISOString()}
                   </p>
