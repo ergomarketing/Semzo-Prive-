@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// ← Import corregido: ahora usamos el cliente de Supabase centralizado
-import { supabase } from "@/lib/supabase-direct";
+// ← Import corregido: ruta relativa al cliente de Supabase
+import { supabase } from "../../../lib/supabase-direct";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
