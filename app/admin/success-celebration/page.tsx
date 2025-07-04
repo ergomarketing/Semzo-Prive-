@@ -1,10 +1,12 @@
 "use client";
+
 import { CheckCircle, Trophy, Zap, CreditCard, Webhook, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from '@/app/lib/supabase/client' 
+import { supabase } from "@/lib/supabase-direct";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
 
 export default function SuccessCelebration() {
   const [user, setUser] = useState<any>(null);
