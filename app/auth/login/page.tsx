@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import supabase from '../../../../utils/supabase/client' // Ruta relativa
+import supabase from '@/utils/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -14,7 +13,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
-  const router = useRouter()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
