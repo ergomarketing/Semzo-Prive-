@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// ← Import corregido: ruta relativa al cliente de Supabase
-import { supabase } from "../../../lib/supabase-direct";
+// ← Import corregido: subir dos niveles hasta /app, luego lib
+import { supabase } from "../../lib/supabase-direct";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLogin, setIsLogin] = useState(true); // true = login, false = registro
+  const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +25,6 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        // --- LOGIN ---
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: email.toLowerCase(),
           password,
@@ -33,7 +32,6 @@ export default function LoginPage() {
         if (signInError) throw signInError;
         router.push("/dashboard");
       } else {
-        // --- SIGNUP ---
         const { error: signUpError } = await supabase.auth.signUp({
           email: email.toLowerCase(),
           password,
