@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       { success: true, message: "Usuario registrado exitosamente." },
       { status: 200 }
     )
-  } catch (error) {
+  }
+   catch (error) {
     console.error("💥 Error inesperado:", error)
     return NextResponse.json(
       { success: false, message: "Error interno del servidor", error },
