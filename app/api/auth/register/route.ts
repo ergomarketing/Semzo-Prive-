@@ -120,9 +120,10 @@ export async function POST(request: NextRequest) {
     })
 
 } catch (error: any) {
-  console.error("❌ Error inesperado en registro:", error.message || error)
+  console.error("❌ Error inesperado en registro:");
+  console.error(JSON.stringify(error, null, 2)); // 🔍 muestra el error completo y legible
   return NextResponse.json(
-    { success: false, message: error.message || "Error interno del servidor" },
+    { success: false, message: "Error interno del servidor", error },
     { status: 500 }
-  )
+  );
 }
