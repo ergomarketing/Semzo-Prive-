@@ -1,2 +1,0 @@
-git commit --allow-empty -m "Forzar redeploy"
-git push origin main
