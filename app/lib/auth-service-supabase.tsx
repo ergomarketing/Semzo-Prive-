@@ -24,7 +24,8 @@ export class AuthServiceSupabase {
       if (!authData.user) throw new Error('Usuario no creado en Auth');
 
       const { error: profileError } = await supabase
-        .from('users')
+        .from('profiles')
+
         .insert({
           id: authData.user.id,
           email: userData.email.toLowerCase(),
