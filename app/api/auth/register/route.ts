@@ -7,33 +7,40 @@ export async function POST(request: NextRequest) {
 
     console.log("🔍 Iniciando registro para:", email)
 
-    // 1. Registrar usuario en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { 
-          first_name: firstName,
-          last_name: lastName
-        }
-      }
-    })
+// 1. Registrar usuario en Supabase Auth
+const { data: authData, error: authError } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: {
+      first_name: firstName,
+      last_name: lastName,
+    },
+  },
+})
 
-    // Log detallado de la respuesta de Auth
-    console.log("✅ Auth signUp response:", { authData, authError })
-    if (authError) {
-      console.error("❌ Detalles authError:")
-      console.error("   message:", authError.message)
-      console.error("   code   :", authError.code)
-      console.error("   status :", authError.status)
-      if ("details" in authError && authError.details) console.error("   details:", authError.details)
-      if ("hint" in authError && authError.hint)       console.error("   hint   :", authError.hint)
+// Log detallado de la respuesta de Auth
+console.log("✅ Auth signUp response:", { authData, authError })
 
-      return NextResponse.json(
-        { success: false, message: authError.message },
-        { status: authError.status || 400 }
-      )
-    }
+// 1.1. Si hubo error en el registro
+if (authError) {
+  console.error("❌ Error al registrar usuario:", authError.message || authError)
+  return NextResponse.json(
+    { success: false, message: authError.message || "Error al crear el usuario." },
+    { status: authError.status || 400 }
+  )
+}
+
+// 1.2. Si no se recibió usuario (caso inesperado)
+if (!authData?.user) {
+  console.error("⛔ No se pudo crear el usuario: authData.user es null")
+  return NextResponse.json(
+    { success: false, message: "No se pudo crear el usuario." },
+    { status: 500 }
+  )
+}
+
+console.log("🆔 Usuario creado en Auth:", authData.user.id)
 
     console.log("🆔 Usuario creado en Auth:", authData.user?.id)
 
