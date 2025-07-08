@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import NavbarImproved from "@/components/NavbarImproved"
 
+
 import type { User } from "@/lib/supabase"
 
 export default function DashboardPage() {
