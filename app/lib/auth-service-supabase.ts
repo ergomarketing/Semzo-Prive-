@@ -1,3 +1,4 @@
+// Trigger redeploy manually - 2025-07-07
 
 import { createClient } from "@supabase/supabase-js"
 
