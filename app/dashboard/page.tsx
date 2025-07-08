@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Crown, Calendar, Gem, Home, Star, Diamond, Mail, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import NavbarImproved from "@/components/navbar-improved"
+import NavbarImproved from "@/components/NavbarImproved"
+
 import type { User } from "@/lib/supabase"
 
 export default function DashboardPage() {
