@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-// ← Import corregido: subir dos niveles hasta /app, luego lib
-import { supabase } from "../../lib/supabase-direct";
+import { createClient } from "@supabase/supabase-js";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -15,11 +14,22 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
 
   const router = useRouter();
 
+  useEffect(() => {
+    const supabaseClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    setSupabase(supabaseClient);
+  }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
+
     setIsLoading(true);
     setError("");
 
@@ -113,5 +123,5 @@ export default function LoginPage() {
         </button>
       </div>
     </div>
-);
+  );
 }
