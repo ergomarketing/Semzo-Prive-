@@ -1,19 +1,18 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase-browser";
+import { createBrowserSupabaseClient } from "@supabase/auth-helpers-nextjs";
+import { SupabaseClient } from "@supabase/supabase-js";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function LoginPage() {
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
@@ -21,10 +20,18 @@ export default function LoginPage() {
 
   const router = useRouter();
 
+  // Inicializar Supabase solo en el cliente
+  useEffect(() => {
+    const client = createBrowserSupabaseClient();
+    setSupabase(client);
+  }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+
+    if (!supabase) return;
 
     try {
       if (isLogin) {
@@ -35,16 +42,9 @@ export default function LoginPage() {
         if (signInError) throw signInError;
         router.push("/dashboard");
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { error: signUpError } = await supabase.auth.signUp({
           email: email.toLowerCase(),
           password,
-          options: {
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-              phone,
-            },
-          },
         });
         if (signUpError) throw signUpError;
         router.push("/verify-email");
@@ -63,53 +63,44 @@ export default function LoginPage() {
       </h2>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <form className="space-y-6" onSubmit={handleAuth}>
-        {!isLogin && (
-          <>
-            <Input
-              type="text"
-              placeholder="Nombre"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
-            <Input
-              type="text"
-              placeholder="Apellido"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-            />
-            <Input
-              type="tel"
-              placeholder="Teléfono"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </>
-        )}
-        <Input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <div className="relative">
+        <div>
+          <label htmlFor="email" className="sr-only">
+            Correo electrónico
+          </label>
           <Input
-            type={showPassword ? "text" : "password"}
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            id="email"
+            name="email"
+            type="email"
             required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Correo electrónico"
           />
-          <button
-            type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm"
-            onClick={() => setShowPassword((v) => !v)}
-          >
-            {showPassword ? "Ocultar" : "Mostrar"}
-          </button>
+        </div>
+        <div>
+          <label htmlFor="password" className="sr-only">
+            Contraseña
+          </label>
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm"
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              {showPassword ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </div>
         <Button type="submit" disabled={isLoading} className="w-full py-2">
           {isLoading
@@ -134,3 +125,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
