@@ -14,22 +14,21 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Puedes traer el usuario desde Supabase si tienes una función para ello
-    const fetchUser = async () => {
-      const session = localStorage.getItem("session")
-      if (!session) {
-        router.push("/login")
-      } else {
-        const userData = JSON.parse(session)
-        setUser(userData)
-      }
+    const session = localStorage.getItem("session")
+    if (!session) {
+      router.push("/login")
+    } else {
+      const userData = JSON.parse(session)
+      setUser(userData)
     }
-
-    fetchUser()
   }, [router])
 
   return (
     <>
       <NavbarImproved />
       <main className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Bienvenido al
+        <h1 className="text-2xl font-bold mb-4">Bienvenido al Dashboard</h1>
+      </main>
+    </>
+  )
+}
