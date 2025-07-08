@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AuthServiceSupabase } from "@/app/lib/auth-service-supabase"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,20 +14,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Email y contraseña son obligatorios" }, { status: 400 })
     }
 
-    const result = await AuthServiceSupabase.loginUser(email, password)
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-    if (!result.success) {
-      return NextResponse.json({ message: result.message }, { status: 401 })
+    if (authError || !authData.user) {
+      return NextResponse.json(
+        { message: authError?.message || "Error al iniciar sesión" },
+        { status: 401 }
+      )
+    }
+
+    const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name, membership_status")
+      .eq("id", authData.user.id)
+      .single()
+
+    if (profileError || !userProfile) {
+      return NextResponse.json(
+        { message: "Perfil de usuario no encontrado" },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      message: result.message,
+      message: "Inicio de sesión exitoso",
       user: {
-        id: result.user?.id,
-        email: result.user?.email,
-        name: `${result.user?.first_name} ${result.user?.last_name}`,
-        membershipStatus: result.user?.membership_status,
+        id: userProfile.id,
+        email: userProfile.email,
+        name: `${userProfile.first_name} ${userProfile.last_name}`,
+        membershipStatus: userProfile.membership_status,
       },
     })
   } catch (error) {
