@@ -40,6 +40,7 @@
     "@stripe/react-stripe-js": "latest",
     "@stripe/stripe-js": "latest",
     "@supabase/supabase-js": "latest",
+    "@supabase/auth-helpers-nextjs": "^0.7.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "latest",
@@ -60,8 +61,6 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest"
-    "@supabase/auth-helpers-nextjs": "^0.7.4",
-
   },
   "devDependencies": {
     "@types/node": "^22",
