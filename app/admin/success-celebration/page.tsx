@@ -3,7 +3,7 @@
 import { CheckCircle, Trophy, Zap, CreditCard, Webhook, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase-direct";
+import { supabase } from "@/lib/supabase-browser";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -14,7 +14,6 @@ export default function SuccessCelebration() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
     
     const fetchUserData = async () => {
       try {
