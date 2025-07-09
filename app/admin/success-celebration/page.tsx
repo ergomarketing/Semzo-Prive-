@@ -14,7 +14,6 @@ export default function SuccessCelebration() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
     
     const fetchUserData = async () => {
       try {
