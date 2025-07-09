@@ -25,6 +25,10 @@ CREATE POLICY "Users can view own profile" ON users
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
+-- Política para permitir a los usuarios insertar su propio perfil
+CREATE POLICY "Users can insert own profile" ON users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
