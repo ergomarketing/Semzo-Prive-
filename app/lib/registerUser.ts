@@ -32,6 +32,7 @@ export async function registerUser(userData: {
     const { error: profileError } = await supabase
       .from("users")
       .insert({
+        id: authData.user.id,
         email: userData.email.toLowerCase(),
         first_name: userData.firstName,
         last_name: userData.lastName,
