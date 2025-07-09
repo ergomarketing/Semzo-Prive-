@@ -1,6 +1,7 @@
 // Trigger redeploy manually - 2025-07-07
 
 import { createClient } from "@supabase/supabase-js"
+import { supabase as supabaseService } from "./supabase-direct"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,7 +32,8 @@ export class AuthServiceSupabase {
       if (authError) throw authError
       if (!authData.user) throw new Error("Usuario no creado en Auth")
 
-      const { error: profileError } = await supabase
+      // Use service role for inserting profile to bypass RLS
+      const { error: profileError } = await supabaseService
         .from("users")
         .insert({
           id: authData.user.id,

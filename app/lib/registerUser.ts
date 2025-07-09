@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { supabase as supabaseService } from "./supabase-direct";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +30,8 @@ export async function registerUser(userData: {
 
     if (authError || !authData.user) throw authError || new Error("Error al crear usuario");
 
-    const { error: profileError } = await supabase
+    // Use service role for inserting profile to bypass RLS
+    const { error: profileError } = await supabaseService
       .from("users")
       .insert({
         id: authData.user.id,
