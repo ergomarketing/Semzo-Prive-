@@ -2,9 +2,14 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
+const supabaseAnon = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function registerUser(userData: {
@@ -15,7 +20,7 @@ export async function registerUser(userData: {
   phone?: string;
 }) {
   try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
       email: userData.email,
       password: userData.password,
       options: {
@@ -29,7 +34,7 @@ export async function registerUser(userData: {
 
     if (authError || !authData.user) throw authError || new Error("Error al crear usuario");
 
-    const { error: profileError } = await supabase
+    const { error: profileError } = await supabaseAdmin
       .from("users")
       .insert({
         id: authData.user.id,
@@ -46,7 +51,7 @@ export async function registerUser(userData: {
       success: true,
       message: "Usuario creado correctamente",
       user: {
-        id: authData.user.id, 
+        id: authData.user.id,
         email: userData.email,
         first_name: userData.firstName,
         last_name: userData.lastName,
