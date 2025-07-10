@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
-import { emailLogger } from "@/app/lib/email-logger"
+import { emailLogger } from "@/lib/email-logger"
 
 export default function EmailTesterPage() {
   const [email, setEmail] = useState("")
