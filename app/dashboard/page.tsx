@@ -10,7 +10,7 @@ import NavbarImproved from "../components/NavbarImproved"
 
 
 
-import type { User } from "@/lib/supabase"
+import type { User } from "@/lib/supabase-public"
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)

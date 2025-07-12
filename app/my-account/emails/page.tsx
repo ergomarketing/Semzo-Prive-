@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Mail, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react"
-import { emailLogger, type EmailLog } from "@/app/lib/email-logger"
+import { emailLogger, type EmailLog } from "@/lib/email-logger"
 
 export default function UserEmailsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([])
