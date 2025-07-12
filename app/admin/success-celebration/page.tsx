@@ -3,7 +3,7 @@
 import { CheckCircle, Trophy, Zap, CreditCard, Webhook, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase-direct";
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 

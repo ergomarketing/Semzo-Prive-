@@ -1,6 +1,6 @@
 // app/api/auth/register/route.ts
 import { NextResponse, type NextRequest } from "next/server";
-import { registerUser } from "@/app/lib/registerUser";
+import { registerUser } from "@/lib/registerUser";
 
 export async function POST(request: NextRequest) {
   const data = await request.json();

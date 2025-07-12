@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mail, CheckCircle2, XCircle, Clock, RefreshCw, Send, Search, Filter, Download } from "lucide-react"
-import { emailLogger, type EmailLog } from "@/app/lib/email-logger"
+import { emailLogger, type EmailLog } from "@/lib/email-logger"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function EmailLogsPage() {

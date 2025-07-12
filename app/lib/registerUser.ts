@@ -1,68 +1,28 @@
-"use server";
+import { supabase } from "@/lib/supabase-public";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
-import { createClient } from "@supabase/supabase-js";
+export async function registerUser(email: string, password: string, name: string) {
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"}/auth/callback`,
+    },
+  });
 
-const supabaseAnon = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function registerUser(userData: {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-}) {
-  try {
-    const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone || null,
-        },
-      },
-    });
-
-    if (authError || !authData.user) throw authError || new Error("Error al crear usuario");
-
-    const { error: profileError } = await supabaseAdmin
-      .from("users")
-      .insert({
-        id: authData.user.id,
-        email: userData.email.toLowerCase(),
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        phone: userData.phone || null,
-        membership_status: "free",
-      });
-
-    if (profileError) throw profileError;
-
-    return {
-      success: true,
-      message: "Usuario creado correctamente",
-      user: {
-        id: authData.user.id,
-        email: userData.email,
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        phone: userData.phone || null,
-        membership_status: "free",
-      },
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.message || "Error en el registro",
-    };
+  if (authError || !authData?.user) {
+    return { error: authError?.message || "Error creating user" };
   }
+
+  const { error: insertError } = await supabaseAdmin.from("users").insert({
+    id: authData.user.id,
+    email,
+    name,
+  });
+
+  if (insertError) {
+    return { error: insertError.message };
+  }
+
+  return { user: authData.user };
 }
