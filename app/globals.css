@@ -4,6 +4,10 @@
 
 @layer base {
   :root {
+    --foreground-rgb: 0, 0, 0;
+    --background-start-rgb: 214, 219, 220;
+    --background-end-rgb: 255, 255, 255;
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -36,6 +40,10 @@
   }
 
   .dark {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -75,10 +83,13 @@
   }
 }
 
-/* Importar fuentes serif para títulos */
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap");
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
 
-/* Aplicar fuente serif a los elementos con la clase font-serif */
+/* Usar fuentes del sistema en lugar de Google Fonts */
 .font-serif {
-  font-family: "Cormorant Garamond", serif;
+  font-family: "Times New Roman", "Georgia", serif;
 }

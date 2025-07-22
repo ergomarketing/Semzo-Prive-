@@ -57,7 +57,7 @@ export default function SignupPage() {
     }
 
     try {
-      // Llamar a la API de registro
+      console.log("[Frontend] Enviando datos de registro…")
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,18 +70,23 @@ export default function SignupPage() {
         }),
       })
 
-      const result = await response.json()
+      const isJson = response.headers.get("content-type")?.includes("application/json") ?? false
 
-      if (result.success) {
+      const data = isJson ? await response.json() : null
+
+      if (response.ok && data?.success) {
         setSuccess(true)
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 2000)
-      } else {
-        setErrors({ general: result.message || "Error al crear la cuenta" })
+        return setTimeout(() => router.push("/dashboard"), 1500)
       }
-    } catch (error) {
-      setErrors({ general: "Error de conexión. Inténtalo de nuevo." })
+
+      const message = data?.message ?? (isJson ? "Error desconocido" : `${response.status} ${response.statusText}`)
+
+      const details = data?.details ?? ""
+      setErrors({ general: `${message}${details ? " – " + details : ""}` })
+      console.error("[Frontend] Registro fallido:", { message, details })
+    } catch (error: any) {
+      console.error("[Frontend] Error de conexión:", error)
+      setErrors({ general: `Error de conexión: ${error.message}` })
     } finally {
       setIsLoading(false)
     }

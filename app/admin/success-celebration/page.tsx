@@ -1,127 +1,10 @@
-"use client";
-
-import { CheckCircle, Trophy, Zap, CreditCard, Webhook, Key } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase-direct";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
+import { CheckCircle, Trophy, Zap, CreditCard, Webhook, Key } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export default function SuccessCelebration() {
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    
-    const fetchUserData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // 1. Obtener usuario autenticado
-        const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-        
-        // Redirigir si no hay usuario
-        if (userError || !authUser) {
-          console.log("No hay usuario autenticado");
-          router.push("/auth/login");
-          return;
-        }
-
-        // 2. Obtener o crear perfil
-        let userProfile = null;
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', authUser.id)
-          .maybeSingle();
-        
-        // Si hay error o no existe perfil, crear uno
-        if (profileError || !profile) {
-          console.log("Creando perfil automáticamente...");
-          const { data: newProfile } = await supabase
-            .from('profiles')
-            .upsert({
-              id: authUser.id,
-              email: authUser.email,
-              full_name: authUser.email
-            })
-            .select()
-            .single();
-            
-          userProfile = newProfile;
-        } else {
-          userProfile = profile;
-        }
-        
-        // 3. Actualizar estado con datos del usuario
-        setUser({
-          name: userProfile?.full_name || authUser.email,
-          email: userProfile?.email || authUser.email
-        });
-        
-      } catch (error) {
-        console.error("Error crítico:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserData();
-    
-    // 4. Suscribirse a cambios de autenticación
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === "SIGNED_OUT") {
-          router.push("/auth/login");
-        }
-      }
-    );
-    
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, [router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-green-800">Cargando datos de usuario...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Acceso no autorizado</h2>
-          <p className="text-gray-700 mb-6">
-            Por favor inicia sesión para acceder a esta página
-          </p>
-          <button 
-            onClick={() => router.push("/auth/login")}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full transition duration-300"
-          >
-            Ir a Inicio de Sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
-      {/* Encabezado personalizado */}
-      <div className="text-right mb-2">
-        <p className="text-green-800 font-medium">¡Hola, {user.name}! · {user.email}</p>
-      </div>
-
-      {/* Contenido existente */}
       <div className="max-w-4xl mx-auto">
         {/* Header de Celebración */}
         <div className="text-center mb-8">
@@ -245,5 +128,5 @@ export default function SuccessCelebration() {
         </div>
       </div>
     </div>
-  );
+  )
 }
