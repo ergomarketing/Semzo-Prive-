@@ -17,71 +17,55 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-    // 1. Autenticar usuario
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // 1. Autenticar con Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password: password.trim(),
     })
 
-    if (signInError) {
-      console.error("[API] Error de autenticación:", signInError)
+    if (authError) {
+      console.error("[API] Error de autenticación:", authError)
       return NextResponse.json({
         success: false,
         message: "Email o contraseña incorrectos",
       })
     }
 
-    const { user, session } = signInData
-    if (!user || !session?.access_token) {
+    const userId = authData.user?.id
+    if (!userId) {
       return NextResponse.json({
         success: false,
-        message: "Error en la autenticación",
+        message: "Error obteniendo datos de usuario",
       })
     }
 
-    // 2. Cliente autenticado para obtener perfil
-    const authenticatedClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      },
-    })
+    // 2. Verificar que el perfil existe en la tabla users
+    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
 
-    // 3. Obtener perfil del usuario
-    const { data: profile, error: profileError } = await authenticatedClient
-      .from("users")
-      .select("*")
-      .eq("id", user.id)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("[API] Error obteniendo perfil:", profileError)
+    if (userError || !userData) {
+      console.error("[API] Usuario no encontrado en tabla users:", userError)
       return NextResponse.json({
         success: false,
         message: "Usuario no encontrado. Por favor regístrate primero.",
       })
     }
 
-    // 4. Actualizar last_login
-    await authenticatedClient.from("users").update({ last_login: new Date().toISOString() }).eq("id", user.id)
-
     return NextResponse.json({
       success: true,
       message: "Login exitoso",
       user: {
-        id: profile.id,
-        email: profile.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        membershipStatus: profile.membership_status,
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        membershipStatus: userData.membership_status,
       },
     })
-  } catch (error: any) {
-    console.error("[API] Error general en login:", error)
+  } catch (err: any) {
+    console.error("[API] Error general en login:", err)
     return NextResponse.json({
       success: false,
-      message: `Error: ${error.message}`,
+      message: "Error interno del servidor",
     })
   }
 }

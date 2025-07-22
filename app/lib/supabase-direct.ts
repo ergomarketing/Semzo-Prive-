@@ -9,7 +9,3 @@ export const supabase =
         auth: { persistSession: false },
       })
     : null
-
-export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey)
-}

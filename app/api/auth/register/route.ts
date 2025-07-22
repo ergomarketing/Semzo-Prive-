@@ -5,79 +5,98 @@ export async function POST(request: Request) {
   try {
     const { email, password, firstName, lastName, phone } = await request.json()
 
+    // Verificar variables de entorno paso a paso
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    console.log("[API] Verificando variables:")
+    console.log("[API] URL existe:", !!supabaseUrl)
+    console.log("[API] Service Key existe:", !!supabaseServiceKey)
+    console.log("[API] URL:", supabaseUrl?.substring(0, 30) + "...")
+    console.log("[API] Service Key:", supabaseServiceKey?.substring(0, 30) + "...")
+
+    if (!supabaseUrl) {
       return NextResponse.json({
         success: false,
-        message: "Variables de Supabase no configuradas",
+        message: "NEXT_PUBLIC_SUPABASE_URL no configurada",
       })
     }
 
-    // Cliente público para crear cuenta
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    // 1. Crear usuario en Auth
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password: password.trim(),
-    })
-
-    if (signUpError) {
-      console.error("[API] Error en signUp:", signUpError)
+    if (!supabaseServiceKey) {
       return NextResponse.json({
         success: false,
-        message: signUpError.message,
+        message: "SUPABASE_SERVICE_ROLE_KEY no configurada",
       })
     }
 
-    const { user, session } = signUpData
-    if (!user || !session?.access_token) {
-      return NextResponse.json({
-        success: false,
-        message: "No se pudo crear la sesión",
-      })
-    }
-
-    // 2. Cliente autenticado para insertar perfil
-    const authenticatedClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+    // Cliente con service_role para operaciones admin
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     })
 
-    // 3. Insertar perfil en tabla users
-    const { error: insertError } = await authenticatedClient.from("users").insert({
-      id: user.id,
-      email: user.email,
-      first_name: firstName?.trim() || null,
-      last_name: lastName?.trim() || null,
+    console.log("[API] Cliente Supabase creado correctamente")
+
+    // 1. Crear usuario directamente con admin
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
+      email_confirm: true,
+    })
+
+    if (authError) {
+      console.error("[API] Error creando usuario:", authError)
+      return NextResponse.json({
+        success: false,
+        message: `Error Auth: ${authError.message}`,
+      })
+    }
+
+    const userId = authData.user?.id
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        message: "No se pudo obtener ID de usuario",
+      })
+    }
+
+    console.log("[API] Usuario creado en Auth:", userId)
+
+    // 2. Insertar en tabla users
+    const { error: dbError } = await supabaseAdmin.from("users").insert({
+      id: userId,
+      email: email.trim().toLowerCase(),
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
       phone: phone?.trim() || null,
       membership_status: "free",
     })
 
-    if (insertError) {
-      console.error("[API] Error insertando perfil:", insertError)
+    if (dbError) {
+      console.error("[API] Error insertando en users:", dbError)
+
       // Limpiar usuario de auth si falla la inserción
-      await supabase.auth.admin.deleteUser(user.id)
+      await supabaseAdmin.auth.admin.deleteUser(userId)
+
       return NextResponse.json({
         success: false,
-        message: `Error guardando perfil: ${insertError.message}`,
+        message: `Error DB: ${dbError.message}`,
       })
     }
+
+    console.log("[API] Usuario guardado en tabla users")
 
     return NextResponse.json({
       success: true,
       message: "Cuenta creada exitosamente",
     })
-  } catch (error: any) {
-    console.error("[API] Error general:", error)
+  } catch (err: any) {
+    console.error("[API] Error general:", err)
     return NextResponse.json({
       success: false,
-      message: `Error: ${error.message}`,
+      message: `Error: ${err.message}`,
     })
   }
 }
