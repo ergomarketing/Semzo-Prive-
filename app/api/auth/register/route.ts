@@ -1,3 +1,5 @@
+// app/api/auth/register/route.ts
+
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
@@ -5,31 +7,17 @@ export async function POST(request: Request) {
   try {
     const { email, password, firstName, lastName, phone } = await request.json()
 
-    // Verificar variables de entorno paso a paso
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    console.log("[API] Verificando variables:")
-    console.log("[API] URL existe:", !!supabaseUrl)
-    console.log("[API] Service Key existe:", !!supabaseServiceKey)
-    console.log("[API] URL:", supabaseUrl?.substring(0, 30) + "...")
-    console.log("[API] Service Key:", supabaseServiceKey?.substring(0, 30) + "...")
-
-    if (!supabaseUrl) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({
         success: false,
-        message: "NEXT_PUBLIC_SUPABASE_URL no configurada",
+        message: "Error de configuración: faltan variables de entorno necesarias.",
       })
     }
 
-    if (!supabaseServiceKey) {
-      return NextResponse.json({
-        success: false,
-        message: "SUPABASE_SERVICE_ROLE_KEY no configurada",
-      })
-    }
-
-    // Cliente con service_role para operaciones admin
+    // Crear cliente Supabase admin (con service_role)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -37,34 +25,24 @@ export async function POST(request: Request) {
       },
     })
 
-    console.log("[API] Cliente Supabase creado correctamente")
-
-    // 1. Crear usuario directamente con admin
+    // 1. Crear el usuario en Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.trim().toLowerCase(),
       password: password.trim(),
       email_confirm: true,
     })
 
-    if (authError) {
-      console.error("[API] Error creando usuario:", authError)
+    if (authError || !authData?.user?.id) {
+      console.error("[API] Error creando usuario en Auth:", authError)
       return NextResponse.json({
         success: false,
-        message: `Error Auth: ${authError.message}`,
+        message: `Error al crear cuenta: ${authError?.message || "Desconocido"}`,
       })
     }
 
-    const userId = authData.user?.id
-    if (!userId) {
-      return NextResponse.json({
-        success: false,
-        message: "No se pudo obtener ID de usuario",
-      })
-    }
+    const userId = authData.user.id
 
-    console.log("[API] Usuario creado en Auth:", userId)
-
-    // 2. Insertar en tabla users
+    // 2. Insertar datos adicionales en tabla `users`
     const { error: dbError } = await supabaseAdmin.from("users").insert({
       id: userId,
       email: email.trim().toLowerCase(),
@@ -75,28 +53,24 @@ export async function POST(request: Request) {
     })
 
     if (dbError) {
-      console.error("[API] Error insertando en users:", dbError)
-
-      // Limpiar usuario de auth si falla la inserción
+      console.error("[API] Error insertando en tabla users:", dbError)
+      // Eliminar usuario de Auth si falla la inserción en DB
       await supabaseAdmin.auth.admin.deleteUser(userId)
-
       return NextResponse.json({
         success: false,
-        message: `Error DB: ${dbError.message}`,
+        message: `Error al guardar usuario en la base de datos: ${dbError.message}`,
       })
     }
 
-    console.log("[API] Usuario guardado en tabla users")
-
     return NextResponse.json({
       success: true,
-      message: "Cuenta creada exitosamente",
+      message: "Cuenta creada exitosamente.",
     })
   } catch (err: any) {
     console.error("[API] Error general:", err)
     return NextResponse.json({
       success: false,
-      message: `Error: ${err.message}`,
+      message: `Error interno del servidor: ${err.message}`,
     })
   }
 }
