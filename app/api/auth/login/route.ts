@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-    // 1. Autenticar usuario
+    // 1. Autenticar con Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password: password.trim(),
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (!userId) {
       return NextResponse.json({
         success: false,
-        message: "Error en la autenticación",
+        message: "Error obteniendo datos de usuario",
       })
     }
 
@@ -62,10 +62,10 @@ export async function POST(request: Request) {
       },
     })
   } catch (err: any) {
-    console.error("[API] Error general:", err)
+    console.error("[API] Error general en login:", err)
     return NextResponse.json({
       success: false,
-      message: `Error: ${err.message}`,
+      message: "Error interno del servidor",
     })
   }
 }
