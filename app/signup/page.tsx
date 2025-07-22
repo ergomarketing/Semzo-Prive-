@@ -3,13 +3,15 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -20,47 +22,58 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     acceptTerms: false,
-    acceptMarketing: false,
+    acceptNewsletter: false,
   })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const router = useRouter()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    setError("")
+  }
+
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: checked }))
+    setError("")
+  }
+
+  const validateForm = () => {
+    if (!formData.firstName.trim()) return "El nombre es requerido"
+    if (!formData.lastName.trim()) return "Los apellidos son requeridos"
+    if (!formData.email.trim()) return "El email es requerido"
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return "Email inválido"
+    if (formData.password.length < 8) return "La contraseña debe tener al menos 8 caracteres"
+    if (formData.password !== formData.confirmPassword) return "Las contraseñas no coinciden"
+    if (!formData.acceptTerms) return "Debes aceptar los términos y condiciones"
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setErrors({})
-    setSuccess(false)
 
-    // Validación
-    const newErrors: Record<string, string> = {}
-    if (!formData.firstName.trim()) newErrors.firstName = "El nombre es obligatorio"
-    if (!formData.lastName.trim()) newErrors.lastName = "Los apellidos son obligatorios"
-    if (!formData.email.trim()) newErrors.email = "El email es obligatorio"
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Email inválido"
-    }
-    if (!formData.password) newErrors.password = "La contraseña es obligatoria"
-    if (formData.password.length < 6) newErrors.password = "La contraseña debe tener al menos 6 caracteres"
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Las contraseñas no coinciden"
-    }
-    if (!formData.acceptTerms) newErrors.acceptTerms = "Debes aceptar los términos y condiciones"
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      setIsLoading(false)
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
       return
     }
 
+    setIsLoading(true)
+    setError("")
+    setSuccess("")
+
     try {
       console.log("[Frontend] Enviando datos de registro…")
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -70,239 +83,182 @@ export default function SignupPage() {
         }),
       })
 
-      const isJson = response.headers.get("content-type")?.includes("application/json") ?? false
+      const data = await response.json()
 
-      const data = isJson ? await response.json() : null
-
-      if (response.ok && data?.success) {
-        setSuccess(true)
-        return setTimeout(() => router.push("/dashboard"), 1500)
+      if (data.success) {
+        setSuccess("¡Cuenta creada exitosamente! Redirigiendo...")
+        setTimeout(() => {
+          router.push("/auth/login")
+        }, 2000)
+      } else {
+        setError(data.message || "Error al crear la cuenta")
       }
-
-      const message = data?.message ?? (isJson ? "Error desconocido" : `${response.status} ${response.statusText}`)
-
-      const details = data?.details ?? ""
-      setErrors({ general: `${message}${details ? " – " + details : ""}` })
-      console.error("[Frontend] Registro fallido:", { message, details })
-    } catch (error: any) {
-      console.error("[Frontend] Error de conexión:", error)
-      setErrors({ general: `Error de conexión: ${error.message}` })
+    } catch (err: any) {
+      console.error("[Frontend] Registro fallido:", err)
+      setError("Error de conexión. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
-        <div className="container mx-auto px-4 max-w-md">
-          <Card className="border-0 shadow-xl">
-            <CardContent className="p-8 text-center">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h2 className="font-serif text-2xl text-slate-900 mb-4">¡Cuenta creada exitosamente!</h2>
-              <p className="text-slate-600 mb-6">
-                Bienvenida a Semzo Privé. Serás redirigida a tu dashboard en unos segundos...
-              </p>
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-dark mx-auto"></div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
-      <div className="container mx-auto px-4 max-w-md">
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="text-center pb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
-              <span className="text-2xl text-indigo-dark font-serif">SP</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4">
+            <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-xl">SP</span>
             </div>
-            <CardTitle className="font-serif text-3xl text-slate-900">Únete a Semzo Privé</CardTitle>
-            <p className="text-slate-600">Crea tu cuenta para acceder a nuestro catálogo exclusivo</p>
-          </CardHeader>
+          </div>
+          <CardTitle className="text-2xl font-bold">Únete a Semzo Privé</CardTitle>
+          <CardDescription>Crea tu cuenta para acceder a nuestro catálogo exclusivo</CardDescription>
+        </CardHeader>
 
-          <CardContent className="px-8 pb-8">
-            {errors.general && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
-                <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-                <span className="text-red-700">{errors.general}</span>
-              </div>
-            )}
+        <CardContent>
+          {error && (
+            <Alert className="mb-4 border-red-200 bg-red-50">
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName" className="text-slate-700 font-medium mb-2 block">
-                    Nombre *
-                  </Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    placeholder="María"
-                    className={`h-12 ${errors.firstName ? "border-red-300" : ""}`}
-                  />
-                  {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
-                </div>
+          {success && (
+            <Alert className="mb-4 border-green-200 bg-green-50">
+              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            </Alert>
+          )}
 
-                <div>
-                  <Label htmlFor="lastName" className="text-slate-700 font-medium mb-2 block">
-                    Apellidos *
-                  </Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    placeholder="García"
-                    className={`h-12 ${errors.lastName ? "border-red-300" : ""}`}
-                  />
-                  {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
-                </div>
-              </div>
-
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
-                  Email *
-                </Label>
+                <Label htmlFor="firstName">Nombre *</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="maria@ejemplo.com"
-                  className={`h-12 ${errors.email ? "border-red-300" : ""}`}
-                />
-                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="phone" className="text-slate-700 font-medium mb-2 block">
-                  Teléfono (opcional)
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+34 600 000 000"
-                  className="h-12"
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
-
               <div>
-                <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
-                  Contraseña *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
-                    className={`h-12 pr-12 ${errors.password ? "border-red-300" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+                <Label htmlFor="lastName">Apellidos *</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
-
-              <div>
-                <Label htmlFor="confirmPassword" className="text-slate-700 font-medium mb-2 block">
-                  Confirmar contraseña *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    placeholder="Repite tu contraseña"
-                    className={`h-12 pr-12 ${errors.confirmPassword ? "border-red-300" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-                {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="acceptTerms"
-                    checked={formData.acceptTerms}
-                    onChange={(e) => setFormData({ ...formData, acceptTerms: e.target.checked })}
-                    className="mt-1 mr-3"
-                  />
-                  <Label htmlFor="acceptTerms" className="text-sm text-slate-700">
-                    Acepto los{" "}
-                    <Link href="/legal/terms" className="text-indigo-dark underline">
-                      términos y condiciones
-                    </Link>{" "}
-                    y la{" "}
-                    <Link href="/legal/privacy" className="text-indigo-dark underline">
-                      política de privacidad
-                    </Link>{" "}
-                    *
-                  </Label>
-                </div>
-                {errors.acceptTerms && <p className="text-sm text-red-600">{errors.acceptTerms}</p>}
-
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="acceptMarketing"
-                    checked={formData.acceptMarketing}
-                    onChange={(e) => setFormData({ ...formData, acceptMarketing: e.target.checked })}
-                    className="mt-1 mr-3"
-                  />
-                  <Label htmlFor="acceptMarketing" className="text-sm text-slate-700">
-                    Quiero recibir ofertas exclusivas y novedades por email
-                  </Label>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Creando cuenta...
-                  </>
-                ) : (
-                  "Crear cuenta"
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-8 text-center">
-              <p className="text-slate-600">
-                ¿Ya tienes cuenta?{" "}
-                <Link href="/auth/login" className="text-indigo-dark hover:underline font-medium">
-                  Inicia sesión
-                </Link>
-              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            <div>
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="phone">Teléfono (opcional)</Label>
+              <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} />
+            </div>
+
+            <div>
+              <Label htmlFor="password">Contraseña *</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirmar contraseña *</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="acceptTerms"
+                  checked={formData.acceptTerms}
+                  onCheckedChange={(checked) => handleCheckboxChange("acceptTerms", checked as boolean)}
+                />
+                <Label htmlFor="acceptTerms" className="text-sm">
+                  Acepto los{" "}
+                  <Link href="/legal/terms" className="text-blue-600 hover:underline">
+                    términos y condiciones
+                  </Link>{" "}
+                  y la{" "}
+                  <Link href="/legal/privacy" className="text-blue-600 hover:underline">
+                    política de privacidad
+                  </Link>{" "}
+                  *
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="acceptNewsletter"
+                  checked={formData.acceptNewsletter}
+                  onCheckedChange={(checked) => handleCheckboxChange("acceptNewsletter", checked as boolean)}
+                />
+                <Label htmlFor="acceptNewsletter" className="text-sm">
+                  Quiero recibir ofertas exclusivas y novedades por email
+                </Label>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creando cuenta..." : "Crear cuenta"}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              ¿Ya tienes cuenta?{" "}
+              <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
+                Inicia sesión
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
