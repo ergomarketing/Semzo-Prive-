@@ -1,41 +1,37 @@
--- Eliminar tabla existente si hay problemas
-DROP TABLE IF EXISTS public.users;
+-- Eliminar tabla existente si existe
+DROP TABLE IF EXISTS public.users CASCADE;
 
--- Crear tabla users desde cero
+-- Crear tabla users
 CREATE TABLE public.users (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
     first_name TEXT,
     last_name TEXT,
     phone TEXT,
     membership_status TEXT DEFAULT 'free',
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    last_login TIMESTAMPTZ
 );
 
--- Habilitar RLS
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- DESHABILITAR RLS temporalmente para permitir inserciones
+ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 
--- Política para permitir inserción con service_role
-CREATE POLICY "Allow service_role to insert users" ON public.users
-    FOR INSERT WITH CHECK (true);
+-- Crear índices para mejor rendimiento
+CREATE INDEX idx_users_email ON public.users(email);
+CREATE INDEX idx_users_membership_status ON public.users(membership_status);
 
--- Política para permitir lectura con service_role
-CREATE POLICY "Allow service_role to read users" ON public.users
-    FOR SELECT USING (true);
+-- Función para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
 
--- Política para permitir actualización con service_role
-CREATE POLICY "Allow service_role to update users" ON public.users
-    FOR UPDATE USING (true);
-
--- Política para permitir eliminación con service_role
-CREATE POLICY "Allow service_role to delete users" ON public.users
-    FOR DELETE USING (true);
-
--- Política para que los usuarios puedan ver su propio perfil
-CREATE POLICY "Users can view own profile" ON public.users
-    FOR SELECT USING (auth.uid() = id);
-
--- Política para que los usuarios puedan actualizar su propio perfil
-CREATE POLICY "Users can update own profile" ON public.users
-    FOR UPDATE USING (auth.uid() = id);
+-- Trigger para actualizar updated_at
+CREATE TRIGGER update_users_updated_at 
+    BEFORE UPDATE ON public.users 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();

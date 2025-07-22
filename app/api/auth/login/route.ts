@@ -1,71 +1,38 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { email, password } = await request.json()
+    const { email, password } = await req.json()
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(url, anon)
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json({
-        success: false,
-        message: "Configuración de Supabase incompleta",
-      })
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    // 1. Autenticar con Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // 1. Autenticar --------------------------------------------------------
+    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password: password.trim(),
     })
 
-    if (authError) {
-      console.error("[API] Error de autenticación:", authError)
-      return NextResponse.json({
-        success: false,
-        message: "Email o contraseña incorrectos",
-      })
-    }
+    if (signInErr) return NextResponse.json({ success: false, message: signInErr.message })
 
-    const userId = authData.user?.id
-    if (!userId) {
-      return NextResponse.json({
-        success: false,
-        message: "Error obteniendo datos de usuario",
-      })
-    }
-
-    // 2. Verificar que el perfil existe en la tabla users
-    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
-
-    if (userError || !userData) {
-      console.error("[API] Usuario no encontrado en tabla users:", userError)
-      return NextResponse.json({
-        success: false,
-        message: "Usuario no encontrado. Por favor regístrate primero.",
-      })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Login exitoso",
-      user: {
-        id: userData.id,
-        email: userData.email,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-        membershipStatus: userData.membership_status,
-      },
+    // 2. Obtener perfil ----------------------------------------------------
+    const accessToken = signInData.session.access_token
+    const userClient = createClient(url, anon, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
     })
-  } catch (err: any) {
-    console.error("[API] Error general en login:", err)
-    return NextResponse.json({
-      success: false,
-      message: "Error interno del servidor",
-    })
+
+    const { data: profile, error: profErr } = await userClient
+      .from("users")
+      .select("*")
+      .eq("id", signInData.user.id)
+      .single()
+
+    if (profErr || !profile) return NextResponse.json({ success: false, message: "Usuario no encontrado" })
+
+    return NextResponse.json({ success: true, profile })
+  } catch (e: any) {
+    return NextResponse.json({ success: false, message: e.message })
   }
 }
