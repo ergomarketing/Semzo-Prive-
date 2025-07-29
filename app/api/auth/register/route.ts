@@ -1,5 +1,3 @@
-// app/api/auth/register/route.ts
-
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
@@ -7,70 +5,78 @@ export async function POST(request: Request) {
   try {
     const { email, password, firstName, lastName, phone } = await request.json()
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({
-        success: false,
-        message: "Error de configuración: faltan variables de entorno necesarias.",
-      })
+    // Validaciones básicas
+    if (!email || !password || !firstName || !lastName) {
+      return NextResponse.json({ success: false, message: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    // Crear cliente Supabase admin (con service_role)
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+    if (password.length < 6) {
+      return NextResponse.json(
+        { success: false, message: "La contraseña debe tener al menos 6 caracteres" },
+        { status: 400 },
+      )
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ success: false, message: "Formato de email inválido" }, { status: 400 })
+    }
+
+    // Variables de entorno
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({ success: false, message: "Error de configuración del servidor" }, { status: 500 })
+    }
+
+    // Cliente Supabase
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Registrar usuario
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password: password,
+      options: {
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone?.trim() || null,
+        },
       },
     })
 
-    // 1. Crear el usuario en Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      password: password.trim(),
-      email_confirm: true,
-    })
+    if (error) {
+      console.error("Error en signUp:", error)
 
-    if (authError || !authData?.user?.id) {
-      console.error("[API] Error creando usuario en Auth:", authError)
-      return NextResponse.json({
-        success: false,
-        message: `Error al crear cuenta: ${authError?.message || "Desconocido"}`,
-      })
+      if (error.message.includes("already registered")) {
+        return NextResponse.json({ success: false, message: "Este email ya está registrado" }, { status: 409 })
+      }
+
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 })
     }
 
-    const userId = authData.user.id
-
-    // 2. Insertar datos adicionales en tabla `users`
-    const { error: dbError } = await supabaseAdmin.from("users").insert({
-      id: userId,
-      email: email.trim().toLowerCase(),
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      phone: phone?.trim() || null,
-      membership_status: "free",
-    })
-
-    if (dbError) {
-      console.error("[API] Error insertando en tabla users:", dbError)
-      // Eliminar usuario de Auth si falla la inserción en DB
-      await supabaseAdmin.auth.admin.deleteUser(userId)
-      return NextResponse.json({
-        success: false,
-        message: `Error al guardar usuario en la base de datos: ${dbError.message}`,
-      })
+    if (!data.user) {
+      return NextResponse.json({ success: false, message: "Error creando usuario" }, { status: 500 })
     }
+
+    console.log("Usuario registrado exitosamente:", data.user.id)
 
     return NextResponse.json({
       success: true,
-      message: "Cuenta creada exitosamente.",
+      message: "Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.",
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone?.trim() || null,
+        membershipStatus: "free",
+        emailConfirmed: false,
+      },
     })
-  } catch (err: any) {
-    console.error("[API] Error general:", err)
-    return NextResponse.json({
-      success: false,
-      message: `Error interno del servidor: ${err.message}`,
-    })
+  } catch (error: any) {
+    console.error("Error general en registro:", error)
+    return NextResponse.json({ success: false, message: "Error del servidor" }, { status: 500 })
   }
 }
