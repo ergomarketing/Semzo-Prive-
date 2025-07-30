@@ -1,99 +1,95 @@
 "use client"
 
-import { useState } from "react"
-import { supabase } from "../lib/supabase-direct"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
-export default function DebugAuth() {
-  const [authUsers, setAuthUsers] = useState<any[]>([])
-  const [dbUsers, setDbUsers] = useState<any[]>([])
+interface User {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  phone?: string
+  created_at: string
+  last_login?: string
+}
+
+export default function DebugAuthPage() {
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const checkAuthUsers = async () => {
+  const fetchUsers = async () => {
     setLoading(true)
+    setError(null)
+
     try {
-      // Verificar usuarios en Auth
-      const { data: session } = await supabase.auth.getSession()
-      console.log("Current session:", session)
+      const response = await fetch("/api/debug-users")
+      const data = await response.json()
 
-      // Verificar usuarios en la tabla
-      const { data: users, error } = await supabase.from("users").select("*")
-
-      if (error) {
-        console.error("Error fetching users:", error)
-      } else {
-        setDbUsers(users || [])
+      if (!response.ok) {
+        throw new Error(data.error || "Error fetching users")
       }
-    } catch (error) {
-      console.error("Error:", error)
+
+      setUsers(data.users || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
     }
   }
 
-  const testLogin = async () => {
-    const email = prompt("Email para probar:")
-    const password = prompt("Contraseña:")
-
-    if (email && password) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        console.log("Login result:", { data, error })
-        alert(`Login result: ${error ? error.message : "Success!"}`)
-      } catch (error) {
-        console.error("Login error:", error)
-      }
-    }
-  }
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug de Autenticación</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex gap-4">
-              <Button onClick={checkAuthUsers} disabled={loading}>
-                {loading ? "Cargando..." : "Verificar Usuarios"}
-              </Button>
-              <Button onClick={testLogin} variant="outline">
-                Probar Login
-              </Button>
-            </div>
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Debug - Usuarios Registrados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button onClick={fetchUsers} disabled={loading}>
+              {loading ? "Cargando..." : "Actualizar Lista"}
+            </Button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Usuarios en Base de Datos</h3>
-                <div className="bg-gray-100 p-4 rounded-lg">
-                  <pre className="text-sm overflow-auto">{JSON.stringify(dbUsers, null, 2)}</pre>
-                </div>
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-700">Error: {error}</p>
               </div>
+            )}
 
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Información de Debug</h3>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <strong>Total usuarios en DB:</strong> {dbUsers.length}
-                  </p>
-                  <p>
-                    <strong>Supabase URL:</strong> https://qehractznaktxhyaqqen.supabase.co
-                  </p>
-                  <p>
-                    <strong>Timestamp:</strong> {new Date().toISOString()}
-                  </p>
+            {users.length === 0 && !loading && !error && <p className="text-gray-500">No hay usuarios registrados</p>}
+
+            <div className="space-y-2">
+              {users.map((user) => (
+                <div key={user.id} className="p-4 border rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <strong>Email:</strong> {user.email}
+                    </div>
+                    <div>
+                      <strong>Nombre:</strong> {user.first_name} {user.last_name}
+                    </div>
+                    <div>
+                      <strong>Teléfono:</strong> {user.phone || "N/A"}
+                    </div>
+                    <div>
+                      <strong>Creado:</strong> {new Date(user.created_at).toLocaleString()}
+                    </div>
+                    <div>
+                      <strong>Último login:</strong>{" "}
+                      {user.last_login ? new Date(user.last_login).toLocaleString() : "Nunca"}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

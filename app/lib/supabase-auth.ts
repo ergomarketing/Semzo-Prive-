@@ -20,60 +20,35 @@ interface LoginData {
 
 export const authService = {
   async register(data: RegisterData) {
-    console.log("🔥 [AUTH SERVICE] Iniciando registro...")
-    console.log("📝 [AUTH SERVICE] Datos:", {
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      hasPhone: !!data.phone,
-    })
-
     try {
-      // Registrar usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      console.log("=== CLIENTE: Enviando registro ===")
+      console.log("Datos a enviar:", {
         email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            phone: data.phone,
-          },
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone ? "***" : null,
+      })
+
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(data),
       })
 
-      console.log("📊 [AUTH SERVICE] Resultado de signUp:", {
-        success: !authError,
-        userId: authData.user?.id,
-        needsConfirmation: !authData.session,
-        error: authError?.message,
+      console.log("Respuesta del servidor:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
       })
 
-      if (authError) {
-        console.error("❌ [AUTH SERVICE] Error en signUp:", authError)
-        return {
-          success: false,
-          message: authError.message,
-        }
-      }
+      const result = await response.json()
+      console.log("Resultado parseado:", result)
 
-      if (!authData.user) {
-        console.error("❌ [AUTH SERVICE] No se obtuvo usuario")
-        return {
-          success: false,
-          message: "Error al crear usuario",
-        }
-      }
-
-      console.log("✅ [AUTH SERVICE] Usuario registrado exitosamente")
-
-      return {
-        success: true,
-        message: "Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.",
-        user: authData.user,
-      }
+      return result
     } catch (error: any) {
-      console.error("💥 [AUTH SERVICE] Error inesperado:", error)
+      console.error("Error en authService.register:", error)
       return {
         success: false,
         message: "Error inesperado durante el registro",
@@ -82,10 +57,10 @@ export const authService = {
   },
 
   async login(data: LoginData) {
-    console.log("🔥 [AUTH SERVICE] Iniciando login...")
-    console.log("📝 [AUTH SERVICE] Email:", data.email)
-
     try {
+      console.log("=== CLIENTE: Enviando login ===")
+      console.log("Email:", data.email)
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -94,17 +69,18 @@ export const authService = {
         body: JSON.stringify(data),
       })
 
-      const result = await response.json()
-
-      console.log("📊 [AUTH SERVICE] Respuesta del API:", {
+      console.log("Respuesta del servidor:", {
         status: response.status,
-        success: result.success,
-        message: result.message,
+        statusText: response.statusText,
+        ok: response.ok,
       })
+
+      const result = await response.json()
+      console.log("Resultado parseado:", result)
 
       return result
     } catch (error: any) {
-      console.error("💥 [AUTH SERVICE] Error en login:", error)
+      console.error("Error en authService.login:", error)
       return {
         success: false,
         message: "Error de conexión",
@@ -113,20 +89,15 @@ export const authService = {
   },
 
   async logout() {
-    console.log("🔥 [AUTH SERVICE] Cerrando sesión...")
-
     try {
       const { error } = await supabase.auth.signOut()
 
       if (error) {
-        console.error("❌ [AUTH SERVICE] Error en logout:", error)
         return { success: false, message: error.message }
       }
 
-      console.log("✅ [AUTH SERVICE] Sesión cerrada exitosamente")
       return { success: true, message: "Sesión cerrada" }
     } catch (error: any) {
-      console.error("💥 [AUTH SERVICE] Error inesperado en logout:", error)
       return { success: false, message: "Error al cerrar sesión" }
     }
   },
