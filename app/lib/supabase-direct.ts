@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js"
+import { env, validateServerEnv } from "./env"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Validar variables de entorno del servidor
+const validation = validateServerEnv()
+if (!validation.isValid) {
+  console.error("Supabase server configuration errors:", validation.errors)
+  throw new Error(`Supabase server configuration missing: ${validation.errors.join(", ")}`)
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+export const supabaseAdmin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

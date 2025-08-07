@@ -1,11 +1,21 @@
 import { createClient } from "@supabase/supabase-js"
 
-// PRIMERO: Declarar las variables de entorno
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Obtener variables de entorno directamente
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
-// SEGUNDO: Crear cliente DESPUÉS de declarar las variables
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Solo crear cliente si las variables existen
+let supabase: any = null
+
+if (supabaseUrl && supabaseAnonKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey)
+  } catch (error) {
+    console.error("Error creating Supabase client:", error)
+  }
+}
+
+export { supabase }
 
 export interface User {
   id: string

@@ -1,21 +1,23 @@
 export interface User {
   id: string
   email: string
-  firstName?: string
-  lastName?: string
+  firstName: string
+  lastName: string
   phone?: string
-  membershipStatus?: string
+  membershipStatus: string
 }
 
 export interface AuthResponse {
   success: boolean
   message: string
   user?: User
+  session?: any
 }
 
 export class AuthService {
   static async register(userData: {
     email: string
+    password: string
     firstName: string
     lastName: string
     phone?: string
@@ -41,12 +43,6 @@ export class AuthService {
         }
       }
 
-      // Guardar usuario en localStorage si el registro fue exitoso
-      if (data.success && data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user))
-        localStorage.setItem("isLoggedIn", "true")
-      }
-
       return data
     } catch (error: any) {
       console.error("[AuthService] Error en registro:", error)
@@ -57,7 +53,7 @@ export class AuthService {
     }
   }
 
-  static async login(email: string): Promise<AuthResponse> {
+  static async login(email: string, password: string): Promise<AuthResponse> {
     try {
       console.log("[AuthService] Enviando datos de login:", { email })
 
@@ -66,7 +62,7 @@ export class AuthService {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
@@ -82,6 +78,7 @@ export class AuthService {
       // Guardar usuario en localStorage si el login fue exitoso
       if (data.success && data.user) {
         localStorage.setItem("user", JSON.stringify(data.user))
+        localStorage.setItem("session", JSON.stringify(data.session))
         localStorage.setItem("isLoggedIn", "true")
       }
 
@@ -97,6 +94,7 @@ export class AuthService {
 
   static logout(): void {
     localStorage.removeItem("user")
+    localStorage.removeItem("session")
     localStorage.removeItem("isLoggedIn")
   }
 
@@ -106,6 +104,16 @@ export class AuthService {
       return userStr ? JSON.parse(userStr) : null
     } catch (error) {
       console.error("[AuthService] Error obteniendo usuario:", error)
+      return null
+    }
+  }
+
+  static getSession(): any | null {
+    try {
+      const sessionStr = localStorage.getItem("session")
+      return sessionStr ? JSON.parse(sessionStr) : null
+    } catch (error) {
+      console.error("[AuthService] Error obteniendo sesión:", error)
       return null
     }
   }

@@ -1,18 +1,49 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from '@supabase/supabase-js'
 
-// Solo usar NEXT_PUBLIC_ para el frontend
+// Obtener variables de entorno con validación
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
+// Cliente principal de Supabase
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
+
+// Cliente para operaciones de servidor (si se necesita)
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+export const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null
 
 export function isSupabaseConfigured(): boolean {
   return !!(
     supabaseUrl &&
     supabaseAnonKey &&
     supabaseUrl !== "https://placeholder.supabase.co" &&
-    supabaseAnonKey !== "placeholder-key"
+    supabaseAnonKey !== "placeholder-key" &&
+    supabaseUrl.includes("supabase.co")
   )
+}
+
+export function getSupabaseConfig() {
+  return {
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+    isConfigured: isSupabaseConfigured(),
+  }
 }
 
 export type User = {

@@ -1,8 +1,10 @@
+import { env } from "./env"
+
 // Configuración centralizada de Supabase
 export const supabaseConfig = {
-  url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  url: env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  serviceRoleKey: env.SUPABASE_SERVICE_KEY,
 }
 
 // Validar configuración
@@ -17,7 +19,7 @@ export function validateSupabaseConfig() {
     errors.push("NEXT_PUBLIC_SUPABASE_ANON_KEY no está configurada")
   }
 
-  if (!supabaseConfig.url.includes("supabase.co")) {
+  if (supabaseConfig.url && !supabaseConfig.url.includes("supabase.co")) {
     errors.push("URL de Supabase inválida")
   }
 
@@ -33,7 +35,7 @@ export function validateServerConfig() {
   const errors = [...clientValidation.errors]
 
   if (!supabaseConfig.serviceRoleKey) {
-    errors.push("SUPABASE_SERVICE_ROLE_KEY no está configurada")
+    errors.push("SUPABASE_SERVICE_KEY no está configurada")
   }
 
   return {
