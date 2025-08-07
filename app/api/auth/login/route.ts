@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
     // Crear cliente público de Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     // Intentar login
@@ -52,7 +51,10 @@ export async function POST(request: NextRequest) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        emailConfirmed: !!data.user.email_confirmed_at,
+        firstName: data.user.user_metadata?.first_name || "",
+        lastName: data.user.user_metadata?.last_name || "",
+        phone: data.user.user_metadata?.phone || "",
+        membershipStatus: "free",
       },
       session: data.session,
     })

@@ -1,68 +1,37 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { type EmailOtpType } from '@supabase/supabase-js'
+import { type NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const token_hash = searchParams.get("token_hash")
-    const type = searchParams.get("type")
-    const next = searchParams.get("next") ?? "/dashboard"
+  const { searchParams, origin } = new URL(request.url)
+  const token_hash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
+  const next = searchParams.get('next') ?? '/dashboard'
 
-    console.log("[CALLBACK] === INICIO CONFIRMACIÓN ===")
-    console.log("[CALLBACK] Token hash:", token_hash ? "✓" : "✗")
-    console.log("[CALLBACK] Type:", type)
+  console.log("[CALLBACK] === PROCESANDO CALLBACK ===")
+  console.log("[CALLBACK] token_hash:", !!token_hash)
+  console.log("[CALLBACK] type:", type)
+  console.log("[CALLBACK] next:", next)
 
-    if (!token_hash || type !== "signup") {
-      console.log("[CALLBACK] Parámetros inválidos")
-      return NextResponse.redirect(new URL("/auth/error?message=invalid_params", request.url))
-    }
-
-    // Crear cliente admin de Supabase
+  if (token_hash && type) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("[CALLBACK] Variables de entorno faltantes")
-      return NextResponse.redirect(new URL("/auth/error?message=server_error", request.url))
-    }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash,
     })
 
-    // Verificar si el usuario existe en auth.users
-    console.log("[CALLBACK] Verificando usuario en auth.users...")
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(token_hash)
-
-    if (userError || !userData.user) {
-      console.error("[CALLBACK] Usuario no encontrado en auth.users:", userError)
-      return NextResponse.redirect(new URL("/auth/error?message=user_not_found", request.url))
+    if (!error) {
+      console.log("[CALLBACK] ✅ Email confirmado exitosamente")
+      return NextResponse.redirect(`${origin}/dashboard`)
+    } else {
+      console.error("[CALLBACK] ❌ Error confirmando email:", error)
+      return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error.message)}`)
     }
-
-    // Confirmar el email del usuario en auth.users (el trigger actualizará profiles automáticamente)
-    console.log("[CALLBACK] Confirmando email en auth.users...")
-    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
-      token_hash,
-      { email_confirm: true }
-    )
-
-    if (confirmError) {
-      console.error("[CALLBACK] Error confirmando en auth.users:", confirmError)
-      return NextResponse.redirect(new URL("/auth/error?message=confirmation_failed", request.url))
-    }
-
-    console.log("[CALLBACK] ✅ Email confirmado en auth.users")
-    console.log("[CALLBACK] ✅ Perfil actualizado automáticamente por trigger")
-
-    console.log("[CALLBACK] ✅ Confirmación completada exitosamente")
-
-    // Redirigir a página de éxito
-    return NextResponse.redirect(new URL("/auth/confirmed", request.url))
-  } catch (error: any) {
-    console.error("[CALLBACK] ❌ Error inesperado:", error)
-    return NextResponse.redirect(new URL("/auth/error?message=server_error", request.url))
   }
+
+  console.log("[CALLBACK] ❌ Parámetros inválidos o error en confirmación")
+  return NextResponse.redirect(`${origin}/auth/error?message=invalid_parameters`)
 }
