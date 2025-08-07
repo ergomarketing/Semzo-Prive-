@@ -1,77 +1,122 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, name, confirmationUrl } = await request.json()
+    const { email, firstName, confirmationUrl } = await request.json()
 
+    console.log("[EMAIL] === ENVIANDO EMAIL DE BIENVENIDA ===")
+    console.log("[EMAIL] Para:", email)
+    console.log("[EMAIL] URL de confirmación:", confirmationUrl)
+
+    if (!email || !firstName || !confirmationUrl) {
+      return NextResponse.json(
+        { success: false, message: "Faltan parámetros requeridos" },
+        { status: 400 }
+      )
+    }
+
+    const emailApiKey = process.env.EMAIL_API_KEY
+    if (!emailApiKey) {
+      console.error("[EMAIL] EMAIL_API_KEY no configurada")
+      return NextResponse.json(
+        { success: false, message: "Configuración de email faltante" },
+        { status: 500 }
+      )
+    }
+
+    // Crear el HTML del email
     const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Confirma tu cuenta - Semzo Privé</title>
+        <title>Bienvenido a Semzo Privé</title>
         <style>
-          .email-container { max-width: 600px; margin: 0 auto; font-family: 'Georgia', serif; background: #ffffff; }
-          .header { background: linear-gradient(135deg, #1a1a4b 0%, #2d2d7a 100%); padding: 40px 20px; text-align: center; }
-          .logo { color: #ffffff; font-size: 32px; font-weight: bold; letter-spacing: 2px; }
-          .content { padding: 40px 30px; line-height: 1.6; color: #333333; }
-          .button { display: inline-block; background: linear-gradient(135deg, #1a1a4b 0%, #2d2d7a 100%); color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-          .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666666; font-size: 14px; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
         </style>
-      </head>
-      <body>
-        <div class="email-container">
-          <div class="header">
-            <div class="logo">SEMZO PRIVÉ</div>
-          </div>
-          <div class="content">
-            <h2>¡Bienvenido/a ${name}!</h2>
-            <p>Gracias por unirte a Semzo Privé. Para completar tu registro, confirma tu dirección de email haciendo clic en el botón de abajo:</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${confirmationUrl}" class="button">Confirmar mi cuenta</a>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>¡Bienvenido a Semzo Privé!</h1>
+                <p>Tu acceso exclusivo a los bolsos de lujo más codiciados</p>
             </div>
-            
-            <p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
-            <p style="word-break: break-all; color: #666;">${confirmationUrl}</p>
-            
-            <p>¡Esperamos verte pronto en nuestra plataforma!</p>
-            <p>El equipo de Semzo Privé</p>
-          </div>
-          <div class="footer">
-            <p>© 2024 Semzo Privé. Todos los derechos reservados.</p>
-          </div>
+            <div class="content">
+                <h2>Hola ${firstName},</h2>
+                <p>¡Gracias por unirte a Semzo Privé! Estás a un paso de acceder a nuestra exclusiva colección de bolsos de lujo.</p>
+                
+                <p>Para completar tu registro y confirmar tu cuenta, simplemente haz clic en el botón de abajo:</p>
+                
+                <div style="text-align: center;">
+                    <a href="${confirmationUrl}" class="button">Confirmar mi cuenta</a>
+                </div>
+                
+                <p>Una vez confirmada tu cuenta, podrás:</p>
+                <ul>
+                    <li>Explorar nuestra colección exclusiva</li>
+                    <li>Reservar tus bolsos favoritos</li>
+                    <li>Acceder a ofertas especiales para miembros</li>
+                    <li>Recibir notificaciones de nuevas llegadas</li>
+                </ul>
+                
+                <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+                
+                <p>¡Bienvenido a la experiencia Semzo Privé!</p>
+                
+                <p>El equipo de Semzo Privé</p>
+            </div>
+            <div class="footer">
+                <p>© 2024 Semzo Privé. Todos los derechos reservados.</p>
+                <p>Si no solicitaste esta cuenta, puedes ignorar este email.</p>
+            </div>
         </div>
-      </body>
-      </html>
+    </body>
+    </html>
     `
 
-    // Enviar con Resend
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    // Enviar email usando Resend
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${process.env.EMAIL_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Authorization": `Bearer ${emailApiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'Semzo Privé <noreply@semzoprive.com>',
+        from: "Semzo Privé <noreply@semzoprive.com>",
         to: [email],
-        subject: 'Confirma tu cuenta en Semzo Privé',
+        subject: "¡Bienvenido a Semzo Privé! Confirma tu cuenta",
         html: emailHtml,
       }),
     })
 
-    if (response.ok) {
-      console.log('✅ Email enviado correctamente')
-      return NextResponse.json({ success: true })
-    } else {
-      console.error('❌ Error enviando email:', await response.text())
-      return NextResponse.json({ error: 'Error enviando email' }, { status: 500 })
+    if (!response.ok) {
+      const errorData = await response.text()
+      console.error("[EMAIL] Error de Resend:", errorData)
+      return NextResponse.json(
+        { success: false, message: "Error enviando email" },
+        { status: 500 }
+      )
     }
 
-  } catch (error) {
-    console.error('Error en send-welcome:', error)
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    const result = await response.json()
+    console.log("[EMAIL] ✅ Email enviado exitosamente:", result.id)
+
+    return NextResponse.json({
+      success: true,
+      message: "Email enviado exitosamente",
+      emailId: result.id,
+    })
+  } catch (error: any) {
+    console.error("[EMAIL] ❌ Error inesperado:", error)
+    return NextResponse.json(
+      { success: false, message: "Error interno del servidor" },
+      { status: 500 }
+    )
   }
 }
