@@ -130,7 +130,7 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono (opcional)</Label>
+              <Label htmlFor="phone">Teléfono </Label>
               <Input
                 id="phone"
                 name="phone"
@@ -183,7 +183,7 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-pink-600 hover:text-pink-700 font-medium">
+              <Link href="/login" className="text-pink-400 hover:text-pink-500 font-medium">
                 Inicia sesión
               </Link>
             </p>
