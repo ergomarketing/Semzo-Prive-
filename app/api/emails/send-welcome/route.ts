@@ -80,43 +80,7 @@ export async function POST(request: NextRequest) {
     </html>
     `
 
-    // Enviar email usando Resend
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${emailApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Semzo Privé <noreply@semzoprive.com>",
-        to: [email],
-        subject: "¡Bienvenido a Semzo Privé! Confirma tu cuenta",
-        html: emailHtml,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error("[EMAIL] Error de Resend:", errorData)
-      return NextResponse.json(
-        { success: false, message: "Error enviando email" },
-        { status: 500 }
-      )
-    }
-
-    const result = await response.json()
-    console.log("[EMAIL] ✅ Email enviado exitosamente:", result.id)
-
-    return NextResponse.json({
-      success: true,
-      message: "Email enviado exitosamente",
-      emailId: result.id,
-    })
-  } catch (error: any) {
-    console.error("[EMAIL] ❌ Error inesperado:", error)
-    return NextResponse.json(
-      { success: false, message: "Error interno del servidor" },
-      { status: 500 }
+  
     )
   }
 }
