@@ -1,35 +1,15 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Obtener variables de entorno de forma segura
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Validar que las variables existan
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase environment variables are missing')
-}
-
-// Cliente público
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      }
-    })
-  : null
-
-// Cliente admin
-export const supabaseAdmin = supabaseServiceKey && supabaseUrl
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+})
 
 export interface User {
   id: string
@@ -64,19 +44,15 @@ class AuthService {
     try {
       console.log("🔄 Iniciando registro para:", data.email)
 
-      if (!supabase) {
-        return {
-          success: false,
-          message: "Supabase no está configurado correctamente",
-          error: "SUPABASE_NOT_CONFIGURED"
-        }
-      }
+      // USAR URL EXACTA HARDCODEADA
+      const redirectUrl = "https://semzoprive.com/auth/callback"
+      console.log("🔗 Redirect URL:", redirectUrl)
 
-      // 1. Crear usuario en auth.users
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
             first_name: data.first_name || "",
@@ -104,31 +80,7 @@ class AuthService {
       }
 
       console.log("✅ Usuario creado en auth.users:", authData.user.id)
-
-      // 2. Enviar email de bienvenida con link de confirmación
-      try {
-        const emailResponse = await fetch('/api/emails/send-welcome', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: data.email,
-            firstName: data.first_name || data.full_name?.split(' ')[0] || 'Usuario',
-            confirmationUrl: `${window.location.origin}/auth/callback?token_hash=${authData.user.id}&type=signup&next=/dashboard`
-          }),
-        })
-
-        const emailResult = await emailResponse.json()
-        
-        if (!emailResponse.ok) {
-          console.warn("⚠️ Error enviando email de bienvenida:", emailResult)
-        } else {
-          console.log("✅ Email de bienvenida enviado")
-        }
-      } catch (emailError) {
-        console.warn("⚠️ Error enviando email:", emailError)
-      }
+      console.log("✅ Supabase enviará el email de confirmación automáticamente")
 
       return {
         success: true,
@@ -141,7 +93,7 @@ class AuthService {
           last_name: data.last_name,
           phone: data.phone,
           is_active: true,
-        }
+        },
       }
     } catch (error) {
       console.error("❌ Error en registro:", error)
@@ -156,14 +108,6 @@ class AuthService {
   async login(data: { email: string; password: string }): Promise<AuthResponse> {
     try {
       console.log("🔄 Iniciando login para:", data.email)
-
-      if (!supabase) {
-        return {
-          success: false,
-          message: "Supabase no está configurado correctamente",
-          error: "SUPABASE_NOT_CONFIGURED"
-        }
-      }
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
@@ -201,7 +145,7 @@ class AuthService {
           phone: authData.user.user_metadata?.phone || "",
           is_active: true,
           email_confirmed_at: authData.user.email_confirmed_at,
-        }
+        },
       }
     } catch (error) {
       console.error("❌ Error en login:", error)
@@ -215,10 +159,11 @@ class AuthService {
 
   async getCurrentSession() {
     try {
-      if (!supabase) return null
-      
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
+
       if (error) {
         console.error("Error obteniendo sesión:", error)
         return null
@@ -233,14 +178,6 @@ class AuthService {
 
   async logout(): Promise<AuthResponse> {
     try {
-      if (!supabase) {
-        return {
-          success: false,
-          message: "Supabase no está configurado",
-          error: "SUPABASE_NOT_CONFIGURED"
-        }
-      }
-
       const { error } = await supabase.auth.signOut()
 
       if (error) {

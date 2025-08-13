@@ -1,6 +1,8 @@
 "use client"
 
-// Añadir al principio del archivo, después de las importaciones
+// SERVICIO DE EMAIL DESHABILITADO PARA REGISTRO
+// Solo Supabase debe manejar emails de confirmación
+
 declare global {
   interface Window {
     emailLogger?: any
@@ -247,7 +249,7 @@ export class EmailService {
     }
   }
 
-  // Método para obtener estadísticas
+  // Método para obtener estadísticas (mantener funcional)
   getEmailStats() {
     const stats = {
       total: this.emailQueue.length,
@@ -263,7 +265,7 @@ export class EmailService {
   }
 }
 
-// Hook para usar el servicio de email
+// Hook para usar el servicio de email (DESHABILITADO)
 export function useEmailService() {
   return EmailService.getInstance()
 }

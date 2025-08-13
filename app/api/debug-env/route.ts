@@ -2,26 +2,31 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const envVars = {
+    const envCheck = {
       NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
       EMAIL_API_KEY: !!process.env.EMAIL_API_KEY,
-      NEXT_PUBLIC_SITE_URL: !!process.env.NEXT_PUBLIC_SITE_URL,
-      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-      STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET,
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "NOT_SET",
+      NODE_ENV: process.env.NODE_ENV,
     }
 
-    console.log("=== SERVER ENV DEBUG ===")
-    Object.entries(envVars).forEach(([key, value]) => {
-      console.log(`${key}: ${value ? "SET" : "NOT SET"}`)
-    })
-    console.log("========================")
+    console.log("🔍 Environment Check:", envCheck)
 
-    return NextResponse.json(envVars)
+    return NextResponse.json({
+      success: true,
+      environment: envCheck,
+      message: "Variables de entorno verificadas",
+    })
   } catch (error) {
-    console.error("Error checking environment variables:", error)
-    return NextResponse.json({ error: "Error checking environment variables" }, { status: 500 })
+    console.error("❌ Error verificando entorno:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Error verificando variables de entorno",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

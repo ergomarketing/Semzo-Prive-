@@ -1,14 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { authService } from "@/app/lib/supabase-auth"
 import Link from "next/link"
 
 export default function SignupPage() {
@@ -35,7 +33,6 @@ export default function SignupPage() {
     setLoading(true)
     setMessage(null)
 
-    // Validaciones del cliente
     if (formData.password !== formData.confirmPassword) {
       setMessage({ type: "error", text: "Las contraseñas no coinciden" })
       setLoading(false)
@@ -49,17 +46,25 @@ export default function SignupPage() {
     }
 
     try {
-      const result = await authService.register({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
+      // Usar el endpoint API en lugar del servicio directo
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+        }),
       })
+
+      const result = await response.json()
 
       if (result.success) {
         setMessage({ type: "success", text: result.message })
-        // Limpiar formulario
         setFormData({
           email: "",
           password: "",
@@ -69,7 +74,7 @@ export default function SignupPage() {
           phone: "",
         })
       } else {
-        setMessage({ type: "error", text: result.message })
+        setMessage({ type: "error", text: result.error || "Error en el registro" })
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error inesperado. Inténtalo de nuevo." })
@@ -130,7 +135,7 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono </Label>
+              <Label htmlFor="phone">Teléfono (opcional)</Label>
               <Input
                 id="phone"
                 name="phone"
@@ -183,7 +188,7 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-pink-400 hover:text-pink-500 font-medium">
+              <Link href="/login" className="text-pink-600 hover:text-pink-700 font-medium">
                 Inicia sesión
               </Link>
             </p>

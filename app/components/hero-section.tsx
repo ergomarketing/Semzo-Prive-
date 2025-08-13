@@ -47,7 +47,12 @@ export default function HeroSection() {
             {/* Botones - stack en móvil, inline en desktop */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-6">
               <Button
-                onClick={() => (window.location.href = "/checkout?plan=signature")}
+                onClick={() => {
+                  const membresiaSection = document.getElementById("membresias")
+                  if (membresiaSection) {
+                    membresiaSection.scrollIntoView({ behavior: "smooth" })
+                  }
+                }}
                 className="w-full sm:w-auto rounded-none px-6 md:px-8 py-4 md:py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 bg-indigo-dark text-white hover:bg-indigo-dark/90 hover:scale-105 transform"
               >
                 Comenzar suscripción
@@ -55,7 +60,7 @@ export default function HeroSection() {
               <Link href="/catalog">
                 <Button
                   variant="outline"
-                  className="w-full sm:w-auto rounded-none px-6 md:px-8 py-4 md:py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 border-2 border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white hover:scale-105 transform"
+                  className="w-full sm:w-auto rounded-none px-6 md:px-8 py-4 md:py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 border-2 border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white hover:scale-105 transform bg-transparent"
                 >
                   Ver colección
                 </Button>

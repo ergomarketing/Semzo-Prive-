@@ -1,176 +1,254 @@
 "use client"
 
-import { EMAIL_CONFIG } from "../config/email-config"
+interface EmailConfig {
+  provider: 'resend' | 'sendgrid' | 'mailgun'
+  apiKey: string
+  fromEmail: string
+  fromName: string
+}
 
 interface EmailData {
   to: string
-  customerName: string
-  bagName?: string
-  bagBrand?: string
-  membershipType?: "essentiel" | "signature" | "prive"
-  availableDate?: Date
-  reservationId?: string
-  waitingListPosition?: number
-  totalWaiting?: number
+  subject: string
+  html: string
+  text?: string
+  customerName?: string
+  confirmationUrl?: string
 }
 
-export class ProductionEmailService {
-  private static instance: ProductionEmailService
+export class EmailServiceProduction {
+  private static instance: EmailServiceProduction
+  private config: EmailConfig
 
-  static getInstance(): ProductionEmailService {
-    if (!ProductionEmailService.instance) {
-      ProductionEmailService.instance = new ProductionEmailService()
+  constructor() {
+    this.config = {
+      provider: 'resend',
+      apiKey: process.env.EMAIL_API_KEY || '',
+      fromEmail: 'noreply@semzoprive.com',
+      fromName: 'Semzo Privé'
     }
-    return ProductionEmailService.instance
   }
 
-  // 🚀 MÉTODO PRINCIPAL PARA ENVIAR EMAILS
-  async sendEmail(type: string, data: EmailData): Promise<boolean> {
+  static getInstance(): EmailServiceProduction {
+    if (!EmailServiceProduction.instance) {
+      EmailServiceProduction.instance = new EmailServiceProduction()
+    }
+    return EmailServiceProduction.instance
+  }
+
+  private async sendWithResend(data: EmailData): Promise<boolean> {
     try {
-      // En desarrollo, solo simular
-      if (EMAIL_CONFIG.isDevelopment) {
-        console.log(`📧 [DESARROLLO] Email tipo: ${type} para ${data.customerName}`)
-        return true
-      }
+      console.log("📧 Enviando con Resend a:", data.to)
 
-      // En producción, enviar email real
-      const template = this.getEmailTemplate(type, data)
-      const success = await this.sendRealEmail(data.to, template.subject, template.html)
-
-      if (success) {
-        console.log(`✅ Email enviado: ${type} a ${data.customerName}`)
-      } else {
-        console.error(`❌ Error enviando email: ${type} a ${data.customerName}`)
-      }
-
-      return success
-    } catch (error) {
-      console.error("Error en servicio de email:", error)
-      return false
-    }
-  }
-
-  // 📧 ENVÍO REAL SEGÚN EL PROVEEDOR
-  private async sendRealEmail(to: string, subject: string, html: string): Promise<boolean> {
-    const provider = EMAIL_CONFIG.provider
-
-    try {
-      switch (provider) {
-        case "resend":
-          return await this.sendWithResend(to, subject, html)
-        case "sendgrid":
-          return await this.sendWithSendGrid(to, subject, html)
-        case "mailgun":
-          return await this.sendWithMailgun(to, subject, html)
-        default:
-          throw new Error(`Proveedor no soportado: ${provider}`)
-      }
-    } catch (error) {
-      console.error(`Error con proveedor ${provider}:`, error)
-      return false
-    }
-  }
-
-  // 🔥 RESEND (RECOMENDADO - MÁS FÁCIL)
-  private async sendWithResend(to: string, subject: string, html: string): Promise<boolean> {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: EMAIL_CONFIG.providers.resend.headers,
-      body: JSON.stringify({
-        from: `${EMAIL_CONFIG.fromName} <${EMAIL_CONFIG.fromEmail}>`,
-        to: [to],
-        subject: subject,
-        html: html,
-        reply_to: EMAIL_CONFIG.replyTo,
-      }),
-    })
-
-    return response.ok
-  }
-
-  // 📮 SENDGRID
-  private async sendWithSendGrid(to: string, subject: string, html: string): Promise<boolean> {
-    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: EMAIL_CONFIG.providers.sendgrid.headers,
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: to }] }],
-        from: { email: EMAIL_CONFIG.fromEmail, name: EMAIL_CONFIG.fromName },
-        subject: subject,
-        content: [{ type: "text/html", value: html }],
-        reply_to: { email: EMAIL_CONFIG.replyTo },
-      }),
-    })
-
-    return response.ok
-  }
-
-  // 📬 MAILGUN
-  private async sendWithMailgun(to: string, subject: string, html: string): Promise<boolean> {
-    const formData = new FormData()
-    formData.append("from", `${EMAIL_CONFIG.fromName} <${EMAIL_CONFIG.fromEmail}>`)
-    formData.append("to", to)
-    formData.append("subject", subject)
-    formData.append("html", html)
-
-    const response = await fetch(
-      `${EMAIL_CONFIG.providers.mailgun.baseUrl}/${EMAIL_CONFIG.providers.mailgun.domain}/messages`,
-      {
-        method: "POST",
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
         headers: {
-          Authorization: `Basic ${btoa(`api:${EMAIL_CONFIG.apiKey}`)}`,
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
-      },
-    )
+        body: JSON.stringify({
+          from: `${this.config.fromName} <${this.config.fromEmail}>`,
+          to: [data.to],
+          subject: data.subject,
+          html: data.html,
+          text: data.text || data.subject,
+        }),
+      })
 
-    return response.ok
-  }
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error("❌ Error de Resend:", errorData)
+        return false
+      }
 
-  // 📄 TEMPLATES DE EMAIL (los mismos que ya teníamos)
-  private getEmailTemplate(type: string, data: EmailData) {
-    // ... (usar los mismos templates que ya creamos)
-    const baseStyles = `
-      <style>
-        .email-container { max-width: 600px; margin: 0 auto; font-family: 'Georgia', serif; background: #ffffff; }
-        .header { background: linear-gradient(135deg, #1a1a4b 0%, #2d2d7a 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: #ffffff; font-size: 32px; font-weight: bold; letter-spacing: 2px; }
-        .content { padding: 40px 30px; line-height: 1.6; color: #333333; }
-        .button { display: inline-block; background: linear-gradient(135deg, #1a1a4b 0%, #2d2d7a 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666666; font-size: 14px; }
-      </style>
-    `
+      const result = await response.json()
+      console.log("✅ Email enviado con Resend:", result.id)
+      return true
 
-    // Retornar template básico (puedes usar los completos que ya creamos)
-    return {
-      subject: `Notificación de Semzo Privé - ${type}`,
-      html: `${baseStyles}<div class="email-container"><div class="header"><div class="logo">SEMZO PRIVÉ</div></div><div class="content"><h2>Hola ${data.customerName}!</h2><p>Notificación del tipo: ${type}</p></div></div>`,
+    } catch (error) {
+      console.error("❌ Error enviando con Resend:", error)
+      return false
     }
   }
 
-  // 🎯 MÉTODOS PÚBLICOS FÁCILES DE USAR
-  async sendWaitingListConfirmation(data: EmailData) {
-    return this.sendEmail("waiting_list_confirmation", data)
+  async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string): Promise<boolean> {
+    const emailData: EmailData = {
+      to: email,
+      subject: '¡Bienvenida a Semzo Privé! Confirma tu cuenta',
+      html: this.generateWelcomeHTML(customerName, confirmationUrl),
+      text: this.generateWelcomeText(customerName, confirmationUrl),
+      customerName,
+      confirmationUrl
+    }
+
+    return await this.sendWithResend(emailData)
   }
 
-  async sendBagAvailableNotification(data: EmailData) {
-    return this.sendEmail("bag_available", data)
+  private generateWelcomeHTML(customerName: string, confirmationUrl: string): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Bienvenida a Semzo Privé</title>
+          <style>
+              body { 
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                  line-height: 1.6; 
+                  color: #333; 
+                  margin: 0; 
+                  padding: 0; 
+                  background-color: #f8f9fa;
+              }
+              .container { 
+                  max-width: 600px; 
+                  margin: 0 auto; 
+                  background: white; 
+                  border-radius: 10px; 
+                  overflow: hidden; 
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              .header { 
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                  color: white; 
+                  padding: 40px 20px; 
+                  text-align: center; 
+              }
+              .header h1 { 
+                  margin: 0; 
+                  font-size: 32px; 
+                  font-weight: bold; 
+                  letter-spacing: 2px; 
+              }
+              .header p { 
+                  margin: 10px 0 0 0; 
+                  opacity: 0.9; 
+                  font-size: 16px; 
+              }
+              .content { 
+                  padding: 40px 30px; 
+              }
+              .content h2 { 
+                  color: #1a1a4b; 
+                  margin-bottom: 20px; 
+                  font-size: 24px; 
+              }
+              .content p { 
+                  margin-bottom: 15px; 
+                  font-size: 16px; 
+                  line-height: 1.6; 
+              }
+              .button { 
+                  display: inline-block; 
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                  color: white; 
+                  padding: 15px 30px; 
+                  text-decoration: none; 
+                  border-radius: 6px; 
+                  font-weight: bold; 
+                  margin: 20px 0; 
+                  font-size: 16px;
+              }
+              .button:hover { 
+                  opacity: 0.9; 
+              }
+              .footer { 
+                  background: #f8f9fa; 
+                  padding: 30px; 
+                  text-align: center; 
+                  color: #666666; 
+                  font-size: 14px; 
+                  border-top: 1px solid #e5e7eb;
+              }
+              .highlight { 
+                  background: linear-gradient(90deg, #f8f4f0 0%, #f0e6d6 100%); 
+                  padding: 20px; 
+                  border-radius: 8px; 
+                  margin: 20px 0; 
+                  border-left: 4px solid #667eea; 
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>SEMZO PRIVÉ</h1>
+                  <p>Alquiler de bolsos de lujo</p>
+              </div>
+              
+              <div class="content">
+                  <h2>¡Hola ${customerName}!</h2>
+                  
+                  <p>¡Bienvenida a Semzo Privé! Estamos emocionados de tenerte en nuestra comunidad exclusiva de amantes de los bolsos de lujo.</p>
+                  
+                  <div class="highlight">
+                      <p><strong>🎉 Tu cuenta ha sido creada exitosamente</strong></p>
+                      <p>Solo necesitas confirmar tu dirección de email para comenzar a explorar nuestra colección.</p>
+                  </div>
+                  
+                  <p>Para completar tu registro y acceder a todos nuestros servicios, por favor confirma tu cuenta haciendo clic en el botón de abajo:</p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                      <a href="${confirmationUrl}" class="button">
+                          Confirmar mi cuenta
+                      </a>
+                  </div>
+                  
+                  <p>Una vez confirmada tu cuenta, podrás:</p>
+                  <ul style="padding-left: 20px; line-height: 1.8;">
+                      <li>Explorar nuestra colección exclusiva de bolsos</li>
+                      <li>Realizar reservas de tus bolsos favoritos</li>
+                      <li>Acceder a ofertas especiales para miembros</li>
+                      <li>Recibir notificaciones de nuevas llegadas</li>
+                  </ul>
+                  
+                  <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                      Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este email o escribiendo a <a href="mailto:hola@semzoprive.com">hola@semzoprive.com</a>
+                  </p>
+              </div>
+              
+              <div class="footer">
+                  <p><strong>SEMZO PRIVÉ</strong></p>
+                  <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
+                  <p>📞 +34 624 23 9394 | 📧 hola@semzoprive.com</p>
+                  <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                      Has recibido este email porque te registraste en semzoprive.com<br>
+                      Si no solicitaste esta cuenta, puedes ignorar este email.
+                  </p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
   }
 
-  async sendReservationConfirmation(data: EmailData) {
-    return this.sendEmail("reservation_confirmed", data)
-  }
-
-  async sendReturnReminder(data: EmailData) {
-    return this.sendEmail("return_reminder", data)
-  }
-
-  async sendWelcomeMembership(data: EmailData) {
-    return this.sendEmail("welcome_membership", data)
+  private generateWelcomeText(customerName: string, confirmationUrl: string): string {
+    return `
+      ¡Hola ${customerName}!
+      
+      ¡Bienvenida a Semzo Privé! Estamos emocionados de tenerte en nuestra comunidad exclusiva.
+      
+      Tu cuenta ha sido creada exitosamente. Para completar tu registro, confirma tu cuenta en:
+      ${confirmationUrl}
+      
+      Una vez confirmada, podrás:
+      - Explorar nuestra colección exclusiva
+      - Realizar reservas de bolsos
+      - Acceder a ofertas especiales
+      - Recibir notificaciones de nuevas llegadas
+      
+      Si tienes alguna pregunta, contactanos en: hola@semzoprive.com
+      
+      ¡Gracias por unirte a Semzo Privé!
+      
+      El equipo de Semzo Privé
+      Avenida Ricardo Soriano s.n, Marbella, España
+      +34 624 23 9394
+    `
   }
 }
 
-// 🎯 HOOK FÁCIL DE USAR
-export function useProductionEmailService() {
-  return ProductionEmailService.getInstance()
+export function useEmailServiceProduction() {
+  return EmailServiceProduction.getInstance()
 }

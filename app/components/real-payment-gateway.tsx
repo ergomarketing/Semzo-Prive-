@@ -9,8 +9,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 
-// Obtener la clave de Stripe configurada
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePublishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB"
+
+// Debug log para verificar la clave
+console.log("🔑 Stripe Key Status:", {
+  hasKey: !!stripePublishableKey,
+  keyPrefix: stripePublishableKey?.substring(0, 8),
+  keyLength: stripePublishableKey?.length,
+})
 
 // Inicializar Stripe solo si hay clave configurada
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
@@ -28,8 +36,10 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Verificar si Stripe está configurado
-  const isStripeConfigured = !!(stripePublishableKey && stripePublishableKey.startsWith("pk_"))
+  const isStripeConfigured = !!(
+    stripePublishableKey &&
+    (stripePublishableKey.startsWith("pk_live_") || stripePublishableKey.startsWith("pk_test_"))
+  )
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()

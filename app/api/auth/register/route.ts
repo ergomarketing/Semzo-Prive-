@@ -1,90 +1,165 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: NextRequest) {
-  console.log("[REGISTER] ===== INICIO REGISTRO =====");
-
-  // 1️⃣ Comprobar que las variables existen
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  console.log("[REGISTER] URL:", url || "❌ FALTANTE");
-  console.log("[REGISTER] AnonKey:", anonKey ? "✅ presente" : "❌ faltante");
-  console.log("[REGISTER] ServiceKey:", serviceKey ? "✅ presente" : "❌ faltante");
-
-  if (!url || !anonKey) {
-    return NextResponse.json({ success: false, message: "Variables de entorno faltantes" }, { status: 500 });
-  }
-
-  // 2️⃣ Inicializar clientes
-  const supabasePublic = createClient(url, anonKey);
-  const supabaseAdmin = serviceKey ? createClient(url, serviceKey) : null;
-
   try {
-    const body = await request.json();
-    const { email, password, firstName, lastName, phone } = body;
+    console.log("🔄 === INICIANDO REGISTRO ===")
 
-    console.log("[REGISTER] Datos recibidos:", { email, firstName, lastName, phone });
+    const body = await request.json()
+    const { email, password, firstName, lastName } = body
 
-    if (!email || !password || !firstName || !lastName) {
+    console.log("📋 Datos recibidos:")
+    console.log("- Email:", email)
+    console.log("- First name:", firstName)
+    console.log("- Last name:", lastName)
+
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: "Faltan campos obligatorios" },
-        { status: 400 }
-      );
+        {
+          success: false,
+          message: "Email y contraseña son requeridos",
+          error: "MISSING_FIELDS",
+        },
+        { status: 400 },
+      )
     }
 
-    // 3️⃣ Verificar si el usuario ya existe (opcional)
-    if (supabaseAdmin) {
-      console.log("[REGISTER] Verificando usuario existente...");
-      const { data: existing, error: checkErr } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-      if (checkErr) console.error("[REGISTER] Error verificando usuario:", checkErr.message);
-      if (existing?.user) {
-        console.log("[REGISTER] Usuario ya existe en Supabase Auth");
-        return NextResponse.json(
-          { success: false, message: "Usuario ya registrado" },
-          { status: 400 }
-        );
-      }
-    }
+    // Crear cliente de Supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    // 4️⃣ Registrar usuario en Supabase
-    console.log("[REGISTER] Ejecutando signUp()...");
-    const { data, error } = await supabasePublic.auth.signUp({
-      email,
-      password,
+    console.log("🔧 Variables de entorno:")
+    console.log("- Supabase URL:", !!supabaseUrl, supabaseUrl?.substring(0, 30) + "...")
+    console.log("- Supabase Anon Key:", !!supabaseAnonKey, supabaseAnonKey?.substring(0, 10) + "...")
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    console.log("🔄 Creando usuario en Supabase Auth...")
+
+    // USAR URL EXACTA HARDCODEADA
+    const redirectUrl = "https://semzoprive.com/auth/callback"
+    console.log("🔗 Redirect URL:", redirectUrl)
+
+    const signUpData = {
+      email: email.toLowerCase().trim(),
+      password: password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
           full_name: `${firstName} ${lastName}`,
           first_name: firstName,
           last_name: lastName,
-          phone: phone || "",
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      },
+    }
+
+    console.log("📤 Enviando a Supabase:", {
+      email: signUpData.email,
+      emailRedirectTo: signUpData.options.emailRedirectTo,
+      userData: signUpData.options.data,
+    })
+
+    const { data: authData, error: authError } = await supabase.auth.signUp(signUpData)
+
+    console.log("📊 Respuesta de Supabase:")
+    console.log("- User creado:", !!authData.user)
+    console.log("- User ID:", authData.user?.id)
+    console.log("- Email confirmado:", !!authData.user?.email_confirmed_at)
+    console.log("- Session:", !!authData.session)
+    console.log("- Error:", !!authError)
+
+    if (authError) {
+      console.error("❌ Error creando usuario:", authError)
+      console.error("❌ Error completo:", JSON.stringify(authError, null, 2))
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Error al crear usuario: " + authError.message,
+          error: authError.message,
+        },
+        { status: 400 },
+      )
+    }
+
+    if (!authData.user) {
+      console.error("❌ No se creó el usuario")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "No se pudo crear el usuario",
+          error: "NO_USER_CREATED",
+        },
+        { status: 400 },
+      )
+    }
+
+    console.log("✅ Usuario creado en auth.users:", authData.user.id)
+
+    // Crear perfil inmediatamente usando service key
+    if (process.env.SUPABASE_SERVICE_KEY) {
+      try {
+        console.log("🔄 Creando perfil en tabla profiles...")
+
+        const supabaseAdmin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_KEY)
+
+        const profileData = {
+          id: authData.user.id,
+          email: authData.user.email!,
+          full_name: `${firstName} ${lastName}`,
+          first_name: firstName,
+          last_name: lastName,
+          phone: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        console.log("📤 Creando perfil:", profileData)
+
+        const { error: profileError } = await supabaseAdmin.from("profiles").insert(profileData)
+
+        if (profileError) {
+          console.error("❌ Error creando perfil:", profileError)
+          console.error("❌ Error completo:", JSON.stringify(profileError, null, 2))
+          // No fallar el registro por esto
+        } else {
+          console.log("✅ Perfil creado exitosamente")
+        }
+      } catch (profileError) {
+        console.error("❌ Error creando perfil:", profileError)
+        // No fallar el registro por esto
       }
-    });
-
-    console.log("[REGISTER] Resultado signUp:", data, error);
-
-    if (error) {
-      console.error("[REGISTER] ❌ Error en signUp:", error.message);
-      return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    } else {
+      console.warn("⚠️ No hay SUPABASE_SERVICE_KEY para crear perfil")
     }
 
-    if (!data.user) {
-      console.error("[REGISTER] ❌ No se recibió usuario desde Supabase");
-      return NextResponse.json({ success: false, message: "No se pudo crear el usuario" }, { status: 400 });
-    }
+    console.log("✅ Registro completado exitosamente")
 
-    console.log("[REGISTER] ✅ Usuario registrado:", data.user.id);
     return NextResponse.json({
       success: true,
-      message: "Registro exitoso, revisa tu email para confirmar la cuenta",
-      userId: data.user.id
-    });
-
-  } catch (err: any) {
-    console.error("[REGISTER] ❌ Error inesperado:", err);
-    return NextResponse.json({ success: false, message: "Error interno del servidor" }, { status: 500 });
+      message: "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
+      user: {
+        id: authData.user.id,
+        email: authData.user.email,
+        full_name: `${firstName} ${lastName}`,
+        first_name: firstName,
+        last_name: lastName,
+      },
+      debug: {
+        emailConfirmed: !!authData.user.email_confirmed_at,
+        hasSession: !!authData.session,
+        redirectUrl: redirectUrl,
+      },
+    })
+  } catch (error) {
+    console.error("❌ Error inesperado en registro:", error)
+    console.error("❌ Stack trace:", error instanceof Error ? error.stack : "No stack")
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error interno del servidor",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

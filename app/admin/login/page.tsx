@@ -15,6 +15,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,7 +23,12 @@ export default function AdminLogin() {
     setLoading(true)
     setError("")
 
-    // Simular verificación (en producción usar hash/bcrypt)
+    console.log("🔍 Debug Login:")
+    console.log("Username ingresado:", username)
+    console.log("Username esperado:", ADMIN_CONFIG.username)
+    console.log("Password match:", password === ADMIN_CONFIG.password)
+
+    // Verificar credenciales
     if (username === ADMIN_CONFIG.username && password === ADMIN_CONFIG.password) {
       // Guardar sesión
       localStorage.setItem("admin_session", "authenticated")
@@ -31,7 +37,7 @@ export default function AdminLogin() {
       // Redirigir al panel
       router.push("/admin")
     } else {
-      setError("Credenciales incorrectas")
+      setError(`Credenciales incorrectas. Usuario esperado: ${ADMIN_CONFIG.username}`)
     }
 
     setLoading(false)
@@ -92,8 +98,35 @@ export default function AdminLogin() {
             </Button>
           </form>
 
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDebug(!showDebug)}
+              className="w-full text-xs"
+            >
+              {showDebug ? "Ocultar" : "Mostrar"} Info Debug
+            </Button>
+
+            {showDebug && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs">
+                <p>
+                  <strong>Usuario esperado:</strong> {ADMIN_CONFIG.username}
+                </p>
+                <p>
+                  <strong>Variables de entorno:</strong> {process.env.ADMIN_USERNAME ? "✅" : "❌"}
+                </p>
+                <p>
+                  <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="mt-6 p-3 bg-rose-pastel/10 rounded-lg">
             <p className="text-xs text-slate-600 text-center">🔒 Acceso restringido solo para administradores</p>
+            <p className="text-xs text-slate-500 text-center mt-1">Credenciales por defecto: admin / semzo2024!</p>
           </div>
         </CardContent>
       </Card>
