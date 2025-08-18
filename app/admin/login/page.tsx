@@ -1,7 +1,8 @@
 "use client"
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ADMIN_CONFIG } from "@/config/email-config"
+import { ADMIN_CONFIG } from "../../../config/email-config"
+
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("")
