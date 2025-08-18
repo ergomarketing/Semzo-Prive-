@@ -5,25 +5,41 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ArrowRight } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 export default function ConfirmedPage() {
   const router = useRouter()
   const [countdown, setCountdown] = useState(5)
+  const supabase = createClient()
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          router.push('/auth/login')
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const checkSessionAndRedirect = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-    return () => clearInterval(timer)
-  }, [router])
+      if (session) {
+        // ✅ Si ya hay sesión activa → directo al dashboard
+        router.replace('/dashboard')
+      } else {
+        // ⏳ Si no hay sesión → countdown para ir al login
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer)
+              router.push('/auth/login')
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        return () => clearInterval(timer)
+      }
+    }
+
+    checkSessionAndRedirect()
+  }, [router, supabase])
 
   const handleGoToLogin = () => {
     router.push('/auth/login')
