@@ -1,4 +1,6 @@
 "use client"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,16 +20,14 @@ import {
   FileText,
   HelpCircle,
 } from "lucide-react"
-export default function AdminDashboard() {
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+
 export default function AdminDashboard() {
   const router = useRouter()
- useEffect(() => {
-    // Revisa si la sesión de admin existe en localStorage
+
+  useEffect(() => {
     const session = localStorage.getItem("admin_session")
     if (!session) {
-      router.replace("/admin/login") // Redirecciona si no hay sesión
+      router.replace("/admin/login")
     }
   }, [router])
  const adminSections = [
