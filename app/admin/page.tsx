@@ -18,23 +18,19 @@ import {
   FileText,
   HelpCircle,
 } from "lucide-react"
-
 export default function AdminDashboard() {
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-
 export default function AdminDashboard() {
   const router = useRouter()
-
-  useEffect(() => {
+ useEffect(() => {
     // Revisa si la sesión de admin existe en localStorage
     const session = localStorage.getItem("admin_session")
     if (!session) {
       router.replace("/admin/login") // Redirecciona si no hay sesión
     }
   }, [router])
-
-  const adminSections = [
+ const adminSections = [
     {
       title: "Configuración del Sistema",
       description: "Configurar y verificar servicios principales",
