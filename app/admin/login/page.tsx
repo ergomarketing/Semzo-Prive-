@@ -23,7 +23,7 @@ export default function AdminLogin() {
 
     // Verificar credenciales
     if (username === ADMIN_CONFIG.username && password === ADMIN_CONFIG.password) {
-      // Guardar sesión
+   // Guardar sesión
       localStorage.setItem("admin_session", "authenticated")
       localStorage.setItem("admin_login_time", Date.now().toString())
       // Redirigir al panel
