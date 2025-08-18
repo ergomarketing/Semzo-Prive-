@@ -1,7 +1,5 @@
 "use client"
-
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ADMIN_CONFIG } from "../config/email-config"
@@ -17,32 +15,32 @@ export default function AdminLayout({
 
   useEffect(() => {
     const checkAuth = () => {
-      // Verificar que estamos en el navegador antes de acceder a localStorage
       if (typeof window !== "undefined") {
         const session = localStorage.getItem("admin_session")
         const loginTime = localStorage.getItem("admin_login_time")
-
         if (!session || session !== "authenticated") {
-          router.push("/admin/login")
-          return
+          setIsAuthenticated(false)
+          setLoading(false)
+          router.replace("/admin/login")
+          return // detener ejecución
         }
-
-        // Verificar si la sesión ha expirado
         if (loginTime) {
           const elapsed = Date.now() - Number.parseInt(loginTime)
           if (elapsed > ADMIN_CONFIG.sessionTimeout) {
             localStorage.removeItem("admin_session")
             localStorage.removeItem("admin_login_time")
-            router.push("/admin/login")
+            setIsAuthenticated(false)
+            setLoading(false)
+            router.replace("/admin/login")
             return
           }
         }
-
         setIsAuthenticated(true)
+        setLoading(false)
+      } else {
+        setLoading(false)
       }
-      setLoading(false)
     }
-
     checkAuth()
   }, [router])
 
@@ -57,7 +55,10 @@ export default function AdminLayout({
     )
   }
 
+  // Opcional: Mostrar mensaje o redirigir de otra forma si no autenticado.
+
   if (!isAuthenticated) {
+    // Aquí solo retornamos null porque acabamos de redirigir
     return null
   }
 
