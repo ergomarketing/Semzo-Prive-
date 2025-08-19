@@ -4,21 +4,20 @@ import { authService } from "@/app/lib/auth-simple"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password } = body
+    const { username, password } = body
 
     // Validaciones
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
         {
           success: false,
-          message: "Email y contraseña son requeridos",
+          message: "Usuario y contraseña son requeridos",
         },
         { status: 400 },
       )
     }
 
-    // Iniciar sesión
-    const result = await authService.login(email, password)
+    const result = await authService.adminLogin(username, password)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 401 })

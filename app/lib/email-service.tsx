@@ -1,7 +1,7 @@
 "use client"
 
-// SERVICIO DE EMAIL DESHABILITADO PARA REGISTRO
-// Solo Supabase debe manejar emails de confirmación
+// SERVICIO DE EMAIL ACTIVADO CON RESEND
+// Integrado con variables de entorno configuradas
 
 declare global {
   interface Window {
@@ -187,7 +187,6 @@ export class EmailService {
     return this.sendEmail(data, template, "welcome_membership")
   }
 
-  // Método privado para enviar email con mejoras anti-spam
   private async sendEmail(data: EmailData, template: EmailTemplate, type: string): Promise<boolean> {
     const logId = Date.now().toString()
     try {
@@ -199,37 +198,37 @@ export class EmailService {
         })
       }
 
-      // Configuración mejorada para evitar spam
-      const emailPayload = {
-        from: `Semzo Privé <noreply@semzoprive.com>`,
-        to: [data.to],
-        subject: template.subject,
-        html: template.html,
-        text: template.text,
+      // Envío real con Resend usando la API configurada
+      const response = await fetch("/api/emails/send", {
+        method: "POST",
         headers: {
-          "X-Entity-Ref-ID": logId,
-          "List-Unsubscribe": "<https://semzoprive.com/unsubscribe>",
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          "Content-Type": "application/json",
         },
-        tags: [
-          {
-            name: "category",
-            value: type,
+        body: JSON.stringify({
+          to: data.to,
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+          type: type,
+          customerData: {
+            customerName: data.customerName,
+            membershipType: data.membershipType,
+            ...data,
           },
-        ],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error en API de emails: ${response.status}`)
       }
 
-      console.log(`📧 Enviando email tipo: ${type}`)
-      console.log(`📧 Para: ${data.to}`)
-      console.log(`📧 Asunto: ${template.subject}`)
+      const result = await response.json()
 
-      // Simular envío exitoso
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log(`✅ Email enviado exitosamente a ${data.customerName}`)
+      console.log(`📧 ID de envío: ${result.id}`)
 
       // Agregar a la cola para tracking
       this.emailQueue.push({ data, template, type })
-
-      console.log(`✅ Email enviado exitosamente a ${data.customerName}`)
 
       // Actualizar el estado del email a enviado
       if (typeof window !== "undefined" && window.emailLogger) {
@@ -265,7 +264,7 @@ export class EmailService {
   }
 }
 
-// Hook para usar el servicio de email (DESHABILITADO)
+// Hook para usar el servicio de email (ACTIVADO)
 export function useEmailService() {
   return EmailService.getInstance()
 }
