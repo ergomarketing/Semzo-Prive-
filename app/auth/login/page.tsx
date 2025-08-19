@@ -61,15 +61,36 @@ export default function LoginPage() {
     }
 
     try {
-      console.log("[Login] Iniciando sesión con Supabase:", email)
+      console.log("[Login] Valores antes de signInWithPassword:")
+      console.log("[Login] Email:", JSON.stringify(email))
+      console.log("[Login] Email length:", email.length)
+      console.log("[Login] Email trimmed:", JSON.stringify(email.trim()))
+      console.log("[Login] Password:", JSON.stringify(password))
+      console.log("[Login] Password length:", password.length)
+      console.log("[Login] Password trimmed:", JSON.stringify(password.trim()))
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const credentials = {
+        email: email.trim(),
+        password: password.trim(),
+      }
+
+      console.log("[Login] Credentials object:", JSON.stringify(credentials))
+      console.log("[Login] Iniciando sesión con Supabase...")
+
+      const { data, error } = await supabase.auth.signInWithPassword(credentials)
+
+      console.log("[Login] Respuesta de Supabase:")
+      console.log("[Login] Data:", data)
+      console.log("[Login] Error:", error)
 
       if (error) {
-        console.error("[Login] Error:", error)
+        console.error("[Login] Error completo:", {
+          message: error.message,
+          status: error.status,
+          statusCode: error.status,
+          name: error.name,
+        })
+
         if (error.message.includes("Email not confirmed")) {
           setMessage("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.")
         } else if (error.message.includes("Invalid login credentials")) {
@@ -88,7 +109,7 @@ export default function LoginPage() {
         }, 1500)
       }
     } catch (error: any) {
-      console.error("[Login] Error:", error)
+      console.error("[Login] Error catch:", error)
       setMessage("Error de conexión")
     } finally {
       setIsLoading(false)
