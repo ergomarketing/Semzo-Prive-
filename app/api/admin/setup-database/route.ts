@@ -1,75 +1,46 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-const SETUP_STEPS = [
+const VERIFICATION_STEPS = [
   {
-    name: "Verificar conexión",
+    name: "Verificar conexión a Supabase",
     action: async (supabase: any) => {
-      const { data, error } = await supabase.from("_").select("*").limit(0)
-      if (error && !error.message.includes('relation "_" does not exist')) {
-        throw new Error(`Error de conexión: ${error.message}`)
-      }
-      return "Conexión a Supabase establecida"
+      const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+      if (error) throw new Error(`Error de conexión: ${error.message}`)
+      return "Conexión establecida correctamente"
     },
   },
   {
-    name: "Crear tabla profiles",
+    name: "Verificar tabla profiles",
     action: async (supabase: any) => {
-      // Usar SQL directo a través del cliente admin
-      const { error } = await supabase.rpc("exec", {
-        sql: `
-          CREATE TABLE IF NOT EXISTS public.profiles (
-            id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            full_name TEXT,
-            first_name TEXT,
-            last_name TEXT,
-            phone TEXT,
-            avatar_url TEXT,
-            member_type TEXT DEFAULT 'free',
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            email_confirmed BOOLEAN DEFAULT FALSE
-          );
-        `,
-      })
-
-      if (error) {
-        // Fallback: intentar crear usando el método directo
-        console.log("Intentando método alternativo...")
-        return "Tabla profiles configurada (método alternativo)"
+      const { data, error } = await supabase.from("profiles").select("id").limit(1)
+      if (error && error.code === "42P01") {
+        throw new Error("Tabla 'profiles' no existe - debe crearse manualmente")
       }
-      return "Tabla profiles creada exitosamente"
+      return "Tabla 'profiles' existe y es accesible"
     },
   },
   {
-    name: "Configurar RLS",
+    name: "Verificar usuarios registrados",
     action: async (supabase: any) => {
-      try {
-        await supabase.rpc("exec", {
-          sql: `
-            ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-            
-            DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
-            CREATE POLICY "Users can view own profile" ON public.profiles
-              FOR SELECT USING (auth.uid() = id);
-              
-            DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-            CREATE POLICY "Users can update own profile" ON public.profiles
-              FOR UPDATE USING (auth.uid() = id);
-          `,
-        })
-        return "RLS configurado correctamente"
-      } catch (error) {
-        return "RLS configurado (método alternativo)"
-      }
+      const { data: authUsers } = await supabase.auth.admin.listUsers()
+      const userCount = authUsers?.users?.length || 0
+      return `${userCount} usuarios encontrados en auth.users`
+    },
+  },
+  {
+    name: "Verificar perfiles de usuarios",
+    action: async (supabase: any) => {
+      const { data, error } = await supabase.from("profiles").select("*")
+      if (error) throw new Error(`Error accediendo profiles: ${error.message}`)
+      return `${data?.length || 0} perfiles encontrados en tabla profiles`
     },
   },
 ]
 
 export async function POST() {
   try {
-    console.log("=== CONFIGURANDO BASE DE DATOS ===")
+    console.log("=== VERIFICANDO CONFIGURACIÓN DE BASE DE DATOS ===")
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
@@ -83,6 +54,49 @@ export async function POST() {
             `NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl ? "✅ Configurada" : "❌ Faltante"}`,
             `SUPABASE_SERVICE_KEY: ${supabaseServiceKey ? "✅ Configurada" : "❌ Faltante"}`,
           ],
+          sqlScript: `-- Ejecuta este SQL en el SQL Editor de Supabase:
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  phone TEXT,
+  avatar_url TEXT,
+  member_type TEXT DEFAULT 'free',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  email_confirmed BOOLEAN DEFAULT FALSE
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own profile" ON public.profiles
+  FOR SELECT USING (auth.uid() = id);
+  
+CREATE POLICY "Users can update own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Política para permitir que el sistema verifique usuarios durante login
+CREATE POLICY "Allow auth verification" ON public.profiles
+  FOR SELECT USING (true);
+
+-- Trigger para crear perfil automáticamente
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, email_confirmed)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.email_confirmed_at IS NOT NULL);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();`,
         },
         { status: 500 },
       )
@@ -96,30 +110,68 @@ export async function POST() {
     })
 
     const results = []
+    let allSuccess = true
 
-    for (const step of SETUP_STEPS) {
+    for (const step of VERIFICATION_STEPS) {
       try {
-        console.log(`Ejecutando: ${step.name}...`)
+        console.log(`Verificando: ${step.name}...`)
         const result = await step.action(supabase)
         results.push(`✅ ${step.name}: ${result}`)
       } catch (error: any) {
         console.error(`Error en ${step.name}:`, error.message)
         results.push(`❌ ${step.name}: ${error.message}`)
+        allSuccess = false
       }
     }
 
-    const { data: authUsers } = await supabase.auth.admin.listUsers()
-    const userCount = authUsers?.users?.length || 0
-
     return NextResponse.json({
-      success: true,
-      message: "Configuración de base de datos completada",
-      details: [
-        ...results,
-        `📊 Usuarios registrados: ${userCount}`,
-        `🔗 URL de Supabase: ${supabaseUrl.substring(0, 30)}...`,
-        `⚡ Configuración lista para usar`,
-      ],
+      success: allSuccess,
+      message: allSuccess ? "Base de datos configurada correctamente" : "Se encontraron problemas en la configuración",
+      details: results,
+      sqlScript: allSuccess
+        ? null
+        : `-- Si faltan tablas, ejecuta este SQL en Supabase:
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  phone TEXT,
+  avatar_url TEXT,
+  member_type TEXT DEFAULT 'free',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  email_confirmed BOOLEAN DEFAULT FALSE
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own profile" ON public.profiles
+  FOR SELECT USING (auth.uid() = id);
+  
+CREATE POLICY "Users can update own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Política para permitir que el sistema verifique usuarios durante login
+CREATE POLICY "Allow auth verification" ON public.profiles
+  FOR SELECT USING (true);
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, email_confirmed)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.email_confirmed_at IS NOT NULL);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();`,
     })
   } catch (error: any) {
     console.error("Error general:", error)
