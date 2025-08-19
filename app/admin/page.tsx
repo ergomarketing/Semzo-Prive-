@@ -1,6 +1,5 @@
 "use client"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,15 +21,7 @@ import {
 } from "lucide-react"
 
 export default function AdminDashboard() {
-  const router = useRouter()
-
-  useEffect(() => {
-    const session = localStorage.getItem("admin_session")
-    if (!session) {
-      router.replace("/admin/login")
-    }
-  }, [router])
- const adminSections = [
+  const adminSections = [
     {
       title: "Configuración del Sistema",
       description: "Configurar y verificar servicios principales",
