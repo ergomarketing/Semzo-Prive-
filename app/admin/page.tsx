@@ -70,6 +70,13 @@ export default function AdminDashboard() {
           status: "active",
         },
         {
+          name: "Confirmar Usuarios",
+          href: "/admin/confirm-users",
+          icon: CheckCircle,
+          description: "Confirmar emails de usuarios manualmente",
+          status: "active",
+        },
+        {
           name: "Configurar Base de Datos",
           href: "/admin/setup-database",
           icon: Database,
