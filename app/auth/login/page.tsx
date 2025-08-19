@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { supabase } from "@/app/lib/supabase"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -17,6 +19,13 @@ export default function LoginPage() {
   const [message, setMessage] = useState("")
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/dashboard")
+    }
+  }, [user, loading, router])
 
   // Manejo de mensajes de confirmación de email
   useEffect(() => {
@@ -52,30 +61,31 @@ export default function LoginPage() {
     }
 
     try {
-      console.log("[Login] Enviando credenciales:", email)
+      console.log("[Login] Iniciando sesión con Supabase:", email)
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      const result = await response.json()
-      console.log("[Login] Resultado:", result)
-
-      if (result.success) {
-        setMessage("¡Login exitoso!")
-        // Guardar datos del usuario
-        if (typeof window !== "undefined") {
-          localStorage.setItem("semzo_user", JSON.stringify(result.user))
+      if (error) {
+        console.error("[Login] Error:", error)
+        if (error.message.includes("Email not confirmed")) {
+          setMessage("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.")
+        } else if (error.message.includes("Invalid login credentials")) {
+          setMessage("Email o contraseña incorrectos")
+        } else {
+          setMessage(error.message)
         }
+        return
+      }
+
+      if (data.user) {
+        console.log("[Login] Login exitoso:", data.user.email)
+        setMessage("¡Login exitoso!")
         setTimeout(() => {
           router.push("/dashboard")
         }, 1500)
-      } else {
-        setMessage(result.message || "Error en el login")
       }
     } catch (error: any) {
       console.error("[Login] Error:", error)
@@ -83,6 +93,14 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8" />
+      </div>
+    )
   }
 
   return (

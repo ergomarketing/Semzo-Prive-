@@ -13,12 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl)
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
@@ -31,9 +26,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl)
     }
 
-    const loginUrl = new URL("/auth/login", origin)
-    loginUrl.searchParams.set("message", "email_confirmed")
-    return NextResponse.redirect(loginUrl)
+    const response = NextResponse.redirect(new URL("/auth/login?message=email_confirmed", origin))
+
+    if (data.session) {
+      response.cookies.set("sb-access-token", data.session.access_token, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: data.session.expires_in,
+      })
+
+      response.cookies.set("sb-refresh-token", data.session.refresh_token, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 días
+      })
+    }
+
+    return response
   } catch (error) {
     const errorUrl = new URL("/auth/login", request.url)
     errorUrl.searchParams.set("error", "unexpected_error")
