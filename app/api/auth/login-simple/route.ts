@@ -1,17 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { ADMIN_CONFIG } from "@/app/config/email-config"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { username, password } = body
 
+    const HARDCODED_USERNAME = "admin"
+    const HARDCODED_PASSWORD = "semzo2024!"
+
     console.log("[v0] Login attempt:", { username, password: "***" })
-    console.log("[v0] Expected credentials:", {
-      username: ADMIN_CONFIG.username,
-      password: "***",
-      envUsername: process.env.ADMIN_USERNAME,
-      envPassword: process.env.ADMIN_PASSWORD ? "SET" : "NOT_SET",
+    console.log("[v0] HARDCODED CREDENTIALS:", {
+      expectedUsername: HARDCODED_USERNAME,
+      expectedPassword: "***",
     })
 
     // Validaciones
@@ -25,10 +25,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isValidUsername = username === ADMIN_CONFIG.username
-    const isValidPassword = password === ADMIN_CONFIG.password
+    const isValidUsername = username === HARDCODED_USERNAME
+    const isValidPassword = password === HARDCODED_PASSWORD
 
     console.log("[v0] Validation results:", { isValidUsername, isValidPassword })
+    console.log("[v0] Exact comparison:", {
+      usernameMatch: `"${username}" === "${HARDCODED_USERNAME}"`,
+      passwordMatch: `"${password}" === "${HARDCODED_PASSWORD}"`,
+    })
 
     if (isValidUsername && isValidPassword) {
       console.log("[v0] Login successful")
