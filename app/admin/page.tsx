@@ -13,8 +13,6 @@ import {
   BarChart3,
   MessageSquare,
   Shield,
-  CheckCircle,
-  AlertTriangle,
   Wrench,
   FileText,
   HelpCircle,
@@ -91,13 +89,6 @@ export default function AdminDashboard() {
       icon: Mail,
       items: [
         {
-          name: "Enviar Email de Prueba",
-          href: "/admin/email-send-test",
-          icon: Mail,
-          description: "Probar envío de emails",
-          status: "active",
-        },
-        {
           name: "Logs de Emails",
           href: "/admin/email-logs",
           icon: FileText,
@@ -126,13 +117,6 @@ export default function AdminDashboard() {
           status: "active",
         },
         {
-          name: "Modo Demo",
-          href: "/admin/demo-mode-guide",
-          icon: AlertTriangle,
-          description: "Activar modo demostración",
-          status: "warning",
-        },
-        {
           name: "Chat de Soporte",
           href: "/admin/chat",
           icon: MessageSquare,
@@ -159,13 +143,6 @@ export default function AdminDashboard() {
           icon: Database,
           description: "Gestión de inventario de productos",
           status: "active",
-        },
-        {
-          name: "Página de Éxito",
-          href: "/admin/success-celebration",
-          icon: CheckCircle,
-          description: "Celebrar configuración exitosa",
-          status: "success",
         },
       ],
     },
