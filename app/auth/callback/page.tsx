@@ -18,99 +18,73 @@ export default function AuthCallback() {
       try {
         console.log("[v0] === CALLBACK INICIADO ===")
         console.log("[v0] URL completa:", window.location.href)
-        console.log("[v0] Todos los parámetros:", Object.fromEntries(searchParams.entries()))
 
         const code = searchParams.get("code")
-        const token_hash = searchParams.get("token_hash")
-        const type = searchParams.get("type")
         const error_code = searchParams.get("error_code")
         const error_description = searchParams.get("error_description")
 
-        console.log("[v0] Parámetros extraídos:", {
-          code: code ? `${code.substring(0, 10)}...` : null,
-          token_hash: token_hash ? `${token_hash.substring(0, 10)}...` : null,
-          type,
+        console.log("[v0] Parámetros:", {
+          code: code ? "✓" : "✗",
           error_code,
           error_description,
         })
 
         if (error_code || error_description) {
-          console.log("[v0] Error en parámetros de URL:", { error_code, error_description })
+          console.log("[v0] Error en URL:", { error_code, error_description })
           setStatus("error")
-          setMessage(`Error de Supabase: ${error_description || error_code}`)
+          setMessage(`Error: ${error_description || error_code}`)
           return
         }
 
-        if (code) {
-          console.log("[v0] Procesando con exchangeCodeForSession...")
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-          if (error) {
-            console.log("[v0] Error en exchangeCodeForSession:", error)
-            setStatus("error")
-            setMessage(`Error al confirmar el email: ${error.message}`)
-            return
-          }
-
-          console.log("[v0] Email confirmado exitosamente:", {
-            userId: data.user?.id,
-            email: data.user?.email,
-            emailConfirmed: data.user?.email_confirmed_at,
-            sessionExists: !!data.session,
-          })
-
-          setStatus("success")
-          setMessage("Tu email ha sido confirmado correctamente")
-
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 2000)
-        } else if (token_hash && type) {
-          console.log("[v0] Procesando con verifyOtp...")
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash,
-            type: type as any,
-          })
-
-          if (error) {
-            console.log("[v0] Error en verifyOtp:", error)
-            setStatus("error")
-            setMessage(`Error al confirmar el email: ${error.message}`)
-            return
-          }
-
-          console.log("[v0] Email confirmado con verifyOtp:", {
-            userId: data.user?.id,
-            email: data.user?.email,
-            emailConfirmed: data.user?.email_confirmed_at,
-            sessionExists: !!data.session,
-          })
-
-          setStatus("success")
-          setMessage("Tu email ha sido confirmado correctamente")
-
-          setTimeout(() => {
-            router.push("/auth/login?message=email_confirmed")
-          }, 2000)
-        } else {
-          console.log("[v0] No se encontraron parámetros válidos para confirmación")
+        if (!code) {
+          console.log("[v0] No hay código de confirmación")
           setStatus("error")
-          setMessage("Enlace de confirmación inválido - faltan parámetros necesarios")
+          setMessage("Enlace de confirmación inválido")
+          return
         }
+
+        console.log("[v0] Confirmando email con código...")
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (error) {
+          console.log("[v0] Error confirmando:", error.message)
+          setStatus("error")
+          setMessage(`Error al confirmar el email: ${error.message}`)
+          return
+        }
+
+        if (!data.user) {
+          console.log("[v0] No se obtuvo usuario después de confirmación")
+          setStatus("error")
+          setMessage("Error procesando confirmación")
+          return
+        }
+
+        console.log("[v0] ✅ Email confirmado:", {
+          userId: data.user.id,
+          email: data.user.email,
+          confirmed: !!data.user.email_confirmed_at,
+        })
+
+        setStatus("success")
+        setMessage("Tu email ha sido confirmado correctamente")
+
+        setTimeout(() => {
+          router.push("/auth/login?message=email_confirmed")
+        }, 2000)
       } catch (error) {
-        console.log("[v0] Error inesperado en callback:", error)
+        console.log("[v0] Error inesperado:", error)
         setStatus("error")
         setMessage(`Error inesperado: ${error instanceof Error ? error.message : "Error desconocido"}`)
       }
     }
 
-    const timer = setTimeout(handleCallback, 100)
-    return () => clearTimeout(timer)
+    handleCallback()
   }, [searchParams, router])
 
   const handleContinue = () => {
     if (status === "success") {
-      router.push("/dashboard")
+      router.push("/auth/login?message=email_confirmed")
     } else {
       router.push("/auth/login")
     }
@@ -150,7 +124,7 @@ export default function AuthCallback() {
             <div className="space-y-3">
               <div className="text-center">
                 {status === "success" && (
-                  <p className="text-sm text-gray-600 mb-4">¡Bienvenido! Tu cuenta ha sido activada exitosamente.</p>
+                  <p className="text-sm text-gray-600 mb-4">¡Bienvenido! Ya puedes iniciar sesión con tu cuenta.</p>
                 )}
                 {status === "error" && (
                   <p className="text-sm text-gray-600 mb-4">
@@ -160,7 +134,7 @@ export default function AuthCallback() {
               </div>
 
               <Button onClick={handleContinue} className="w-full" size="lg">
-                {status === "success" ? "Continuar al Dashboard" : "Volver al Login"}
+                {status === "success" ? "Ir al Login" : "Volver al Login"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
 
