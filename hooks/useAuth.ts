@@ -1,21 +1,22 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '@/app/lib/supabase'
+import { useEffect, useState } from "react"
+import type { User } from "@supabase/supabase-js"
+import { supabase } from "@/app/lib/supabase-unified"
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Obtener sesión inicial
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
       } catch (error) {
-        console.error('Error getting initial session:', error)
+        console.error("Error getting initial session:", error)
         setUser(null)
       } finally {
         setLoading(false)
@@ -24,14 +25,13 @@ export function useAuth() {
 
     getInitialSession()
 
-    // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    )
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
 
     return () => {
       subscription.unsubscribe()
@@ -42,7 +42,7 @@ export function useAuth() {
     try {
       await supabase.auth.signOut()
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error("Error signing out:", error)
     }
   }
 
@@ -50,6 +50,6 @@ export function useAuth() {
     user,
     loading,
     signOut,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   }
 }

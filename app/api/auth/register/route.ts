@@ -1,23 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase, supabaseAdmin } from "@/app/lib/supabase"
-import { env, validateServerEnv } from "@/app/lib/env"
+import { supabase, supabaseAdmin } from "@/app/lib/supabase-unified"
 
 export async function POST(request: NextRequest) {
   try {
     console.log("🔄 === INICIANDO REGISTRO ===")
-
-    const envValidation = validateServerEnv()
-    if (!envValidation.isValid) {
-      console.error("❌ Variables de entorno faltantes:", envValidation.errors)
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Error de configuración del servidor: " + envValidation.errors.join(", "),
-          error: "ENV_VALIDATION_FAILED",
-        },
-        { status: 500 },
-      )
-    }
 
     const body = await request.json()
     const { email, password, firstName, lastName } = body
@@ -37,12 +23,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
-
-    console.log("🔧 Variables de entorno:")
-    console.log("- Supabase URL exists:", !!env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log("- Supabase Anon Key exists:", !!env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    console.log("- Supabase URL:", env.NEXT_PUBLIC_SUPABASE_URL.substring(0, 30) + "...")
-    console.log("- Supabase Anon Key:", env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10) + "...")
 
     console.log("🔄 Creando usuario en Supabase Auth...")
 
@@ -80,7 +60,6 @@ export async function POST(request: NextRequest) {
 
     if (authError) {
       console.error("❌ Error creando usuario:", authError)
-      console.error("❌ Error completo:", JSON.stringify(authError, null, 2))
       return NextResponse.json(
         {
           success: false,
@@ -120,23 +99,16 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }
 
-        console.log("📤 Creando perfil:", profileData)
-
         const { error: profileError } = await supabaseAdmin.from("profiles").insert(profileData)
 
         if (profileError) {
           console.error("❌ Error creando perfil:", profileError)
-          console.error("❌ Error completo:", JSON.stringify(profileError, null, 2))
-          // No fallar el registro por esto
         } else {
           console.log("✅ Perfil creado exitosamente")
         }
       } catch (profileError) {
         console.error("❌ Error creando perfil:", profileError)
-        // No fallar el registro por esto
       }
-    } else {
-      console.warn("⚠️ No hay supabaseAdmin disponible para crear perfil")
     }
 
     console.log("✅ Registro completado exitosamente")
@@ -159,7 +131,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ Error inesperado en registro:", error)
-    console.error("❌ Stack trace:", error instanceof Error ? error.stack : "No stack")
     return NextResponse.json(
       {
         success: false,
