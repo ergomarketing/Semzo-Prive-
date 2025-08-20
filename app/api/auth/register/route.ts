@@ -1,9 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { supabase, supabaseAdmin } from "@/app/lib/supabase"
+import { env, validateServerEnv } from "@/app/lib/env"
 
 export async function POST(request: NextRequest) {
   try {
     console.log("🔄 === INICIANDO REGISTRO ===")
+
+    const envValidation = validateServerEnv()
+    if (!envValidation.isValid) {
+      console.error("❌ Variables de entorno faltantes:", envValidation.errors)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Error de configuración del servidor: " + envValidation.errors.join(", "),
+          error: "ENV_VALIDATION_FAILED",
+        },
+        { status: 500 },
+      )
+    }
 
     const body = await request.json()
     const { email, password, firstName, lastName } = body
@@ -24,15 +38,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Crear cliente de Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
     console.log("🔧 Variables de entorno:")
-    console.log("- Supabase URL:", !!supabaseUrl, supabaseUrl?.substring(0, 30) + "...")
-    console.log("- Supabase Anon Key:", !!supabaseAnonKey, supabaseAnonKey?.substring(0, 10) + "...")
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    console.log("- Supabase URL exists:", !!env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("- Supabase Anon Key exists:", !!env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    console.log("- Supabase URL:", env.NEXT_PUBLIC_SUPABASE_URL.substring(0, 30) + "...")
+    console.log("- Supabase Anon Key:", env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10) + "...")
 
     console.log("🔄 Creando usuario en Supabase Auth...")
 
@@ -95,12 +105,9 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Usuario creado en auth.users:", authData.user.id)
 
-    // Crear perfil inmediatamente usando service key
-    if (process.env.SUPABASE_SERVICE_KEY) {
+    if (supabaseAdmin) {
       try {
         console.log("🔄 Creando perfil en tabla profiles...")
-
-        const supabaseAdmin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_KEY)
 
         const profileData = {
           id: authData.user.id,
@@ -129,7 +136,7 @@ export async function POST(request: NextRequest) {
         // No fallar el registro por esto
       }
     } else {
-      console.warn("⚠️ No hay SUPABASE_SERVICE_KEY para crear perfil")
+      console.warn("⚠️ No hay supabaseAdmin disponible para crear perfil")
     }
 
     console.log("✅ Registro completado exitosamente")
