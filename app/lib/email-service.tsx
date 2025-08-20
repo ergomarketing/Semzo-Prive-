@@ -153,7 +153,7 @@ export class EmailService {
                   </a>
                 </div>
                 
-                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                <p style="color: #66; font-size: 14px; margin-top: 30px;">
                   Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este email.
                 </p>
               </div>
@@ -188,64 +188,10 @@ export class EmailService {
   }
 
   private async sendEmail(data: EmailData, template: EmailTemplate, type: string): Promise<boolean> {
-    const logId = Date.now().toString()
-    try {
-      // Registrar el email como pendiente
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.logEmail(type, data.to, template.subject, "pending", {
-          customerName: data.customerName,
-          ...data,
-        })
-      }
+    console.log("⚠️ EmailService deshabilitado - Solo Supabase nativo para confirmaciones")
 
-      // Envío real con Resend usando la API configurada
-      const response = await fetch("/api/emails/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: data.to,
-          subject: template.subject,
-          html: template.html,
-          text: template.text,
-          type: type,
-          customerData: {
-            customerName: data.customerName,
-            membershipType: data.membershipType,
-            ...data,
-          },
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error en API de emails: ${response.status}`)
-      }
-
-      const result = await response.json()
-
-      console.log(`✅ Email enviado exitosamente a ${data.customerName}`)
-      console.log(`📧 ID de envío: ${result.id}`)
-
-      // Agregar a la cola para tracking
-      this.emailQueue.push({ data, template, type })
-
-      // Actualizar el estado del email a enviado
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.updateEmailStatus(logId, "sent")
-      }
-
-      return true
-    } catch (error) {
-      console.error(`❌ Error enviando email:`, error)
-
-      // Actualizar el estado del email a fallido
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.updateEmailStatus(logId, "failed")
-      }
-
-      return false
-    }
+    // NO enviar emails que puedan interferir con el proceso de confirmación de Supabase
+    return true
   }
 
   // Método para obtener estadísticas (mantener funcional)

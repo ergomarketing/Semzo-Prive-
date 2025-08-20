@@ -16,19 +16,39 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log("[v0] === CALLBACK INICIADO ===")
+        console.log("[v0] URL completa:", window.location.href)
+        console.log("[v0] Todos los parámetros:", Object.fromEntries(searchParams.entries()))
+
         const code = searchParams.get("code")
         const token_hash = searchParams.get("token_hash")
         const type = searchParams.get("type")
+        const error_code = searchParams.get("error_code")
+        const error_description = searchParams.get("error_description")
 
-        console.log("[v0] Callback frontend recibido:", { code: !!code, token_hash: !!token_hash, type })
+        console.log("[v0] Parámetros extraídos:", {
+          code: code ? `${code.substring(0, 10)}...` : null,
+          token_hash: token_hash ? `${token_hash.substring(0, 10)}...` : null,
+          type,
+          error_code,
+          error_description,
+        })
+
+        if (error_code || error_description) {
+          console.log("[v0] Error en parámetros de URL:", { error_code, error_description })
+          setStatus("error")
+          setMessage(`Error de Supabase: ${error_description || error_code}`)
+          return
+        }
 
         if (code) {
+          console.log("[v0] Procesando con exchangeCodeForSession...")
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
           if (error) {
             console.log("[v0] Error en exchangeCodeForSession:", error)
             setStatus("error")
-            setMessage("Error al confirmar el email. Por favor intenta nuevamente.")
+            setMessage(`Error al confirmar el email: ${error.message}`)
             return
           }
 
@@ -36,6 +56,7 @@ export default function AuthCallback() {
             userId: data.user?.id,
             email: data.user?.email,
             emailConfirmed: data.user?.email_confirmed_at,
+            sessionExists: !!data.session,
           })
 
           setStatus("success")
@@ -45,6 +66,7 @@ export default function AuthCallback() {
             router.push("/dashboard")
           }, 2000)
         } else if (token_hash && type) {
+          console.log("[v0] Procesando con verifyOtp...")
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash,
             type: type as any,
@@ -53,7 +75,7 @@ export default function AuthCallback() {
           if (error) {
             console.log("[v0] Error en verifyOtp:", error)
             setStatus("error")
-            setMessage("Error al confirmar el email. El enlace puede haber expirado.")
+            setMessage(`Error al confirmar el email: ${error.message}`)
             return
           }
 
@@ -61,6 +83,7 @@ export default function AuthCallback() {
             userId: data.user?.id,
             email: data.user?.email,
             emailConfirmed: data.user?.email_confirmed_at,
+            sessionExists: !!data.session,
           })
 
           setStatus("success")
@@ -70,17 +93,19 @@ export default function AuthCallback() {
             router.push("/auth/login?message=email_confirmed")
           }, 2000)
         } else {
+          console.log("[v0] No se encontraron parámetros válidos para confirmación")
           setStatus("error")
-          setMessage("Enlace de confirmación inválido")
+          setMessage("Enlace de confirmación inválido - faltan parámetros necesarios")
         }
       } catch (error) {
         console.log("[v0] Error inesperado en callback:", error)
         setStatus("error")
-        setMessage("Error inesperado. Por favor intenta nuevamente.")
+        setMessage(`Error inesperado: ${error instanceof Error ? error.message : "Error desconocido"}`)
       }
     }
 
-    handleCallback()
+    const timer = setTimeout(handleCallback, 100)
+    return () => clearTimeout(timer)
   }, [searchParams, router])
 
   const handleContinue = () => {
