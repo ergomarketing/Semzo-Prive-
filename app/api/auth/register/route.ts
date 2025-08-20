@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
 
     console.log("🔄 Creando usuario en Supabase Auth...")
 
-    // USAR URL EXACTA HARDCODEADA
-    const redirectUrl = "https://semzoprive.com/auth/callback"
+    const redirectUrl = "https://www.semzoprive.com/auth/callback"
     console.log("🔗 Redirect URL:", redirectUrl)
 
     const signUpData = {
