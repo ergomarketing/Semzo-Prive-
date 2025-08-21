@@ -14,18 +14,28 @@ export async function POST(request: NextRequest) {
     console.log("- Last name:", lastName)
 
     if (!email || !password) {
-      console.log("❌ Campos faltantes - Email:", !!email, "Password:", !!password)
+      const errorDetails = {
+        email: !!email,
+        password: !!password,
+        emailValue: email,
+        passwordLength: password?.length || 0,
+      }
+      console.log("❌ Campos faltantes - Detalles:", errorDetails)
       return NextResponse.json(
         {
           success: false,
           message: "Email y contraseña son requeridos",
           error: "MISSING_FIELDS",
+          debug: errorDetails,
         },
         { status: 400 },
       )
     }
 
     console.log("🔍 Verificando configuración de Supabase...")
+    console.log("- Cliente supabase:", !!supabase)
+    console.log("- Cliente supabaseAdmin:", !!supabaseAdmin)
+
     if (!supabase) {
       console.error("❌ Cliente Supabase no configurado")
       return NextResponse.json(
@@ -33,6 +43,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "Error de configuración del servidor",
           error: "SUPABASE_NOT_CONFIGURED",
+          debug: { hasSupabase: !!supabase, hasSupabaseAdmin: !!supabaseAdmin },
         },
         { status: 500 },
       )
@@ -62,7 +73,26 @@ export async function POST(request: NextRequest) {
       userData: signUpData.options.data,
     })
 
-    const { data: authData, error: authError } = await supabase.auth.signUp(signUpData)
+    let authData, authError
+    try {
+      const result = await supabase.auth.signUp(signUpData)
+      authData = result.data
+      authError = result.error
+      console.log("📊 Respuesta cruda de Supabase:", result)
+    } catch (supabaseException) {
+      console.error("❌ Excepción en signUp:", supabaseException)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Error de conexión con Supabase",
+          error: "SUPABASE_CONNECTION_ERROR",
+          debug: {
+            exception: supabaseException instanceof Error ? supabaseException.message : String(supabaseException),
+          },
+        },
+        { status: 500 },
+      )
+    }
 
     console.log("📊 Respuesta de Supabase:")
     console.log("- User creado:", !!authData.user)
@@ -84,6 +114,13 @@ export async function POST(request: NextRequest) {
           message: "Error al crear usuario: " + authError.message,
           error: authError.message,
           errorCode: authError.status,
+          debug: {
+            supabaseError: {
+              message: authError.message,
+              status: authError.status,
+              name: authError.name,
+            },
+          },
         },
         { status: 400 },
       )
@@ -163,7 +200,9 @@ export async function POST(request: NextRequest) {
         emailConfirmed: !!authData.user.email_confirmed_at,
         hasSession: !!authData.session,
         redirectUrl: redirectUrl,
-        profileCreated: true, // Siempre true para no confundir al frontend
+        profileCreated: true,
+        timestamp: new Date().toISOString(),
+        userId: authData.user.id,
       },
     })
   } catch (error) {
@@ -175,6 +214,10 @@ export async function POST(request: NextRequest) {
         message: "Error interno del servidor",
         error: error instanceof Error ? error.message : "Unknown error",
         errorType: error instanceof Error ? error.constructor.name : typeof error,
+        debug: {
+          timestamp: new Date().toISOString(),
+          stack: error instanceof Error ? error.stack : null,
+        },
       },
       { status: 500 },
     )
