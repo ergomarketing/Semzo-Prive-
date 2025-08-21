@@ -19,12 +19,52 @@ export default function AuthCallback() {
         console.log("[v0] === CALLBACK INICIADO ===")
         console.log("[v0] URL completa:", window.location.href)
 
+        const allParams = new URLSearchParams(window.location.search)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+
+        console.log("[v0] === DIAGNÓSTICO COMPLETO ===")
+        console.log("[v0] Search params:", Object.fromEntries(allParams.entries()))
+        console.log("[v0] Hash params:", Object.fromEntries(hashParams.entries()))
+
+        // Verificar todos los parámetros posibles que Supabase puede enviar
+        const possibleParams = [
+          "code",
+          "access_token",
+          "refresh_token",
+          "token_hash",
+          "type",
+          "token",
+          "confirmation_token",
+          "email",
+          "redirect_to",
+        ]
+
+        const foundParams: Record<string, string> = {}
+        possibleParams.forEach((param) => {
+          const searchValue = allParams.get(param) || hashParams.get(param)
+          if (searchValue) {
+            foundParams[param] = searchValue
+            console.log(`[v0] ✓ Encontrado ${param}:`, searchValue.substring(0, 20) + "...")
+          }
+        })
+
+        console.log("[v0] Parámetros encontrados:", Object.keys(foundParams))
+
         const code = searchParams.get("code")
         const error_code = searchParams.get("error_code")
         const error_description = searchParams.get("error_description")
 
-        console.log("[v0] Parámetros:", {
-          code: code ? "✓" : "✗",
+        const hashCode = hashParams.get("code")
+        const hashAccessToken = hashParams.get("access_token")
+        const hashTokenHash = hashParams.get("token_hash")
+        const hashType = hashParams.get("type")
+
+        console.log("[v0] Parámetros específicos:", {
+          searchCode: code ? "✓" : "✗",
+          hashCode: hashCode ? "✓" : "✗",
+          hashAccessToken: hashAccessToken ? "✓" : "✗",
+          hashTokenHash: hashTokenHash ? "✓" : "✗",
+          hashType: hashType,
           error_code,
           error_description,
         })
@@ -36,42 +76,72 @@ export default function AuthCallback() {
           return
         }
 
-        if (!code) {
-          console.log("[v0] No hay código de confirmación")
+        const finalCode = code || hashCode
+
+        if (!finalCode && !hashAccessToken && !hashTokenHash) {
+          console.log("[v0] No hay código ni tokens de confirmación")
+          console.log("[v0] Todos los parámetros disponibles:", Object.keys(foundParams))
           setStatus("error")
-          setMessage("Enlace de confirmación inválido")
+          setMessage("Enlace de confirmación inválido - no se encontraron parámetros de autenticación")
           return
         }
 
-        console.log("[v0] Confirmando email con código...")
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+        // Método 1: exchangeCodeForSession si hay código
+        if (finalCode) {
+          console.log("[v0] Método 1: Confirmando con exchangeCodeForSession...")
+          const { data, error } = await supabase.auth.exchangeCodeForSession(finalCode)
 
-        if (error) {
-          console.log("[v0] Error confirmando:", error.message)
-          setStatus("error")
-          setMessage(`Error al confirmar el email: ${error.message}`)
-          return
+          if (error) {
+            console.log("[v0] Error método 1:", error.message)
+            // Continuar con otros métodos
+          } else if (data.user) {
+            console.log("[v0] ✅ Método 1 exitoso - Email confirmado:", {
+              userId: data.user.id,
+              email: data.user.email,
+              confirmed: !!data.user.email_confirmed_at,
+            })
+
+            setStatus("success")
+            setMessage("Tu email ha sido confirmado correctamente")
+
+            setTimeout(() => {
+              router.push("/auth/login?message=email_confirmed")
+            }, 2000)
+            return
+          }
         }
 
-        if (!data.user) {
-          console.log("[v0] No se obtuvo usuario después de confirmación")
-          setStatus("error")
-          setMessage("Error procesando confirmación")
-          return
+        // Método 2: verifyOtp si hay token_hash
+        if (hashTokenHash && hashType) {
+          console.log("[v0] Método 2: Confirmando con verifyOtp...")
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: hashTokenHash,
+            type: hashType as any,
+          })
+
+          if (error) {
+            console.log("[v0] Error método 2:", error.message)
+          } else if (data.user) {
+            console.log("[v0] ✅ Método 2 exitoso - Email confirmado:", {
+              userId: data.user.id,
+              email: data.user.email,
+              confirmed: !!data.user.email_confirmed_at,
+            })
+
+            setStatus("success")
+            setMessage("Tu email ha sido confirmado correctamente")
+
+            setTimeout(() => {
+              router.push("/auth/login?message=email_confirmed")
+            }, 2000)
+            return
+          }
         }
 
-        console.log("[v0] ✅ Email confirmado:", {
-          userId: data.user.id,
-          email: data.user.email,
-          confirmed: !!data.user.email_confirmed_at,
-        })
-
-        setStatus("success")
-        setMessage("Tu email ha sido confirmado correctamente")
-
-        setTimeout(() => {
-          router.push("/auth/login?message=email_confirmed")
-        }, 2000)
+        // Si llegamos aquí, ningún método funcionó
+        console.log("[v0] ❌ Todos los métodos fallaron")
+        setStatus("error")
+        setMessage("Error al confirmar el email. Parámetros recibidos pero confirmación falló.")
       } catch (error) {
         console.log("[v0] Error inesperado:", error)
         setStatus("error")
