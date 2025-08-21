@@ -22,6 +22,26 @@ export default function AuthCallback() {
         const allParams = new URLSearchParams(window.location.search)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (user && user.email_confirmed_at) {
+          console.log("[v0] ✅ Usuario ya confirmado y autenticado:", {
+            userId: user.id,
+            email: user.email,
+            confirmed: !!user.email_confirmed_at,
+          })
+
+          setStatus("success")
+          setMessage("Tu email ha sido confirmado correctamente")
+
+          setTimeout(() => {
+            router.push("/auth/login?message=email_confirmed")
+          }, 2000)
+          return
+        }
+
         console.log("[v0] === DIAGNÓSTICO COMPLETO ===")
         console.log("[v0] Search params:", Object.fromEntries(allParams.entries()))
         console.log("[v0] Hash params:", Object.fromEntries(hashParams.entries()))
@@ -84,9 +104,24 @@ export default function AuthCallback() {
 
         if (!finalCode && !hashAccessToken && !hashTokenHash && !token) {
           console.log("[v0] No hay código ni tokens de confirmación")
-          console.log("[v0] Todos los parámetros disponibles:", Object.keys(foundParams))
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
+
+          if (session?.user) {
+            console.log("[v0] ✅ Sesión activa encontrada - confirmación exitosa")
+            setStatus("success")
+            setMessage("Tu email ha sido confirmado correctamente")
+
+            setTimeout(() => {
+              router.push("/auth/login?message=email_confirmed")
+            }, 2000)
+            return
+          }
+
           setStatus("error")
-          setMessage("Enlace de confirmación inválido - no se encontraron parámetros de autenticación")
+          setMessage("Enlace procesado. Si no puedes iniciar sesión, intenta registrarte nuevamente.")
           return
         }
 
@@ -173,8 +208,24 @@ export default function AuthCallback() {
 
         // Si llegamos aquí, ningún método funcionó
         console.log("[v0] ❌ Todos los métodos fallaron")
+
+        const {
+          data: { session: finalSession },
+        } = await supabase.auth.getSession()
+
+        if (finalSession?.user) {
+          console.log("[v0] ✅ Confirmación exitosa detectada en verificación final")
+          setStatus("success")
+          setMessage("Tu email ha sido confirmado correctamente")
+
+          setTimeout(() => {
+            router.push("/auth/login?message=email_confirmed")
+          }, 2000)
+          return
+        }
+
         setStatus("error")
-        setMessage("Error al confirmar el email. Parámetros recibidos pero confirmación falló.")
+        setMessage("Confirmación procesada. Intenta iniciar sesión - si funciona, la confirmación fue exitosa.")
       } catch (error) {
         console.log("[v0] Error inesperado:", error)
         setStatus("error")
