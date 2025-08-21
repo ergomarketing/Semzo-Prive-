@@ -116,11 +116,12 @@ export default function AuthCallback() {
           console.log("[v0] Método 2: Confirmando con verifyOtp...")
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: hashTokenHash,
-            type: hashType as any,
+            type: "signup" as const,
           })
 
           if (error) {
             console.log("[v0] Error método 2:", error.message)
+            console.log("[v0] Error completo método 2:", error)
           } else if (data.user) {
             console.log("[v0] ✅ Método 2 exitoso - Email confirmado:", {
               userId: data.user.id,
