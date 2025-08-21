@@ -98,12 +98,15 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }
 
-        const { error: profileError } = await supabaseAdmin.from("profiles").insert(profileData)
+        const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        })
 
         if (profileError) {
           console.error("❌ Error creando perfil:", profileError)
         } else {
-          console.log("✅ Perfil creado exitosamente")
+          console.log("✅ Perfil creado/actualizado exitosamente")
         }
       } catch (profileError) {
         console.error("❌ Error creando perfil:", profileError)
