@@ -58,6 +58,8 @@ export default function AuthCallback() {
         const hashAccessToken = hashParams.get("access_token")
         const hashTokenHash = hashParams.get("token_hash")
         const hashType = hashParams.get("type")
+        const token = searchParams.get("token")
+        const type = searchParams.get("type")
 
         console.log("[v0] Parámetros específicos:", {
           searchCode: code ? "✓" : "✗",
@@ -65,6 +67,8 @@ export default function AuthCallback() {
           hashAccessToken: hashAccessToken ? "✓" : "✗",
           hashTokenHash: hashTokenHash ? "✓" : "✗",
           hashType: hashType,
+          token: token ? "✓" : "✗",
+          type: type,
           error_code,
           error_description,
         })
@@ -78,7 +82,7 @@ export default function AuthCallback() {
 
         const finalCode = code || hashCode
 
-        if (!finalCode && !hashAccessToken && !hashTokenHash) {
+        if (!finalCode && !hashAccessToken && !hashTokenHash && !token) {
           console.log("[v0] No hay código ni tokens de confirmación")
           console.log("[v0] Todos los parámetros disponibles:", Object.keys(foundParams))
           setStatus("error")
@@ -111,12 +115,12 @@ export default function AuthCallback() {
           }
         }
 
-        // Método 2: verifyOtp si hay token_hash
-        if (hashTokenHash && hashType) {
-          console.log("[v0] Método 2: Confirmando con verifyOtp...")
+        // Método 2: verifyOtp si hay token (parámetro directo de Supabase)
+        if (token && type) {
+          console.log("[v0] Método 2: Confirmando con verifyOtp usando token...")
           const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: hashTokenHash,
-            type: "signup" as const,
+            token_hash: token,
+            type: type as any,
           })
 
           if (error) {
@@ -124,6 +128,34 @@ export default function AuthCallback() {
             console.log("[v0] Error completo método 2:", error)
           } else if (data.user) {
             console.log("[v0] ✅ Método 2 exitoso - Email confirmado:", {
+              userId: data.user.id,
+              email: data.user.email,
+              confirmed: !!data.user.email_confirmed_at,
+            })
+
+            setStatus("success")
+            setMessage("Tu email ha sido confirmado correctamente")
+
+            setTimeout(() => {
+              router.push("/auth/login?message=email_confirmed")
+            }, 2000)
+            return
+          }
+        }
+
+        // Método 3: verifyOtp si hay token_hash
+        if (hashTokenHash && hashType) {
+          console.log("[v0] Método 3: Confirmando con verifyOtp usando token_hash...")
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: hashTokenHash,
+            type: "signup" as const,
+          })
+
+          if (error) {
+            console.log("[v0] Error método 3:", error.message)
+            console.log("[v0] Error completo método 3:", error)
+          } else if (data.user) {
+            console.log("[v0] ✅ Método 3 exitoso - Email confirmado:", {
               userId: data.user.id,
               email: data.user.email,
               confirmed: !!data.user.email_confirmed_at,
