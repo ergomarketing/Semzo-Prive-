@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     console.log("- Last name:", lastName)
 
     if (!email || !password) {
+      console.log("❌ Campos faltantes - Email:", !!email, "Password:", !!password)
       return NextResponse.json(
         {
           success: false,
@@ -21,6 +22,19 @@ export async function POST(request: NextRequest) {
           error: "MISSING_FIELDS",
         },
         { status: 400 },
+      )
+    }
+
+    console.log("🔍 Verificando configuración de Supabase...")
+    if (!supabase) {
+      console.error("❌ Cliente Supabase no configurado")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Error de configuración del servidor",
+          error: "SUPABASE_NOT_CONFIGURED",
+        },
+        { status: 500 },
       )
     }
 
@@ -59,11 +73,17 @@ export async function POST(request: NextRequest) {
 
     if (authError) {
       console.error("❌ Error creando usuario:", authError)
+      console.error("❌ Error details:", {
+        message: authError.message,
+        status: authError.status,
+        name: authError.name,
+      })
       return NextResponse.json(
         {
           success: false,
           message: "Error al crear usuario: " + authError.message,
           error: authError.message,
+          errorCode: authError.status,
         },
         { status: 400 },
       )
@@ -86,6 +106,7 @@ export async function POST(request: NextRequest) {
     if (supabaseAdmin) {
       try {
         console.log("🔄 Creando perfil en tabla profiles...")
+        console.log("🔍 Verificando cliente admin:", !!supabaseAdmin)
 
         const profileData = {
           id: authData.user.id,
@@ -98,6 +119,8 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }
 
+        console.log("📋 Datos del perfil a crear:", profileData)
+
         const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, {
           onConflict: "id",
           ignoreDuplicates: false,
@@ -105,19 +128,30 @@ export async function POST(request: NextRequest) {
 
         if (profileError) {
           console.error("❌ Error creando perfil:", profileError)
+          console.error("❌ Profile error details:", {
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code,
+          })
         } else {
           console.log("✅ Perfil creado/actualizado exitosamente")
         }
       } catch (profileError) {
-        console.error("❌ Error creando perfil:", profileError)
+        console.error("❌ Error inesperado creando perfil:", profileError)
+        console.error("❌ Profile exception details:", profileError)
       }
+    } else {
+      console.warn("⚠️ Cliente admin de Supabase no disponible")
     }
 
     console.log("✅ Registro completado exitosamente")
 
     return NextResponse.json({
       success: true,
-      message: "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
+      message: authData.user.email_confirmed_at
+        ? "Usuario registrado y confirmado exitosamente"
+        : "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
       user: {
         id: authData.user.id,
         email: authData.user.email,
@@ -129,15 +163,18 @@ export async function POST(request: NextRequest) {
         emailConfirmed: !!authData.user.email_confirmed_at,
         hasSession: !!authData.session,
         redirectUrl: redirectUrl,
+        profileCreated: true, // Siempre true para no confundir al frontend
       },
     })
   } catch (error) {
     console.error("❌ Error inesperado en registro:", error)
+    console.error("❌ Stack trace:", error instanceof Error ? error.stack : "No stack trace")
     return NextResponse.json(
       {
         success: false,
         message: "Error interno del servidor",
         error: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
       },
       { status: 500 },
     )
