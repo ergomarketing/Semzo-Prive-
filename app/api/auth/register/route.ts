@@ -108,10 +108,48 @@ export async function POST(request: NextRequest) {
         status: authError.status,
         name: authError.name,
       })
+
+      if (
+        authError.message?.toLowerCase().includes("email rate limit exceeded") ||
+        authError.message?.toLowerCase().includes("rate limit") ||
+        authError.status === 429
+      ) {
+        console.log("🚫 Rate limit detectado - proporcionando mensaje amigable")
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Se han enviado demasiados emails de confirmación. Por favor espera 15-30 minutos antes de intentar nuevamente, o usa un email diferente.",
+            error: "RATE_LIMIT_EXCEEDED",
+            errorCode: 429,
+            userGuidance: {
+              waitTime: "15-30 minutos",
+              alternatives: [
+                "Usar un email diferente",
+                "Intentar desde otra conexión de internet",
+                "Contactar soporte si el problema persiste",
+              ],
+            },
+            debug: {
+              supabaseError: {
+                message: authError.message,
+                status: authError.status,
+                name: authError.name,
+              },
+            },
+          },
+          { status: 429 },
+        )
+      }
+
+      const errorMessage = authError.message?.toLowerCase().includes("user already registered")
+        ? "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña."
+        : `Error al crear usuario: ${authError.message}`
+
       return NextResponse.json(
         {
           success: false,
-          message: "Error al crear usuario: " + authError.message,
+          message: errorMessage,
           error: authError.message,
           errorCode: authError.status,
           debug: {
@@ -122,7 +160,7 @@ export async function POST(request: NextRequest) {
             },
           },
         },
-        { status: 400 },
+        { status: authError.status === 429 ? 429 : 400 },
       )
     }
 
