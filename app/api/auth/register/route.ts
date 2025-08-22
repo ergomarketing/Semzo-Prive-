@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase, supabaseAdmin } from "@/app/lib/supabase-unified"
+import { supabase } from "@/app/lib/supabase-unified"
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,27 +34,25 @@ export async function POST(request: NextRequest) {
 
     console.log("🔍 Verificando configuración de Supabase...")
     console.log("- Cliente supabase:", !!supabase)
-    console.log("- Cliente supabaseAdmin:", !!supabaseAdmin)
 
     if (!supabase) {
-      console.error("❌ Cliente Supabase no configurado")
+      console.error("❌ Cliente de Supabase no configurado")
       return NextResponse.json(
         {
           success: false,
           message: "Error de configuración del servidor",
           error: "SUPABASE_NOT_CONFIGURED",
-          debug: { hasSupabase: !!supabase, hasSupabaseAdmin: !!supabaseAdmin },
         },
         { status: 500 },
       )
     }
 
-    console.log("🔄 Creando usuario en Supabase Auth...")
+    console.log("🔄 Registrando usuario en Supabase Auth...")
 
     const redirectUrl = "https://www.semzoprive.com/auth/callback"
     console.log("🔗 Redirect URL:", redirectUrl)
 
-    const signUpData = {
+    const userData = {
       email: email.toLowerCase().trim(),
       password: password,
       options: {
@@ -67,15 +65,15 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    console.log("📤 Enviando a Supabase:", {
-      email: signUpData.email,
-      emailRedirectTo: signUpData.options.emailRedirectTo,
-      userData: signUpData.options.data,
+    console.log("📤 Registrando usuario con confirmación de email requerida:", {
+      email: userData.email,
+      redirectUrl: userData.options.emailRedirectTo,
+      userData: userData.options.data,
     })
 
     let authData, authError
     try {
-      const result = await supabase.auth.signUp(signUpData)
+      const result = await supabase.auth.signUp(userData)
       authData = result.data
       authError = result.error
       console.log("📊 Respuesta cruda de Supabase:", result)
@@ -178,55 +176,12 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Usuario creado en auth.users:", authData.user.id)
 
-    if (supabaseAdmin) {
-      try {
-        console.log("🔄 Creando perfil en tabla profiles...")
-        console.log("🔍 Verificando cliente admin:", !!supabaseAdmin)
-
-        const profileData = {
-          id: authData.user.id,
-          email: authData.user.email!,
-          full_name: `${firstName} ${lastName}`,
-          first_name: firstName,
-          last_name: lastName,
-          phone: "",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-
-        console.log("📋 Datos del perfil a crear:", profileData)
-
-        const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, {
-          onConflict: "id",
-          ignoreDuplicates: false,
-        })
-
-        if (profileError) {
-          console.error("❌ Error creando perfil:", profileError)
-          console.error("❌ Profile error details:", {
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-            code: profileError.code,
-          })
-        } else {
-          console.log("✅ Perfil creado/actualizado exitosamente")
-        }
-      } catch (profileError) {
-        console.error("❌ Error inesperado creando perfil:", profileError)
-        console.error("❌ Profile exception details:", profileError)
-      }
-    } else {
-      console.warn("⚠️ Cliente admin de Supabase no disponible")
-    }
-
-    console.log("✅ Registro completado exitosamente")
+    console.log("✅ Registro completado - Email de confirmación enviado")
 
     return NextResponse.json({
       success: true,
-      message: authData.user.email_confirmed_at
-        ? "Usuario registrado y confirmado exitosamente"
-        : "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
+      message:
+        "Registro exitoso. Por favor revisa tu email y haz clic en el enlace de confirmación para activar tu cuenta.",
       user: {
         id: authData.user.id,
         email: authData.user.email,
@@ -235,9 +190,8 @@ export async function POST(request: NextRequest) {
         last_name: lastName,
       },
       debug: {
-        emailConfirmed: !!authData.user.email_confirmed_at,
-        hasSession: !!authData.session,
-        redirectUrl: redirectUrl,
+        emailConfirmed: !!authData.user?.email_confirmed_at,
+        confirmationRequired: true,
         profileCreated: true,
         timestamp: new Date().toISOString(),
         userId: authData.user.id,

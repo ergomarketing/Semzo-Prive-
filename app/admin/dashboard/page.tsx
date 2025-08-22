@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, CalendarDays, Clock, Package, PieChart, Users } from "lucide-react"
+import { Calendar, CalendarDays, Clock, Package, PieChart, Users, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -135,6 +135,14 @@ export default function AdminDashboardPage() {
           >
             <CalendarDays className="h-4 w-4 mr-3" />
             Calendario
+          </Button>
+
+          <Button
+            onClick={() => (window.location.href = "/admin/user-diagnostics")}
+            className="w-full justify-start bg-white text-slate-700 hover:bg-slate-50"
+          >
+            <Shield className="h-4 w-4 mr-3" />
+            Diagnóstico de Usuarios
           </Button>
         </nav>
       </div>

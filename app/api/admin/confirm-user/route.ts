@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json()
 
     if (!email) {
-      return NextResponse.json({ message: "Email es requerido" }, { status: 400 })
+      return NextResponse.json({ error: "Email es requerido" }, { status: 400 })
     }
 
     console.log("[Admin] Confirmando usuario:", email)
@@ -22,13 +22,13 @@ export async function POST(request: NextRequest) {
 
     if (searchError) {
       console.error("[Admin] Error buscando usuarios:", searchError)
-      return NextResponse.json({ message: "Error buscando usuario" }, { status: 500 })
+      return NextResponse.json({ error: "Error buscando usuario" }, { status: 500 })
     }
 
     const user = users.users.find((u) => u.email === email)
 
     if (!user) {
-      return NextResponse.json({ message: "Usuario no encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
     console.log("[Admin] Usuario encontrado:", user.id, "Email confirmado:", user.email_confirmed_at)
@@ -39,17 +39,18 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("[Admin] Error confirmando usuario:", error)
-      return NextResponse.json({ message: "Error confirmando usuario: " + error.message }, { status: 500 })
+      return NextResponse.json({ error: "Error confirmando usuario: " + error.message }, { status: 500 })
     }
 
     console.log("[Admin] Usuario confirmado exitosamente:", data.user.email)
 
     return NextResponse.json({
+      success: true,
       message: `Usuario ${email} confirmado exitosamente. Ahora puede hacer login.`,
       user: data.user,
     })
   } catch (error) {
     console.error("[Admin] Error en confirmación manual:", error)
-    return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
