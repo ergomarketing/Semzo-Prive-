@@ -49,7 +49,27 @@ export default function LoginPage() {
 
       if (error) {
         console.log("[v0] Error de login:", error.message)
+
         if (error.message.includes("Invalid login credentials")) {
+          // Intentar recuperar usuario existente
+          try {
+            const response = await fetch("/api/auth/recover-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: formData.email, password: formData.password }),
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+              console.log("[v0] Usuario recuperado exitosamente")
+              window.location.href = "/dashboard"
+              return
+            }
+          } catch (recoveryError) {
+            console.log("[v0] Error en recuperación:", recoveryError)
+          }
+
           setErrors({ general: "Email o contraseña incorrectos" })
         } else if (error.message.includes("Email not confirmed")) {
           setErrors({ general: "Por favor confirma tu email antes de iniciar sesión" })

@@ -14,7 +14,16 @@ export function useAuth() {
         const {
           data: { session },
         } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+
+        if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
+          setUser(session.user)
+        } else {
+          // Clear any invalid/expired sessions
+          if (session) {
+            await supabase.auth.signOut()
+          }
+          setUser(null)
+        }
       } catch (error) {
         console.error("Error getting initial session:", error)
         setUser(null)
@@ -29,7 +38,15 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.email)
-      setUser(session?.user ?? null)
+
+      if (event === "SIGNED_OUT") {
+        setUser(null)
+      } else if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
+        setUser(session.user)
+      } else {
+        setUser(null)
+      }
+
       setLoading(false)
     })
 
@@ -40,9 +57,12 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: "global" })
+      setUser(null)
     } catch (error) {
       console.error("Error signing out:", error)
+      // Force clear user state even if signOut fails
+      setUser(null)
     }
   }
 
