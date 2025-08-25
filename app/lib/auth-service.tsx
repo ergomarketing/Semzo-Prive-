@@ -75,11 +75,15 @@ export class AuthService {
         }
       }
 
+      // Limpiar datos anteriores antes de guardar nuevos
+      this.logout()
+
       // Guardar usuario en localStorage si el login fue exitoso
       if (data.success && data.user) {
         localStorage.setItem("user", JSON.stringify(data.user))
         localStorage.setItem("session", JSON.stringify(data.session))
         localStorage.setItem("isLoggedIn", "true")
+        console.log("[AuthService] Datos guardados en localStorage:", data.user)
       }
 
       return data
@@ -93,15 +97,25 @@ export class AuthService {
   }
 
   static logout(): void {
+    console.log("[AuthService] Cerrando sesión...")
     localStorage.removeItem("user")
     localStorage.removeItem("session")
     localStorage.removeItem("isLoggedIn")
+
+    // Limpiar también cualquier cookie de sesión
+    document.cookie.split(";").forEach((c) => {
+      const eqPos = c.indexOf("=")
+      const name = eqPos > -1 ? c.substr(0, eqPos) : c
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"
+    })
   }
 
   static getCurrentUser(): User | null {
     try {
       const userStr = localStorage.getItem("user")
-      return userStr ? JSON.parse(userStr) : null
+      const user = userStr ? JSON.parse(userStr) : null
+      console.log("[AuthService] Usuario actual:", user)
+      return user
     } catch (error) {
       console.error("[AuthService] Error obteniendo usuario:", error)
       return null
@@ -119,6 +133,9 @@ export class AuthService {
   }
 
   static isLoggedIn(): boolean {
-    return localStorage.getItem("isLoggedIn") === "true"
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true"
+    const user = this.getCurrentUser()
+    console.log("[AuthService] Estado de login:", { isLoggedIn, hasUser: !!user })
+    return isLoggedIn && !!user
   }
 }

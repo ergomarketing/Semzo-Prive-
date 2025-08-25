@@ -31,8 +31,10 @@ export default function LoginPage() {
         setMessage("¡Login exitoso!")
         console.log("[Login] Redirigiendo a dashboard...")
 
-        // ÚNICO CAMBIO: usar window.location.href en lugar de router.push()
-        window.location.href = "/dashboard"
+        // Usar setTimeout para asegurar que el localStorage se guarde antes de redirigir
+        setTimeout(() => {
+          window.location.href = "/dashboard"
+        }, 100)
       } else {
         setMessage(result.message || "Error en el login")
       }
