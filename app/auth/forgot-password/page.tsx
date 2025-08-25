@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { supabase } from "@/app/lib/supabase-auth"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -28,20 +28,10 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
-
-      if (resetError) {
-        console.error("Error enviando reset password:", resetError)
-        setError("Error al enviar el email. Verifica que el email esté registrado.")
-        return
-      }
-
-      console.log("✅ Email de reset enviado exitosamente a:", email)
+      // Simulación de envío de email
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       setIsSubmitted(true)
     } catch (error) {
-      console.error("Error en forgot password:", error)
       setError("Error al enviar el email. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)

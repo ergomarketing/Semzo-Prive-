@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { ADMIN_CONFIG } from "../config/email-config"
 
 export default function AdminLayout({
@@ -13,17 +14,8 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const pathname = usePathname()
-
-  const isLoginPage = pathname === "/admin/login"
 
   useEffect(() => {
-    if (isLoginPage) {
-      setLoading(false)
-      setIsAuthenticated(true) // Permitir render de la página de login
-      return
-    }
-
     const checkAuth = () => {
       // Verificar que estamos en el navegador antes de acceder a localStorage
       if (typeof window !== "undefined") {
@@ -52,7 +44,7 @@ export default function AdminLayout({
     }
 
     checkAuth()
-  }, [router, isLoginPage])
+  }, [router])
 
   if (loading) {
     return (

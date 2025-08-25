@@ -241,22 +241,12 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
               <Button
                 className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
                 disabled={bag.availability.status !== "available"}
-                onClick={() => {
-                  if (bag.availability.status === "available") {
-                    window.location.href = `/checkout?plan=${bag.membership}&bag=${bag.id}`
-                  }
-                }}
               >
                 {bag.availability.status === "available" ? "Reservar ahora" : "No disponible"}
               </Button>
               <Button
                 variant="outline"
-                className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6 bg-transparent"
-                onClick={() => {
-                  const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name} (${bag.id}). ¿Podrían darme más información?`
-                  const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
-                  window.open(whatsappUrl, "_blank")
-                }}
+                className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6"
               >
                 Consultar
               </Button>

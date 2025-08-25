@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js"
-import { ADMIN_CONFIG } from "@/app/config/email-config"
 
 // Validar variables de entorno
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -238,42 +237,6 @@ export class SimpleAuthService {
   // Escuchar cambios de autenticación
   onAuthStateChange(callback: (event: string, session: any) => void) {
     return supabase.auth.onAuthStateChange(callback)
-  }
-
-  // Login de admin
-  async adminLogin(username: string, password: string): Promise<AuthResponse> {
-    try {
-      console.log("🔄 Validando credenciales de admin:", username)
-
-      // Validar contra configuración de admin
-      if (username === ADMIN_CONFIG.username && password === ADMIN_CONFIG.password) {
-        console.log("✅ Credenciales de admin válidas")
-        return {
-          success: true,
-          message: "Login de admin exitoso",
-          user: {
-            id: "admin",
-            email: "admin@semzoprive.com",
-            email_confirmed_at: new Date().toISOString(),
-            user_metadata: { role: "admin" },
-          },
-        }
-      } else {
-        console.log("❌ Credenciales de admin inválidas")
-        return {
-          success: false,
-          message: "Usuario o contraseña incorrectos",
-          error: "INVALID_ADMIN_CREDENTIALS",
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error en login de admin:", error)
-      return {
-        success: false,
-        message: "Error interno del servidor",
-        error: error instanceof Error ? error.message : "Unknown error",
-      }
-    }
   }
 }
 

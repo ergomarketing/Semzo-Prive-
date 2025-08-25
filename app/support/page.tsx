@@ -22,32 +22,9 @@ export default function SupportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    try {
-      const response = await fetch("/api/contact", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        setIsSubmitted(true)
-        setFormData({
-          name: "",
-          email: "",
-          subject: "",
-          message: "",
-          priority: "medium",
-        })
-      } else {
-        const errorData = await response.json()
-        console.error("Error al enviar consulta:", errorData)
-      }
-    } catch (error) {
-      console.error("Error de conexión:", error)
-    }
+    // Simulación de envío
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    setIsSubmitted(true)
   }
 
   if (isSubmitted) {

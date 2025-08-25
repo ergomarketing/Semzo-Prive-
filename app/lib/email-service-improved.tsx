@@ -1,4 +1,4 @@
-// SERVICIO DE EMAIL COMPLETAMENTE DESHABILITADO PARA EVITAR DUPLICADOS
+// SERVICIO DE EMAIL DESHABILITADO PARA EVITAR DUPLICADOS
 // Supabase se encarga automáticamente del envío de emails de confirmación
 
 export class EmailServiceImproved {
@@ -16,11 +16,12 @@ export class EmailServiceImproved {
     customerName: string
     membershipType: string
   }): Promise<{ success: boolean; message: string }> {
-    console.log("⚠️ EmailService COMPLETAMENTE deshabilitado - Solo Supabase nativo")
+    console.log("⚠️ EmailService deshabilitado - Supabase maneja los emails automáticamente")
 
+    // NO enviar emails manuales para evitar duplicados
     return {
       success: true,
-      message: "Email service deshabilitado - Solo Supabase nativo activo",
+      message: "Email service deshabilitado - Supabase se encarga automáticamente",
     }
   }
 

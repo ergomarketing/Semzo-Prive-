@@ -58,11 +58,3 @@ export const ADMIN_CONFIG = {
   allowedIPs: [], // dejar vacío para permitir todas las IPs
   requireHTTPS: true, // cambiar a true en producción
 }
-
-console.log("[v0] ADMIN_CONFIG Debug:", {
-  username: ADMIN_CONFIG.username,
-  hasPassword: !!ADMIN_CONFIG.password,
-  passwordLength: ADMIN_CONFIG.password.length,
-  envUsername: process.env.ADMIN_USERNAME ? "SET" : "NOT_SET",
-  envPassword: process.env.ADMIN_PASSWORD ? "SET" : "NOT_SET",
-})

@@ -8,14 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ADMIN_CONFIG } from "@/app/config/email-config"
+import { ADMIN_CONFIG } from "../../config/email-config"
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [showDebug, setShowDebug] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,36 +22,16 @@ export default function AdminLogin() {
     setLoading(true)
     setError("")
 
-    try {
-      console.log("🔍 Intentando login admin con:", username)
+    // Simular verificación (en producción usar hash/bcrypt)
+    if (username === ADMIN_CONFIG.username && password === ADMIN_CONFIG.password) {
+      // Guardar sesión
+      localStorage.setItem("admin_session", "authenticated")
+      localStorage.setItem("admin_login_time", Date.now().toString())
 
-      const response = await fetch("/api/auth/login-simple", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username, // Cambiado de 'email' a 'username'
-          password: password,
-        }),
-      })
-
-      const data = await response.json()
-      console.log("Respuesta de API:", data)
-
-      if (data.success) {
-        // Guardar sesión
-        localStorage.setItem("admin_session", "authenticated")
-        localStorage.setItem("admin_login_time", Date.now().toString())
-
-        console.log("✅ Login exitoso, redirigiendo...")
-        router.push("/admin")
-      } else {
-        setError(data.message || "Credenciales incorrectas")
-      }
-    } catch (error) {
-      console.error("Error en login:", error)
-      setError("Error de conexión. Intenta nuevamente.")
+      // Redirigir al panel
+      router.push("/admin")
+    } else {
+      setError("Credenciales incorrectas")
     }
 
     setLoading(false)
@@ -113,35 +92,8 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <div className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDebug(!showDebug)}
-              className="w-full text-xs"
-            >
-              {showDebug ? "Ocultar" : "Mostrar"} Info Debug
-            </Button>
-
-            {showDebug && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs">
-                <p>
-                  <strong>Usuario esperado:</strong> {ADMIN_CONFIG.username}
-                </p>
-                <p>
-                  <strong>Variables de entorno:</strong> {process.env.ADMIN_USERNAME ? "✅" : "❌"}
-                </p>
-                <p>
-                  <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
-                </p>
-              </div>
-            )}
-          </div>
-
           <div className="mt-6 p-3 bg-rose-pastel/10 rounded-lg">
             <p className="text-xs text-slate-600 text-center">🔒 Acceso restringido solo para administradores</p>
-            <p className="text-xs text-slate-500 text-center mt-1">Credenciales por defecto: admin / semzo2024!</p>
           </div>
         </CardContent>
       </Card>

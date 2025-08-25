@@ -55,7 +55,7 @@ export class AuthService {
 
   static async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      console.log("[AuthService] Enviando datos de login:", { email })
+      console.log("[AuthService] Enviando datos de login:", { email, password: "***" })
 
       const response = await fetch("/api/auth/login", {
         method: "POST",

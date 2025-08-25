@@ -1,8 +1,3 @@
-"use client"
-
-import type React from "react"
-
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, ArrowRight } from "lucide-react"
 
@@ -50,51 +45,6 @@ const featuredArticles = [
 ]
 
 export default function MagazineSection() {
-  const [email, setEmail] = useState("")
-  const [isSubscribing, setIsSubscribing] = useState(false)
-  const [subscribed, setSubscribed] = useState(false)
-
-  const handleNewsletterSubscription = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) return
-
-    setIsSubscribing(true)
-
-    try {
-      const response = await fetch("/api/newsletter/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          name: email.split("@")[0], // Usar la parte antes del @ como nombre por defecto
-          preferences: {
-            newArrivals: true,
-            exclusiveOffers: true,
-            styleGuides: true,
-            events: false,
-            membershipUpdates: true,
-          },
-        }),
-      })
-
-      if (response.ok) {
-        setSubscribed(true)
-        setEmail("")
-      } else {
-        const errorData = await response.json()
-        console.error("Error al suscribirse:", errorData)
-        // Aquí podrías mostrar un mensaje de error al usuario
-      }
-    } catch (error) {
-      console.error("Error al suscribirse:", error)
-      // Aquí podrías mostrar un mensaje de error al usuario
-    } finally {
-      setIsSubscribing(false)
-    }
-  }
-
   return (
     <section
       id="magazine"
@@ -137,7 +87,7 @@ export default function MagazineSection() {
                   <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-white/40 flex items-center justify-center">
                     <span className="text-2xl md:text-3xl lg:text-4xl text-indigo-dark">SM</span>
                   </div>
-                  <h3 className="text-lg md:text-xl font-serif text-indigo-dark mb-2">Imagen Destacada</h3>
+                  <h3 className="text-lg md:text-xl font-serif text-slate-900 mb-2">Imagen Destacada</h3>
                   <p className="text-sm text-slate-600">Artículo principal del magazine</p>
                 </div>
 
@@ -161,7 +111,7 @@ export default function MagazineSection() {
                   </div>
                 </div>
 
-                <h3 className="font-serif text-2xl md:text-3xl lg:text-4xl text-indigo-dark leading-tight group-hover:text-indigo-dark/80 transition-colors">
+                <h3 className="font-serif text-2xl md:text-3xl lg:text-4xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
                   {featuredArticles[0].title}
                 </h3>
 
@@ -206,7 +156,7 @@ export default function MagazineSection() {
                     <span>{article.readTime}</span>
                   </div>
 
-                  <h4 className="font-serif text-lg md:text-xl text-indigo-dark leading-tight group-hover:text-indigo-dark/80 transition-colors">
+                  <h4 className="font-serif text-lg md:text-xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
                     {article.title}
                   </h4>
 
@@ -226,37 +176,23 @@ export default function MagazineSection() {
         <div className="mt-16 md:mt-24 p-6 md:p-12 rounded-lg bg-white/60 backdrop-blur-sm border border-slate-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center text-center md:text-left">
             <div>
-              <h3 className="font-serif text-2xl md:text-3xl text-indigo-dark mb-4">Suscríbete a Semzo Magazine</h3>
+              <h3 className="font-serif text-2xl md:text-3xl text-slate-900 mb-4">Suscríbete a Semzo Magazine</h3>
               <p className="text-slate-600 leading-relaxed font-light">
                 Recibe nuestros artículos exclusivos, guías de estilo y las últimas tendencias directamente en tu
                 bandeja de entrada. Una dosis semanal de elegancia y sofisticación.
               </p>
             </div>
             <div className="space-y-4">
-              {subscribed ? (
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-green-800 font-medium">¡Gracias por suscribirte!</p>
-                  <p className="text-green-600 text-sm">Recibirás nuestro próximo newsletter pronto.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleNewsletterSubscription} className="flex flex-col sm:flex-row">
-                  <input
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="flex-1 px-4 md:px-6 py-3 md:py-4 border border-slate-200 rounded-t sm:rounded-l sm:rounded-t-none focus:outline-none focus:border-indigo-dark text-slate-900"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={isSubscribing}
-                    className="rounded-b sm:rounded-l-none sm:rounded-r px-6 md:px-8 py-3 md:py-4 bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-all duration-300 disabled:opacity-50"
-                  >
-                    {isSubscribing ? "Suscribiendo..." : "Suscribirse"}
-                  </Button>
-                </form>
-              )}
+              <div className="flex flex-col sm:flex-row">
+                <input
+                  type="email"
+                  placeholder="tu@email.com"
+                  className="flex-1 px-4 md:px-6 py-3 md:py-4 border border-slate-200 rounded-t sm:rounded-l sm:rounded-t-none focus:outline-none focus:border-indigo-dark text-slate-900"
+                />
+                <Button className="rounded-b sm:rounded-l-none sm:rounded-r px-6 md:px-8 py-3 md:py-4 bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-all duration-300">
+                  Suscribirse
+                </Button>
+              </div>
               <p className="text-xs text-slate-500 text-center">
                 Sin spam. Solo contenido de calidad. Cancela cuando quieras.
               </p>

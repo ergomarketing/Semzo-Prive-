@@ -147,5 +147,4 @@ class AuthServiceSupabase {
   }
 }
 
-export { AuthServiceSupabase }
 export default AuthServiceSupabase

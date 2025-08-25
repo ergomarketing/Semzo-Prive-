@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react"
-import RealPaymentGateway from "@/components/real-payment-gateway"
+import RealPaymentGateway from "./real-payment-gateway"
 
 interface PaymentGatewayProps {
   amount: number
@@ -48,7 +48,7 @@ export function PaymentError({ error, onRetry }: { error: string; onRetry: () =>
           <Button onClick={onRetry} className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90">
             Intentar de nuevo
           </Button>
-          <Button variant="outline" className="w-full bg-transparent" onClick={() => window.history.back()}>
+          <Button variant="outline" className="w-full" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>

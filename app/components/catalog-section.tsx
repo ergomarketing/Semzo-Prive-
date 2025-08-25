@@ -579,12 +579,6 @@ function BagCard({
     prive: "Privé",
   }
 
-  const membershipToCheckoutPlan = {
-    essentiel: "essentiel",
-    signature: "signature",
-    prive: "prive",
-  }
-
   // FUNCIÓN MEJORADA PARA CAMBIAR IMÁGENES
   const handleImageChange = (index: number, event: React.MouseEvent) => {
     event.preventDefault()
@@ -656,9 +650,9 @@ function BagCard({
       {/* Información del producto */}
       <div className="p-4">
         <p className="text-sm text-slate-500">{bag.brand}</p>
-        <h3 className="font-serif text-xl text-indigo-dark mb-2">{bag.name}</h3>
+        <h3 className="font-serif text-xl text-slate-900 mb-2">{bag.name}</h3>
         <div className="mb-4">
-          <p className="text-lg font-medium text-indigo-dark">{bag.price}</p>
+          <p className="text-lg font-medium text-slate-900">{bag.price}</p>
           <p className="text-sm text-slate-500">Valor: {bag.retailPrice}</p>
         </div>
 
@@ -667,18 +661,16 @@ function BagCard({
           <Link href={`/catalog/${bag.id}`} className="block">
             <Button
               variant="outline"
-              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
+              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors"
             >
               <Info className="h-4 w-4 mr-2" />
               Detalles
             </Button>
           </Link>
-          <Link href={`/checkout?plan=${membershipToCheckoutPlan[bag.membership]}&bag=${bag.id}`} className="block">
-            <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Reservar
-            </Button>
-          </Link>
+          <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Reservar
+          </Button>
         </div>
       </div>
     </div>

@@ -8,18 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { createBrowserClient } from "@supabase/ssr"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,53 +32,22 @@ export default function LoginPage() {
     }
 
     try {
-      console.log("[v0] Intentando login con:", formData.email)
+      // Simulación de autenticación mientras implementamos el sistema real
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      })
+      // Por ahora, permitir acceso a usuarios registrados
+      const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
+      const user = registeredUsers.find((u: any) => u.email === formData.email)
 
-      console.log("[v0] Respuesta de Supabase:", { data, error })
-
-      if (error) {
-        console.log("[v0] Error de login:", error.message)
-
-        if (error.message.includes("Invalid login credentials")) {
-          // Intentar recuperar usuario existente
-          try {
-            const response = await fetch("/api/auth/recover-user", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: formData.email, password: formData.password }),
-            })
-
-            const result = await response.json()
-
-            if (result.success) {
-              console.log("[v0] Usuario recuperado exitosamente")
-              window.location.href = "/dashboard"
-              return
-            }
-          } catch (recoveryError) {
-            console.log("[v0] Error en recuperación:", recoveryError)
-          }
-
-          setErrors({ general: "Email o contraseña incorrectos" })
-        } else if (error.message.includes("Email not confirmed")) {
-          setErrors({ general: "Por favor confirma tu email antes de iniciar sesión" })
-        } else {
-          setErrors({ general: `Error de autenticación: ${error.message}` })
-        }
-        return
-      }
-
-      if (data.user) {
-        console.log("[v0] Login exitoso, redirigiendo al dashboard")
+      if (user) {
+        localStorage.setItem("isAuthenticated", "true")
+        localStorage.setItem("userEmail", formData.email)
+        localStorage.setItem("userName", user.name || "Usuario")
         window.location.href = "/dashboard"
+      } else {
+        setErrors({ general: "Usuario no encontrado. Por favor regístrate primero." })
       }
     } catch (error) {
-      console.log("[v0] Error inesperado:", error)
       setErrors({ general: "Error de conexión. Inténtalo de nuevo." })
     } finally {
       setIsLoading(false)

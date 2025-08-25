@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/app/lib/supabase-unified"
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +13,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
     }
 
+    // Crear cliente público de Supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    // Intentar login
     console.log("[LOGIN] Intentando login...")
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase(),
