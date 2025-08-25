@@ -2,52 +2,49 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AuthService, type AuthUser } from "@/app/lib/auth-service"
+import type { User } from "@supabase/supabase-js"
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
-    const checkAuth = () => {
-      console.log("[Dashboard] Verificando autenticación...")
+    const getUser = async () => {
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
 
-      if (!AuthService.isLoggedIn()) {
-        console.log("[Dashboard] Usuario no autenticado, redirigiendo al login...")
-        window.location.href = "/auth/login"
-        return
+        if (error || !user) {
+          router.push("/auth/login")
+          return
+        }
+
+        setUser(user)
+      } catch (error) {
+        console.error("Error obteniendo usuario:", error)
+        router.push("/auth/login")
+      } finally {
+        setLoading(false)
       }
-
-      const currentUser = AuthService.getCurrentUser()
-      console.log("[Dashboard] Usuario actual:", currentUser)
-
-      if (currentUser) {
-        setUser(currentUser)
-      } else {
-        console.log("[Dashboard] No se pudo obtener usuario, redirigiendo al login...")
-        window.location.href = "/auth/login"
-      }
-
-      setLoading(false)
     }
 
-    checkAuth()
-  }, [])
+    getUser()
+  }, [router, supabase])
 
   const handleLogout = async () => {
-    console.log("[Dashboard] Cerrando sesión...")
-
-    const result = await AuthService.logout()
-
-    if (result.success) {
-      console.log("[Dashboard] Logout exitoso, redirigiendo...")
-      // Forzar recarga completa para limpiar todo el estado
+    try {
+      await supabase.auth.signOut()
+      // Usar window.location para forzar recarga completa
       window.location.href = "/auth/login"
-    } else {
-      console.error("[Dashboard] Error en logout:", result.message)
+    } catch (error) {
+      console.error("Error cerrando sesión:", error)
     }
   }
 
@@ -63,14 +60,12 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600">Error cargando usuario</p>
-        </div>
-      </div>
-    )
+    return null
   }
+
+  const firstName = user.user_metadata?.firstName || user.user_metadata?.first_name || "Usuario"
+  const lastName = user.user_metadata?.lastName || user.user_metadata?.last_name || ""
+  const phone = user.user_metadata?.phone || ""
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,7 +96,7 @@ export default function DashboardPage() {
             </nav>
 
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Hola, {user.firstName}</span>
+              <span className="text-sm text-gray-700">Hola, {firstName}</span>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 Cerrar Sesión
               </Button>
@@ -115,7 +110,7 @@ export default function DashboardPage() {
         <div className="px-4 py-6 sm:px-0">
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>¡Bienvenido, {user.firstName}!</CardTitle>
+              <CardTitle>¡Bienvenido, {firstName}!</CardTitle>
               <CardDescription>Accede a tu colección de bolsos de lujo</CardDescription>
             </CardHeader>
             <CardContent>
@@ -123,15 +118,15 @@ export default function DashboardPage() {
                 <div className="bg-gray-100 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900">Mi Perfil</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    {user.firstName} {user.lastName}
+                    {firstName} {lastName}
                   </p>
                   <p className="text-sm text-gray-600">{user.email}</p>
-                  {user.phone && <p className="text-sm text-gray-600">{user.phone}</p>}
+                  {phone && <p className="text-sm text-gray-600">{phone}</p>}
                 </div>
 
                 <div className="bg-gray-100 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900">Membresía</h3>
-                  <p className="text-sm text-gray-600 mt-1 capitalize">{user.membershipStatus}</p>
+                  <p className="text-sm text-gray-600 mt-1">Free</p>
                 </div>
 
                 <div className="bg-gray-100 p-4 rounded-lg">

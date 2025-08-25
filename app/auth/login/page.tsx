@@ -1,67 +1,47 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AuthService } from "@/app/lib/auth-service"
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
+  const supabase = createClient()
 
-  useEffect(() => {
-    // Verificar si ya está logueado
-    if (AuthService.isLoggedIn()) {
-      console.log("[Login] Usuario ya logueado, redirigiendo...")
-      window.location.href = "/dashboard"
-    }
-  }, [])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setMessage("")
+    setLoading(true)
+    setError("")
 
     try {
-      console.log("[Login] Intentando login para:", formData.email)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      const result = await AuthService.login(formData.email, formData.password)
-
-      console.log("[Login] Resultado:", result)
-
-      if (result.success) {
-        console.log("[Login] Login exitoso, redirigiendo al dashboard...")
-        setMessage("Login exitoso, redirigiendo...")
-
-        // Esperar un momento para que se guarde en localStorage
-        setTimeout(() => {
-          // ÚNICO CAMBIO: usar window.location.href en lugar de router.push()
-          window.location.href = "/dashboard"
-        }, 500)
-      } else {
-        setMessage(result.message || "Error en el login")
+      if (error) {
+        setError(error.message)
+        return
       }
-    } catch (error: any) {
-      console.error("[Login] Error:", error)
-      setMessage("Error de conexión")
+
+      if (data.user) {
+        // Redirigir usando window.location para forzar recarga completa
+        window.location.href = "/dashboard"
+      }
+    } catch (err) {
+      setError("Error inesperado")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -73,18 +53,17 @@ export default function LoginPage() {
           <CardDescription className="text-center">Accede a tu cuenta de Semzo Privé</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
-                disabled={isLoading}
+                required
+                disabled={loading}
               />
             </div>
 
@@ -92,25 +71,20 @@ export default function LoginPage() {
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
-                name="password"
                 type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Tu contraseña"
-                disabled={isLoading}
+                required
+                disabled={loading}
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
-            </Button>
+            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
 
-            {message && (
-              <div className={`text-center text-sm ${message.includes("exitoso") ? "text-green-600" : "text-red-600"}`}>
-                {message}
-              </div>
-            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">
@@ -120,12 +94,6 @@ export default function LoginPage() {
                 Crear cuenta
               </a>
             </p>
-          </div>
-
-          <div className="mt-4 text-center">
-            <a href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
-              ¿Olvidaste tu contraseña?
-            </a>
           </div>
         </CardContent>
       </Card>

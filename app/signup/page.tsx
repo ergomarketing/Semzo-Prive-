@@ -1,24 +1,26 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
+import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AuthService } from "@/app/lib/auth-service"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
+    email: "",
+    password: "",
     firstName: "",
     lastName: "",
-    email: "",
     phone: "",
-    password: "",
-    confirmPassword: "",
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+  const supabase = createClient()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -27,48 +29,39 @@ export default function SignupPage() {
     })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
+    setError("")
     setMessage("")
 
-    // Validar que las contraseñas coincidan
-    if (formData.password !== formData.confirmPassword) {
-      setMessage("Las contraseñas no coinciden")
-      setIsLoading(false)
-      return
-    }
-
-    // Validar longitud de contraseña
-    if (formData.password.length < 6) {
-      setMessage("La contraseña debe tener al menos 6 caracteres")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      console.log("[Signup] Enviando datos:", formData)
-
-      const result = await AuthService.register({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone,
+            full_name: `${formData.firstName} ${formData.lastName}`.trim(),
+          },
+        },
       })
 
-      console.log("[Signup] Resultado:", result)
-
-      if (result.success) {
-        setMessage("¡Registro exitoso! Revisa tu email para confirmar tu cuenta.")
-      } else {
-        setMessage(result.message || "Error en el registro")
+      if (error) {
+        setError(error.message)
+        return
       }
-    } catch (error: any) {
-      console.error("[Signup] Error:", error)
-      setMessage("Error de conexión")
+
+      if (data.user) {
+        setMessage("¡Registro exitoso! Revisa tu email para confirmar tu cuenta.")
+      }
+    } catch (err) {
+      setError("Error inesperado durante el registro")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -80,7 +73,7 @@ export default function SignupPage() {
           <CardDescription className="text-center">Únete a Semzo Privé</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">Nombre</Label>
@@ -88,11 +81,11 @@ export default function SignupPage() {
                   id="firstName"
                   name="firstName"
                   type="text"
-                  required
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="Tu nombre"
-                  disabled={isLoading}
+                  required
+                  disabled={loading}
                 />
               </div>
               <div>
@@ -101,11 +94,11 @@ export default function SignupPage() {
                   id="lastName"
                   name="lastName"
                   type="text"
-                  required
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Tu apellido"
-                  disabled={isLoading}
+                  required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -116,11 +109,11 @@ export default function SignupPage() {
                 id="email"
                 name="email"
                 type="email"
-                required
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="tu@email.com"
-                disabled={isLoading}
+                required
+                disabled={loading}
               />
             </div>
 
@@ -132,8 +125,8 @@ export default function SignupPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="+34 123 456 789"
-                disabled={isLoading}
+                placeholder="+1234567890"
+                disabled={loading}
               />
             </div>
 
@@ -143,37 +136,22 @@ export default function SignupPage() {
                 id="password"
                 name="password"
                 type="password"
-                required
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Mínimo 6 caracteres"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
                 required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Repite tu contraseña"
-                disabled={isLoading}
+                disabled={loading}
+                minLength={6}
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
-            </Button>
+            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
 
-            {message && (
-              <div className={`text-center text-sm ${message.includes("exitoso") ? "text-green-600" : "text-red-600"}`}>
-                {message}
-              </div>
-            )}
+            {message && <div className="text-green-600 text-sm text-center">{message}</div>}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Creando cuenta..." : "Crear Cuenta"}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">

@@ -210,7 +210,8 @@ class AuthService {
 }
 
 // Exportar la instancia como authService (exportación nombrada)
-export const authService = new AuthService()
+const authServiceInstance = new AuthService()
+export { authServiceInstance as authService }
 
 // También exportar la clase por si se necesita
 export { AuthService }
