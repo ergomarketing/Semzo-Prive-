@@ -1,4 +1,11 @@
-export interface User {
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export interface AuthUser {
   id: string
   email: string
   firstName: string
@@ -10,8 +17,8 @@ export interface User {
 export interface AuthResponse {
   success: boolean
   message: string
-  user?: User
-  session?: any
+  user?: AuthUser
+  error?: string
 }
 
 export class AuthService {
@@ -23,121 +30,183 @@ export class AuthService {
     phone?: string
   }): Promise<AuthResponse> {
     try {
-      console.log("[AuthService] Enviando datos de registro:", userData)
+      console.log("[AuthService] Iniciando registro para:", userData.email)
 
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            phone: userData.phone || "",
+          },
         },
-        body: JSON.stringify(userData),
       })
 
-      const data = await response.json()
-      console.log("[AuthService] Respuesta del servidor:", data)
-
-      if (!response.ok) {
+      if (error) {
+        console.error("[AuthService] Error en registro:", error)
         return {
           success: false,
-          message: data.message || "Error en el registro",
+          message: error.message,
+          error: error.message,
         }
       }
 
-      return data
+      if (!data.user) {
+        return {
+          success: false,
+          message: "No se pudo crear el usuario",
+          error: "NO_USER_CREATED",
+        }
+      }
+
+      console.log("[AuthService] Usuario registrado exitosamente:", data.user.email)
+
+      return {
+        success: true,
+        message: "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
+        user: {
+          id: data.user.id,
+          email: data.user.email!,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phone: userData.phone,
+          membershipStatus: "free",
+        },
+      }
     } catch (error: any) {
-      console.error("[AuthService] Error en registro:", error)
+      console.error("[AuthService] Error general en registro:", error)
       return {
         success: false,
-        message: "Error de conexión",
+        message: "Error interno del servidor",
+        error: error.message,
       }
     }
   }
 
   static async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      console.log("[AuthService] Enviando datos de login:", { email, password: "***" })
+      console.log("[AuthService] Iniciando login para:", email)
 
-      // Limpiar datos anteriores
-      this.clearStorage()
+      // Limpiar cualquier sesión anterior
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user")
+        localStorage.removeItem("session")
+        localStorage.removeItem("isLoggedIn")
+      }
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      const data = await response.json()
-      console.log("[AuthService] Respuesta del servidor:", data)
-
-      if (!response.ok) {
+      if (error) {
+        console.error("[AuthService] Error en login:", error)
         return {
           success: false,
-          message: data.message || "Error en el login",
+          message: "Credenciales inválidas o usuario no confirmado",
+          error: error.message,
         }
       }
 
-      // Guardar usuario en localStorage si el login fue exitoso
-      if (data.success && data.user) {
-        console.log("[AuthService] Guardando datos en localStorage:", data.user)
-        localStorage.setItem("user", JSON.stringify(data.user))
+      if (!data.user || !data.session) {
+        return {
+          success: false,
+          message: "No se pudo autenticar el usuario",
+          error: "NO_USER_AUTHENTICATED",
+        }
+      }
+
+      console.log("[AuthService] Login exitoso para:", data.user.email)
+
+      // Obtener datos del perfil
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
+
+      const userData: AuthUser = {
+        id: data.user.id,
+        email: data.user.email!,
+        firstName: profile?.first_name || data.user.user_metadata?.firstName || "",
+        lastName: profile?.last_name || data.user.user_metadata?.lastName || "",
+        phone: profile?.phone || data.user.user_metadata?.phone || "",
+        membershipStatus: profile?.membership_status || "free",
+      }
+
+      // Guardar en localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(userData))
         localStorage.setItem("session", JSON.stringify(data.session))
         localStorage.setItem("isLoggedIn", "true")
       }
 
-      return data
+      return {
+        success: true,
+        message: "Login exitoso",
+        user: userData,
+      }
     } catch (error: any) {
-      console.error("[AuthService] Error en login:", error)
+      console.error("[AuthService] Error general en login:", error)
       return {
         success: false,
-        message: "Error de conexión",
+        message: "Error interno del servidor",
+        error: error.message,
       }
     }
   }
 
-  static clearStorage(): void {
-    console.log("[AuthService] Limpiando localStorage...")
-    localStorage.removeItem("user")
-    localStorage.removeItem("session")
-    localStorage.removeItem("isLoggedIn")
-  }
-
-  static logout(): void {
-    console.log("[AuthService] Cerrando sesión...")
-    this.clearStorage()
-
-    // Limpiar cookies también
-    document.cookie.split(";").forEach((c) => {
-      const eqPos = c.indexOf("=")
-      const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim()
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
-    })
-  }
-
-  static getCurrentUser(): User | null {
+  static async logout(): Promise<AuthResponse> {
     try {
-      if (typeof window === "undefined") return null
+      console.log("[AuthService] Cerrando sesión...")
 
-      const userStr = localStorage.getItem("user")
-      const user = userStr ? JSON.parse(userStr) : null
-      console.log("[AuthService] Usuario actual desde localStorage:", user)
-      return user
-    } catch (error) {
-      console.error("[AuthService] Error obteniendo usuario:", error)
-      return null
+      // Limpiar localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user")
+        localStorage.removeItem("session")
+        localStorage.removeItem("isLoggedIn")
+      }
+
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error("[AuthService] Error cerrando sesión:", error)
+        return {
+          success: false,
+          message: "Error cerrando sesión",
+          error: error.message,
+        }
+      }
+
+      console.log("[AuthService] Sesión cerrada exitosamente")
+
+      return {
+        success: true,
+        message: "Sesión cerrada exitosamente",
+      }
+    } catch (error: any) {
+      console.error("[AuthService] Error general cerrando sesión:", error)
+      return {
+        success: false,
+        message: "Error interno",
+        error: error.message,
+      }
     }
   }
 
-  static getSession(): any | null {
-    try {
-      if (typeof window === "undefined") return null
+  static getCurrentUser(): AuthUser | null {
+    if (typeof window === "undefined") return null
 
-      const sessionStr = localStorage.getItem("session")
-      return sessionStr ? JSON.parse(sessionStr) : null
+    try {
+      const userStr = localStorage.getItem("user")
+      const isLoggedIn = localStorage.getItem("isLoggedIn")
+
+      if (!userStr || isLoggedIn !== "true") {
+        return null
+      }
+
+      return JSON.parse(userStr)
     } catch (error) {
-      console.error("[AuthService] Error obteniendo sesión:", error)
+      console.error("[AuthService] Error obteniendo usuario actual:", error)
       return null
     }
   }
@@ -145,10 +214,9 @@ export class AuthService {
   static isLoggedIn(): boolean {
     if (typeof window === "undefined") return false
 
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true"
-    const user = this.getCurrentUser()
-    const result = isLoggedIn && !!user
-    console.log("[AuthService] Estado de login:", { isLoggedIn, hasUser: !!user, result })
-    return result
+    const isLoggedIn = localStorage.getItem("isLoggedIn")
+    const user = localStorage.getItem("user")
+
+    return isLoggedIn === "true" && !!user
   }
 }

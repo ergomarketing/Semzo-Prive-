@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AuthService, type User } from "@/app/lib/auth-service"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AuthService, type AuthUser } from "@/app/lib/auth-service"
 
-export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null)
+export default function DashboardPage() {
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -15,35 +15,40 @@ export default function Dashboard() {
     const checkAuth = () => {
       console.log("[Dashboard] Verificando autenticación...")
 
-      const currentUser = AuthService.getCurrentUser()
-      const isLoggedIn = AuthService.isLoggedIn()
-
-      console.log("[Dashboard] Usuario actual:", currentUser)
-      console.log("[Dashboard] Está logueado:", isLoggedIn)
-
-      if (!isLoggedIn || !currentUser) {
-        console.log("[Dashboard] No autenticado, redirigiendo a login")
-        router.push("/auth/login")
+      if (!AuthService.isLoggedIn()) {
+        console.log("[Dashboard] Usuario no autenticado, redirigiendo al login...")
+        window.location.href = "/auth/login"
         return
       }
 
-      setUser(currentUser)
+      const currentUser = AuthService.getCurrentUser()
+      console.log("[Dashboard] Usuario actual:", currentUser)
+
+      if (currentUser) {
+        setUser(currentUser)
+      } else {
+        console.log("[Dashboard] No se pudo obtener usuario, redirigiendo al login...")
+        window.location.href = "/auth/login"
+      }
+
       setLoading(false)
     }
 
-    // Verificar autenticación después de que el componente se monte
-    const timer = setTimeout(checkAuth, 100)
-    return () => clearTimeout(timer)
-  }, [router])
+    checkAuth()
+  }, [])
 
-  const handleLogout = () => {
-    console.log("[Dashboard] Iniciando logout...")
-    AuthService.logout()
+  const handleLogout = async () => {
+    console.log("[Dashboard] Cerrando sesión...")
 
-    // Forzar recarga completa para limpiar todo el estado
-    setTimeout(() => {
-      window.location.href = "/"
-    }, 100)
+    const result = await AuthService.logout()
+
+    if (result.success) {
+      console.log("[Dashboard] Logout exitoso, redirigiendo...")
+      // Forzar recarga completa para limpiar todo el estado
+      window.location.href = "/auth/login"
+    } else {
+      console.error("[Dashboard] Error en logout:", result.message)
+    }
   }
 
   if (loading) {
@@ -57,22 +62,47 @@ export default function Dashboard() {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-red-600">Error cargando usuario</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="font-serif text-2xl text-gray-900">Semzo Privé</h1>
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">Semzo Privé</h1>
+            </div>
+
+            <nav className="hidden md:flex space-x-8">
+              <a href="#" className="text-gray-500 hover:text-gray-700">
+                COLECCIÓN
+              </a>
+              <a href="#" className="text-gray-500 hover:text-gray-700">
+                MEMBRESÍAS
+              </a>
+              <a href="#" className="text-gray-500 hover:text-gray-700">
+                PROCESO
+              </a>
+              <a href="#" className="text-gray-500 hover:text-gray-700">
+                MAGAZINE
+              </a>
+              <a href="#" className="text-gray-500 hover:text-gray-700">
+                TESTIMONIOS
+              </a>
+            </nav>
 
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Hola, {user?.firstName || "Usuario"}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
-              >
+              <span className="text-sm text-gray-700">Hola, {user.firstName}</span>
+              <Button onClick={handleLogout} variant="outline" size="sm">
                 Cerrar Sesión
               </Button>
             </div>
@@ -80,47 +110,75 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">¡Bienvenido, {user?.firstName || "Usuario"}!</h2>
-            <p className="text-gray-600 mt-2">Accede a tu colección de bolsos de lujo</p>
-          </div>
-
-          <Card>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold">Dashboard - Semzo Privé</CardTitle>
-              <CardDescription>Información de tu cuenta</CardDescription>
+              <CardTitle>¡Bienvenido, {user.firstName}!</CardTitle>
+              <CardDescription>Accede a tu colección de bolsos de lujo</CardDescription>
             </CardHeader>
             <CardContent>
-              {user && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-medium">Información del Usuario</h3>
-                    <div className="mt-2 space-y-1">
-                      <p>
-                        <strong>Nombre:</strong> {user.firstName} {user.lastName}
-                      </p>
-                      <p>
-                        <strong>Email:</strong> {user.email}
-                      </p>
-                      {user.phone && (
-                        <p>
-                          <strong>Teléfono:</strong> {user.phone}
-                        </p>
-                      )}
-                      <p>
-                        <strong>Estado de Membresía:</strong> {user.membershipStatus}
-                      </p>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-gray-100 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900">Mi Perfil</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-sm text-gray-600">{user.email}</p>
+                  {user.phone && <p className="text-sm text-gray-600">{user.phone}</p>}
                 </div>
-              )}
+
+                <div className="bg-gray-100 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900">Membresía</h3>
+                  <p className="text-sm text-gray-600 mt-1 capitalize">{user.membershipStatus}</p>
+                </div>
+
+                <div className="bg-gray-100 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900">Mis Reservas</h3>
+                  <p className="text-sm text-gray-600 mt-1">No tienes reservas activas</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Explorar Colección</CardTitle>
+                <CardDescription>Descubre nuestra selección de bolsos de lujo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">Ver Colección</Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Hacer Reserva</CardTitle>
+                <CardDescription>Reserva tu próximo bolso favorito</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full bg-transparent" variant="outline">
+                  Nueva Reserva
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Mi Cuenta</CardTitle>
+                <CardDescription>Gestiona tu perfil y preferencias</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full bg-transparent" variant="outline">
+                  Editar Perfil
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

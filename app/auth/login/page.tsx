@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,10 +10,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AuthService } from "@/app/lib/auth-service"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const router = useRouter()
+
+  useEffect(() => {
+    // Verificar si ya está logueado
+    if (AuthService.isLoggedIn()) {
+      console.log("[Login] Usuario ya logueado, redirigiendo...")
+      window.location.href = "/dashboard"
+    }
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,24 +39,26 @@ export default function LoginPage() {
     setMessage("")
 
     try {
-      console.log("[Login Page] Enviando datos:", { email, password: "***" })
+      console.log("[Login] Intentando login para:", formData.email)
 
-      const result = await AuthService.login(email, password)
-      console.log("[Login Page] Resultado:", result)
+      const result = await AuthService.login(formData.email, formData.password)
+
+      console.log("[Login] Resultado:", result)
 
       if (result.success) {
-        setMessage("¡Login exitoso! Redirigiendo...")
-        console.log("[Login Page] Redirigiendo a dashboard...")
+        console.log("[Login] Login exitoso, redirigiendo al dashboard...")
+        setMessage("Login exitoso, redirigiendo...")
 
-        // Usar window.location.href para forzar recarga completa
+        // Esperar un momento para que se guarde en localStorage
         setTimeout(() => {
+          // ÚNICO CAMBIO: usar window.location.href en lugar de router.push()
           window.location.href = "/dashboard"
         }, 500)
       } else {
         setMessage(result.message || "Error en el login")
       }
     } catch (error: any) {
-      console.error("[Login Page] Error:", error)
+      console.error("[Login] Error:", error)
       setMessage("Error de conexión")
     } finally {
       setIsLoading(false)
@@ -60,8 +81,8 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={handleChange}
                 placeholder="tu@email.com"
                 disabled={isLoading}
               />
@@ -74,8 +95,8 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 placeholder="Tu contraseña"
                 disabled={isLoading}
               />
@@ -99,6 +120,12 @@ export default function LoginPage() {
                 Crear cuenta
               </a>
             </p>
+          </div>
+
+          <div className="mt-4 text-center">
+            <a href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </a>
           </div>
         </CardContent>
       </Card>

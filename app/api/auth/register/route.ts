@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
         data: {
           firstName,
           lastName,
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
     // Crear perfil en la tabla profiles
     const { error: profileError } = await supabase.from("profiles").insert({
       id: data.user.id,
+      email: data.user.email,
       first_name: firstName,
       last_name: lastName,
       phone: phone || null,
-      email: email,
       membership_status: "free",
       created_at: new Date().toISOString(),
     })
@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Usuario registrado exitosamente. Por favor verifica tu email.",
+      message: "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
       user: {
         id: data.user.id,
         email: data.user.email,
         firstName,
         lastName,
-        phone: phone || "",
+        phone,
         membershipStatus: "free",
       },
     })

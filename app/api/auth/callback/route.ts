@@ -12,35 +12,9 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error && data.user) {
-      console.log("[Callback] Usuario confirmado:", data.user.email)
-
-      // Verificar si existe el perfil, si no crearlo
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single()
-
-      if (profileError && profileError.code === "PGRST116") {
-        // Perfil no existe, crearlo
-        const { error: insertError } = await supabase.from("profiles").insert({
-          id: data.user.id,
-          first_name: data.user.user_metadata?.firstName || "",
-          last_name: data.user.user_metadata?.lastName || "",
-          phone: data.user.user_metadata?.phone || null,
-          email: data.user.email,
-          membership_status: "free",
-          created_at: new Date().toISOString(),
-        })
-
-        if (insertError) {
-          console.error("[Callback] Error creando perfil:", insertError)
-        }
-      }
-
+    if (!error) {
       const forwardedHost = request.headers.get("x-forwarded-host")
       const isLocalEnv = process.env.NODE_ENV === "development"
 

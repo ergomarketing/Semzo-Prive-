@@ -38,8 +38,7 @@ class AuthService {
     try {
       console.log("🔄 Iniciando registro para:", data.email)
 
-      // USAR URL EXACTA HARDCODEADA
-      const redirectUrl = "https://semzoprive.com/auth/callback"
+      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`
       console.log("🔗 Redirect URL:", redirectUrl)
 
       const metadata = {
@@ -210,5 +209,8 @@ class AuthService {
   }
 }
 
+// Exportar la instancia como authService (exportación nombrada)
 export const authService = new AuthService()
+
+// También exportar la clase por si se necesita
 export { AuthService }

@@ -47,7 +47,7 @@ export default function SignupPage() {
     }
 
     try {
-      console.log("[Signup] Enviando datos:", { ...formData, password: "***", confirmPassword: "***" })
+      console.log("[Signup] Enviando datos:", formData)
 
       const result = await AuthService.register({
         email: formData.email,
@@ -60,7 +60,7 @@ export default function SignupPage() {
       console.log("[Signup] Resultado:", result)
 
       if (result.success) {
-        setMessage("¡Registro exitoso! Por favor verifica tu email para activar tu cuenta.")
+        setMessage("¡Registro exitoso! Revisa tu email para confirmar tu cuenta.")
       } else {
         setMessage(result.message || "Error en el registro")
       }
@@ -132,7 +132,7 @@ export default function SignupPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="+1234567890"
+                placeholder="+34 123 456 789"
                 disabled={isLoading}
               />
             </div>
@@ -160,7 +160,7 @@ export default function SignupPage() {
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="Confirma tu contraseña"
+                placeholder="Repite tu contraseña"
                 disabled={isLoading}
               />
             </div>
