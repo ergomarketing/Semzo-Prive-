@@ -1,5 +1,5 @@
 -- Script para sincronizar usuarios faltantes entre auth.users y profiles
--- Ejecutar cuando hay usuarios en auth.users pero no en profiles
+-- Ejecutar cuando hay usuarios en auth.users pero no en public.profiles
 
 DO $$
 DECLARE
@@ -59,49 +59,27 @@ BEGIN
     END LOOP;
     
     -- Sincronizar usuarios faltantes de auth.users a public.profiles
-    INSERT INTO public.profiles (
-      id,
-      email,
-      full_name,
-      first_name,
-      last_name,
-      phone,
-      membership_status,
-      is_active,
-      email_confirmed,
-      created_at,
-      updated_at
-    )
+    INSERT INTO public.profiles (id, email, first_name, last_name, phone, membership_status, created_at, updated_at)
     SELECT 
       au.id,
       au.email,
-      COALESCE(au.raw_user_meta_data->>'full_name', ''),
-      COALESCE(au.raw_user_meta_data->>'first_name', ''),
-      COALESCE(au.raw_user_meta_data->>'last_name', ''),
-      COALESCE(au.raw_user_meta_data->>'phone', ''),
+      COALESCE(au.raw_user_meta_data->>'firstName', '') as first_name,
+      COALESCE(au.raw_user_meta_data->>'lastName', '') as last_name,
+      au.raw_user_meta_data->>'phone' as phone,
       'free' as membership_status,
-      true as is_active,
-      (au.email_confirmed_at IS NOT NULL) as email_confirmed,
       au.created_at,
       NOW() as updated_at
     FROM auth.users au
     LEFT JOIN public.profiles p ON au.id = p.id
-    WHERE p.id IS NULL;
-
-    -- Verificar resultados
-    SELECT 
-      'auth.users' as tabla, 
-      COUNT(*) as total 
-    INTO profile_count
-    FROM auth.users
-    UNION ALL
-    SELECT 
-      'public.profiles' as tabla, 
-      COUNT(*) as total 
-    INTO profile_count
-    FROM public.profiles;
+    WHERE p.id IS NULL
+      AND au.email_confirmed_at IS NOT NULL;
     
-    RAISE NOTICE 'Usuarios sincronizados: %', profile_count;
+    -- Verificar resultados
+    SELECT COUNT(*) INTO profile_count FROM auth.users;
+    RAISE NOTICE 'Total usuarios en auth.users: %', profile_count;
+    
+    SELECT COUNT(*) INTO profile_count FROM public.profiles;
+    RAISE NOTICE 'Total perfiles en public.profiles: %', profile_count;
     
     RAISE NOTICE 'Sincronización completada';
 END $$;

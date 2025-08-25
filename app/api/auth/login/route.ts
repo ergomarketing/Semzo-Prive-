@@ -1,83 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { email, password } = body
+    const { email, password } = await request.json()
 
-    console.log("[LOGIN] === INICIO LOGIN ===")
-    console.log("[LOGIN] Email:", email)
+    console.log("[Login] Datos recibidos:", { email, password: "***" })
 
-    if (!email || !password) {
-      return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
-    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Crear cliente público de Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    // Intentar login
-    console.log("[LOGIN] Intentando login...")
+    // Intentar login con Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password: password,
+      email,
+      password,
     })
 
     if (error) {
-      console.error("[LOGIN] Error en login:", error)
-
-      // Mensajes de error más específicos
-      if (error.message.includes("Invalid login credentials")) {
-        return NextResponse.json({ success: false, message: "Email o contraseña incorrectos" }, { status: 401 })
-      } else if (error.message.includes("Email not confirmed")) {
-        return NextResponse.json(
-          { success: false, message: "Debes confirmar tu email antes de iniciar sesión" },
-          { status: 401 },
-        )
-      } else {
-        return NextResponse.json({ success: false, message: error.message }, { status: 401 })
-      }
+      console.error("[Login] Error de Supabase:", error)
+      return NextResponse.json(
+        { success: false, message: "Credenciales inválidas o usuario no confirmado" },
+        { status: 400 },
+      )
     }
 
     if (!data.user) {
-      return NextResponse.json({ success: false, message: "No se pudo autenticar el usuario" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Usuario no encontrado" }, { status: 400 })
     }
 
-    console.log("[LOGIN] ✅ Login exitoso:", data.user.id)
-    console.log("[LOGIN] ✅ Email confirmado:", !!data.user.email_confirmed_at)
+    console.log("[Login] Login exitoso para:", data.user.email)
 
-    // Verificar si existe el perfil
+    // Obtener datos del perfil
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", data.user.id)
       .single()
 
-    if (profileError || !profile) {
-      console.warn("[LOGIN] ⚠️ Perfil no encontrado, creando...")
-
-      // Crear perfil si no existe
-      const { error: createProfileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        email: data.user.email,
-        full_name: data.user.user_metadata?.full_name || "",
-        first_name: data.user.user_metadata?.first_name || "",
-        last_name: data.user.user_metadata?.last_name || "",
-        phone: data.user.user_metadata?.phone || "",
-        membership_status: "free",
-        is_active: true,
-        email_confirmed: true,
-      })
-
-      if (createProfileError) {
-        console.error("[LOGIN] Error creando perfil:", createProfileError)
-      } else {
-        console.log("[LOGIN] ✅ Perfil creado durante login")
-      }
-    } else {
-      console.log("[LOGIN] ✅ Perfil encontrado:", profile.email)
+    if (profileError) {
+      console.log("[Login] Error obteniendo perfil:", profileError.message)
     }
 
     return NextResponse.json({
@@ -86,14 +49,15 @@ export async function POST(request: NextRequest) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        firstName: data.user.user_metadata?.first_name || "",
-        lastName: data.user.user_metadata?.last_name || "",
+        firstName: profile?.first_name || data.user.user_metadata?.firstName || "",
+        lastName: profile?.last_name || data.user.user_metadata?.lastName || "",
+        phone: profile?.phone || data.user.user_metadata?.phone || "",
         membershipStatus: profile?.membership_status || "free",
       },
       session: data.session,
     })
   } catch (error: any) {
-    console.error("[LOGIN] ❌ Error inesperado:", error)
+    console.error("[Login] Error general:", error)
     return NextResponse.json({ success: false, message: "Error interno del servidor" }, { status: 500 })
   }
 }

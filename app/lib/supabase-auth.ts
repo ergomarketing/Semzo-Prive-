@@ -3,13 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-})
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export interface User {
   id: string
@@ -48,17 +42,19 @@ class AuthService {
       const redirectUrl = "https://semzoprive.com/auth/callback"
       console.log("🔗 Redirect URL:", redirectUrl)
 
+      const metadata = {
+        full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        phone: data.phone || "",
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-            first_name: data.first_name || "",
-            last_name: data.last_name || "",
-            phone: data.phone || "",
-          },
+          data: metadata,
         },
       })
 
@@ -198,6 +194,18 @@ class AuthService {
         message: "Error interno",
         error: error instanceof Error ? error.message : "Unknown error",
       }
+    }
+  }
+
+  async getCurrentUser() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      return user
+    } catch (error) {
+      console.error("Error obteniendo usuario:", error)
+      return null
     }
   }
 }

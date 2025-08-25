@@ -1,83 +1,87 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { CheckCircle, Loader2, ArrowRight } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 export default function AuthCallback() {
   const router = useRouter()
-  const [status, setStatus] = useState<"loading" | "success">("loading")
+  const searchParams = useSearchParams()
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [message, setMessage] = useState("")
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    // Mostrar loading por 2 segundos y luego redirigir
-    const timer = setTimeout(() => {
-      setStatus("success")
-      // Redirigir al dashboard después de mostrar éxito
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 2000)
-    }, 2000)
+    const handleAuthCallback = async () => {
+      try {
+        const code = searchParams.get("code")
 
-    return () => clearTimeout(timer)
-  }, [router])
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-  const handleContinue = () => {
-    router.push("/dashboard")
-  }
+          if (error) {
+            console.error("Error en callback:", error)
+            setStatus("error")
+            setMessage(error.message)
+            return
+          }
+
+          if (data.user) {
+            console.log("Usuario confirmado exitosamente:", data.user.email)
+            setStatus("success")
+            setMessage("Email confirmado exitosamente. Redirigiendo...")
+
+            // Redirigir al dashboard
+            setTimeout(() => {
+              window.location.href = "/dashboard"
+            }, 2000)
+          }
+        } else {
+          setStatus("error")
+          setMessage("Código de confirmación no encontrado")
+        }
+      } catch (error) {
+        console.error("Error procesando callback:", error)
+        setStatus("error")
+        setMessage("Error procesando la confirmación")
+      }
+    }
+
+    handleAuthCallback()
+  }, [searchParams, supabase.auth, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
-            {status === "loading" && <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />}
-            {status === "success" && <CheckCircle className="h-12 w-12 text-green-600" />}
-          </div>
-
-          <CardTitle className="text-2xl">
-            {status === "loading" && "Confirmando email..."}
-            {status === "success" && "¡Confirmación exitosa!"}
+          <CardTitle className="text-2xl font-bold">
+            {status === "loading" && "Confirmando cuenta..."}
+            {status === "success" && "¡Cuenta confirmada!"}
+            {status === "error" && "Error de confirmación"}
           </CardTitle>
-
           <CardDescription>
-            {status === "loading" && "Por favor espera mientras procesamos tu confirmación"}
-            {status === "success" && "Tu email ha sido confirmado correctamente"}
+            {status === "loading" && "Por favor espera mientras confirmamos tu cuenta"}
+            {status === "success" && "Tu cuenta ha sido confirmada exitosamente"}
+            {status === "error" && "Hubo un problema confirmando tu cuenta"}
           </CardDescription>
         </CardHeader>
-
-        <CardContent className="space-y-4">
+        <CardContent className="text-center">
           {status === "loading" && (
-            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Procesando...</span>
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
           )}
-
-          {status === "success" && (
-            <div className="space-y-3">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-4">¡Bienvenido! Tu cuenta ha sido activada exitosamente.</p>
-              </div>
-
-              <Button onClick={handleContinue} className="w-full" size="lg">
-                Continuar al Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-
-              <p className="text-xs text-center text-gray-500">Serás redirigido automáticamente...</p>
+          {status === "success" && <div className="text-green-600 font-medium">Redirigiendo al dashboard...</div>}
+          {status === "error" && (
+            <div className="text-red-600">
+              <p className="mb-4">{message}</p>
+              <a href="/login" className="text-blue-600 hover:text-blue-700 underline">
+                Volver al login
+              </a>
             </div>
           )}
-
-          {/* Información adicional */}
-          <div className="border-t pt-4 mt-6">
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>
-                <strong>Soporte:</strong> contacto@semzoprive.com
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

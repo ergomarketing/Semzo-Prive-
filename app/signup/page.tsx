@@ -1,25 +1,29 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AuthService } from "@/app/lib/auth-service"
 import Link from "next/link"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
     firstName: "",
     lastName: "",
+    email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -33,12 +37,14 @@ export default function SignupPage() {
     setLoading(true)
     setMessage(null)
 
+    // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmPassword) {
       setMessage({ type: "error", text: "Las contraseñas no coinciden" })
       setLoading(false)
       return
     }
 
+    // Validar longitud de contraseña
     if (formData.password.length < 6) {
       setMessage({ type: "error", text: "La contraseña debe tener al menos 6 caracteres" })
       setLoading(false)
@@ -46,35 +52,30 @@ export default function SignupPage() {
     }
 
     try {
-      // Usar el endpoint API en lugar del servicio directo
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-        }),
+      const result = await AuthService.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
       })
 
-      const result = await response.json()
-
       if (result.success) {
-        setMessage({ type: "success", text: result.message })
+        setMessage({
+          type: "success",
+          text: "Registro exitoso. Revisa tu email para confirmar tu cuenta.",
+        })
+        // Limpiar formulario
         setFormData({
-          email: "",
-          password: "",
-          confirmPassword: "",
           firstName: "",
           lastName: "",
+          email: "",
           phone: "",
+          password: "",
+          confirmPassword: "",
         })
       } else {
-        setMessage({ type: "error", text: result.error || "Error en el registro" })
+        setMessage({ type: "error", text: result.message || "Error en el registro" })
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error inesperado. Inténtalo de nuevo." })
@@ -88,9 +89,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-          <CardDescription className="text-gray-600">
-            Únete a Semzo Privé y accede a bolsos de lujo exclusivos
-          </CardDescription>
+          <CardDescription className="text-gray-600">Únete a Semzo Privé</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,6 +104,7 @@ export default function SignupPage() {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  placeholder="Tu nombre"
                 />
               </div>
               <div className="space-y-2">
@@ -117,6 +117,7 @@ export default function SignupPage() {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  placeholder="Tu apellido"
                 />
               </div>
             </div>
@@ -131,6 +132,7 @@ export default function SignupPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+                placeholder="tu@email.com"
               />
             </div>
 
@@ -143,6 +145,7 @@ export default function SignupPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 disabled={loading}
+                placeholder="+34 600 000 000"
               />
             </div>
 
@@ -156,6 +159,7 @@ export default function SignupPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+                placeholder="Mínimo 6 caracteres"
               />
             </div>
 
@@ -169,6 +173,7 @@ export default function SignupPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+                placeholder="Repite tu contraseña"
               />
             </div>
 
