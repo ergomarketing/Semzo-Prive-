@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,7 @@ import { AuthService } from "@/app/lib/auth-service"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
   const router = useRouter()
@@ -22,16 +22,17 @@ export default function LoginPage() {
     setMessage("")
 
     try {
-      console.log("[Login] Enviando email:", email)
+      console.log("[Login] Enviando datos:", { email, password: "***" })
 
-      const result = await AuthService.login(email)
+      const result = await AuthService.login(email, password)
       console.log("[Login] Resultado:", result)
 
       if (result.success) {
-        setMessage("¡Login exitoso!")
+        setMessage("¡Login exitoso! Redirigiendo...")
         setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
+          // Usar window.location.href para evitar el doble login
+          window.location.href = "/dashboard"
+        }, 1000)
       } else {
         setMessage(result.message || "Error en el login")
       }
@@ -62,6 +63,21 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Tu contraseña"
+                disabled={isLoading}
               />
             </div>
 
