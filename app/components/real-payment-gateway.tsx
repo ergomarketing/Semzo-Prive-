@@ -9,8 +9,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 
-// Obtener la clave de Stripe configurada
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePublishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB"
+
+// Debug log para verificar la clave
+console.log("🔑 Stripe Key Status:", {
+  hasKey: !!stripePublishableKey,
+  keyPrefix: stripePublishableKey?.substring(0, 8),
+  keyLength: stripePublishableKey?.length,
+})
 
 // Inicializar Stripe solo si hay clave configurada
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
@@ -28,8 +36,10 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Verificar si Stripe está configurado
-  const isStripeConfigured = !!(stripePublishableKey && stripePublishableKey.startsWith("pk_"))
+  const isStripeConfigured = !!(
+    stripePublishableKey &&
+    (stripePublishableKey.startsWith("pk_live_") || stripePublishableKey.startsWith("pk_test_"))
+  )
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -153,7 +163,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
           </div>
           <Button
             onClick={() => window.open("https://dashboard.stripe.com/apikeys", "_blank")}
-            className="bg-indigo-600 hover:bg-indigo-700"
+            className="bg-slate-900 hover:bg-slate-800"
           >
             Obtener clave de Stripe
           </Button>
@@ -164,7 +174,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
 
   return (
     <Card className="border-0 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-indigo-dark/90 to-indigo-dark text-white rounded-t-lg">
+      <CardHeader className="bg-gradient-to-r from-slate-900/90 to-slate-900 text-white rounded-t-lg">
         <CardTitle className="flex items-center">
           <CreditCard className="h-5 w-5 mr-2" />
           Información de pago
@@ -174,7 +184,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <p className="text-lg font-medium text-slate-900">Total a pagar:</p>
-            <p className="text-2xl font-bold text-indigo-dark">{amount}€</p>
+            <p className="text-2xl font-bold text-slate-900">{amount}€</p>
           </div>
           <p className="text-slate-600 text-sm">Membresía {membershipType}</p>
         </div>
@@ -199,7 +209,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
           <Button
             type="submit"
             disabled={!stripe || isProcessing}
-            className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
+            className="w-full bg-slate-900 text-white hover:bg-slate-800 h-12"
           >
             {isProcessing ? (
               <>
@@ -245,3 +255,5 @@ export default function RealPaymentGateway(props: PaymentFormProps) {
     </Elements>
   )
 }
+
+export { RealPaymentGateway }

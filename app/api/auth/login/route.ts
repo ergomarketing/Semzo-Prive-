@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { type NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/app/lib/supabase-unified"
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,18 +10,9 @@ export async function POST(request: NextRequest) {
     console.log("[LOGIN] Email:", email)
 
     if (!email || !password) {
-      return NextResponse.json(
-        { success: false, message: "Email y contraseña son requeridos" },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
     }
 
-    // Crear cliente público de Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    // Intentar login
     console.log("[LOGIN] Intentando login...")
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase(),
@@ -30,31 +21,22 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("[LOGIN] Error en login:", error)
-      
+
       // Mensajes de error más específicos
-      if (error.message.includes('Invalid login credentials')) {
-        return NextResponse.json(
-          { success: false, message: "Email o contraseña incorrectos" },
-          { status: 401 }
-        )
-      } else if (error.message.includes('Email not confirmed')) {
+      if (error.message.includes("Invalid login credentials")) {
+        return NextResponse.json({ success: false, message: "Email o contraseña incorrectos" }, { status: 401 })
+      } else if (error.message.includes("Email not confirmed")) {
         return NextResponse.json(
           { success: false, message: "Debes confirmar tu email antes de iniciar sesión" },
-          { status: 401 }
+          { status: 401 },
         )
       } else {
-        return NextResponse.json(
-          { success: false, message: error.message },
-          { status: 401 }
-        )
+        return NextResponse.json({ success: false, message: error.message }, { status: 401 })
       }
     }
 
     if (!data.user) {
-      return NextResponse.json(
-        { success: false, message: "No se pudo autenticar el usuario" },
-        { status: 401 }
-      )
+      return NextResponse.json({ success: false, message: "No se pudo autenticar el usuario" }, { status: 401 })
     }
 
     console.log("[LOGIN] ✅ Login exitoso:", data.user.id)
@@ -62,28 +44,26 @@ export async function POST(request: NextRequest) {
 
     // Verificar si existe el perfil
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
       .single()
 
     if (profileError || !profile) {
       console.warn("[LOGIN] ⚠️ Perfil no encontrado, creando...")
-      
+
       // Crear perfil si no existe
-      const { error: createProfileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email,
-          full_name: data.user.user_metadata?.full_name || '',
-          first_name: data.user.user_metadata?.first_name || '',
-          last_name: data.user.user_metadata?.last_name || '',
-          phone: data.user.user_metadata?.phone || '',
-          membership_status: 'free',
-          is_active: true,
-          email_confirmed: true,
-        })
+      const { error: createProfileError } = await supabase.from("profiles").insert({
+        id: data.user.id,
+        email: data.user.email,
+        full_name: data.user.user_metadata?.full_name || "",
+        first_name: data.user.user_metadata?.first_name || "",
+        last_name: data.user.user_metadata?.last_name || "",
+        phone: data.user.user_metadata?.phone || "",
+        membership_status: "free",
+        is_active: true,
+        email_confirmed: true,
+      })
 
       if (createProfileError) {
         console.error("[LOGIN] Error creando perfil:", createProfileError)
@@ -100,17 +80,14 @@ export async function POST(request: NextRequest) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        firstName: data.user.user_metadata?.first_name || '',
-        lastName: data.user.user_metadata?.last_name || '',
-        membershipStatus: profile?.membership_status || 'free',
+        firstName: data.user.user_metadata?.first_name || "",
+        lastName: data.user.user_metadata?.last_name || "",
+        membershipStatus: profile?.membership_status || "free",
       },
       session: data.session,
     })
   } catch (error: any) {
     console.error("[LOGIN] ❌ Error inesperado:", error)
-    return NextResponse.json(
-      { success: false, message: "Error interno del servidor" },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, message: "Error interno del servidor" }, { status: 500 })
   }
 }

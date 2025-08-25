@@ -12,7 +12,6 @@ export default function Footer() {
     >
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-12 gap-8">
-          {/* Logo y descripción */}
           <div className="md:col-span-4">
             <div className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
               Semzo Privé
@@ -22,7 +21,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Enlaces */}
           <div className="md:col-span-2 md:col-start-6">
             <h3 className="text-xs uppercase tracking-widest font-medium mb-6" style={{ color: "#1a1a4b" }}>
               Explorar

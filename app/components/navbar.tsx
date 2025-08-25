@@ -4,9 +4,26 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/useAuth"
+import { User, LogOut } from "lucide-react"
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const { user, loading, signOut } = useAuth()
+
+  useEffect(() => {
+    console.log("[v0] Navbar - Auth state:", {
+      user: user
+        ? {
+            id: user.id,
+            email: user.email,
+            metadata: user.user_metadata,
+          }
+        : null,
+      loading,
+      pathname: window.location.pathname,
+    })
+  }, [user, loading])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,13 +35,11 @@ export default function Navbar() {
   }, [])
 
   const scrollToSection = (sectionId: string) => {
-    // Si no estamos en la página principal, ir allí primero
     if (window.location.pathname !== "/") {
       window.location.href = `/#${sectionId}`
       return
     }
 
-    // Esperar un poco para que la página cargue si es necesario
     setTimeout(() => {
       const element = document.getElementById(sectionId)
       if (element) {
@@ -40,6 +55,13 @@ export default function Navbar() {
     }, 100)
   }
 
+  const handleLogout = async () => {
+    console.log("[v0] Navbar - Logout clicked")
+    await signOut()
+    console.log("[v0] Navbar - After signOut, redirecting to /")
+    window.location.href = "/"
+  }
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -52,7 +74,6 @@ export default function Navbar() {
             <span className="font-serif text-lg sm:text-2xl text-slate-900">Semzo Privé</span>
           </Link>
 
-          {/* Flexible Navigation - Scroll horizontal en móvil */}
           <div className="flex-1 mx-2 sm:mx-4">
             <nav className="flex items-center justify-center overflow-x-auto scrollbar-hide space-x-2 sm:space-x-6 lg:space-x-12 pb-1">
               <NavLink href="/catalog">Colección</NavLink>
@@ -83,13 +104,39 @@ export default function Navbar() {
             </nav>
           </div>
 
-          {/* Always Visible CTA */}
           <div className="flex-shrink-0">
-            <Link href="/login">
-              <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                Acceso
+            {loading ? (
+              <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium bg-slate-400 text-white cursor-not-allowed">
+                ...
               </Button>
-            </Link>
+            ) : user ? (
+              <div className="flex items-center space-x-2">
+                <Link href="/dashboard">
+                  <Button className="rounded-none px-3 sm:px-4 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-slate-800 text-white hover:bg-slate-700 flex items-center space-x-2">
+                    <User className="w-3 h-3" />
+                    <span className="hidden sm:inline">
+                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario"}
+                    </span>
+                    <span className="sm:hidden">
+                      {(user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario").slice(0, 8)}
+                    </span>
+                  </Button>
+                </Link>
+                <Button
+                  onClick={handleLogout}
+                  className="rounded-none px-2 py-2 text-xs bg-slate-600 text-white hover:bg-slate-500 transition-all duration-300"
+                  title="Cerrar Sesión"
+                >
+                  <LogOut className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <Link href="/login">
+                <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                  Acceso
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -27,7 +27,12 @@ export default function CTASection() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
-                onClick={() => (window.location.href = "/checkout?plan=signature")}
+                onClick={() => {
+                  const membresiaSection = document.getElementById("membresias")
+                  if (membresiaSection) {
+                    membresiaSection.scrollIntoView({ behavior: "smooth" })
+                  }
+                }}
                 className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
                 style={{
                   backgroundColor: "rgba(244, 196, 204, 0.6)",
