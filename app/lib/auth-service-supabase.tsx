@@ -19,6 +19,28 @@ export interface AuthResponse {
 
 class AuthServiceSupabase {
   private static readonly STORAGE_KEY = "semzo_user"
+  private static readonly MAX_RETRIES = 3
+  private static readonly BASE_DELAY = 1000 // 1 segundo
+
+  private static async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    retries: number = this.MAX_RETRIES,
+  ): Promise<T> {
+    try {
+      return await operation()
+    } catch (error: any) {
+      if (
+        retries > 0 &&
+        (error.status === 429 || error.message?.includes("rate limit") || error.message?.includes("too many requests"))
+      ) {
+        const delay = this.BASE_DELAY * (this.MAX_RETRIES - retries + 1)
+        console.log(`[Auth] Rate limit detectado, reintentando en ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        return this.retryWithBackoff(operation, retries - 1)
+      }
+      throw error
+    }
+  }
 
   // Registrar nuevo usuario
   static async register(userData: {
@@ -29,16 +51,22 @@ class AuthServiceSupabase {
     phone?: string
   }): Promise<AuthResponse> {
     try {
-      // Llamar a la API de registro
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      })
+      const result = await this.retryWithBackoff(async () => {
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(userData),
+        })
 
-      const result = await response.json()
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || "Error en el registro")
+        }
+
+        return response.json()
+      })
 
       if (result.success && result.user) {
         // Guardar usuario en localStorage
@@ -57,15 +85,22 @@ class AuthServiceSupabase {
   // Iniciar sesión
   static async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      const result = await this.retryWithBackoff(async () => {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        })
 
-      const result = await response.json()
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || "Error en el login")
+        }
+
+        return response.json()
+      })
 
       if (result.success && result.user) {
         // Guardar usuario en localStorage
@@ -99,12 +134,16 @@ class AuthServiceSupabase {
     if (typeof window === "undefined") return null
 
     try {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+      const session = await this.retryWithBackoff(async () => {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+        if (error) throw error
+        return session
+      })
 
-      if (error || !session) {
+      if (!session) {
         // Si no hay sesión válida en Supabase, limpiar localStorage
         localStorage.removeItem(this.STORAGE_KEY)
         return null
@@ -147,14 +186,11 @@ class AuthServiceSupabase {
   // Verificar conexión con Supabase
   static async testConnection(): Promise<{ success: boolean; message: string }> {
     try {
-      const { data, error } = await supabase.from("users").select("count").limit(1)
-
-      if (error) {
-        return {
-          success: false,
-          message: `Error de conexión: ${error.message}`,
-        }
-      }
+      const result = await this.retryWithBackoff(async () => {
+        const { data, error } = await supabase.from("users").select("count").limit(1)
+        if (error) throw error
+        return data
+      })
 
       return {
         success: true,

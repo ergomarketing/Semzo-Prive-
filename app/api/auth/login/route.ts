@@ -4,6 +4,37 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
 
+async function retryOperation<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: any
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error: any) {
+      lastError = error
+
+      // Si es un error de rate limit, esperar antes de reintentar
+      if (
+        error.code === "429" ||
+        error.message?.includes("rate limit") ||
+        error.message?.includes("too many requests")
+      ) {
+        const delay = Math.pow(2, attempt) * 1000 // Backoff exponencial
+        console.log(
+          `[Login API] Rate limit detectado, reintentando en ${delay}ms... (intento ${attempt}/${maxRetries})`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+
+      // Si no es un error de rate limit, no reintentar
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
@@ -12,10 +43,11 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Intentar login con Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { data, error } = await retryOperation(async () => {
+      return await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
     })
 
     if (error) {
@@ -29,12 +61,9 @@ export async function POST(request: NextRequest) {
 
     console.log("[Login API] Usuario autenticado:", data.user.email)
 
-    // Obtener datos del perfil desde la tabla profiles
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.user.id)
-      .single()
+    const { data: profile, error: profileError } = await retryOperation(async () => {
+      return await supabase.from("profiles").select("*").eq("id", data.user.id).single()
+    })
 
     if (profileError) {
       console.error("[Login API] Error obteniendo perfil:", profileError)
