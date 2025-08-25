@@ -81,29 +81,60 @@ class AuthServiceSupabase {
     }
   }
 
-  // Cerrar sesión
-  static logout(): void {
+  static async logout(): Promise<void> {
+    try {
+      // Cerrar sesión en Supabase primero
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error("Error cerrando sesión en Supabase:", error)
+    }
+
+    // Limpiar localStorage
     if (typeof window !== "undefined") {
       localStorage.removeItem(this.STORAGE_KEY)
     }
   }
 
-  // Obtener usuario actual
-  static getCurrentUser(): User | null {
+  static async getCurrentUser(): Promise<User | null> {
     if (typeof window === "undefined") return null
 
     try {
+      // Verificar sesión de Supabase primero
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
+
+      if (error || !session) {
+        // Si no hay sesión válida en Supabase, limpiar localStorage
+        localStorage.removeItem(this.STORAGE_KEY)
+        return null
+      }
+
+      // Si hay sesión válida, obtener datos del localStorage
       const userData = localStorage.getItem(this.STORAGE_KEY)
-      return userData ? JSON.parse(userData) : null
+      if (userData) {
+        return JSON.parse(userData)
+      }
+
+      // Si no hay datos en localStorage pero sí sesión, crear usuario básico
+      return {
+        id: session.user.id,
+        email: session.user.email || "",
+        firstName: session.user.user_metadata?.firstName || "",
+        lastName: session.user.user_metadata?.lastName || "",
+        phone: session.user.user_metadata?.phone || "",
+        membershipStatus: "free",
+      }
     } catch (error) {
-      console.error("Error parsing user data:", error)
+      console.error("Error obteniendo usuario:", error)
       return null
     }
   }
 
-  // Verificar si está autenticado
-  static isAuthenticated(): boolean {
-    return this.getCurrentUser() !== null
+  static async isAuthenticated(): Promise<boolean> {
+    const user = await this.getCurrentUser()
+    return user !== null
   }
 
   // Guardar usuario en localStorage
@@ -115,8 +146,9 @@ class AuthServiceSupabase {
 
   // Actualizar datos del usuario
   static updateUser(userData: Partial<User>): void {
-    const currentUser = this.getCurrentUser()
-    if (currentUser) {
+    const userData_local = localStorage.getItem(this.STORAGE_KEY)
+    if (userData_local) {
+      const currentUser = JSON.parse(userData_local)
       const updatedUser = { ...currentUser, ...userData }
       this.setUser(updatedUser)
     }

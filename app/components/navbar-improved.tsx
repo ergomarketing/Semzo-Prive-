@@ -5,8 +5,8 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AuthServiceSupabase } from "../lib/auth-service-supabase"
-import type { User as UserType } from "../lib/supabase"
+import AuthServiceSupabase from "../lib/auth-service-supabase"
+import type { User as UserType } from "../lib/auth-service-supabase"
 
 export default function NavbarImproved() {
   const [user, setUser] = useState<UserType | null>(null)
@@ -33,7 +33,7 @@ export default function NavbarImproved() {
     try {
       await AuthServiceSupabase.logout()
       setUser(null)
-      router.push("/")
+      window.location.href = "/"
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
     }
@@ -80,14 +80,14 @@ export default function NavbarImproved() {
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-slate-600" />
                   <span className="text-sm text-slate-600">
-                    Hola, {user.first_name} {user.last_name}
+                    Hola, {user.firstName} {user.lastName}
                   </span>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleLogout}
-                  className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  className="border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Salir
