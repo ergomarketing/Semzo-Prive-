@@ -4,44 +4,42 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AuthService } from "@/app/lib/auth-service"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState("")
   const router = useRouter()
-  const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError("")
+    setIsLoading(true)
+    setMessage("")
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      console.log("[Login] Enviando email:", email)
 
-      if (error) {
-        setError(error.message)
-        return
-      }
+      const result = await AuthService.login(email)
+      console.log("[Login] Resultado:", result)
 
-      if (data.user) {
-        // Redirigir usando window.location para forzar recarga completa
-        window.location.href = "/dashboard"
+      if (result.success) {
+        setMessage("¡Login exitoso!")
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
+      } else {
+        setMessage(result.message || "Error en el login")
       }
-    } catch (err) {
-      setError("Error inesperado")
+    } catch (error: any) {
+      console.error("[Login] Error:", error)
+      setMessage("Error de conexión")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -53,38 +51,29 @@ export default function LoginPage() {
           <CardDescription className="text-center">Accede a tu cuenta de Semzo Privé</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
-                required
-                disabled={loading}
               />
             </div>
 
-            <div>
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Tu contraseña"
-                required
-                disabled={loading}
-              />
-            </div>
-
-            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
             </Button>
+
+            {message && (
+              <div className={`text-center text-sm ${message.includes("exitoso") ? "text-green-600" : "text-red-600"}`}>
+                {message}
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center">

@@ -3,7 +3,13 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+})
 
 export interface User {
   id: string
@@ -38,22 +44,21 @@ class AuthService {
     try {
       console.log("🔄 Iniciando registro para:", data.email)
 
-      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`
+      // USAR URL EXACTA HARDCODEADA
+      const redirectUrl = "https://semzoprive.com/auth/callback"
       console.log("🔗 Redirect URL:", redirectUrl)
-
-      const metadata = {
-        full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-        first_name: data.first_name || "",
-        last_name: data.last_name || "",
-        phone: data.phone || "",
-      }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: metadata,
+          data: {
+            full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
+            first_name: data.first_name || "",
+            last_name: data.last_name || "",
+            phone: data.phone || "",
+          },
         },
       })
 
@@ -195,23 +200,7 @@ class AuthService {
       }
     }
   }
-
-  async getCurrentUser() {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      return user
-    } catch (error) {
-      console.error("Error obteniendo usuario:", error)
-      return null
-    }
-  }
 }
 
-// Exportar la instancia como authService (exportación nombrada)
-const authServiceInstance = new AuthService()
-export { authServiceInstance as authService }
-
-// También exportar la clase por si se necesita
+export const authService = new AuthService()
 export { AuthService }

@@ -1,11 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-export interface AuthUser {
+export interface User {
   id: string
   email: string
   firstName: string
@@ -17,8 +10,8 @@ export interface AuthUser {
 export interface AuthResponse {
   success: boolean
   message: string
-  user?: AuthUser
-  error?: string
+  user?: User
+  session?: any
 }
 
 export class AuthService {
@@ -30,193 +23,102 @@ export class AuthService {
     phone?: string
   }): Promise<AuthResponse> {
     try {
-      console.log("[AuthService] Iniciando registro para:", userData.email)
+      console.log("[AuthService] Enviando datos de registro:", userData)
 
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            phone: userData.phone || "",
-          },
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(userData),
       })
 
-      if (error) {
-        console.error("[AuthService] Error en registro:", error)
+      const data = await response.json()
+      console.log("[AuthService] Respuesta del servidor:", data)
+
+      if (!response.ok) {
         return {
           success: false,
-          message: error.message,
-          error: error.message,
+          message: data.message || "Error en el registro",
         }
       }
 
-      if (!data.user) {
-        return {
-          success: false,
-          message: "No se pudo crear el usuario",
-          error: "NO_USER_CREATED",
-        }
-      }
-
-      console.log("[AuthService] Usuario registrado exitosamente:", data.user.email)
-
-      return {
-        success: true,
-        message: "Usuario registrado exitosamente. Revisa tu email para confirmar tu cuenta.",
-        user: {
-          id: data.user.id,
-          email: data.user.email!,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          phone: userData.phone,
-          membershipStatus: "free",
-        },
-      }
+      return data
     } catch (error: any) {
-      console.error("[AuthService] Error general en registro:", error)
+      console.error("[AuthService] Error en registro:", error)
       return {
         success: false,
-        message: "Error interno del servidor",
-        error: error.message,
+        message: "Error de conexión",
       }
     }
   }
 
   static async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      console.log("[AuthService] Iniciando login para:", email)
+      console.log("[AuthService] Enviando datos de login:", { email })
 
-      // Limpiar cualquier sesión anterior
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("user")
-        localStorage.removeItem("session")
-        localStorage.removeItem("isLoggedIn")
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       })
 
-      if (error) {
-        console.error("[AuthService] Error en login:", error)
+      const data = await response.json()
+      console.log("[AuthService] Respuesta del servidor:", data)
+
+      if (!response.ok) {
         return {
           success: false,
-          message: "Credenciales inválidas o usuario no confirmado",
-          error: error.message,
+          message: data.message || "Error en el login",
         }
       }
 
-      if (!data.user || !data.session) {
-        return {
-          success: false,
-          message: "No se pudo autenticar el usuario",
-          error: "NO_USER_AUTHENTICATED",
-        }
-      }
-
-      console.log("[AuthService] Login exitoso para:", data.user.email)
-
-      // Obtener datos del perfil
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
-
-      const userData: AuthUser = {
-        id: data.user.id,
-        email: data.user.email!,
-        firstName: profile?.first_name || data.user.user_metadata?.firstName || "",
-        lastName: profile?.last_name || data.user.user_metadata?.lastName || "",
-        phone: profile?.phone || data.user.user_metadata?.phone || "",
-        membershipStatus: profile?.membership_status || "free",
-      }
-
-      // Guardar en localStorage
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(userData))
+      // Guardar usuario en localStorage si el login fue exitoso
+      if (data.success && data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user))
         localStorage.setItem("session", JSON.stringify(data.session))
         localStorage.setItem("isLoggedIn", "true")
       }
 
-      return {
-        success: true,
-        message: "Login exitoso",
-        user: userData,
-      }
+      return data
     } catch (error: any) {
-      console.error("[AuthService] Error general en login:", error)
+      console.error("[AuthService] Error en login:", error)
       return {
         success: false,
-        message: "Error interno del servidor",
-        error: error.message,
+        message: "Error de conexión",
       }
     }
   }
 
-  static async logout(): Promise<AuthResponse> {
-    try {
-      console.log("[AuthService] Cerrando sesión...")
-
-      // Limpiar localStorage
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("user")
-        localStorage.removeItem("session")
-        localStorage.removeItem("isLoggedIn")
-      }
-
-      const { error } = await supabase.auth.signOut()
-
-      if (error) {
-        console.error("[AuthService] Error cerrando sesión:", error)
-        return {
-          success: false,
-          message: "Error cerrando sesión",
-          error: error.message,
-        }
-      }
-
-      console.log("[AuthService] Sesión cerrada exitosamente")
-
-      return {
-        success: true,
-        message: "Sesión cerrada exitosamente",
-      }
-    } catch (error: any) {
-      console.error("[AuthService] Error general cerrando sesión:", error)
-      return {
-        success: false,
-        message: "Error interno",
-        error: error.message,
-      }
-    }
+  static logout(): void {
+    localStorage.removeItem("user")
+    localStorage.removeItem("session")
+    localStorage.removeItem("isLoggedIn")
   }
 
-  static getCurrentUser(): AuthUser | null {
-    if (typeof window === "undefined") return null
-
+  static getCurrentUser(): User | null {
     try {
       const userStr = localStorage.getItem("user")
-      const isLoggedIn = localStorage.getItem("isLoggedIn")
-
-      if (!userStr || isLoggedIn !== "true") {
-        return null
-      }
-
-      return JSON.parse(userStr)
+      return userStr ? JSON.parse(userStr) : null
     } catch (error) {
-      console.error("[AuthService] Error obteniendo usuario actual:", error)
+      console.error("[AuthService] Error obteniendo usuario:", error)
+      return null
+    }
+  }
+
+  static getSession(): any | null {
+    try {
+      const sessionStr = localStorage.getItem("session")
+      return sessionStr ? JSON.parse(sessionStr) : null
+    } catch (error) {
+      console.error("[AuthService] Error obteniendo sesión:", error)
       return null
     }
   }
 
   static isLoggedIn(): boolean {
-    if (typeof window === "undefined") return false
-
-    const isLoggedIn = localStorage.getItem("isLoggedIn")
-    const user = localStorage.getItem("user")
-
-    return isLoggedIn === "true" && !!user
+    return localStorage.getItem("isLoggedIn") === "true"
   }
 }

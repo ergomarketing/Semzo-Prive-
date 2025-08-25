@@ -1,54 +1,87 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { XCircle, Mail, ArrowLeft } from "lucide-react"
 
 export default function AuthError() {
-  const [errorMessage, setErrorMessage] = useState("")
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  useEffect(() => {
-    // Obtener mensaje de error de la URL
-    const urlParams = new URLSearchParams(window.location.search)
-    const error = urlParams.get("error")
-    const errorDescription = urlParams.get("error_description")
+  const error = searchParams.get("error") || "unknown_error"
+  const description = searchParams.get("description") || "Ha ocurrido un error desconocido"
 
-    if (errorDescription) {
-      setErrorMessage(decodeURIComponent(errorDescription))
-    } else if (error) {
-      setErrorMessage(error)
-    } else {
-      setErrorMessage("Ha ocurrido un error durante la autenticación")
+  const getErrorMessage = (error: string) => {
+    switch (error) {
+      case "missing_params":
+        return "Enlace de confirmación inválido"
+      case "verification_failed":
+        return "Error al verificar el email"
+      case "no_user":
+        return "No se pudo obtener información del usuario"
+      case "config_error":
+        return "Error de configuración"
+      case "unexpected":
+        return "Error inesperado"
+      default:
+        return "Error de autenticación"
     }
-  }, [])
+  }
+
+  const handleRetry = () => {
+    router.push("/signup")
+  }
+
+  const handleGoHome = () => {
+    router.push("/")
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-red-600">Error de Autenticación</CardTitle>
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4">
+            <XCircle className="h-12 w-12 text-red-600" />
+          </div>
+
+          <CardTitle className="text-2xl text-red-600">{getErrorMessage(error)}</CardTitle>
+
+          <CardDescription>Hubo un problema procesando tu solicitud</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="text-center space-y-4">
-            <div className="text-red-600">
-              <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
 
-            <p className="text-gray-600">{errorMessage}</p>
+        <CardContent className="space-y-4">
+          {/* Mensaje de error */}
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">Detalles del error:</p>
+            <p className="text-xs text-gray-500 bg-red-50 p-3 rounded-lg border border-red-200">{description}</p>
+          </div>
 
-            <div className="space-y-2">
-              <Button onClick={() => (window.location.href = "/auth/login")} className="w-full">
-                Ir al Login
-              </Button>
-              <Button onClick={() => (window.location.href = "/signup")} variant="outline" className="w-full">
-                Crear Nueva Cuenta
-              </Button>
+          {/* Acciones */}
+          <div className="space-y-3">
+            <Button onClick={handleRetry} className="w-full" size="lg">
+              <Mail className="mr-2 h-4 w-4" />
+              Intentar registro nuevamente
+            </Button>
+
+            <Button onClick={handleGoHome} variant="outline" className="w-full bg-transparent" size="lg">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al inicio
+            </Button>
+          </div>
+
+          {/* Información de soporte */}
+          <div className="border-t pt-4 mt-6">
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>
+                <strong>Tip:</strong> Revisa tu carpeta de spam si no recibes emails
+              </p>
+              <p>
+                <strong>Soporte:</strong> contacto@semzoprive.com
+              </p>
+              <p>
+                <strong>Error Code:</strong> {error}
+              </p>
             </div>
           </div>
         </CardContent>
