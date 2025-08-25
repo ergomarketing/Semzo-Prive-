@@ -52,17 +52,17 @@ export default function NavbarImproved() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
-          <Link href="/" className="font-serif text-2xl text-slate-900">
+          <Link href="/" className="font-serif text-2xl text-slate-900 flex-shrink-0">
             Semzo Privé
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-8 flex-1 justify-center">
             {navItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.path}
-                className={`text-sm ${
+                className={`text-sm whitespace-nowrap ${
                   pathname === item.path ? "text-indigo-dark font-medium" : "text-slate-600 hover:text-indigo-dark"
                 } transition-colors`}
               >
@@ -72,7 +72,7 @@ export default function NavbarImproved() {
           </nav>
 
           {/* Auth Section */}
-          <div className="flex items-center">
+          <div className="flex items-center flex-shrink-0">
             {isLoading ? (
               <div className="w-20 h-8 bg-slate-200 animate-pulse rounded"></div>
             ) : user ? (
