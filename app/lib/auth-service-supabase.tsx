@@ -99,7 +99,6 @@ class AuthServiceSupabase {
     if (typeof window === "undefined") return null
 
     try {
-      // Verificar sesión de Supabase primero
       const {
         data: { session },
         error,
@@ -111,21 +110,12 @@ class AuthServiceSupabase {
         return null
       }
 
-      // Si hay sesión válida, obtener datos del localStorage
       const userData = localStorage.getItem(this.STORAGE_KEY)
       if (userData) {
         return JSON.parse(userData)
       }
 
-      // Si no hay datos en localStorage pero sí sesión, crear usuario básico
-      return {
-        id: session.user.id,
-        email: session.user.email || "",
-        firstName: session.user.user_metadata?.firstName || "",
-        lastName: session.user.user_metadata?.lastName || "",
-        phone: session.user.user_metadata?.phone || "",
-        membershipStatus: "free",
-      }
+      return null
     } catch (error) {
       console.error("Error obteniendo usuario:", error)
       return null
