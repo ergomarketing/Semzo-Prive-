@@ -1,16 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AuthService } from "@/app/lib/auth-service"
-import Link from "next/link"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -21,9 +17,8 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
   })
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState("")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -34,109 +29,102 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setMessage(null)
+    setIsLoading(true)
+    setMessage("")
 
     // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Las contraseñas no coinciden" })
-      setLoading(false)
+      setMessage("Las contraseñas no coinciden")
+      setIsLoading(false)
       return
     }
 
     // Validar longitud de contraseña
     if (formData.password.length < 6) {
-      setMessage({ type: "error", text: "La contraseña debe tener al menos 6 caracteres" })
-      setLoading(false)
+      setMessage("La contraseña debe tener al menos 6 caracteres")
+      setIsLoading(false)
       return
     }
 
     try {
+      console.log("[Signup] Enviando datos:", { ...formData, password: "***", confirmPassword: "***" })
+
       const result = await AuthService.register({
+        email: formData.email,
+        password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email,
         phone: formData.phone,
-        password: formData.password,
       })
 
+      console.log("[Signup] Resultado:", result)
+
       if (result.success) {
-        setMessage({
-          type: "success",
-          text: "Registro exitoso. Revisa tu email para confirmar tu cuenta.",
-        })
-        // Limpiar formulario
-        setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          password: "",
-          confirmPassword: "",
-        })
+        setMessage("¡Registro exitoso! Por favor verifica tu email para activar tu cuenta.")
       } else {
-        setMessage({ type: "error", text: result.message || "Error en el registro" })
+        setMessage(result.message || "Error en el registro")
       }
-    } catch (error) {
-      setMessage({ type: "error", text: "Error inesperado. Inténtalo de nuevo." })
+    } catch (error: any) {
+      console.error("[Signup] Error:", error)
+      setMessage("Error de conexión")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-          <CardDescription className="text-gray-600">Únete a Semzo Privé</CardDescription>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">Crear Cuenta</CardTitle>
+          <CardDescription className="text-center">Únete a Semzo Privé</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="firstName">Nombre</Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   type="text"
+                  required
                   value={formData.firstName}
                   onChange={handleChange}
-                  required
-                  disabled={loading}
                   placeholder="Tu nombre"
+                  disabled={isLoading}
                 />
               </div>
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="lastName">Apellido</Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   type="text"
+                  required
                   value={formData.lastName}
                   onChange={handleChange}
-                  required
-                  disabled={loading}
                   placeholder="Tu apellido"
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
+                required
                 value={formData.email}
                 onChange={handleChange}
-                required
-                disabled={loading}
                 placeholder="tu@email.com"
+                disabled={isLoading}
               />
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="phone">Teléfono (opcional)</Label>
               <Input
                 id="phone"
@@ -144,58 +132,56 @@ export default function SignupPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                disabled={loading}
-                placeholder="+34 600 000 000"
+                placeholder="+1234567890"
+                disabled={isLoading}
               />
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
+                required
                 value={formData.password}
                 onChange={handleChange}
-                required
-                disabled={loading}
                 placeholder="Mínimo 6 caracteres"
+                disabled={isLoading}
               />
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
+                required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="Repite tu contraseña"
+                placeholder="Confirma tu contraseña"
+                disabled={isLoading}
               />
             </div>
 
-            {message && (
-              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
-                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-                  {message.text}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creando cuenta..." : "Crear Cuenta"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
             </Button>
+
+            {message && (
+              <div className={`text-center text-sm ${message.includes("exitoso") ? "text-green-600" : "text-red-600"}`}>
+                {message}
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-pink-600 hover:text-pink-700 font-medium">
-                Inicia sesión
-              </Link>
+              <a href="/auth/login" className="text-blue-600 hover:underline">
+                Iniciar sesión
+              </a>
             </p>
           </div>
         </CardContent>

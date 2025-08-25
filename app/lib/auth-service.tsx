@@ -57,6 +57,9 @@ export class AuthService {
     try {
       console.log("[AuthService] Enviando datos de login:", { email, password: "***" })
 
+      // Limpiar datos anteriores
+      this.clearStorage()
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -75,15 +78,12 @@ export class AuthService {
         }
       }
 
-      // Limpiar datos anteriores antes de guardar nuevos
-      this.logout()
-
       // Guardar usuario en localStorage si el login fue exitoso
       if (data.success && data.user) {
+        console.log("[AuthService] Guardando datos en localStorage:", data.user)
         localStorage.setItem("user", JSON.stringify(data.user))
         localStorage.setItem("session", JSON.stringify(data.session))
         localStorage.setItem("isLoggedIn", "true")
-        console.log("[AuthService] Datos guardados en localStorage:", data.user)
       }
 
       return data
@@ -96,25 +96,33 @@ export class AuthService {
     }
   }
 
-  static logout(): void {
-    console.log("[AuthService] Cerrando sesión...")
+  static clearStorage(): void {
+    console.log("[AuthService] Limpiando localStorage...")
     localStorage.removeItem("user")
     localStorage.removeItem("session")
     localStorage.removeItem("isLoggedIn")
+  }
 
-    // Limpiar también cualquier cookie de sesión
+  static logout(): void {
+    console.log("[AuthService] Cerrando sesión...")
+    this.clearStorage()
+
+    // Limpiar cookies también
     document.cookie.split(";").forEach((c) => {
       const eqPos = c.indexOf("=")
-      const name = eqPos > -1 ? c.substr(0, eqPos) : c
-      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"
+      const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim()
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
     })
   }
 
   static getCurrentUser(): User | null {
     try {
+      if (typeof window === "undefined") return null
+
       const userStr = localStorage.getItem("user")
       const user = userStr ? JSON.parse(userStr) : null
-      console.log("[AuthService] Usuario actual:", user)
+      console.log("[AuthService] Usuario actual desde localStorage:", user)
       return user
     } catch (error) {
       console.error("[AuthService] Error obteniendo usuario:", error)
@@ -124,6 +132,8 @@ export class AuthService {
 
   static getSession(): any | null {
     try {
+      if (typeof window === "undefined") return null
+
       const sessionStr = localStorage.getItem("session")
       return sessionStr ? JSON.parse(sessionStr) : null
     } catch (error) {
@@ -133,9 +143,12 @@ export class AuthService {
   }
 
   static isLoggedIn(): boolean {
+    if (typeof window === "undefined") return false
+
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true"
     const user = this.getCurrentUser()
-    console.log("[AuthService] Estado de login:", { isLoggedIn, hasUser: !!user })
-    return isLoggedIn && !!user
+    const result = isLoggedIn && !!user
+    console.log("[AuthService] Estado de login:", { isLoggedIn, hasUser: !!user, result })
+    return result
   }
 }

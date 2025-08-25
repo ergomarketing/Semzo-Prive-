@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +13,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,24 +20,24 @@ export default function LoginPage() {
     setMessage("")
 
     try {
-      console.log("[Login] Enviando datos:", { email, password: "***" })
+      console.log("[Login Page] Enviando datos:", { email, password: "***" })
 
       const result = await AuthService.login(email, password)
-      console.log("[Login] Resultado:", result)
+      console.log("[Login Page] Resultado:", result)
 
       if (result.success) {
-        setMessage("¡Login exitoso!")
-        console.log("[Login] Redirigiendo a dashboard...")
+        setMessage("¡Login exitoso! Redirigiendo...")
+        console.log("[Login Page] Redirigiendo a dashboard...")
 
-        // Usar setTimeout para asegurar que el localStorage se guarde antes de redirigir
+        // Usar window.location.href para forzar recarga completa
         setTimeout(() => {
           window.location.href = "/dashboard"
-        }, 100)
+        }, 500)
       } else {
         setMessage(result.message || "Error en el login")
       }
     } catch (error: any) {
-      console.error("[Login] Error:", error)
+      console.error("[Login Page] Error:", error)
       setMessage("Error de conexión")
     } finally {
       setIsLoading(false)
@@ -65,6 +63,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
+                disabled={isLoading}
               />
             </div>
 
@@ -78,6 +77,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Tu contraseña"
+                disabled={isLoading}
               />
             </div>
 

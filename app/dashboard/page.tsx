@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AuthService } from "@/app/lib/auth-service"
+import { AuthService, type User } from "@/app/lib/auth-service"
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -31,22 +31,28 @@ export default function Dashboard() {
       setLoading(false)
     }
 
-    // Pequeño delay para asegurar que localStorage esté disponible
-    setTimeout(checkAuth, 100)
+    // Verificar autenticación después de que el componente se monte
+    const timer = setTimeout(checkAuth, 100)
+    return () => clearTimeout(timer)
   }, [router])
 
   const handleLogout = () => {
-    console.log("[Dashboard] Cerrando sesión...")
+    console.log("[Dashboard] Iniciando logout...")
     AuthService.logout()
 
     // Forzar recarga completa para limpiar todo el estado
-    window.location.href = "/"
+    setTimeout(() => {
+      window.location.href = "/"
+    }, 100)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
       </div>
     )
   }
@@ -78,7 +84,7 @@ export default function Dashboard() {
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">¡Bienvenido, {user?.firstName}!</h2>
+            <h2 className="text-3xl font-bold text-gray-900">¡Bienvenido, {user?.firstName || "Usuario"}!</h2>
             <p className="text-gray-600 mt-2">Accede a tu colección de bolsos de lujo</p>
           </div>
 
