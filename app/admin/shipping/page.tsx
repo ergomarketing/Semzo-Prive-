@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Loader2, MapPin, Search, Download, User, Phone, Mail } from "lucide-react"
+import { Loader2, MapPin, Search, Download, User, Phone, Mail, AlertCircle } from "lucide-react"
 
 interface ShippingAddress {
   id: string
@@ -21,19 +21,35 @@ interface ShippingAddress {
   updated_at: string
 }
 
+interface AdminStats {
+  total: number
+  withShipping: number
+  withoutShipping: number
+  byMembership: {
+    prive: number
+    signature: number
+    essentiel: number
+    free: number
+  }
+}
+
 export default function AdminShippingPage() {
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
+  const [allUsers, setAllUsers] = useState<ShippingAddress[]>([])
+  const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredAddresses, setFilteredAddresses] = useState<ShippingAddress[]>([])
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     fetchShippingAddresses()
   }, [])
 
   useEffect(() => {
+    const dataToFilter = showAll ? allUsers : addresses
     if (searchTerm) {
-      const filtered = addresses.filter(
+      const filtered = dataToFilter.filter(
         (address) =>
           address.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           address.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,21 +58,33 @@ export default function AdminShippingPage() {
       )
       setFilteredAddresses(filtered)
     } else {
-      setFilteredAddresses(addresses)
+      setFilteredAddresses(dataToFilter)
     }
-  }, [searchTerm, addresses])
+  }, [searchTerm, addresses, allUsers, showAll])
 
   const fetchShippingAddresses = async () => {
     try {
+      console.log("[v0] Admin Panel - Fetching shipping addresses...")
       const response = await fetch("/api/admin/shipping")
+      console.log("[v0] Admin Panel - Response status:", response.status)
+
       if (response.ok) {
         const data = await response.json()
+        console.log("[v0] Admin Panel - Data received:", {
+          shippingAddresses: data.shipping_addresses?.length,
+          allUsers: data.all_users?.length,
+          stats: data.stats,
+        })
+
         setAddresses(data.shipping_addresses || [])
+        setAllUsers(data.all_users || [])
+        setStats(data.stats || null)
       } else {
-        console.error("Error fetching shipping addresses")
+        const errorData = await response.json()
+        console.error("[v0] Admin Panel - Error response:", errorData)
       }
     } catch (error) {
-      console.error("Error fetching shipping addresses:", error)
+      console.error("[v0] Admin Panel - Fetch error:", error)
     } finally {
       setLoading(false)
     }
@@ -79,7 +107,7 @@ export default function AdminShippingPage() {
         address.full_name || "",
         address.email,
         address.membership_type || "free",
-        address.shipping_address || "",
+        address.shipping_address || "Sin dirección",
         address.shipping_city || "",
         address.shipping_postal_code || "",
         address.shipping_phone || "",
@@ -146,6 +174,13 @@ export default function AdminShippingPage() {
             />
           </div>
           <div className="flex gap-3">
+            <Button
+              onClick={() => setShowAll(!showAll)}
+              variant={showAll ? "default" : "outline"}
+              className="bg-transparent"
+            >
+              {showAll ? "Solo con Dirección" : "Mostrar Todos"}
+            </Button>
             <Button onClick={exportToCSV} variant="outline" className="flex items-center gap-2 bg-transparent">
               <Download className="h-4 w-4" />
               Exportar CSV
@@ -168,26 +203,34 @@ export default function AdminShippingPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{addresses.length}</div>
+                <div className="text-2xl font-bold text-blue-600">{stats?.withShipping || 0}</div>
                 <div className="text-sm text-gray-600">Total Direcciones</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {addresses.filter((a) => a.membership_type === "prive").length}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{stats?.byMembership.prive || 0}</div>
                 <div className="text-sm text-gray-600">Miembros Privé</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-rose-600">
-                  {addresses.filter((a) => a.membership_type === "signature").length}
-                </div>
+                <div className="text-2xl font-bold text-rose-600">{stats?.byMembership.signature || 0}</div>
                 <div className="text-sm text-gray-600">Miembros Signature</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-slate-600">
-                  {addresses.filter((a) => a.membership_type === "essentiel").length}
-                </div>
+                <div className="text-2xl font-bold text-slate-600">{stats?.byMembership.essentiel || 0}</div>
                 <div className="text-sm text-gray-600">Miembros L'Essentiel</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-600">{stats?.total || 0}</div>
+                <div className="text-sm text-gray-600">Total Usuarios</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{stats?.withoutShipping || 0}</div>
+                <div className="text-sm text-gray-600">Sin Dirección</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{stats?.byMembership.free || 0}</div>
+                <div className="text-sm text-gray-600">Usuarios Free</div>
               </div>
             </div>
           </CardContent>
@@ -198,11 +241,15 @@ export default function AdminShippingPage() {
         <Card>
           <CardContent className="text-center py-12">
             <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay direcciones de envío</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {showAll ? "No hay usuarios" : "No hay direcciones de envío"}
+            </h3>
             <p className="text-gray-600">
               {searchTerm
-                ? "No se encontraron direcciones que coincidan con tu búsqueda."
-                : "Aún no hay usuarios con direcciones de envío configuradas."}
+                ? "No se encontraron resultados que coincidan con tu búsqueda."
+                : showAll
+                  ? "No hay usuarios registrados en el sistema."
+                  : "Aún no hay usuarios con direcciones de envío configuradas."}
             </p>
           </CardContent>
         </Card>
@@ -235,13 +282,20 @@ export default function AdminShippingPage() {
                       <MapPin className="h-4 w-4 text-gray-500" />
                       <span className="font-medium text-gray-900">Dirección de Envío</span>
                     </div>
-                    <div className="text-sm space-y-1">
-                      <div className="font-medium">{address.shipping_address}</div>
-                      <div className="text-gray-600">
-                        {address.shipping_city}, {address.shipping_postal_code}
+                    {address.shipping_address ? (
+                      <div className="text-sm space-y-1">
+                        <div className="font-medium">{address.shipping_address}</div>
+                        <div className="text-gray-600">
+                          {address.shipping_city}, {address.shipping_postal_code}
+                        </div>
+                        <div className="text-gray-600">{address.shipping_country}</div>
                       </div>
-                      <div className="text-gray-600">{address.shipping_country}</div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-orange-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Sin dirección de envío configurada</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Metadata */}
