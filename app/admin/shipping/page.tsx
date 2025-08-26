@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Loader2, MapPin, Search, Download, User, Phone, Mail, AlertCircle } from "lucide-react"
+import { Loader2, MapPin, Search, Download, User, Phone, Mail, AlertCircle, Shield } from "lucide-react"
+import useAuth from "@/hooks/useAuth"
 
 interface ShippingAddress {
   id: string
@@ -34,6 +35,8 @@ interface AdminStats {
 }
 
 export default function AdminShippingPage() {
+  const { user, loading: authLoading } = useAuth()
+  const [isAuthorized, setIsAuthorized] = useState(false)
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [allUsers, setAllUsers] = useState<ShippingAddress[]>([])
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -43,24 +46,27 @@ export default function AdminShippingPage() {
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
-    fetchShippingAddresses()
-  }, [])
+    const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"]
+
+    if (!authLoading && user) {
+      console.log("[v0] Admin Panel - Checking authorization for:", user.email)
+      const authorized = adminEmails.includes(user.email || "")
+      setIsAuthorized(authorized)
+
+      if (!authorized) {
+        console.log("[v0] Admin Panel - Access denied for:", user.email)
+      }
+    } else if (!authLoading && !user) {
+      console.log("[v0] Admin Panel - No user logged in")
+      setIsAuthorized(false)
+    }
+  }, [user, authLoading])
 
   useEffect(() => {
-    const dataToFilter = showAll ? allUsers : addresses
-    if (searchTerm) {
-      const filtered = dataToFilter.filter(
-        (address) =>
-          address.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          address.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          address.shipping_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          address.shipping_address?.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-      setFilteredAddresses(filtered)
-    } else {
-      setFilteredAddresses(dataToFilter)
+    if (isAuthorized) {
+      fetchShippingAddresses()
     }
-  }, [searchTerm, addresses, allUsers, showAll])
+  }, [isAuthorized])
 
   const fetchShippingAddresses = async () => {
     try {
@@ -74,6 +80,7 @@ export default function AdminShippingPage() {
           shippingAddresses: data.shipping_addresses?.length,
           allUsers: data.all_users?.length,
           stats: data.stats,
+          rawData: data,
         })
 
         setAddresses(data.shipping_addresses || [])
@@ -142,11 +149,66 @@ export default function AdminShippingPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="animate-spin h-8 w-8 text-slate-600 mx-auto mb-4" />
+            <p className="text-gray-600">Verificando autenticación...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-full max-w-md">
+            <CardContent className="text-center py-12">
+              <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Restringido</h3>
+              <p className="text-gray-600 mb-4">Debes iniciar sesión para acceder al panel de administración.</p>
+              <Button onClick={() => (window.location.href = "/login")} className="bg-blue-600 hover:bg-blue-700">
+                Iniciar Sesión
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="w-full max-w-md">
+            <CardContent className="text-center py-12">
+              <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Denegado</h3>
+              <p className="text-gray-600 mb-2">No tienes permisos para acceder al panel de administración.</p>
+              <p className="text-sm text-gray-500 mb-4">Usuario actual: {user.email}</p>
+              <Button onClick={() => (window.location.href = "/dashboard")} className="bg-blue-600 hover:bg-blue-700">
+                Volver al Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6 max-w-7xl">
         <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+          <div className="text-center">
+            <Loader2 className="animate-spin h-8 w-8 text-slate-600 mx-auto mb-4" />
+            <p className="text-gray-600">Cargando direcciones de envío...</p>
+          </div>
         </div>
       </div>
     )

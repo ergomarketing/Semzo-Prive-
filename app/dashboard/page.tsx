@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
 
 interface ShippingInfo {
   shipping_address: string
@@ -17,6 +18,8 @@ interface ShippingInfo {
   shipping_phone: string
   shipping_country: string
 }
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export default function Dashboard() {
   const router = useRouter()
@@ -31,6 +34,7 @@ export default function Dashboard() {
   })
   const [loadingShipping, setLoadingShipping] = useState(false)
   const [savingShipping, setSavingShipping] = useState(false)
+  const [shippingFetched, setShippingFetched] = useState(false)
 
   const membershipType = user?.user_metadata?.membership_status || "free"
   const isPremium = membershipType === "premium" || membershipType === "prive"
@@ -41,43 +45,87 @@ export default function Dashboard() {
     }
   }, [user, loading, router])
 
-  useEffect(() => {
-    if (user) {
-      fetchShippingInfo()
+  const getAuthToken = useCallback(async () => {
+    if (!user) return null
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      return session?.access_token || null
+    } catch (error) {
+      console.error("Error getting auth token:", error)
+      return null
     }
   }, [user])
 
-  const fetchShippingInfo = async () => {
+  const fetchShippingInfo = useCallback(async () => {
+    if (!user || shippingFetched || loadingShipping) return
+
     setLoadingShipping(true)
     try {
-      const response = await fetch("/api/user/shipping")
-      if (response.ok) {
-        const data = await response.json()
-        if (data.shipping) {
-          setShippingInfo({
-            shipping_address: data.shipping.shipping_address || "",
-            shipping_city: data.shipping.shipping_city || "",
-            shipping_postal_code: data.shipping.shipping_postal_code || "",
-            shipping_phone: data.shipping.shipping_phone || "",
-            shipping_country: data.shipping.shipping_country || "España",
-          })
-        }
+      const token = await getAuthToken()
+      const headers: HeadersInit = {}
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
       }
+
+      const response = await fetch("/api/user/shipping", { headers })
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn("Rate limited, will retry later")
+          return
+        }
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.warn("Non-JSON response received, skipping")
+        return
+      }
+
+      const data = await response.json()
+      if (data.shipping) {
+        setShippingInfo({
+          shipping_address: data.shipping.shipping_address || "",
+          shipping_city: data.shipping.shipping_city || "",
+          shipping_postal_code: data.shipping.shipping_postal_code || "",
+          shipping_phone: data.shipping.shipping_phone || "",
+          shipping_country: data.shipping.shipping_country || "España",
+        })
+      }
+      setShippingFetched(true)
     } catch (error) {
       console.error("Error fetching shipping info:", error)
     } finally {
       setLoadingShipping(false)
     }
-  }
+  }, [user, shippingFetched, loadingShipping, getAuthToken])
+
+  useEffect(() => {
+    if (user && !shippingFetched) {
+      fetchShippingInfo()
+    }
+  }, [user, shippingFetched, fetchShippingInfo])
 
   const handleSaveShipping = async () => {
     setSavingShipping(true)
     try {
+      const token = await getAuthToken()
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+      }
+
       const response = await fetch("/api/user/shipping", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(shippingInfo),
       })
 
@@ -98,7 +146,6 @@ export default function Dashboard() {
 
   const handleCancelEdit = () => {
     setIsEditingShipping(false)
-    fetchShippingInfo() // Reset to original values
   }
 
   const handleLogout = async () => {
@@ -356,8 +403,8 @@ export default function Dashboard() {
             />
             <div className="absolute inset-0 bg-gradient-to-br from-slate-100/90 via-slate-50/85 to-white/90" />
             <div className="relative z-10">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-lg font-serif text-slate-900">Estado de Membresía</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-serif text-slate-900">Estado de Membresía</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center space-x-3 mb-3">

@@ -1,27 +1,21 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 
 // GET - Obtener información de envío del usuario
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
-      },
-    )
+    const authHeader = request.headers.get("Authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const token = authHeader.replace("Bearer ", "")
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
@@ -48,29 +42,38 @@ export async function GET() {
 // PUT - Actualizar información de envío del usuario
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
-      },
-    )
+    console.log("[v0] PUT /api/user/shipping - Starting request")
 
+    const authHeader = request.headers.get("Authorization")
+    console.log("[v0] Authorization header present:", !!authHeader)
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("[v0] No valid Authorization header found")
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const token = authHeader.replace("Bearer ", "")
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+    console.log("[v0] Getting user from Supabase with token...")
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser(token)
+
+    console.log("[v0] Auth result:", {
+      user: user ? { id: user.id, email: user.email } : null,
+      error: authError?.message,
+    })
 
     if (authError || !user) {
+      console.log("[v0] Authorization failed:", authError?.message || "No user")
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log("[v0] Request body:", body)
+
     const { shipping_address, shipping_city, shipping_postal_code, shipping_phone, shipping_country } = body
 
     // Validar campos requeridos
@@ -101,6 +104,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Error al actualizar información de envío" }, { status: 500 })
     }
 
+    console.log("[v0] Shipping info updated successfully")
     return NextResponse.json({
       message: "Información de envío actualizada correctamente",
       shipping: {
@@ -112,7 +116,7 @@ export async function PUT(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error in PUT /api/user/shipping:", error)
+    console.error("[v0] Error in PUT /api/user/shipping:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
