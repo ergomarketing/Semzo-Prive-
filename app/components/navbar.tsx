@@ -132,7 +132,7 @@ export default function Navbar() {
               </div>
             ) : (
               <Link href="/login">
-                <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800">
                   Acceso
                 </Button>
               </Link>

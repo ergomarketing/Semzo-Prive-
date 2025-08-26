@@ -1,16 +1,36 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, LogOut, ShoppingBag, Heart, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
+
+interface ShippingInfo {
+  shipping_address: string
+  shipping_city: string
+  shipping_postal_code: string
+  shipping_phone: string
+  shipping_country: string
+}
 
 export default function Dashboard() {
   const router = useRouter()
   const { user, loading, signOut } = useAuth()
+  const [isEditingShipping, setIsEditingShipping] = useState(false)
+  const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
+    shipping_address: "",
+    shipping_city: "",
+    shipping_postal_code: "",
+    shipping_phone: "",
+    shipping_country: "España",
+  })
+  const [loadingShipping, setLoadingShipping] = useState(false)
+  const [savingShipping, setSavingShipping] = useState(false)
 
   const membershipType = user?.user_metadata?.membership_status || "free"
   const isPremium = membershipType === "premium" || membershipType === "prive"
@@ -20,6 +40,66 @@ export default function Dashboard() {
       router.push("/auth/login")
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    if (user) {
+      fetchShippingInfo()
+    }
+  }, [user])
+
+  const fetchShippingInfo = async () => {
+    setLoadingShipping(true)
+    try {
+      const response = await fetch("/api/user/shipping")
+      if (response.ok) {
+        const data = await response.json()
+        if (data.shipping) {
+          setShippingInfo({
+            shipping_address: data.shipping.shipping_address || "",
+            shipping_city: data.shipping.shipping_city || "",
+            shipping_postal_code: data.shipping.shipping_postal_code || "",
+            shipping_phone: data.shipping.shipping_phone || "",
+            shipping_country: data.shipping.shipping_country || "España",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching shipping info:", error)
+    } finally {
+      setLoadingShipping(false)
+    }
+  }
+
+  const handleSaveShipping = async () => {
+    setSavingShipping(true)
+    try {
+      const response = await fetch("/api/user/shipping", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(shippingInfo),
+      })
+
+      if (response.ok) {
+        setIsEditingShipping(false)
+        // Optionally show success message
+      } else {
+        const error = await response.json()
+        console.error("Error saving shipping info:", error)
+        // Optionally show error message
+      }
+    } catch (error) {
+      console.error("Error saving shipping info:", error)
+    } finally {
+      setSavingShipping(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingShipping(false)
+    fetchShippingInfo() // Reset to original values
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -36,10 +116,6 @@ export default function Dashboard() {
 
   const handleViewRecommendations = () => {
     router.push("/recommendations")
-  }
-
-  const handleUpgradeMembership = () => {
-    router.push("/membership/upgrade")
   }
 
   const handleViewReservations = () => {
@@ -133,7 +209,6 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          {/* Membership Status Card */}
           <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
             <div
               className="absolute inset-0 bg-cover bg-center"
@@ -143,6 +218,143 @@ export default function Dashboard() {
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-br from-rose-100/90 via-rose-50/85 to-pink-50/90" />
+            <div className="relative z-10">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-lg font-serif text-slate-900">Dirección de Envío</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-5 w-5 text-slate-600" />
+                  {!isEditingShipping && (
+                    <Button
+                      onClick={() => setIsEditingShipping(true)}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 hover:bg-white/50"
+                    >
+                      <Edit className="h-4 w-4 text-slate-600" />
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingShipping ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="animate-spin h-5 w-5 text-slate-600" />
+                  </div>
+                ) : isEditingShipping ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="address" className="text-sm font-serif text-slate-700">
+                        Dirección
+                      </Label>
+                      <Input
+                        id="address"
+                        value={shippingInfo.shipping_address}
+                        onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_address: e.target.value })}
+                        placeholder="Calle, número, piso..."
+                        className="bg-white/80 border-slate-300"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="city" className="text-sm font-serif text-slate-700">
+                          Ciudad
+                        </Label>
+                        <Input
+                          id="city"
+                          value={shippingInfo.shipping_city}
+                          onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_city: e.target.value })}
+                          placeholder="Madrid"
+                          className="bg-white/80 border-slate-300"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="postal" className="text-sm font-serif text-slate-700">
+                          C.P.
+                        </Label>
+                        <Input
+                          id="postal"
+                          value={shippingInfo.shipping_postal_code}
+                          onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_postal_code: e.target.value })}
+                          placeholder="28001"
+                          className="bg-white/80 border-slate-300"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="phone" className="text-sm font-serif text-slate-700">
+                        Teléfono
+                      </Label>
+                      <Input
+                        id="phone"
+                        value={shippingInfo.shipping_phone}
+                        onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_phone: e.target.value })}
+                        placeholder="+34 600 000 000"
+                        className="bg-white/80 border-slate-300"
+                      />
+                    </div>
+                    <div className="flex space-x-2 pt-2">
+                      <Button
+                        onClick={handleSaveShipping}
+                        size="sm"
+                        disabled={savingShipping}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-serif flex-1"
+                      >
+                        {savingShipping ? (
+                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Guardar
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        size="sm"
+                        variant="outline"
+                        className="border-slate-300 text-slate-700 hover:bg-white/80 bg-transparent"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {shippingInfo.shipping_address ? (
+                      <>
+                        <p className="text-sm text-slate-700 font-medium">{shippingInfo.shipping_address}</p>
+                        <p className="text-sm text-slate-600">
+                          {shippingInfo.shipping_city}, {shippingInfo.shipping_postal_code}
+                        </p>
+                        <p className="text-sm text-slate-600">{shippingInfo.shipping_country}</p>
+                        <p className="text-sm text-slate-600">Tel: {shippingInfo.shipping_phone}</p>
+                      </>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-slate-600 mb-3">No has configurado tu dirección de envío</p>
+                        <Button
+                          onClick={() => setIsEditingShipping(true)}
+                          size="sm"
+                          className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
+                        >
+                          Agregar Dirección
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </div>
+          </Card>
+
+          {/* Membership Status Card */}
+          <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url('/pink-quilted-floral-handbag.png')`,
+                filter: "blur(1px)",
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-100/90 via-slate-50/85 to-white/90" />
             <div className="relative z-10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-lg font-serif text-slate-900">Estado de Membresía</CardTitle>
@@ -163,33 +375,14 @@ export default function Dashboard() {
                 </p>
                 {!isPremium && (
                   <Button
-                    onClick={handleUpgradeMembership}
+                    onClick={() => router.push("/membership/upgrade")}
                     size="sm"
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif shadow-lg"
                   >
                     Upgrade a Privé
                   </Button>
                 )}
-              </CardContent>
-            </div>
-          </Card>
-
-          {/* Quick Actions Card */}
-          <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url('/pink-quilted-floral-handbag.png')`,
-                filter: "blur(1px)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-100/90 via-slate-50/85 to-white/90" />
-            <div className="relative z-10">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-lg font-serif text-slate-900">Acciones Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+                <div className="mt-3">
                   <Button
                     onClick={handleViewCatalog}
                     size="sm"
@@ -197,15 +390,6 @@ export default function Dashboard() {
                   >
                     <ShoppingBag className="w-4 h-4 mr-3" />
                     Ver Catálogo
-                  </Button>
-                  <Button
-                    onClick={handleViewWishlist}
-                    size="sm"
-                    variant="outline"
-                    className="w-full justify-start border-slate-300 text-slate-700 hover:bg-white/80 font-serif bg-white/60 backdrop-blur-sm shadow-lg"
-                  >
-                    <Heart className="w-4 h-4 mr-3" />
-                    Mi Lista de Deseos
                   </Button>
                 </div>
               </CardContent>
@@ -223,7 +407,10 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-center py-8">
                 <p className="text-slate-600 mb-4">No tienes reservas recientes</p>
-                <Button onClick={handleViewCatalog} className="bg-slate-900 hover:bg-slate-800 text-white font-serif">
+                <Button
+                  onClick={() => router.push("/catalog")}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
+                >
                   Explorar Catálogo
                 </Button>
               </div>
@@ -240,7 +427,7 @@ export default function Dashboard() {
               <div className="text-center py-8">
                 <p className="text-slate-600 mb-4">Explora nuestro catálogo para ver recomendaciones personalizadas</p>
                 <Button
-                  onClick={handleViewRecommendations}
+                  onClick={() => router.push("/recommendations")}
                   className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
                 >
                   Ver Recomendaciones

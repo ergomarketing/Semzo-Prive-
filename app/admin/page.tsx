@@ -16,6 +16,7 @@ import {
   Wrench,
   FileText,
   HelpCircle,
+  MapPin,
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -65,6 +66,13 @@ export default function AdminDashboard() {
           href: "/admin/members",
           icon: Users,
           description: "Ver y gestionar usuarios registrados",
+          status: "active",
+        },
+        {
+          name: "Direcciones de Envío",
+          href: "/admin/shipping",
+          icon: MapPin,
+          description: "Ver direcciones de entrega de usuarios",
           status: "active",
         },
         {
