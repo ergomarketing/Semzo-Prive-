@@ -23,14 +23,9 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Verificar si el usuario es admin
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
+    const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"] // Agregar emails de admin aquí
 
-    if (profileError || profile?.role !== "admin") {
+    if (!adminEmails.includes(user.email || "")) {
       return NextResponse.json({ error: "Acceso denegado - Solo administradores" }, { status: 403 })
     }
 
