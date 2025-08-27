@@ -1,176 +1,144 @@
 import nodemailer from "nodemailer"
 
-interface ContactFormData {
-  name: string
-  email: string
-  subject: string
-  message: string
-  priority: string
-}
-
 export class SohoMailService {
   private static instance: SohoMailService
   private transporter: nodemailer.Transporter
 
-  constructor() {
+  private constructor() {
+    console.log("[v0] 📧 Inicializando SohoMail Service...")
+
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.zoho.com",
-      port: Number.parseInt(process.env.SMTP_PORT || "465"),
-      secure: true, // true para puerto 465, false para otros puertos
+      port: Number.parseInt(process.env.SMTP_PORT || "587"),
+      secure: process.env.SMTP_PORT === "465", // true para 465, false para otros puertos
       auth: {
         user: process.env.SMTP_USER || "mailbox@semzoprive.com",
         pass: process.env.SMTP_PASS || "Semzoprive1*",
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    })
+
+    // Verificar conexión SMTP
+    this.transporter.verify((error, success) => {
+      if (error) {
+        console.error("[v0] ❌ Error de conexión SMTP:", error)
+      } else {
+        console.log("[v0] ✅ Servidor SMTP listo para enviar emails")
+      }
     })
   }
 
-  static getInstance(): SohoMailService {
+  public static getInstance(): SohoMailService {
     if (!SohoMailService.instance) {
       SohoMailService.instance = new SohoMailService()
     }
     return SohoMailService.instance
   }
 
-  async sendContactFormNotification(data: ContactFormData): Promise<boolean> {
+  public async sendContactFormNotification(data: {
+    name: string
+    email: string
+    subject: string
+    message: string
+    priority: string
+  }): Promise<boolean> {
     try {
-      console.log("[v0] 📧 Enviando notificación de contacto via SohoMail")
+      console.log("[v0] 📤 Enviando email de contacto via SohoMail...")
 
-      // Email al admin
-      await this.transporter.sendMail({
+      const adminEmail = {
         from: `"Semzo Privé" <${process.env.SMTP_USER || "mailbox@semzoprive.com"}>`,
-        to: "admin@semzoprive.com",
+        to: process.env.SMTP_USER || "mailbox@semzoprive.com",
         subject: `Nueva consulta: ${data.subject}`,
-        html: this.generateContactNotificationHTML(data),
-        text: this.generateContactNotificationText(data),
-      })
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2c3e50;">Nueva Consulta de Contacto</h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Nombre:</strong> ${data.name}</p>
+              <p><strong>Email:</strong> ${data.email}</p>
+              <p><strong>Asunto:</strong> ${data.subject}</p>
+              <p><strong>Prioridad:</strong> ${data.priority}</p>
+              <p><strong>Mensaje:</strong></p>
+              <div style="background: white; padding: 15px; border-radius: 4px; margin-top: 10px;">
+                ${data.message}
+              </div>
+            </div>
+            <p style="color: #666; font-size: 12px;">
+              Enviado desde el formulario de contacto de Semzo Privé
+            </p>
+          </div>
+        `,
+      }
 
-      // Email de confirmación al usuario
-      await this.transporter.sendMail({
+      const userEmail = {
         from: `"Semzo Privé" <${process.env.SMTP_USER || "mailbox@semzoprive.com"}>`,
         to: data.email,
         subject: "Hemos recibido tu consulta - Semzo Privé",
-        html: this.generateContactConfirmationHTML(data),
-        text: this.generateContactConfirmationText(data),
-      })
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2c3e50;">Gracias por contactarnos</h2>
+            <p>Hola ${data.name},</p>
+            <p>Hemos recibido tu consulta sobre: <strong>${data.subject}</strong></p>
+            <p>Te responderemos en un plazo máximo de 24 horas.</p>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Tu mensaje:</strong></p>
+              <div style="background: white; padding: 15px; border-radius: 4px;">
+                ${data.message}
+              </div>
+            </div>
+            <p>Saludos,<br>El equipo de Semzo Privé</p>
+          </div>
+        `,
+      }
 
-      console.log("[v0] ✅ Emails de contacto enviados exitosamente")
+      // Enviar email al admin
+      await this.transporter.sendMail(adminEmail)
+      console.log("[v0] ✅ Email enviado al admin")
+
+      // Enviar confirmación al usuario
+      await this.transporter.sendMail(userEmail)
+      console.log("[v0] ✅ Email de confirmación enviado al usuario")
+
       return true
     } catch (error) {
-      console.error("[v0] ❌ Error enviando emails de contacto:", error)
+      console.error("[v0] ❌ Error enviando email:", error)
       return false
     }
   }
 
-  private generateContactNotificationHTML(data: ContactFormData): string {
-    return `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Nueva Consulta - Semzo Privé</title>
-          <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: #1a1a4b; color: white; padding: 20px; text-align: center; }
-              .content { padding: 20px; background: #f9f9f9; }
-              .priority-high { border-left: 4px solid #dc3545; }
-              .priority-medium { border-left: 4px solid #ffc107; }
-              .priority-low { border-left: 4px solid #28a745; }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="header">
-                  <h1>Nueva Consulta Recibida</h1>
-              </div>
-              <div class="content priority-${data.priority}">
-                  <h2>Detalles de la Consulta</h2>
-                  <p><strong>Nombre:</strong> ${data.name}</p>
-                  <p><strong>Email:</strong> ${data.email}</p>
-                  <p><strong>Asunto:</strong> ${data.subject}</p>
-                  <p><strong>Prioridad:</strong> ${data.priority.toUpperCase()}</p>
-                  <p><strong>Mensaje:</strong></p>
-                  <div style="background: white; padding: 15px; border-radius: 5px;">
-                      ${data.message.replace(/\n/g, "<br>")}
-                  </div>
-                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-              </div>
+  public async sendNewsletter(email: string, name?: string): Promise<boolean> {
+    try {
+      console.log("[v0] 📤 Enviando newsletter via SohoMail...")
+
+      const newsletterEmail = {
+        from: `"Semzo Privé" <${process.env.SMTP_USER || "mailbox@semzoprive.com"}>`,
+        to: email,
+        subject: "Bienvenido a Semzo Privé Newsletter",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2c3e50;">¡Bienvenido a Semzo Privé!</h2>
+            <p>Hola ${name || "amante de la moda"},</p>
+            <p>Gracias por suscribirte a nuestro newsletter. Ahora recibirás las últimas novedades sobre:</p>
+            <ul>
+              <li>Nuevos bolsos de lujo disponibles</li>
+              <li>Ofertas exclusivas para miembros</li>
+              <li>Tendencias de moda</li>
+              <li>Eventos especiales</li>
+            </ul>
+            <p>¡Esperamos que disfrutes de la experiencia Semzo Privé!</p>
+            <p>Saludos,<br>El equipo de Semzo Privé</p>
           </div>
-      </body>
-      </html>
-    `
-  }
+        `,
+      }
 
-  private generateContactNotificationText(data: ContactFormData): string {
-    return `
-      Nueva Consulta Recibida - Semzo Privé
-      
-      Nombre: ${data.name}
-      Email: ${data.email}
-      Asunto: ${data.subject}
-      Prioridad: ${data.priority.toUpperCase()}
-      
-      Mensaje:
-      ${data.message}
-      
-      Fecha: ${new Date().toLocaleString("es-ES")}
-    `
-  }
+      await this.transporter.sendMail(newsletterEmail)
+      console.log("[v0] ✅ Newsletter enviado exitosamente")
 
-  private generateContactConfirmationHTML(data: ContactFormData): string {
-    return `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Consulta Recibida - Semzo Privé</title>
-          <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: #1a1a4b; color: white; padding: 20px; text-align: center; }
-              .content { padding: 20px; }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="header">
-                  <h1>SEMZO PRIVÉ</h1>
-                  <p>Alquiler de bolsos de lujo</p>
-              </div>
-              <div class="content">
-                  <h2>¡Hola ${data.name}!</h2>
-                  <p>Hemos recibido tu consulta y te responderemos en las próximas 24 horas.</p>
-                  <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                      <p><strong>Tu consulta:</strong></p>
-                      <p><strong>Asunto:</strong> ${data.subject}</p>
-                      <p><strong>Mensaje:</strong> ${data.message}</p>
-                  </div>
-                  <p>Gracias por contactarnos.</p>
-                  <p>El equipo de Semzo Privé</p>
-              </div>
-          </div>
-      </body>
-      </html>
-    `
-  }
-
-  private generateContactConfirmationText(data: ContactFormData): string {
-    return `
-      Hola ${data.name},
-      
-      Hemos recibido tu consulta y te responderemos en las próximas 24 horas.
-      
-      Tu consulta:
-      Asunto: ${data.subject}
-      Mensaje: ${data.message}
-      
-      Gracias por contactarnos.
-      
-      El equipo de Semzo Privé
-      Avenida Ricardo Soriano s.n, Marbella, España
-      +34 624 23 9394
-    `
+      return true
+    } catch (error) {
+      console.error("[v0] ❌ Error enviando newsletter:", error)
+      return false
+    }
   }
 }
