@@ -102,11 +102,8 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        console.log("[Login] Login exitoso:", data.user.email)
+        console.log("[Login] Login exitoso, redirigiendo al dashboard")
         setMessage("¡Login exitoso!")
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
       }
     } catch (error: any) {
       console.error("[Login] Error catch:", error)

@@ -103,7 +103,7 @@ export default function Dashboard() {
     } finally {
       setLoadingShipping(false)
     }
-  }, [user, shippingFetched, loadingShipping, getAuthToken])
+  }, [user, shippingFetched, getAuthToken]) // Removed loadingShipping from dependencies to prevent infinite loop
 
   useEffect(() => {
     if (user && !shippingFetched) {
