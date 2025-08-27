@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"] // Agregar emails de admin aquí
+    const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
 
     if (!adminEmails.includes(user.email || "")) {
       console.log("[v0] Admin API - Access denied for:", user.email)

@@ -46,7 +46,7 @@ export default function AdminShippingPage() {
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
-    const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"]
+    const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
 
     if (!authLoading && user) {
       console.log("[v0] Admin Panel - Checking authorization for:", user.email)
@@ -170,7 +170,7 @@ export default function AdminShippingPage() {
             <CardContent className="text-center py-12">
               <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Restringido</h3>
-              <p className="text-gray-600 mb-4">Debes iniciar sesión para acceder al panel de administración.</p>
+              <p className="text-gray-600 text-lg">Debes iniciar sesión para acceder al panel de administración.</p>
               <Button onClick={() => (window.location.href = "/login")} className="bg-blue-600 hover:bg-blue-700">
                 Iniciar Sesión
               </Button>

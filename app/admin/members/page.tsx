@@ -85,8 +85,9 @@ export default function MembersAdminPage() {
     }
   }
 
+  const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
+
   // Verificar autorización de admin
-  const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"]
   const isAdmin = user && adminEmails.includes(user.email || "")
 
   if (authLoading) {

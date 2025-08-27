@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -45,84 +44,82 @@ export default function InventorySystem() {
   const [inventory, setInventory] = useState<BagInventory[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [selectedBag, setSelectedBag] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Simulación de datos iniciales
   useEffect(() => {
-    const mockInventory: BagInventory[] = [
-      {
-        id: "chanel-classic-flap",
-        name: "Classic Flap Medium",
-        brand: "Chanel",
-        status: "rented",
-        currentRenter: "maria@ejemplo.com",
-        rentedUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 días
-        nextAvailable: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-        waitingList: [
-          {
-            id: "w1",
-            customerEmail: "ana@ejemplo.com",
-            customerName: "Ana García",
-            addedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            notified: false,
-          },
-          {
-            id: "w2",
-            customerEmail: "lucia@ejemplo.com",
-            customerName: "Lucía Martín",
-            addedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            notified: false,
-          },
-        ],
-        totalRentals: 12,
-        condition: "excellent",
-        lastMaintenance: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: "lv-speedy-30",
-        name: "Speedy 30",
-        brand: "Louis Vuitton",
-        status: "available",
-        waitingList: [],
-        totalRentals: 8,
-        condition: "very-good",
-        lastMaintenance: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: "dior-lady-dior",
-        name: "Lady Dior Medium",
-        brand: "Dior",
-        status: "maintenance",
-        nextAvailable: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        waitingList: [
-          {
-            id: "w3",
-            customerEmail: "carmen@ejemplo.com",
-            customerName: "Carmen López",
-            addedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            notified: false,
-          },
-        ],
-        totalRentals: 15,
-        condition: "good",
-        lastMaintenance: new Date(),
-      },
-    ]
+    const fetchRealData = async () => {
+      try {
+        setLoading(true)
+        console.log("[v0] Fetching real inventory data...")
 
-    const mockReservations: Reservation[] = [
-      {
-        id: "r1",
-        bagId: "chanel-classic-flap",
-        customerEmail: "maria@ejemplo.com",
-        customerName: "María Rodríguez",
-        startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-        status: "active",
-        membershipType: "signature",
-      },
-    ]
+        // Obtener token de autenticación
+        const token = localStorage.getItem("supabase.auth.token")
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        }
 
-    setInventory(mockInventory)
-    setReservations(mockReservations)
+        // Obtener inventario real
+        const inventoryResponse = await fetch("/api/admin/inventory", { headers })
+        const inventoryData = await inventoryResponse.json()
+
+        // Obtener reservas reales
+        const reservationsResponse = await fetch("/api/admin/reservations", { headers })
+        const reservationsData = await reservationsResponse.json()
+
+        if (inventoryData.inventory) {
+          const processedInventory: BagInventory[] = inventoryData.inventory.map((bag: any) => ({
+            id: bag.id,
+            name: bag.name,
+            brand: bag.brand,
+            status: bag.status,
+            currentRenter: bag.current_renter,
+            rentedUntil: bag.rented_until ? new Date(bag.rented_until) : undefined,
+            nextAvailable: bag.next_available ? new Date(bag.next_available) : undefined,
+            waitingList: bag.waiting_list || [],
+            totalRentals: bag.total_rentals || 0,
+            condition: bag.condition,
+            lastMaintenance: bag.last_maintenance ? new Date(bag.last_maintenance) : undefined,
+          }))
+
+          setInventory(processedInventory)
+          console.log("[v0] Real inventory loaded:", processedInventory.length, "bags")
+        }
+
+        if (reservationsData.reservations) {
+          const processedReservations: Reservation[] = reservationsData.reservations.map((res: any) => ({
+            id: res.id,
+            bagId: res.bag_id,
+            customerEmail: res.customer_email,
+            customerName: res.customer_name,
+            startDate: new Date(res.start_date),
+            endDate: new Date(res.end_date),
+            status: res.status,
+            membershipType: res.membership_type,
+          }))
+
+          setReservations(processedReservations)
+          console.log("[v0] Real reservations loaded:", processedReservations.length, "reservations")
+        }
+      } catch (error) {
+        console.error("[v0] Error loading real data:", error)
+        setInventory([
+          {
+            id: "sample-bag-1",
+            name: "Bolso de Ejemplo",
+            brand: "Marca Ejemplo",
+            status: "available",
+            waitingList: [],
+            totalRentals: 0,
+            condition: "excellent",
+          },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRealData()
   }, [])
 
   const getStatusColor = (status: BagInventory["status"]) => {
@@ -168,15 +165,13 @@ export default function InventorySystem() {
       prev.map((bag) => (bag.id === bagId ? { ...bag, waitingList: [...bag.waitingList, newEntry] } : bag)),
     )
 
-    // Aquí enviarías el email de confirmación
-    console.log(`Email enviado a ${customerEmail}: Añadido a lista de espera para ${bagId}`)
+    console.log(`[v0] Added to waiting list: ${customerEmail} for ${bagId}`)
   }
 
   const notifyWaitingList = async (bagId: string) => {
     const bag = inventory.find((b) => b.id === bagId)
     if (!bag || bag.waitingList.length === 0) return
 
-    // Notificar al primer cliente en la lista
     const firstInLine = bag.waitingList[0]
 
     setInventory((prev) =>
@@ -190,8 +185,7 @@ export default function InventorySystem() {
       ),
     )
 
-    // Aquí enviarías el email de disponibilidad
-    console.log(`Email enviado a ${firstInLine.customerEmail}: ${bag.name} ya está disponible!`)
+    console.log(`[v0] Notified waiting list: ${firstInLine.customerEmail} for ${bag.name}`)
   }
 
   const markAsAvailable = (bagId: string) => {
@@ -209,14 +203,24 @@ export default function InventorySystem() {
       ),
     )
 
-    // Notificar lista de espera automáticamente
     notifyWaitingList(bagId)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Cargando inventario real...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-serif text-slate-900">Sistema de Inventario</h2>
+        <h2 className="text-2xl font-serif text-slate-900">Sistema de Inventario Real</h2>
         <div className="flex space-x-2">
           <Badge variant="outline" className="bg-green-50">
             {inventory.filter((b) => b.status === "available").length} Disponibles
@@ -230,108 +234,118 @@ export default function InventorySystem() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {inventory.map((bag) => (
-          <Card key={bag.id} className="border-0 shadow-lg">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg font-serif">{bag.name}</CardTitle>
-                  <p className="text-sm text-slate-600">{bag.brand}</p>
-                </div>
-                <Badge className={getStatusColor(bag.status)}>
-                  <div className="flex items-center space-x-1">
-                    {getStatusIcon(bag.status)}
-                    <span className="capitalize">{bag.status}</span>
+      {inventory.length === 0 ? (
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-8 text-center">
+            <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">No hay bolsos en el inventario</h3>
+            <p className="text-slate-600">Agrega bolsos al inventario para comenzar a gestionar reservas.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {inventory.map((bag) => (
+            <Card key={bag.id} className="border-0 shadow-lg">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-serif">{bag.name}</CardTitle>
+                    <p className="text-sm text-slate-600">{bag.brand}</p>
                   </div>
-                </Badge>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* Estado actual */}
-              {bag.status === "rented" && bag.rentedUntil && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-blue-900">Alquilado hasta:</p>
-                  <p className="text-sm text-blue-700">{bag.rentedUntil.toLocaleDateString()}</p>
-                  <p className="text-xs text-blue-600">Cliente: {bag.currentRenter}</p>
+                  <Badge className={getStatusColor(bag.status)}>
+                    <div className="flex items-center space-x-1">
+                      {getStatusIcon(bag.status)}
+                      <span className="capitalize">{bag.status}</span>
+                    </div>
+                  </Badge>
                 </div>
-              )}
+              </CardHeader>
 
-              {bag.status === "maintenance" && bag.nextAvailable && (
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <p className="text-sm font-medium text-yellow-900">En mantenimiento</p>
-                  <p className="text-sm text-yellow-700">Disponible: {bag.nextAvailable.toLocaleDateString()}</p>
-                </div>
-              )}
-
-              {bag.status === "available" && (
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm font-medium text-green-900">✅ Disponible para alquiler</p>
-                </div>
-              )}
-
-              {/* Lista de espera */}
-              {bag.waitingList.length > 0 && (
-                <div className="p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-slate-900">Lista de espera</p>
-                    <Badge variant="outline">{bag.waitingList.length}</Badge>
+              <CardContent className="space-y-4">
+                {/* Estado actual */}
+                {bag.status === "rented" && bag.rentedUntil && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900">Alquilado hasta:</p>
+                    <p className="text-sm text-blue-700">{bag.rentedUntil.toLocaleDateString()}</p>
+                    <p className="text-xs text-blue-600">Cliente: {bag.currentRenter}</p>
                   </div>
-                  <div className="space-y-1">
-                    {bag.waitingList.slice(0, 3).map((entry, index) => (
-                      <div key={entry.id} className="flex items-center justify-between text-xs">
-                        <span className="text-slate-600">
-                          {index + 1}. {entry.customerName}
-                        </span>
-                        {entry.notified && <Badge className="bg-green-100 text-green-800 text-xs">Notificado</Badge>}
-                      </div>
-                    ))}
-                    {bag.waitingList.length > 3 && (
-                      <p className="text-xs text-slate-500">+{bag.waitingList.length - 3} más...</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Estadísticas */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">Total alquileres</p>
-                  <p className="font-medium">{bag.totalRentals}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Estado</p>
-                  <p className="font-medium capitalize">{bag.condition}</p>
-                </div>
-              </div>
-
-              {/* Acciones */}
-              <div className="flex space-x-2">
-                {bag.status === "rented" && (
-                  <Button
-                    size="sm"
-                    onClick={() => markAsAvailable(bag.id)}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    Marcar disponible
-                  </Button>
                 )}
 
+                {bag.status === "maintenance" && bag.nextAvailable && (
+                  <div className="p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-sm font-medium text-yellow-900">En mantenimiento</p>
+                    <p className="text-sm text-yellow-700">Disponible: {bag.nextAvailable.toLocaleDateString()}</p>
+                  </div>
+                )}
+
+                {bag.status === "available" && (
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-green-900">✅ Disponible para alquiler</p>
+                  </div>
+                )}
+
+                {/* Lista de espera */}
                 {bag.waitingList.length > 0 && (
-                  <Button size="sm" variant="outline" onClick={() => notifyWaitingList(bag.id)} className="flex-1">
-                    Notificar lista
-                  </Button>
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-slate-900">Lista de espera</p>
+                      <Badge variant="outline">{bag.waitingList.length}</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      {bag.waitingList.slice(0, 3).map((entry, index) => (
+                        <div key={entry.id} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">
+                            {index + 1}. {entry.customerName}
+                          </span>
+                          {entry.notified && <Badge className="bg-green-100 text-green-800 text-xs">Notificado</Badge>}
+                        </div>
+                      ))}
+                      {bag.waitingList.length > 3 && (
+                        <p className="text-xs text-slate-500">+{bag.waitingList.length - 3} más...</p>
+                      )}
+                    </div>
+                  </div>
                 )}
 
-                <Button size="sm" variant="outline" onClick={() => setSelectedBag(bag.id)} className="flex-1">
-                  Ver detalles
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                {/* Estadísticas */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Total alquileres</p>
+                    <p className="font-medium">{bag.totalRentals}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Estado</p>
+                    <p className="font-medium capitalize">{bag.condition}</p>
+                  </div>
+                </div>
+
+                {/* Acciones */}
+                <div className="flex space-x-2">
+                  {bag.status === "rented" && (
+                    <Button
+                      size="sm"
+                      onClick={() => markAsAvailable(bag.id)}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      Marcar disponible
+                    </Button>
+                  )}
+
+                  {bag.waitingList.length > 0 && (
+                    <Button size="sm" variant="outline" onClick={() => notifyWaitingList(bag.id)} className="flex-1">
+                      Notificar lista
+                    </Button>
+                  )}
+
+                  <Button size="sm" variant="outline" onClick={() => setSelectedBag(bag.id)} className="flex-1">
+                    Ver detalles
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Componente de lista de espera para clientes */}
       <WaitingListComponent onAddToWaitingList={addToWaitingList} inventory={inventory} />

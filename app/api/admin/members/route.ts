@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar que el usuario es admin
-    const adminEmails = ["ergomara@hotmail.com", "admin@semzoprive.com"]
+    const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
     if (!adminEmails.includes(user.email || "")) {
       console.log("[v0] User not authorized as admin:", user.email)
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
