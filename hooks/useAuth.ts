@@ -4,74 +4,41 @@ import { useEffect, useState, useRef } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/app/lib/supabase-unified"
 
-let globalAuthState: { user: User | null; loading: boolean } = { user: null, loading: true }
-let globalAuthListeners: Array<(state: typeof globalAuthState) => void> = []
-
 const useAuth = () => {
-  const [user, setUser] = useState<User | null>(globalAuthState.user)
-  const [loading, setLoading] = useState(globalAuthState.loading)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
   const isSigningOut = useRef(false)
   const hasInitialized = useRef(false)
 
-  const updateGlobalState = (newUser: User | null, newLoading: boolean) => {
-    globalAuthState = { user: newUser, loading: newLoading }
-    globalAuthListeners.forEach((listener) => listener(globalAuthState))
-  }
-
-  useEffect(() => {
-    const listener = (state: typeof globalAuthState) => {
-      setUser(state.user)
-      setLoading(state.loading)
-    }
-
-    globalAuthListeners.push(listener)
-
-    return () => {
-      globalAuthListeners = globalAuthListeners.filter((l) => l !== listener)
-    }
-  }, [])
-
   const clearAuthStorage = () => {
     try {
-      const keys = Object.keys(localStorage)
-      keys.forEach((key) => {
-        if (
-          key.startsWith("sb-") ||
-          key.includes("supabase") ||
-          key.startsWith("supabase.") ||
-          key.includes("auth-token") ||
-          key.includes("access_token") ||
-          key.includes("refresh_token")
-        ) {
-          localStorage.removeItem(key)
+      if (typeof window === "undefined") return
+
+      // Clear localStorage
+      const localKeys = Object.keys(localStorage)
+      localKeys.forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          try {
+            localStorage.removeItem(key)
+          } catch (e) {
+            // Ignore individual key errors
+          }
         }
       })
 
+      // Clear sessionStorage
       const sessionKeys = Object.keys(sessionStorage)
       sessionKeys.forEach((key) => {
-        if (
-          key.startsWith("sb-") ||
-          key.includes("supabase") ||
-          key.startsWith("supabase.") ||
-          key.includes("auth-token") ||
-          key.includes("access_token") ||
-          key.includes("refresh_token")
-        ) {
-          sessionStorage.removeItem(key)
-        }
-      })
-
-      document.cookie.split(";").forEach((cookie) => {
-        const eqPos = cookie.indexOf("=")
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
-        if (name.startsWith("sb-") || name.includes("supabase") || name.includes("auth-token")) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.${window.location.hostname}`
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          try {
+            sessionStorage.removeItem(key)
+          } catch (e) {
+            // Ignore individual key errors
+          }
         }
       })
     } catch (error) {
-      console.error("Error clearing auth storage:", error)
+      console.error("[v0] Error clearing auth storage:", error)
     }
   }
 
@@ -79,76 +46,103 @@ const useAuth = () => {
     if (hasInitialized.current) return
     hasInitialized.current = true
 
+    let mounted = true
+
+    const initAuth = async () => {
+      try {
+        // Get initial session
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (error) {
+          console.error("[v0] Error getting session:", error)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
+          setUser(session.user)
+        } else {
+          setUser(null)
+        }
+        setLoading(false)
+      } catch (error) {
+        console.error("[v0] Error initializing auth:", error)
+        if (mounted) {
+          setUser(null)
+          setLoading(false)
+        }
+      }
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.email)
+      if (!mounted) return
 
-      if (isSigningOut.current && event !== "SIGNED_OUT") {
-        return
-      }
+      try {
+        console.log("[v0] Auth state changed:", event, session?.user?.email)
 
-      if (event === "TOKEN_REFRESHED" && !session) {
-        console.log("Token refresh failed, clearing storage")
-        clearAuthStorage()
-        updateGlobalState(null, false)
-        return
-      }
+        if (isSigningOut.current && event !== "SIGNED_OUT") {
+          return
+        }
 
-      if (event === "SIGNED_OUT") {
-        updateGlobalState(null, false)
-        isSigningOut.current = false
-      } else if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
-        updateGlobalState(session.user, false)
-      } else {
-        updateGlobalState(null, false)
-      }
-    })
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
-        updateGlobalState(session.user, false)
-      } else {
-        updateGlobalState(null, false)
+        if (event === "SIGNED_OUT") {
+          setUser(null)
+          setLoading(false)
+          isSigningOut.current = false
+        } else if (session?.user && session?.expires_at && new Date(session.expires_at * 1000) > new Date()) {
+          setUser(session.user)
+          setLoading(false)
+        } else {
+          setUser(null)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("[v0] Error in auth state change:", error)
+        if (mounted) {
+          setUser(null)
+          setLoading(false)
+        }
       }
     })
+
+    initAuth()
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])
 
   const signOut = async () => {
     try {
-      console.log("[v0] Navbar - Logout clicked")
+      console.log("[v0] Logout clicked")
       isSigningOut.current = true
-      updateGlobalState(null, true)
+      setLoading(true)
 
       await supabase.auth.signOut({ scope: "global" })
 
-      await new Promise((resolve) => setTimeout(resolve, 200))
-
       clearAuthStorage()
 
-      console.log("[v0] Navbar - After signOut, redirecting to /")
+      setUser(null)
+      setLoading(false)
 
-      await new Promise((resolve) => setTimeout(resolve, 300))
-
+      console.log("[v0] After signOut, redirecting to /")
       window.location.href = "/"
     } catch (error) {
-      console.error("Error signing out:", error)
-      updateGlobalState(null, false)
+      console.error("[v0] Error signing out:", error)
       isSigningOut.current = false
+      setLoading(false)
 
-      try {
-        clearAuthStorage()
-      } catch (cleanupError) {
-        console.error("Error during cleanup:", cleanupError)
-      }
-
-      setTimeout(() => {
-        window.location.href = "/"
-      }, 100)
+      // Force redirect even if signOut fails
+      clearAuthStorage()
+      window.location.href = "/"
     }
   }
 

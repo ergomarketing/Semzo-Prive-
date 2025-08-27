@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { SohoMailService } from "@/app/lib/sohomail-simple"
 
 export async function POST(request: Request) {
   try {
@@ -9,25 +9,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Todos los campos son requeridos" }, { status: 400 })
     }
 
-    console.log("[v0] 📞 Nueva consulta de contacto:", {
-      name,
-      email,
-      subject,
-      message,
-      priority: priority || "medium",
-      timestamp: new Date().toISOString(),
-    })
+    console.log("[v0] 📞 Nueva consulta de contacto:", subject)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendContactFormNotification({
-      name,
-      email,
-      subject,
-      message,
-      priority: priority || "medium",
-    })
+    const sohoMail = new SohoMailService()
+    const result = await sohoMail.sendContactNotification(name, email, subject, message)
 
-    if (success) {
+    if (result.success) {
+      console.log("[v0] ✅ Email de contacto enviado exitosamente via SohoMail")
       return NextResponse.json({
         success: true,
         message: "Consulta enviada exitosamente",
@@ -37,6 +25,7 @@ export async function POST(request: Request) {
         },
       })
     } else {
+      console.log("[v0] ❌ Error enviando email de contacto:", result.error)
       return NextResponse.json(
         {
           success: false,
@@ -46,7 +35,7 @@ export async function POST(request: Request) {
       )
     }
   } catch (error) {
-    console.error("[v0] Error en formulario de contacto:", error)
+    console.error("[v0] ❌ Error en formulario de contacto:", error)
     return NextResponse.json(
       {
         error: "Error interno del servidor",
