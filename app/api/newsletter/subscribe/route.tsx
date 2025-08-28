@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-simple"
+import { SohoMailResendService } from "@/app/lib/sohomail-resend"
 
 export async function POST(request: Request) {
   try {
@@ -23,24 +23,13 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     })
 
-    const sohoMail = new SohoMailService()
-    const result = await sohoMail.sendNewsletterConfirmation(email)
+    const result = await SohoMailResendService.sendNewsletterEmail(email, name)
 
     if (result.success) {
-      console.log("[v0] ✅ Email de confirmación enviado via SohoMail")
+      console.log("[v0] ✅ Email de confirmación enviado via Resend")
     } else {
-      console.log("[v0] ⚠️ Error enviando confirmación:", result.error)
+      console.log("[v0] ⚠️ Error enviando confirmación:", result)
     }
-
-    await sohoMail.sendEmail(
-      "mailbox@semzoprive.com",
-      "Nueva suscripción al newsletter",
-      `<h2>Nueva suscripción</h2>
-       <p><strong>Nombre:</strong> ${name}</p>
-       <p><strong>Email:</strong> ${email}</p>
-       <p><strong>Teléfono:</strong> ${phone || "No proporcionado"}</p>
-       <p><strong>Fecha:</strong> ${new Date().toLocaleString()}</p>`,
-    )
 
     console.log("[v0] ✅ Suscripción registrada exitosamente")
     return NextResponse.json({

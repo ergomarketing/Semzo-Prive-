@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-simple"
+import { SohoMailResendService } from "@/app/lib/sohomail-resend"
 
 export async function POST(request: Request) {
   try {
@@ -11,11 +11,16 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📞 Nueva consulta de contacto:", subject)
 
-    const sohoMail = new SohoMailService()
-    const result = await sohoMail.sendContactNotification(name, email, subject, message)
+    const result = await SohoMailResendService.sendContactEmail({
+      name,
+      email,
+      subject,
+      message,
+      priority: priority || "Media",
+    })
 
     if (result.success) {
-      console.log("[v0] ✅ Email de contacto enviado exitosamente via SohoMail")
+      console.log("[v0] ✅ Email de contacto enviado exitosamente via Resend")
       return NextResponse.json({
         success: true,
         message: "Consulta enviada exitosamente",
@@ -25,7 +30,7 @@ export async function POST(request: Request) {
         },
       })
     } else {
-      console.log("[v0] ❌ Error enviando email de contacto:", result.error)
+      console.log("[v0] ❌ Error enviando email de contacto:", result)
       return NextResponse.json(
         {
           success: false,
