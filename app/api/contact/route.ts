@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
-import { SohoMailResendService } from "@/app/lib/sohomail-resend"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
+
+const useEmailServiceProduction = () => new EmailServiceProduction()
 
 export async function POST(request: Request) {
+  const emailService = useEmailServiceProduction() // Moved hook call to the top level
+
   try {
     const { name, email, subject, message, priority } = await request.json()
 
@@ -11,15 +15,9 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📞 Nueva consulta de contacto:", subject)
 
-    const result = await SohoMailResendService.sendContactEmail({
-      name,
-      email,
-      subject,
-      message,
-      priority: priority || "Media",
-    })
+    const result = await emailService.sendContactEmail(name, email, subject, message, priority || "Media")
 
-    if (result.success) {
+    if (result) {
       console.log("[v0] ✅ Email de contacto enviado exitosamente via Resend")
       return NextResponse.json({
         success: true,
@@ -30,7 +28,7 @@ export async function POST(request: Request) {
         },
       })
     } else {
-      console.log("[v0] ❌ Error enviando email de contacto:", result)
+      console.log("[v0] ❌ Error enviando email de contacto")
       return NextResponse.json(
         {
           success: false,
