@@ -36,7 +36,7 @@ export default function MembershipSignupFlow({ membershipType, price }: Membersh
     setMessage("")
 
     try {
-      // Solo registrar usuario, NO enviar emails manuales
+      // Registrar usuario
       const response = await fetch("/api/auth/register-free", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,6 +50,10 @@ export default function MembershipSignupFlow({ membershipType, price }: Membersh
       const result = await response.json()
 
       if (result.success) {
+        // Enviar email de bienvenida usando EmailServiceProduction
+        const emailService = new (await import("@/app/lib/email-service-production")).EmailServiceProduction()
+        await emailService.sendWelcomeEmail(formData.email, formData.firstName)
+
         setStep(2)
         setMessage("✅ Información guardada. Procede al pago.")
       } else {

@@ -2,7 +2,7 @@
 // ================================================================
 
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +10,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Procesando formulario de contacto:", data)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendContactFormNotification(data)
+    const emailService = EmailServiceProduction.getInstance()
+    const success = await emailService.sendContactEmail(
+      data.name,
+      data.email,
+      data.subject,
+      data.message,
+      data.priority || "medium",
+    )
 
     if (success) {
       console.log("[v0] ✅ Notificación de contacto enviada exitosamente")

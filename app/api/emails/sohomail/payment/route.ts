@@ -2,7 +2,7 @@
 // ================================================================
 
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +10,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Enviando confirmación de pago:", data)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendPaymentConfirmation(data)
+    const emailService = EmailServiceProduction.getInstance()
+    const success = await emailService.sendPaymentConfirmation({
+      userEmail: data.userEmail,
+      userName: data.userName,
+      amount: data.amount,
+      paymentId: data.paymentId,
+      bagName: data.bagName,
+    })
 
     if (success) {
       console.log("[v0] ✅ Confirmación de pago enviada exitosamente")

@@ -2,7 +2,7 @@
 // ================================================================
 
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +10,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Enviando notificación de reserva:", data)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendBagReservationNotification(data)
+    const emailService = EmailServiceProduction.getInstance()
+    const success = await emailService.sendReservationNotification({
+      userEmail: data.userEmail,
+      userName: data.userName,
+      bagName: data.bagName,
+      reservationDate: data.reservationDate,
+      reservationId: data.reservationId,
+    })
 
     if (success) {
       console.log("[v0] ✅ Notificación de reserva enviada exitosamente")

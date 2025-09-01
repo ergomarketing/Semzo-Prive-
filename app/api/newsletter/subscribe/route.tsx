@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { SohoMailResendService } from "@/app/lib/sohomail-resend"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     })
 
-    const result = await SohoMailResendService.sendNewsletterEmail(email, name)
+    const emailService = new EmailServiceProduction()
+    const result = await emailService.sendNewsletterEmail(email, name)
 
     if (result.success) {
       console.log("[v0] ✅ Email de confirmación enviado via Resend")

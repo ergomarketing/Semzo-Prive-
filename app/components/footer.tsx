@@ -78,17 +78,19 @@ export default function Footer() {
             </h3>
             <ul className="space-y-4">
               <li>
-                <Link
-                  href="mailto:info@semzoprive.com"
-                  className="text-slate-500 hover:text-slate-700 transition-colors"
-                >
-                  info@semzoprive.com
+                <Link href="/support" className="text-slate-500 hover:text-slate-700 transition-colors">
+                  Centro de Soporte
                 </Link>
               </li>
               <li>
-                <Link href="tel:+34624239394" className="text-slate-500 hover:text-slate-700 transition-colors">
+                <a href="mailto:info@semzoprive.com" className="text-slate-500 hover:text-slate-700 transition-colors">
+                  info@semzoprive.com
+                </a>
+              </li>
+              <li>
+                <a href="tel:+34624239394" className="text-slate-500 hover:text-slate-700 transition-colors">
                   +34 624 23 9394
-                </Link>
+                </a>
               </li>
               <li>
                 <address className="text-slate-500 not-italic">

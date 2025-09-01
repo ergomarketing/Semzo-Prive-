@@ -44,8 +44,6 @@ export class EmailServiceProduction {
 
   private async sendWithResend(data: EmailData): Promise<boolean> {
     try {
-      console.log("📧 Enviando con Resend a:", data.to)
-
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -68,10 +66,10 @@ export class EmailServiceProduction {
       }
 
       const result = await response.json()
-      console.log("✅ Email enviado con Resend:", result.id)
+      console.log("✅ Email enviado exitosamente")
       return true
     } catch (error) {
-      console.error("❌ Error enviando con Resend:", error)
+      console.error("❌ Error enviando email:", error)
       return false
     }
   }
@@ -129,32 +127,29 @@ export class EmailServiceProduction {
     return await this.sendWithResend(emailData)
   }
 
-  async sendNewsletterEmail(data: {
-    email: string
-    name: string
-    phone?: string
-    preferences?: any
-  }): Promise<boolean> {
+  async sendNewsletterEmail(email: string, name: string): Promise<{ success: boolean }> {
+    const data = { email, name, phone: undefined, preferences: undefined }
+
     // Send notification to admin
     const adminEmailData: EmailData = {
       to: "mailbox@semzoprive.com",
-      subject: `Nueva suscripción al newsletter: ${data.name}`,
+      subject: `Nueva suscripción al newsletter: ${name}`,
       html: this.generateNewsletterAdminHTML(data),
-      text: `Nueva suscripción de ${data.name} (${data.email}) al newsletter.`,
+      text: `Nueva suscripción de ${name} (${email}) al newsletter.`,
     }
 
     // Send confirmation to user
     const userEmailData: EmailData = {
-      to: data.email,
+      to: email,
       subject: "¡Bienvenida a nuestro newsletter! - Semzo Privé",
-      html: this.generateNewsletterHTML(data.email),
+      html: this.generateNewsletterHTML(email),
       text: `¡Gracias por suscribirte a nuestro newsletter! Recibirás las últimas novedades de Semzo Privé.`,
     }
 
     const adminSent = await this.sendWithResend(adminEmailData)
     const userSent = await this.sendWithResend(userEmailData)
 
-    return adminSent && userSent
+    return { success: adminSent && userSent }
   }
 
   async sendReservationNotification(data: {

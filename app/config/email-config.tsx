@@ -59,10 +59,4 @@ export const ADMIN_CONFIG = {
   requireHTTPS: true, // cambiar a true en producción
 }
 
-console.log("[v0] ADMIN_CONFIG Debug:", {
-  username: ADMIN_CONFIG.username,
-  hasPassword: !!ADMIN_CONFIG.password,
-  passwordLength: ADMIN_CONFIG.password.length,
-  envUsername: process.env.ADMIN_USERNAME ? "SET" : "NOT_SET",
-  envPassword: process.env.ADMIN_PASSWORD ? "SET" : "NOT_SET",
-})
+// Removed module-level console.log that causes uncaught errors on client-side

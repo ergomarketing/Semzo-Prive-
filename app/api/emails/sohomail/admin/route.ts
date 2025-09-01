@@ -2,7 +2,7 @@
 // ================================================================
 
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +10,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Enviando notificación administrativa:", data)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendAdminNotification(data)
+    const emailService = EmailServiceProduction.getInstance()
+    const success = await emailService.sendContactEmail(
+      data.senderName || "Sistema",
+      "mailbox@semzoprive.com",
+      data.subject || "Notificación Administrativa",
+      data.message,
+      data.priority || "high",
+    )
 
     if (success) {
       console.log("[v0] ✅ Notificación administrativa enviada exitosamente")

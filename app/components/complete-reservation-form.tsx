@@ -218,8 +218,7 @@ export default function CompleteReservationForm({
 
     setIsSubmitting(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const emailService = new (await import("@/app/lib/email-service-production")).EmailServiceProduction()
 
       const reservationData = {
         bag: selectedBag,
@@ -232,6 +231,15 @@ export default function CompleteReservationForm({
         timestamp: new Date().toISOString(),
         reservationId: `RES-${Date.now()}`,
       }
+
+      // Send reservation notification emails
+      await emailService.sendReservationNotification({
+        userEmail: customerInfo.email,
+        userName: `${customerInfo.firstName} ${customerInfo.lastName}`,
+        bagName: selectedBag.name,
+        reservationDate: reservationDates.startDate.toLocaleDateString(),
+        reservationId: reservationData.reservationId,
+      })
 
       onSubmit?.(reservationData)
     } catch (error) {
@@ -811,7 +819,7 @@ export default function CompleteReservationForm({
                 <Button
                   variant="outline"
                   onClick={currentStep === 1 ? onCancel : prevStep}
-                  className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
+                  className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white bg-transparent"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   {currentStep === 1 ? "Cancelar" : "Anterior"}

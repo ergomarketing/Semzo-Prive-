@@ -2,7 +2,7 @@
 // ================================================================
 
 import { NextResponse } from "next/server"
-import { SohoMailService } from "@/app/lib/sohomail-service"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: Request) {
   try {
@@ -10,10 +10,10 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Enviando newsletter:", data)
 
-    const sohoMail = SohoMailService.getInstance()
-    const success = await sohoMail.sendNewsletterEmail(data)
+    const emailService = EmailServiceProduction.getInstance()
+    const result = await emailService.sendNewsletterEmail(data.email, data.name)
 
-    if (success) {
+    if (result.success) {
       console.log("[v0] ✅ Newsletter enviado exitosamente")
       return NextResponse.json({
         success: true,
