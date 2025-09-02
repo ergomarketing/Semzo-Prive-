@@ -51,10 +51,64 @@ export default function CollectionSection() {
               <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark text-center lg:text-left">
                 Marcas destacadas
               </p>
+              <style jsx>{`
+                @keyframes fadeInUp {
+                  from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+                
+                @keyframes gentleFloat {
+                  0%, 100% {
+                    transform: translateY(0px);
+                  }
+                  50% {
+                    transform: translateY(-3px);
+                  }
+                }
+                
+                .brand-item {
+                  animation: fadeInUp 0.6s ease-out forwards;
+                  opacity: 0;
+                }
+                
+                .brand-item:hover {
+                  animation: gentleFloat 2s ease-in-out infinite;
+                  transform: translateY(-2px);
+                  transition: all 0.3s ease;
+                }
+              `}</style>
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-                {["Chanel", "Louis Vuitton", "Hermès", "Dior", "Gucci"].map((brand) => (
-                  <div key={brand} className="border-b border-slate-100 pb-2 lg:pb-3 text-center lg:text-left">
-                    <span className="font-serif text-xl lg:text-2xl text-slate-900">{brand}</span>
+                {[
+                  "Bottega Veneta",
+                  "Burberry",
+                  "Celine",
+                  "Chanel",
+                  "Christian Dior",
+                  "Fendi",
+                  "Hermès",
+                  "Goyard",
+                  "Gucci",
+                  "Loewe",
+                  "Louis Vuitton",
+                  "Prada",
+                  "Saint Laurent",
+                ].map((brand, index) => (
+                  <div
+                    key={brand}
+                    className="brand-item border-b border-slate-100 pb-2 lg:pb-3 text-center lg:text-left cursor-pointer"
+                    style={{
+                      animationDelay: `${index * 0.1}s`,
+                    }}
+                  >
+                    <span className="font-serif text-xl lg:text-2xl text-slate-900 hover:text-indigo-dark transition-colors duration-300">
+                      {brand}
+                    </span>
                   </div>
                 ))}
               </div>

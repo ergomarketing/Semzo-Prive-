@@ -246,9 +246,19 @@ export default function MagazineSection() {
             </div>
             <div className="space-y-4">
               {subscribed ? (
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-green-800 font-medium">¡Gracias por suscribirte!</p>
-                  <p className="text-green-600 text-sm">Recibirás nuestro próximo newsletter pronto.</p>
+                <div
+                  className="text-center p-4 rounded-lg border"
+                  style={{
+                    backgroundColor: "rgba(244, 196, 204, 0.6)",
+                    borderColor: "rgba(244, 196, 204, 0.3)",
+                  }}
+                >
+                  <p className="font-medium" style={{ color: "#1a1a4b" }}>
+                    ¡Gracias por suscribirte!
+                  </p>
+                  <p className="text-sm" style={{ color: "#1a1a4b" }}>
+                    Recibirás nuestro próximo newsletter pronto.
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleNewsletterSubscription} className="flex flex-col sm:flex-row">

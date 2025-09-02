@@ -1,5 +1,3 @@
-"use client"
-
 interface EmailConfig {
   provider: "resend" | "sendgrid" | "mailgun"
   apiKey: string
