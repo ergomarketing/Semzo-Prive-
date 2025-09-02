@@ -29,10 +29,16 @@ export class EmailServiceProduction {
   constructor() {
     this.config = {
       provider: "resend",
-      apiKey: process.env.EMAIL_API_KEY || "",
+      apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
       fromEmail: "noreply@semzoprive.com",
       fromName: "Semzo Privé",
     }
+
+    console.log("[v0] 🔍 Debug API Key:")
+    console.log("[v0] RESEND_API_KEY disponible:", !!process.env.RESEND_API_KEY)
+    console.log("[v0] EMAIL_API_KEY disponible:", !!process.env.EMAIL_API_KEY)
+    console.log("[v0] API Key usada (primeros 10 chars):", this.config.apiKey.substring(0, 10))
+    console.log("[v0] API Key válida (empieza con re_):", this.config.apiKey.startsWith("re_"))
   }
 
   static getInstance(): EmailServiceProduction {
@@ -44,6 +50,8 @@ export class EmailServiceProduction {
 
   private async sendWithResend(data: EmailData): Promise<boolean> {
     try {
+      console.log("[v0] 📧 Enviando email con API key:", this.config.apiKey.substring(0, 10) + "...")
+
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -65,7 +73,6 @@ export class EmailServiceProduction {
         return false
       }
 
-      const result = await response.json()
       console.log("✅ Email enviado exitosamente")
       return true
     } catch (error) {

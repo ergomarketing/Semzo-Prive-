@@ -61,6 +61,15 @@ export default function MagazineSection() {
     setIsSubscribing(true)
 
     try {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        console.error("Email inválido")
+        return
+      }
+
+      // Generar nombre más seguro
+      const defaultName = email.includes("@") ? email.split("@")[0] : "Usuario"
+
       const response = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: {
@@ -68,7 +77,7 @@ export default function MagazineSection() {
         },
         body: JSON.stringify({
           email,
-          name: email.split("@")[0], // Usar la parte antes del @ como nombre por defecto
+          name: defaultName,
           preferences: {
             newArrivals: true,
             exclusiveOffers: true,
@@ -79,17 +88,20 @@ export default function MagazineSection() {
         }),
       })
 
+      const responseData = await response.json()
+
       if (response.ok) {
+        console.log("[v0] ✅ Suscripción exitosa:", responseData)
         setSubscribed(true)
         setEmail("")
       } else {
-        const errorData = await response.json()
-        console.error("Error al suscribirse:", errorData)
-        // Aquí podrías mostrar un mensaje de error al usuario
+        console.error("[v0] ❌ Error en suscripción:", responseData)
+        // Mostrar error al usuario
+        alert(responseData.message || "Error al suscribirse. Por favor, inténtalo de nuevo.")
       }
     } catch (error) {
-      console.error("Error al suscribirse:", error)
-      // Aquí podrías mostrar un mensaje de error al usuario
+      console.error("[v0] ❌ Error de red:", error)
+      alert("Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.")
     } finally {
       setIsSubscribing(false)
     }
