@@ -85,9 +85,13 @@ export default function SignupPage() {
           phone: "",
         })
 
-        // No redirigir automáticamente, mostrar mensaje de confirmación de email
+        setTimeout(() => {
+          const loginUrl = selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"
+          console.log("[v0] Redirecting to login after successful registration:", loginUrl)
+          router.push(loginUrl)
+        }, 3000)
       } else {
-        setMessage({ type: "error", text: result.error || "Error en el registro" })
+        setMessage({ type: "error", text: result.message || result.error || "Error en el registro" })
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error inesperado. Inténtalo de nuevo." })
@@ -200,9 +204,12 @@ export default function SignupPage() {
             </div>
 
             {message && (
-              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}>
-                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-blue-800"}>
+              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
+                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
                   {message.text}
+                  {message.type === "success" && (
+                    <div className="mt-2 text-sm text-green-700">Serás redirigido al login en 3 segundos...</div>
+                  )}
                 </AlertDescription>
               </Alert>
             )}

@@ -9,14 +9,21 @@ const useAuth = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    console.log("[v0] Auth - Initializing useAuth hook")
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[v0] Auth state changed:", event, session?.user?.email || "none")
+
       if (session?.user) {
+        console.log("[v0] User authenticated:", session.user.email)
         setUser(session.user)
       } else {
+        console.log("[v0] No user session")
         setUser(null)
       }
+
       setLoading(false)
     })
 

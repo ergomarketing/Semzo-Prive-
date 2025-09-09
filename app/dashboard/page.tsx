@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface ShippingInfo {
   shipping_address: string
@@ -51,7 +52,22 @@ export default function Dashboard() {
 
     setLoadingShipping(true)
     try {
-      const response = await fetch("/api/user/shipping")
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        console.error("No access token available")
+        return
+      }
+
+      const response = await fetch("/api/user/shipping", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
 
       if (!response.ok) {
         if (response.status === 429) {
@@ -94,16 +110,33 @@ export default function Dashboard() {
   const handleSaveShipping = async () => {
     setSavingShipping(true)
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        console.error("No access token available for saving")
+        return
+      }
+
       const response = await fetch("/api/user/shipping", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(shippingInfo),
       })
 
       if (response.ok) {
         setIsEditingShipping(false)
+        const urlParams = new URLSearchParams(window.location.search)
+        const pendingPlan = urlParams.get("plan")
+        if (pendingPlan) {
+          console.log("[v0] Redirecting to checkout with plan:", pendingPlan)
+          router.push(`/checkout?plan=${pendingPlan}`)
+        }
       } else {
         const error = await response.json()
         console.error("Error saving shipping info:", error)

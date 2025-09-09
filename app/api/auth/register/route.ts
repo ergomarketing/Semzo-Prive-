@@ -50,34 +50,14 @@ export async function POST(request: NextRequest) {
     console.log("🔍 Verificando si el email ya existe...")
 
     try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
-
-      if (authUsers?.users) {
-        const existingAuthUser = authUsers.users.find(
-          (user) => user.email?.toLowerCase().trim() === email.toLowerCase().trim(),
-        )
-
-        if (existingAuthUser) {
-          console.log("❌ Email ya registrado en auth.users:", email)
-          return NextResponse.json(
-            {
-              success: false,
-              message:
-                "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
-              error: "EMAIL_ALREADY_EXISTS",
-            },
-            { status: 400 },
-          )
-        }
-      }
-
-      const { data: existingUser, error: checkError } = await supabase
+      // Primero verificamos en la tabla profiles
+      const { data: existingProfile, error: profileError } = await supabase
         .from("profiles")
         .select("email")
         .eq("email", email.toLowerCase().trim())
         .single()
 
-      if (existingUser) {
+      if (existingProfile) {
         console.log("❌ Email ya registrado en profiles:", email)
         return NextResponse.json(
           {
@@ -89,14 +69,41 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Si checkError.code === 'PGRST116', significa que no se encontró el usuario (lo cual es bueno)
-      if (checkError && checkError.code !== "PGRST116") {
-        console.error("❌ Error verificando email existente:", checkError)
+      // Verificamos también en auth.users usando el método admin
+      try {
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+
+        if (authUsers?.users) {
+          const existingAuthUser = authUsers.users.find(
+            (user) => user.email?.toLowerCase() === email.toLowerCase().trim(),
+          )
+
+          if (existingAuthUser) {
+            console.log("❌ Email ya registrado en auth.users:", email)
+            return NextResponse.json(
+              {
+                success: false,
+                message:
+                  "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+                error: "EMAIL_ALREADY_EXISTS",
+              },
+              { status: 400 },
+            )
+          }
+        }
+      } catch (authCheckError) {
+        console.log("⚠️ No se pudo verificar auth.users (continuando con registro):", authCheckError)
+        // Continuamos - Supabase manejará duplicados en signUp
+      }
+
+      // Si profileError.code === 'PGRST116', significa que no se encontró el usuario (lo cual es bueno)
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error("❌ Error verificando email existente:", profileError)
         // Continuamos con el registro si hay error en la verificación
       }
     } catch (emailCheckError) {
       console.error("❌ Error en verificación de email:", emailCheckError)
-      // Continuamos con el registro si hay error en la verificación
+      // Continuamos con el registro - Supabase manejará duplicados
     }
 
     console.log("🔄 Registrando usuario en Supabase Auth...")
@@ -158,6 +165,22 @@ export async function POST(request: NextRequest) {
         status: authError.status,
         name: authError.name,
       })
+
+      if (
+        authError.message?.toLowerCase().includes("user already registered") ||
+        authError.message?.toLowerCase().includes("email already registered") ||
+        authError.message?.toLowerCase().includes("already been registered")
+      ) {
+        console.log("❌ Usuario ya registrado detectado por Supabase")
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+            error: "EMAIL_ALREADY_EXISTS",
+          },
+          { status: 400 },
+        )
+      }
 
       if (
         authError.message?.toLowerCase().includes("email rate limit exceeded") ||
