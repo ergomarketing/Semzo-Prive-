@@ -504,7 +504,9 @@ export default function CatalogSection() {
                 Con nuestra membresía L'Essentiel por solo 59€/mes, puedes disfrutar de estos elegantes bolsos y muchos
                 más. La introducción perfecta al mundo de los bolsos de lujo.
               </p>
-              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">Suscribirse a L'Essentiel</Button>
+              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                <Link href="/signup?plan=essentiel">Suscribirse a L'Essentiel</Link>
+              </Button>
             </div>
           </TabsContent>
 
@@ -525,7 +527,9 @@ export default function CatalogSection() {
                 Nuestra membresía Signature por 129€/mes te da acceso a bolsos de mayor valor y exclusividad. La
                 experiencia preferida por nuestras clientas más exigentes.
               </p>
-              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">Suscribirse a Signature</Button>
+              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                <Link href="/signup?plan=signature">Suscribirse a Signature</Link>
+              </Button>
             </div>
           </TabsContent>
 
@@ -546,7 +550,9 @@ export default function CatalogSection() {
                 La membresía Privé por 189€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La
                 experiencia definitiva para verdaderas conocedoras.
               </p>
-              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">Suscribirse a Privé</Button>
+              <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
+                <Link href="/signup?plan=prive">Suscribirse a Privé</Link>
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
@@ -673,7 +679,7 @@ function BagCard({
               Detalles
             </Button>
           </Link>
-          <Link href={`/checkout?plan=${membershipToCheckoutPlan[bag.membership]}&bag=${bag.id}`} className="block">
+          <Link href={`/signup?plan=${membershipToCheckoutPlan[bag.membership]}&bag=${bag.id}`} className="block">
             <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
               <ShoppingBag className="h-4 w-4 mr-2" />
               Reservar

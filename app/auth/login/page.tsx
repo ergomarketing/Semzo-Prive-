@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
-import { supabase } from "@/app/lib/supabase-unified"
+import { supabase } from "@/app/lib/supabase"
 import { useAuth } from "@/hooks/useAuth"
 
 export default function LoginPage() {
@@ -17,17 +17,37 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/dashboard")
-    }
-  }, [user, loading, router])
+    const plan = searchParams.get("plan")
+    const registered = searchParams.get("registered")
 
-  // Manejo de mensajes de confirmación de email
+    if (plan) {
+      setSelectedPlan(plan)
+    }
+
+    if (registered === "true") {
+      setMessage("Registro exitoso. Ahora puedes iniciar sesión para continuar con tu membresía.")
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!loading && user) {
+      console.log(`[Login] Usuario autenticado, redirigiendo...`)
+      if (selectedPlan) {
+        console.log(`[Login] Redirigiendo a dashboard con plan ${selectedPlan}`)
+        router.push(`/dashboard?plan=${selectedPlan}`)
+      } else {
+        console.log(`[Login] Redirigiendo a dashboard`)
+        router.push(`/dashboard`)
+      }
+    }
+  }, [user, loading, selectedPlan, router])
+
   useEffect(() => {
     const urlMessage = searchParams.get("message")
     const urlError = searchParams.get("error")
@@ -61,35 +81,17 @@ export default function LoginPage() {
     }
 
     try {
-      console.log("[Login] Valores antes de signInWithPassword:")
-      console.log("[Login] Email:", JSON.stringify(email))
-      console.log("[Login] Email length:", email.length)
-      console.log("[Login] Email trimmed:", JSON.stringify(email.trim()))
-      console.log("[Login] Password:", JSON.stringify(password))
-      console.log("[Login] Password length:", password.length)
-      console.log("[Login] Password trimmed:", JSON.stringify(password.trim()))
+      console.log("[Login] Iniciando sesión con Supabase...")
 
       const credentials = {
         email: email.trim(),
         password: password.trim(),
       }
 
-      console.log("[Login] Credentials object:", JSON.stringify(credentials))
-      console.log("[Login] Iniciando sesión con Supabase...")
-
       const { data, error } = await supabase.auth.signInWithPassword(credentials)
 
-      console.log("[Login] Respuesta de Supabase:")
-      console.log("[Login] Data:", data)
-      console.log("[Login] Error:", error)
-
       if (error) {
-        console.error("[Login] Error completo:", {
-          message: error.message,
-          status: error.status,
-          statusCode: error.status,
-          name: error.name,
-        })
+        console.error("[Login] Error:", error.message)
 
         if (error.message.includes("Email not confirmed")) {
           setMessage("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.")
@@ -102,8 +104,8 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        console.log("[Login] Login exitoso, redirigiendo al dashboard")
-        setMessage("¡Login exitoso!")
+        console.log("[Login] Login exitoso")
+        setMessage("¡Login exitoso! Redirigiendo...")
       }
     } catch (error: any) {
       console.error("[Login] Error catch:", error)
@@ -129,9 +131,25 @@ export default function LoginPage() {
             <span className="text-2xl text-indigo-dark font-serif">SP</span>
           </div>
           <CardTitle className="font-serif text-3xl text-slate-900">Bienvenida de vuelta</CardTitle>
-          <CardDescription className="text-slate-600">Accede a tu cuenta de Semzo Privé</CardDescription>
+          <CardDescription className="text-slate-600">
+            {selectedPlan ? (
+              <>
+                Continúa con tu plan <span className="font-semibold capitalize">{selectedPlan}</span>
+              </>
+            ) : (
+              "Accede a tu cuenta de Semzo Privé"
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">
+          {selectedPlan && (
+            <div className="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+              <p className="text-sm text-rose-800 text-center">
+                Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
@@ -212,7 +230,10 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-slate-600">
               ¿No tienes cuenta?{" "}
-              <a href="/signup" className="text-indigo-dark hover:underline font-medium">
+              <a
+                href={selectedPlan ? `/signup?plan=${selectedPlan}` : "/signup"}
+                className="text-indigo-dark hover:underline font-medium"
+              >
                 Únete a Semzo Privé
               </a>
             </p>

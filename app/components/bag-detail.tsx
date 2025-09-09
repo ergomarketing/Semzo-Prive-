@@ -243,7 +243,7 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
                 disabled={bag.availability.status !== "available"}
                 onClick={() => {
                   if (bag.availability.status === "available") {
-                    window.location.href = `/checkout?plan=${bag.membership}&bag=${bag.id}`
+                    window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
                   }
                 }}
               >

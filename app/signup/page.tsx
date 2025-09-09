@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
 export default function SignupPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -20,6 +23,14 @@ export default function SignupPage() {
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+
+  useEffect(() => {
+    const plan = searchParams.get("plan")
+    if (plan) {
+      setSelectedPlan(plan)
+    }
+  }, [searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -46,7 +57,6 @@ export default function SignupPage() {
     }
 
     try {
-      // Usar el endpoint API en lugar del servicio directo
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -65,6 +75,7 @@ export default function SignupPage() {
 
       if (result.success) {
         setMessage({ type: "success", text: result.message })
+
         setFormData({
           email: "",
           password: "",
@@ -73,6 +84,8 @@ export default function SignupPage() {
           lastName: "",
           phone: "",
         })
+
+        // No redirigir automáticamente, mostrar mensaje de confirmación de email
       } else {
         setMessage({ type: "error", text: result.error || "Error en el registro" })
       }
@@ -89,10 +102,24 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
           <CardDescription className="text-gray-600">
-            Únete a Semzo Privé y accede a bolsos de lujo exclusivos
+            {selectedPlan ? (
+              <>
+                Únete a Semzo Privé con el plan <span className="font-semibold capitalize">{selectedPlan}</span>
+              </>
+            ) : (
+              "Únete a Semzo Privé y accede a bolsos de lujo exclusivos"
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {selectedPlan && (
+            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+              <p className="text-sm text-rose-800 text-center">
+                Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -173,8 +200,8 @@ export default function SignupPage() {
             </div>
 
             {message && (
-              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
-                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
+              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}>
+                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-blue-800"}>
                   {message.text}
                 </AlertDescription>
               </Alert>
@@ -188,10 +215,21 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-pink-600 hover:text-pink-700 font-medium">
+              <Link
+                href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
+                className="text-pink-600 hover:text-pink-700 font-medium"
+              >
                 Inicia sesión
               </Link>
             </p>
+            {message?.type === "success" && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium">📧 Revisa tu email y confirma tu cuenta</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Después de confirmar, podrás iniciar sesión y continuar con tu membresía {selectedPlan}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

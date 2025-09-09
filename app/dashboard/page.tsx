@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
-import { createClient } from "@supabase/supabase-js"
 
 interface ShippingInfo {
   shipping_address: string
@@ -19,11 +18,10 @@ interface ShippingInfo {
   shipping_country: string
 }
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
 export default function Dashboard() {
   const router = useRouter()
   const { user, loading, signOut } = useAuth()
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
   const [isEditingShipping, setIsEditingShipping] = useState(false)
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     shipping_address: "",
@@ -40,38 +38,20 @@ export default function Dashboard() {
   const isPremium = membershipType === "premium" || membershipType === "prive"
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login")
+    if (!loading) {
+      setHasCheckedAuth(true)
+      if (!user) {
+        router.push("/auth/login")
+      }
     }
   }, [user, loading, router])
-
-  const getAuthToken = useCallback(async () => {
-    if (!user) return null
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      return session?.access_token || null
-    } catch (error) {
-      console.error("Error getting auth token:", error)
-      return null
-    }
-  }, [user])
 
   const fetchShippingInfo = useCallback(async () => {
     if (!user || shippingFetched || loadingShipping) return
 
     setLoadingShipping(true)
     try {
-      const token = await getAuthToken()
-      const headers: HeadersInit = {}
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`
-      }
-
-      const response = await fetch("/api/user/shipping", { headers })
+      const response = await fetch("/api/user/shipping")
 
       if (!response.ok) {
         if (response.status === 429) {
@@ -103,7 +83,7 @@ export default function Dashboard() {
     } finally {
       setLoadingShipping(false)
     }
-  }, [user, shippingFetched, getAuthToken]) // Removed loadingShipping from dependencies to prevent infinite loop
+  }, [user, shippingFetched]) // Removed getAuthToken dependency
 
   useEffect(() => {
     if (user && !shippingFetched) {
@@ -114,28 +94,19 @@ export default function Dashboard() {
   const handleSaveShipping = async () => {
     setSavingShipping(true)
     try {
-      const token = await getAuthToken()
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`
-      }
-
       const response = await fetch("/api/user/shipping", {
         method: "PUT",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(shippingInfo),
       })
 
       if (response.ok) {
         setIsEditingShipping(false)
-        // Optionally show success message
       } else {
         const error = await response.json()
         console.error("Error saving shipping info:", error)
-        // Optionally show error message
       }
     } catch (error) {
       console.error("Error saving shipping info:", error)
@@ -169,7 +140,7 @@ export default function Dashboard() {
     router.push("/reservations")
   }
 
-  if (loading) {
+  if (loading || !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />

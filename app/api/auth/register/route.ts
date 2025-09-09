@@ -47,6 +47,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log("🔍 Verificando si el email ya existe...")
+
+    try {
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+
+      if (authUsers?.users) {
+        const existingAuthUser = authUsers.users.find(
+          (user) => user.email?.toLowerCase().trim() === email.toLowerCase().trim(),
+        )
+
+        if (existingAuthUser) {
+          console.log("❌ Email ya registrado en auth.users:", email)
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+              error: "EMAIL_ALREADY_EXISTS",
+            },
+            { status: 400 },
+          )
+        }
+      }
+
+      const { data: existingUser, error: checkError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("email", email.toLowerCase().trim())
+        .single()
+
+      if (existingUser) {
+        console.log("❌ Email ya registrado en profiles:", email)
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+            error: "EMAIL_ALREADY_EXISTS",
+          },
+          { status: 400 },
+        )
+      }
+
+      // Si checkError.code === 'PGRST116', significa que no se encontró el usuario (lo cual es bueno)
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("❌ Error verificando email existente:", checkError)
+        // Continuamos con el registro si hay error en la verificación
+      }
+    } catch (emailCheckError) {
+      console.error("❌ Error en verificación de email:", emailCheckError)
+      // Continuamos con el registro si hay error en la verificación
+    }
+
     console.log("🔄 Registrando usuario en Supabase Auth...")
 
     const redirectUrl = "https://www.semzoprive.com/auth/callback"

@@ -179,7 +179,11 @@ export default function MembershipSection() {
 
                 {/* Botón */}
                 <Button
-                  onClick={() => (window.location.href = `/checkout?plan=${plan.id}`)}
+                  onClick={() => {
+                    console.log("[v0] MembershipSection - Button clicked:", plan.name, plan.id)
+                    console.log("[v0] MembershipSection - Redirecting to:", `/signup?plan=${plan.id}`)
+                    window.location.href = `/signup?plan=${plan.id}`
+                  }}
                   className={`w-full py-3 text-sm transition-all duration-300 font-light ${
                     plan.popular
                       ? "bg-rose-nude hover:bg-rose-nude/90 text-slate-900"

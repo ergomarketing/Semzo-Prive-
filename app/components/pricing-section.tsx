@@ -9,6 +9,7 @@ import { useState } from "react"
 const plans = [
   {
     name: "L'Essentiel",
+    id: "essentiel",
     priceMonthly: "59€",
     priceQuarterly: "159€",
     quarterlyDiscount: "15%",
@@ -28,6 +29,7 @@ const plans = [
   },
   {
     name: "Signature",
+    id: "signature",
     priceMonthly: "129€",
     priceQuarterly: "329€",
     quarterlyDiscount: "15%",
@@ -48,6 +50,7 @@ const plans = [
   },
   {
     name: "Privé",
+    id: "prive",
     priceMonthly: "189€",
     priceQuarterly: "479€",
     quarterlyDiscount: "15%",
@@ -168,6 +171,7 @@ export default function PricingSection() {
                 </ul>
 
                 <Button
+                  onClick={() => (window.location.href = `/signup?plan=${plan.id}`)}
                   className={`w-full font-semibold py-4 text-lg transition-all duration-300 ${
                     plan.popular
                       ? "bg-rose-500 hover:bg-rose-600 text-white"

@@ -7,10 +7,12 @@ import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import Link from "next/link"
 import RealPaymentGateway from "@/components/real-payment-gateway"
 import { PaymentSuccess, PaymentError } from "@/components/payment-gateway"
+import { useAuth } from "@/hooks/useAuth"
 
 type CheckoutState = "summary" | "payment" | "success" | "error"
 
 export default function CheckoutPage() {
+  const { user, loading } = useAuth()
   const [checkoutState, setCheckoutState] = useState<CheckoutState>("summary")
   const [paymentId, setPaymentId] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
@@ -39,6 +41,32 @@ export default function CheckoutPage() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    console.log("[v0] Checkout - Auth check:", { user: !!user, loading, userEmail: user?.email })
+
+    if (!loading && !user) {
+      const planFromUrl = new URLSearchParams(window.location.search).get("plan")
+      const signupUrl = planFromUrl ? `/signup?plan=${planFromUrl}` : "/signup"
+      console.log("[v0] Checkout - Redirecting to:", signupUrl)
+      window.location.href = signupUrl
+    }
+  }, [user, loading])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-dark mx-auto mb-4"></div>
+          <p className="text-slate-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
 
   const handlePaymentSuccess = (id: string) => {
     setPaymentId(id)
