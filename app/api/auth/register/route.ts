@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/app/lib/supabase-unified"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,14 +81,13 @@ export async function POST(request: NextRequest) {
 
     console.log("🔄 Registrando usuario en Supabase Auth...")
 
-    const redirectUrl = "https://www.semzoprive.com/auth/callback"
-    console.log("🔗 Redirect URL:", redirectUrl)
+    const confirmationUrl = `https://www.semzoprive.com/auth/callback?type=signup&email=${encodeURIComponent(email)}`
+    console.log("🔗 Confirmation URL:", confirmationUrl)
 
     const userData = {
       email: email.toLowerCase().trim(),
       password: password,
       options: {
-        emailRedirectTo: redirectUrl,
         data: {
           full_name: `${firstName} ${lastName}`,
           first_name: firstName,
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     console.log("📤 Registrando usuario con confirmación de email requerida:", {
       email: userData.email,
-      redirectUrl: userData.options.emailRedirectTo,
+      confirmationUrl: confirmationUrl,
       userData: userData.options.data,
     })
 
@@ -236,18 +236,14 @@ export async function POST(request: NextRequest) {
     console.log("✅ Usuario creado en auth.users:", authData.user.id)
 
     try {
-      const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
-        type: "signup",
-        email: userData.email,
-        options: {
-          redirectTo: redirectUrl,
-        },
-      })
+      console.log("📧 Enviando email de bienvenida con servicio personalizado...")
+      const emailService = new EmailServiceProduction()
+      const emailSent = await emailService.sendWelcomeEmail(userData.email, `${firstName} ${lastName}`, confirmationUrl)
 
-      if (emailError) {
-        console.error("❌ Error enviando email de confirmación:", emailError)
+      if (emailSent) {
+        console.log("✅ Email de confirmación enviado exitosamente")
       } else {
-        console.log("✅ Email de confirmación enviado")
+        console.error("❌ Error enviando email de confirmación")
       }
     } catch (emailException) {
       console.error("❌ Excepción enviando email:", emailException)
