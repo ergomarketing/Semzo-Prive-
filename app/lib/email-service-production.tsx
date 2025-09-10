@@ -230,123 +230,159 @@ export class EmailServiceProduction {
                   color: #333; 
                   margin: 0; 
                   padding: 0; 
-                  background-color: #f8f9fa;
+                  background-color: #f5f5f5;
               }
               .container { 
                   max-width: 600px; 
                   margin: 0 auto; 
                   background: white; 
-                  border-radius: 10px; 
+                  border-radius: 0; 
                   overflow: hidden; 
                   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
               }
               .header { 
-                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                  background: #2D2B69; 
                   color: white; 
                   padding: 40px 20px; 
                   text-align: center; 
               }
               .header h1 { 
                   margin: 0; 
-                  font-size: 32px; 
+                  font-size: 36px; 
                   font-weight: bold; 
-                  letter-spacing: 2px; 
+                  letter-spacing: 3px; 
               }
               .header p { 
                   margin: 10px 0 0 0; 
-                  opacity: 0.9; 
-                  font-size: 16px; 
+                  opacity: 0.8; 
+                  font-size: 14px; 
+                  letter-spacing: 1px;
               }
               .content { 
                   padding: 40px 30px; 
+                  text-align: center;
               }
               .content h2 { 
-                  color: #1a1a4b; 
-                  margin-bottom: 20px; 
-                  font-size: 24px; 
+                  color: #2D2B69; 
+                  margin-bottom: 30px; 
+                  font-size: 28px; 
+                  font-weight: bold;
               }
               .content p { 
-                  margin-bottom: 15px; 
+                  margin-bottom: 20px; 
                   font-size: 16px; 
                   line-height: 1.6; 
+                  color: #666;
               }
               .button { 
                   display: inline-block; 
-                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                  color: white; 
-                  padding: 15px 30px; 
+                  background: #E8B4CB; 
+                  color: #2D2B69; 
+                  padding: 18px 40px; 
                   text-decoration: none; 
-                  border-radius: 6px; 
+                  border-radius: 25px; 
                   font-weight: bold; 
-                  margin: 20px 0; 
+                  margin: 30px 0; 
                   font-size: 16px;
+                  letter-spacing: 1px;
               }
               .button:hover { 
                   opacity: 0.9; 
               }
-              .footer { 
+              .benefits { 
                   background: #f8f9fa; 
                   padding: 30px; 
-                  text-align: center; 
-                  color: #666666; 
-                  font-size: 14px; 
-                  border-top: 1px solid #e5e7eb;
+                  margin: 30px 0; 
+                  border-left: 4px solid #E8B4CB; 
+                  text-align: left;
               }
-              .highlight { 
-                  background: linear-gradient(90deg, #f8f4f0 0%, #f0e6d6 100%); 
-                  padding: 20px; 
-                  border-radius: 8px; 
-                  margin: 20px 0; 
-                  border-left: 4px solid #667eea; 
+              .benefits h3 {
+                  color: #2D2B69;
+                  margin-bottom: 20px;
+                  font-size: 18px;
+              }
+              .benefits ul {
+                  list-style: none;
+                  padding: 0;
+                  margin: 0;
+              }
+              .benefits li {
+                  padding: 8px 0;
+                  color: #666;
+                  font-size: 15px;
+              }
+              .benefits li:before {
+                  content: "• ";
+                  color: #E8B4CB;
+                  font-weight: bold;
+                  margin-right: 10px;
+              }
+              .fallback {
+                  background: #f8f9fa;
+                  padding: 20px;
+                  margin: 30px 0;
+                  border-radius: 8px;
+                  font-size: 14px;
+                  color: #666;
+              }
+              .footer { 
+                  background: #2D2B69; 
+                  color: white; 
+                  padding: 30px; 
+                  text-align: center; 
+                  font-size: 14px; 
+              }
+              .footer p {
+                  margin: 5px 0;
+                  opacity: 0.9;
               }
           </style>
       </head>
       <body>
           <div class="container">
               <div class="header">
-                  <h1>SEMZO PRIVÉ</h1>
-                  <p>Alquiler de bolsos de lujo</p>
+                  <h1>Semzo Privé</h1>
+                  <p>Acceso Exclusivo al Lujo</p>
               </div>
               
               <div class="content">
-                  <h2>¡Hola ${customerName}!</h2>
+                  <h2>Semzo Privé</h2>
                   
-                  <p>¡Bienvenida a Semzo Privé! Estamos emocionados de tenerte en nuestra comunidad exclusiva de amantes de los bolsos de lujo.</p>
+                  <h2>¡Bienvenido a la experiencia exclusiva!</h2>
                   
-                  <div class="highlight">
-                      <p><strong>🎉 Tu cuenta ha sido creada exitosamente</strong></p>
-                      <p>Solo necesitas confirmar tu dirección de email para comenzar a explorar nuestra colección.</p>
-                  </div>
+                  <p>Estamos encantados de darte la bienvenida a nuestra comunidad exclusiva. En Semzo Privé, encontrarás una selección cuidadosamente curada de los bolsos de lujo más exclusivos de diseñadores.</p>
                   
-                  <p>Para completar tu registro y acceder a todos nuestros servicios, por favor confirma tu cuenta haciendo clic en el botón de abajo:</p>
+                  <p>Para comenzar tu experiencia premium, por favor confirma tu dirección de email haciendo clic en el botón a continuación:</p>
                   
-                  <div style="text-align: center; margin: 30px 0;">
+                  <div style="text-align: center; margin: 40px 0;">
                       <a href="${confirmationUrl}" class="button">
                           Confirmar mi cuenta
                       </a>
                   </div>
                   
-                  <p>Una vez confirmada tu cuenta, podrás:</p>
-                  <ul style="padding-left: 20px; line-height: 1.8;">
-                      <li>Explorar nuestra colección exclusiva de bolsos</li>
-                      <li>Realizar reservas de tus bolsos favoritos</li>
-                      <li>Acceder a ofertas especiales para miembros</li>
-                      <li>Recibir notificaciones de nuevas llegadas</li>
-                  </ul>
+                  <div class="benefits">
+                      <h3>¿Por qué confirmar tu cuenta?</h3>
+                      <p>La confirmación de tu email nos ayuda a garantizar la seguridad de tu cuenta y te da acceso completo a todas las funciones exclusivas de Semzo Privé, incluyendo:</p>
+                      <ul>
+                          <li>Acceso a colecciones privadas</li>
+                          <li>Ofertas exclusivas para miembros</li>
+                          <li>Eventos VIP y lanzamientos anticipados</li>
+                          <li>Asesoramiento personalizado de nuestros expertos</li>
+                      </ul>
+                  </div>
                   
-                  <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                      Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este email o escribiendo a <a href="mailto:hola@semzoprive.com">hola@semzoprive.com</a>
-                  </p>
+                  <div class="fallback">
+                      <p><strong>Si tienes problemas con el botón, copia y pega este enlace en tu navegador:</strong></p>
+                      <p style="word-break: break-all; color: #2D2B69;">${confirmationUrl}</p>
+                  </div>
+                  
+                  <p style="margin-top: 40px; font-size: 14px;">Si no creaste esta cuenta, puedes ignorar este email de forma segura.</p>
               </div>
               
               <div class="footer">
                   <p><strong>SEMZO PRIVÉ</strong></p>
                   <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
                   <p>📞 +34 624 23 9394 | 📧 hola@semzoprive.com</p>
-                  <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                      Has recibido este email porque te registraste en semzoprive.com<br>
-                      Si no solicitaste esta cuenta, puedes ignorar este email.
-                  </p>
               </div>
           </div>
       </body>

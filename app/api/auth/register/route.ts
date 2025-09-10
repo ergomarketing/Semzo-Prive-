@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
         type: "signup",
         email: userData.email,
         options: {
-          redirectTo: "https://www.semzoprive.com/dashboard",
+          redirectTo: "https://www.semzoprive.com/auth/callback",
         },
       })
 
