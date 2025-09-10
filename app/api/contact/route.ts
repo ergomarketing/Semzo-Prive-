@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server"
-import { EmailServiceProduction } from "@/app/lib/email-service-production"
-
-const useEmailServiceProduction = () => new EmailServiceProduction()
+import { supabase } from "@/app/lib/supabase-unified"
 
 export async function POST(request: Request) {
-  const emailService = useEmailServiceProduction() // Moved hook call to the top level
-
   try {
     const { name, email, subject, message, priority } = await request.json()
 
@@ -15,28 +11,35 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📞 Nueva consulta de contacto:", subject)
 
-    const result = await emailService.sendContactEmail(name, email, subject, message, priority || "Media")
-
-    if (result) {
-      console.log("[v0] ✅ Email de contacto enviado exitosamente via Resend")
-      return NextResponse.json({
-        success: true,
-        message: "Consulta enviada exitosamente",
-        data: {
-          ticketId: `TICKET-${Date.now()}`,
-          estimatedResponse: "24 horas",
-        },
-      })
-    } else {
-      console.log("[v0] ❌ Error enviando email de contacto")
-      return NextResponse.json(
+    const { data, error } = await supabase
+      .from("contacts")
+      .insert([
         {
-          success: false,
-          error: "Error enviando la consulta",
+          name,
+          email,
+          subject,
+          message,
+          priority: priority || "Media",
+          status: "pending",
+          created_at: new Date().toISOString(),
         },
-        { status: 500 },
-      )
+      ])
+      .select()
+
+    if (error) {
+      console.error("[v0] ❌ Error storing contact in Supabase:", error)
+      return NextResponse.json({ error: "Error guardando consulta" }, { status: 500 })
     }
+
+    console.log("[v0] ✅ Consulta guardada en Supabase exitosamente")
+    return NextResponse.json({
+      success: true,
+      message: "Consulta enviada exitosamente",
+      data: {
+        ticketId: `TICKET-${data[0].id}`,
+        estimatedResponse: "24 horas",
+      },
+    })
   } catch (error) {
     console.error("[v0] ❌ Error en formulario de contacto:", error)
     return NextResponse.json(

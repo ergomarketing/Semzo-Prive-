@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin, Clock } from "lucide-react"
 import { supabase } from "@/app/lib/supabase-unified"
 
 interface ShippingInfo {
@@ -17,6 +18,12 @@ interface ShippingInfo {
   shipping_postal_code: string
   shipping_phone: string
   shipping_country: string
+}
+
+interface WaitlistEntry {
+  bag_name: string
+  user_name: string
+  user_email: string
 }
 
 export default function Dashboard() {
@@ -34,6 +41,13 @@ export default function Dashboard() {
   const [loadingShipping, setLoadingShipping] = useState(false)
   const [savingShipping, setSavingShipping] = useState(false)
   const [shippingFetched, setShippingFetched] = useState(false)
+
+  const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry>({
+    bag_name: "",
+    user_name: user?.user_metadata?.first_name || "",
+    user_email: user?.email || "",
+  })
+  const [submittingWaitlist, setSubmittingWaitlist] = useState(false)
 
   const membershipType = user?.user_metadata?.membership_status || "free"
   const isPremium = membershipType === "premium" || membershipType === "prive"
@@ -162,6 +176,36 @@ export default function Dashboard() {
     }
   }
 
+  const handleSubmitWaitlist = async () => {
+    if (!waitlistEntry.bag_name || !waitlistEntry.user_name || !waitlistEntry.user_email) {
+      return
+    }
+
+    setSubmittingWaitlist(true)
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(waitlistEntry),
+      })
+
+      if (response.ok) {
+        setWaitlistEntry({
+          bag_name: "",
+          user_name: user?.user_metadata?.first_name || "",
+          user_email: user?.email || "",
+        })
+        // Show success message or notification
+      }
+    } catch (error) {
+      console.error("Error submitting waitlist:", error)
+    } finally {
+      setSubmittingWaitlist(false)
+    }
+  }
+
   const handleCancelEdit = () => {
     setIsEditingShipping(false)
   }
@@ -234,16 +278,8 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Personal Information Card */}
           <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url('/valentino-brown-handbag.png')`,
-                filter: "blur(1px)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-800/80 to-slate-700/85" />
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-dark via-slate-800 to-slate-900" />
             <div className="relative z-10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-lg font-serif text-white">Información Personal</CardTitle>
@@ -275,19 +311,12 @@ export default function Dashboard() {
           </Card>
 
           <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url('/beige-quilted-handbag.png')`,
-                filter: "blur(1px)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-100/90 via-rose-50/85 to-pink-50/90" />
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-nude via-rose-pastel/70 to-pink-100" />
             <div className="relative z-10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-lg font-serif text-slate-900">Dirección de Envío</CardTitle>
                 <div className="flex items-center space-x-2">
-                  <MapPin className="h-5 w-5 text-slate-600" />
+                  <MapPin className="h-5 w-5 text-slate-700" />
                   {!isEditingShipping && (
                     <Button
                       onClick={() => setIsEditingShipping(true)}
@@ -295,7 +324,7 @@ export default function Dashboard() {
                       variant="ghost"
                       className="h-8 w-8 p-0 hover:bg-white/50"
                     >
-                      <Edit className="h-4 w-4 text-slate-600" />
+                      <Edit className="h-4 w-4 text-slate-700" />
                     </Button>
                   )}
                 </div>
@@ -308,7 +337,7 @@ export default function Dashboard() {
                 ) : isEditingShipping ? (
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="address" className="text-sm font-serif text-slate-700">
+                      <Label htmlFor="address" className="text-sm font-serif text-slate-800">
                         Dirección
                       </Label>
                       <Input
@@ -316,12 +345,12 @@ export default function Dashboard() {
                         value={shippingInfo.shipping_address}
                         onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_address: e.target.value })}
                         placeholder="Calle, número, piso..."
-                        className="bg-white/80 border-slate-300"
+                        className="bg-white/90 border-slate-300"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="city" className="text-sm font-serif text-slate-700">
+                        <Label htmlFor="city" className="text-sm font-serif text-slate-800">
                           Ciudad
                         </Label>
                         <Input
@@ -329,11 +358,11 @@ export default function Dashboard() {
                           value={shippingInfo.shipping_city}
                           onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_city: e.target.value })}
                           placeholder="Madrid"
-                          className="bg-white/80 border-slate-300"
+                          className="bg-white/90 border-slate-300"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="postal" className="text-sm font-serif text-slate-700">
+                        <Label htmlFor="postal" className="text-sm font-serif text-slate-800">
                           C.P.
                         </Label>
                         <Input
@@ -341,12 +370,12 @@ export default function Dashboard() {
                           value={shippingInfo.shipping_postal_code}
                           onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_postal_code: e.target.value })}
                           placeholder="28001"
-                          className="bg-white/80 border-slate-300"
+                          className="bg-white/90 border-slate-300"
                         />
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="phone" className="text-sm font-serif text-slate-700">
+                      <Label htmlFor="phone" className="text-sm font-serif text-slate-800">
                         Teléfono
                       </Label>
                       <Input
@@ -354,7 +383,7 @@ export default function Dashboard() {
                         value={shippingInfo.shipping_phone}
                         onChange={(e) => setShippingInfo({ ...shippingInfo, shipping_phone: e.target.value })}
                         placeholder="+34 600 000 000"
-                        className="bg-white/80 border-slate-300"
+                        className="bg-white/90 border-slate-300"
                       />
                     </div>
                     <div className="flex space-x-2 pt-2">
@@ -375,7 +404,7 @@ export default function Dashboard() {
                         onClick={handleCancelEdit}
                         size="sm"
                         variant="outline"
-                        className="border-slate-300 text-slate-700 hover:bg-white/80 bg-transparent"
+                        className="border-slate-400 text-slate-700 hover:bg-white/80 bg-white/50"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -385,16 +414,16 @@ export default function Dashboard() {
                   <div className="space-y-2">
                     {shippingInfo.shipping_address ? (
                       <>
-                        <p className="text-sm text-slate-700 font-medium">{shippingInfo.shipping_address}</p>
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-slate-800 font-medium">{shippingInfo.shipping_address}</p>
+                        <p className="text-sm text-slate-700">
                           {shippingInfo.shipping_city}, {shippingInfo.shipping_postal_code}
                         </p>
-                        <p className="text-sm text-slate-600">{shippingInfo.shipping_country}</p>
-                        <p className="text-sm text-slate-600">Tel: {shippingInfo.shipping_phone}</p>
+                        <p className="text-sm text-slate-700">{shippingInfo.shipping_country}</p>
+                        <p className="text-sm text-slate-700">Tel: {shippingInfo.shipping_phone}</p>
                       </>
                     ) : (
                       <div className="text-center py-4">
-                        <p className="text-sm text-slate-600 mb-3">No has configurado tu dirección de envío</p>
+                        <p className="text-sm text-slate-700 mb-3">No has configurado tu dirección de envío</p>
                         <Button
                           onClick={() => setIsEditingShipping(true)}
                           size="sm"
@@ -410,16 +439,8 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          {/* Membership Status Card */}
           <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url('/pink-quilted-floral-handbag.png')`,
-                filter: "blur(1px)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-100/90 via-slate-50/85 to-white/90" />
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-white to-slate-50" />
             <div className="relative z-10">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-serif text-slate-900">Estado de Membresía</CardTitle>
@@ -442,12 +463,12 @@ export default function Dashboard() {
                   <Button
                     onClick={() => router.push("/membership/upgrade")}
                     size="sm"
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif shadow-lg"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif shadow-lg mb-3"
                   >
                     Upgrade a Privé
                   </Button>
                 )}
-                <div className="mt-3">
+                <div>
                   <Button
                     onClick={handleViewCatalog}
                     size="sm"
@@ -463,6 +484,82 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-serif text-slate-900 flex items-center">
+                <Clock className="w-5 h-5 mr-2" />
+                Lista de Espera
+              </CardTitle>
+              <CardDescription className="text-slate-600">
+                ¿El bolso que quieres no está disponible? Únete a la lista de espera y te notificaremos cuando esté
+                libre.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="bag_name" className="text-sm font-serif text-slate-700">
+                    Bolso deseado
+                  </Label>
+                  <Select
+                    value={waitlistEntry.bag_name}
+                    onValueChange={(value) => setWaitlistEntry({ ...waitlistEntry, bag_name: value })}
+                  >
+                    <SelectTrigger className="bg-white border-slate-300">
+                      <SelectValue placeholder="Selecciona un bolso..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Lady Dior">Lady Dior</SelectItem>
+                      <SelectItem value="Chanel Classic Flap">Chanel Classic Flap</SelectItem>
+                      <SelectItem value="Louis Vuitton Neverfull">Louis Vuitton Neverfull</SelectItem>
+                      <SelectItem value="Hermès Birkin">Hermès Birkin</SelectItem>
+                      <SelectItem value="Gucci Jackie">Gucci Jackie</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="user_name" className="text-sm font-serif text-slate-700">
+                      Tu nombre
+                    </Label>
+                    <Input
+                      id="user_name"
+                      value={waitlistEntry.user_name}
+                      onChange={(e) => setWaitlistEntry({ ...waitlistEntry, user_name: e.target.value })}
+                      placeholder="María García"
+                      className="bg-white border-slate-300"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="user_email" className="text-sm font-serif text-slate-700">
+                      Tu email
+                    </Label>
+                    <Input
+                      id="user_email"
+                      value={waitlistEntry.user_email}
+                      onChange={(e) => setWaitlistEntry({ ...waitlistEntry, user_email: e.target.value })}
+                      placeholder="maria@ejemplo.com"
+                      className="bg-white border-slate-300"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleSubmitWaitlist}
+                  disabled={
+                    submittingWaitlist ||
+                    !waitlistEntry.bag_name ||
+                    !waitlistEntry.user_name ||
+                    !waitlistEntry.user_email
+                  }
+                  className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white font-serif"
+                >
+                  {submittingWaitlist ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                  Úneme a la lista de espera
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recent Reservations Card */}
           <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader className="pb-4">
@@ -477,25 +574,6 @@ export default function Dashboard() {
                   className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
                 >
                   Explorar Catálogo
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recommendations Card */}
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-serif text-slate-900">Recomendaciones</CardTitle>
-              <CardDescription className="text-slate-600">Bolsos seleccionados para ti</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-slate-600 mb-4">Explora nuestro catálogo para ver recomendaciones personalizadas</p>
-                <Button
-                  onClick={handleViewRecommendations}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
-                >
-                  Ver Recomendaciones
                 </Button>
               </div>
             </CardContent>

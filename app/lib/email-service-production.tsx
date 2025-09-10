@@ -225,7 +225,7 @@ export class EmailServiceProduction {
           <title>Bienvenida a Semzo Privé</title>
           <style>
               body { 
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                  font-family: Arial, sans-serif; 
                   line-height: 1.6; 
                   color: #333; 
                   margin: 0; 
@@ -236,25 +236,25 @@ export class EmailServiceProduction {
                   max-width: 600px; 
                   margin: 0 auto; 
                   background: white; 
-                  border-radius: 0; 
+                  border-radius: 12px; 
                   overflow: hidden; 
                   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
               }
               .header { 
-                  background: #2D2B69; 
+                  background: #2B2D6B; 
                   color: white; 
                   padding: 40px 20px; 
                   text-align: center; 
               }
               .header h1 { 
                   margin: 0; 
-                  font-size: 36px; 
-                  font-weight: bold; 
-                  letter-spacing: 3px; 
+                  font-size: 32px; 
+                  font-weight: normal; 
+                  letter-spacing: 2px; 
               }
               .header p { 
-                  margin: 10px 0 0 0; 
-                  opacity: 0.8; 
+                  margin: 8px 0 0 0; 
+                  opacity: 0.9; 
                   font-size: 14px; 
                   letter-spacing: 1px;
               }
@@ -263,9 +263,15 @@ export class EmailServiceProduction {
                   text-align: center;
               }
               .content h2 { 
-                  color: #2D2B69; 
-                  margin-bottom: 30px; 
-                  font-size: 28px; 
+                  color: #2B2D6B; 
+                  margin: 0 0 20px 0; 
+                  font-size: 24px; 
+                  font-weight: normal;
+              }
+              .content h3 { 
+                  color: #333; 
+                  margin: 30px 0 20px 0; 
+                  font-size: 20px; 
                   font-weight: bold;
               }
               .content p { 
@@ -273,33 +279,38 @@ export class EmailServiceProduction {
                   font-size: 16px; 
                   line-height: 1.6; 
                   color: #666;
+                  text-align: center;
               }
               .button { 
                   display: inline-block; 
                   background: #E8B4CB; 
-                  color: #2D2B69; 
-                  padding: 18px 40px; 
+                  color: #2B2D6B; 
+                  padding: 15px 35px; 
                   text-decoration: none; 
                   border-radius: 25px; 
                   font-weight: bold; 
                   margin: 30px 0; 
                   font-size: 16px;
-                  letter-spacing: 1px;
-              }
-              .button:hover { 
-                  opacity: 0.9; 
+                  letter-spacing: 0.5px;
               }
               .benefits { 
                   background: #f8f9fa; 
-                  padding: 30px; 
+                  padding: 25px; 
                   margin: 30px 0; 
                   border-left: 4px solid #E8B4CB; 
                   text-align: left;
               }
-              .benefits h3 {
-                  color: #2D2B69;
-                  margin-bottom: 20px;
-                  font-size: 18px;
+              .benefits h4 {
+                  color: #333;
+                  margin: 0 0 15px 0;
+                  font-size: 16px;
+                  font-weight: bold;
+              }
+              .benefits p {
+                  margin: 0 0 15px 0;
+                  font-size: 14px;
+                  color: #666;
+                  text-align: left;
               }
               .benefits ul {
                   list-style: none;
@@ -307,15 +318,15 @@ export class EmailServiceProduction {
                   margin: 0;
               }
               .benefits li {
-                  padding: 8px 0;
+                  padding: 4px 0;
                   color: #666;
-                  font-size: 15px;
+                  font-size: 14px;
               }
               .benefits li:before {
                   content: "• ";
-                  color: #E8B4CB;
+                  color: #333;
                   font-weight: bold;
-                  margin-right: 10px;
+                  margin-right: 8px;
               }
               .fallback {
                   background: #f8f9fa;
@@ -324,9 +335,14 @@ export class EmailServiceProduction {
                   border-radius: 8px;
                   font-size: 14px;
                   color: #666;
+                  text-align: center;
+              }
+              .fallback p {
+                  margin: 5px 0;
+                  word-break: break-all;
               }
               .footer { 
-                  background: #2D2B69; 
+                  background: #2B2D6B; 
                   color: white; 
                   padding: 30px; 
                   text-align: center; 
@@ -348,20 +364,20 @@ export class EmailServiceProduction {
               <div class="content">
                   <h2>Semzo Privé</h2>
                   
-                  <h2>¡Bienvenido a la experiencia exclusiva!</h2>
+                  <h3>¡Bienvenido a la experiencia exclusiva!</h3>
                   
                   <p>Estamos encantados de darte la bienvenida a nuestra comunidad exclusiva. En Semzo Privé, encontrarás una selección cuidadosamente curada de los bolsos de lujo más exclusivos de diseñadores.</p>
                   
                   <p>Para comenzar tu experiencia premium, por favor confirma tu dirección de email haciendo clic en el botón a continuación:</p>
                   
-                  <div style="text-align: center; margin: 40px 0;">
+                  <div style="text-align: center; margin: 30px 0;">
                       <a href="${confirmationUrl}" class="button">
                           Confirmar mi cuenta
                       </a>
                   </div>
                   
                   <div class="benefits">
-                      <h3>¿Por qué confirmar tu cuenta?</h3>
+                      <h4>¿Por qué confirmar tu cuenta?</h4>
                       <p>La confirmación de tu email nos ayuda a garantizar la seguridad de tu cuenta y te da acceso completo a todas las funciones exclusivas de Semzo Privé, incluyendo:</p>
                       <ul>
                           <li>Acceso a colecciones privadas</li>
@@ -373,10 +389,10 @@ export class EmailServiceProduction {
                   
                   <div class="fallback">
                       <p><strong>Si tienes problemas con el botón, copia y pega este enlace en tu navegador:</strong></p>
-                      <p style="word-break: break-all; color: #2D2B69;">${confirmationUrl}</p>
+                      <p>${confirmationUrl}</p>
                   </div>
                   
-                  <p style="margin-top: 40px; font-size: 14px;">Si no creaste esta cuenta, puedes ignorar este email de forma segura.</p>
+                  <p style="margin-top: 30px; font-size: 14px; color: #999;">Si no creaste esta cuenta, puedes ignorar este email de forma segura.</p>
               </div>
               
               <div class="footer">

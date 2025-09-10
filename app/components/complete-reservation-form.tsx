@@ -218,7 +218,7 @@ export default function CompleteReservationForm({
 
     setIsSubmitting(true)
     try {
-      const emailService = new (await import("@/app/lib/email-service-production")).EmailServiceProduction()
+      const { supabase } = await import("@/app/lib/supabase-unified")
 
       const reservationData = {
         bag: selectedBag,
@@ -232,17 +232,35 @@ export default function CompleteReservationForm({
         reservationId: `RES-${Date.now()}`,
       }
 
-      // Send reservation notification emails
-      await emailService.sendReservationNotification({
-        userEmail: customerInfo.email,
-        userName: `${customerInfo.firstName} ${customerInfo.lastName}`,
-        bagName: selectedBag.name,
-        reservationDate: reservationDates.startDate.toLocaleDateString(),
-        reservationId: reservationData.reservationId,
-      })
+      const { data, error } = await supabase
+        .from("reservations")
+        .insert([
+          {
+            user_id: customerInfo.email, // Using email as identifier for now
+            bag_id: selectedBag.id,
+            start_date: reservationDates.startDate.toISOString(),
+            end_date: reservationDates.endDate.toISOString(),
+            total_amount: pricing.total,
+            status: "pending",
+            customer_info: customerInfo,
+            shipping_info: shippingInfo,
+            payment_info: { method: paymentInfo.method }, // Don't store sensitive payment data
+            preferences: preferences,
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select()
 
+      if (error) {
+        console.error("[v0] ❌ Error storing reservation in Supabase:", error)
+        setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
+        return
+      }
+
+      console.log("[v0] ✅ Reserva guardada en Supabase exitosamente")
       onSubmit?.(reservationData)
     } catch (error) {
+      console.error("[v0] ❌ Error en reserva:", error)
       setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
     } finally {
       setIsSubmitting(false)
