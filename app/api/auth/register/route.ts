@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/app/lib/supabase-unified"
+import { supabaseAdmin } from "@/app/lib/supabase-unified"
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,77 +33,49 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔍 Verificando configuración de Supabase...")
-    console.log("- Cliente supabase:", !!supabase)
+    console.log("- Cliente supabaseAdmin:", !!supabaseAdmin)
 
-    if (!supabase) {
-      console.error("❌ Cliente de Supabase no configurado")
+    if (!supabaseAdmin) {
+      console.error("❌ Cliente admin de Supabase no configurado")
       return NextResponse.json(
         {
           success: false,
           message: "Error de configuración del servidor",
-          error: "SUPABASE_NOT_CONFIGURED",
+          error: "SUPABASE_ADMIN_NOT_CONFIGURED",
         },
         { status: 500 },
       )
     }
 
-    console.log("🔍 Verificando si el email ya existe...")
+    console.log("🔍 Verificando si el email ya existe en auth.users...")
 
     try {
-      // Primero verificamos en la tabla profiles
-      const { data: existingProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("email", email.toLowerCase().trim())
-        .single()
+      // Verificar en auth.users usando admin client
+      const { data: existingUsers, error: adminError } = await supabaseAdmin.auth.admin.listUsers()
 
-      if (existingProfile) {
-        console.log("❌ Email ya registrado en profiles:", email)
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
-            error: "EMAIL_ALREADY_EXISTS",
-          },
-          { status: 400 },
+      if (adminError) {
+        console.error("❌ Error verificando usuarios existentes:", adminError)
+      } else {
+        const existingUser = existingUsers.users.find(
+          (user) => user.email?.toLowerCase() === email.toLowerCase().trim(),
         )
-      }
 
-      // Verificamos también en auth.users usando el método admin
-      try {
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
-
-        if (authUsers?.users) {
-          const existingAuthUser = authUsers.users.find(
-            (user) => user.email?.toLowerCase() === email.toLowerCase().trim(),
+        if (existingUser) {
+          console.log("❌ Email ya registrado en auth.users:", email)
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+              error: "EMAIL_ALREADY_EXISTS",
+            },
+            { status: 400 },
           )
-
-          if (existingAuthUser) {
-            console.log("❌ Email ya registrado en auth.users:", email)
-            return NextResponse.json(
-              {
-                success: false,
-                message:
-                  "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
-                error: "EMAIL_ALREADY_EXISTS",
-              },
-              { status: 400 },
-            )
-          }
         }
-      } catch (authCheckError) {
-        console.log("⚠️ No se pudo verificar auth.users (continuando con registro):", authCheckError)
-        // Continuamos - Supabase manejará duplicados en signUp
       }
-
-      // Si profileError.code === 'PGRST116', significa que no se encontró el usuario (lo cual es bueno)
-      if (profileError && profileError.code !== "PGRST116") {
-        console.error("❌ Error verificando email existente:", profileError)
-        // Continuamos con el registro si hay error en la verificación
-      }
-    } catch (emailCheckError) {
-      console.error("❌ Error en verificación de email:", emailCheckError)
-      // Continuamos con el registro - Supabase manejará duplicados
+    } catch (adminCheckError) {
+      console.error("❌ Error en verificación admin:", adminCheckError)
+      // Continuar con el registro si falla la verificación admin
     }
 
     console.log("🔄 Registrando usuario en Supabase Auth...")
@@ -132,12 +104,17 @@ export async function POST(request: NextRequest) {
 
     let authData, authError
     try {
-      const result = await supabase.auth.signUp(userData)
+      const result = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: false, // Requiere confirmación por email
+        user_metadata: userData.options.data,
+      })
       authData = result.data
       authError = result.error
-      console.log("📊 Respuesta cruda de Supabase:", result)
+      console.log("📊 Respuesta cruda de Supabase Admin:", result)
     } catch (supabaseException) {
-      console.error("❌ Excepción en signUp:", supabaseException)
+      console.error("❌ Excepción en createUser:", supabaseException)
       return NextResponse.json(
         {
           success: false,
@@ -169,7 +146,14 @@ export async function POST(request: NextRequest) {
       if (
         authError.message?.toLowerCase().includes("user already registered") ||
         authError.message?.toLowerCase().includes("email already registered") ||
-        authError.message?.toLowerCase().includes("already been registered")
+        authError.message?.toLowerCase().includes("already been registered") ||
+        authError.message?.toLowerCase().includes("email address already registered") ||
+        authError.message?.toLowerCase().includes("user with this email already exists") ||
+        authError.message?.toLowerCase().includes("email already exists") ||
+        authError.message?.toLowerCase().includes("duplicate") ||
+        authError.message?.toLowerCase().includes("already exists") ||
+        authError.status === 422 ||
+        authError.status === 400
       ) {
         console.log("❌ Usuario ya registrado detectado por Supabase")
         return NextResponse.json(
@@ -250,6 +234,24 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("✅ Usuario creado en auth.users:", authData.user.id)
+
+    try {
+      const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
+        type: "signup",
+        email: userData.email,
+        options: {
+          redirectTo: redirectUrl,
+        },
+      })
+
+      if (emailError) {
+        console.error("❌ Error enviando email de confirmación:", emailError)
+      } else {
+        console.log("✅ Email de confirmación enviado")
+      }
+    } catch (emailException) {
+      console.error("❌ Excepción enviando email:", emailException)
+    }
 
     console.log("✅ Registro completado - Email de confirmación enviado")
 

@@ -171,7 +171,7 @@ export default function AdminShippingPage() {
               <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Restringido</h3>
               <p className="text-gray-600 text-lg">Debes iniciar sesión para acceder al panel de administración.</p>
-              <Button onClick={() => (window.location.href = "/login")} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => (window.location.href = "/auth/login")} className="bg-blue-600 hover:bg-blue-700">
                 Iniciar Sesión
               </Button>
             </CardContent>

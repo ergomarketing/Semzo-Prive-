@@ -229,14 +229,6 @@ export default function SignupPage() {
                 Inicia sesión
               </Link>
             </p>
-            {message?.type === "success" && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800 font-medium">📧 Revisa tu email y confirma tu cuenta</p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Después de confirmar, podrás iniciar sesión y continuar con tu membresía {selectedPlan}
-                </p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

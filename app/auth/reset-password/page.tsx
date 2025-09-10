@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
 
       // Redirigir al login después de 3 segundos
       setTimeout(() => {
-        router.push("/login")
+        router.push("/auth/login")
       }, 3000)
     } catch (error) {
       console.error("Error en reset password:", error)
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
                 Tu contraseña ha sido actualizada exitosamente. Serás redirigido al login en unos segundos.
               </p>
               <Button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/auth/login")}
                 className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90"
               >
                 Ir al login

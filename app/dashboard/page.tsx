@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/app/lib/supabase-unified"
 
 interface ShippingInfo {
   shipping_address: string
@@ -133,7 +133,21 @@ export default function Dashboard() {
         setIsEditingShipping(false)
         const urlParams = new URLSearchParams(window.location.search)
         const pendingPlan = urlParams.get("plan")
+
         if (pendingPlan) {
+          try {
+            await fetch("/api/user/store-plan-selection", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ selectedPlan: pendingPlan }),
+            })
+          } catch (error) {
+            console.error("Error storing plan selection:", error)
+          }
+
           console.log("[v0] Redirecting to checkout with plan:", pendingPlan)
           router.push(`/checkout?plan=${pendingPlan}`)
         }
@@ -478,7 +492,7 @@ export default function Dashboard() {
               <div className="text-center py-8">
                 <p className="text-slate-600 mb-4">Explora nuestro catálogo para ver recomendaciones personalizadas</p>
                 <Button
-                  onClick={() => router.push("/recommendations")}
+                  onClick={handleViewRecommendations}
                   className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
                 >
                   Ver Recomendaciones

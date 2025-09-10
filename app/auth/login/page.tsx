@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 import { supabase } from "@/app/lib/supabase-unified"
 import { useAuth } from "@/hooks/useAuth"
+import { useMembership } from "@/hooks/useMembership"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
+  const { storePendingPlan } = useMembership()
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -39,14 +41,16 @@ export default function LoginPage() {
     if (!loading && user) {
       console.log(`[Login] Usuario autenticado, redirigiendo...`)
       if (selectedPlan) {
-        console.log(`[Login] Redirigiendo a dashboard con plan ${selectedPlan}`)
-        window.location.href = `/dashboard?plan=${selectedPlan}`
+        storePendingPlan(selectedPlan).then(() => {
+          console.log(`[Login] Plan ${selectedPlan} almacenado, redirigiendo a dashboard`)
+          window.location.href = `/dashboard`
+        })
       } else {
         console.log(`[Login] Redirigiendo a dashboard`)
         window.location.href = `/dashboard`
       }
     }
-  }, [user, loading, selectedPlan])
+  }, [user, loading, selectedPlan, storePendingPlan])
 
   useEffect(() => {
     const urlMessage = searchParams.get("message")

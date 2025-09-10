@@ -68,8 +68,29 @@ export default function CheckoutPage() {
     return null
   }
 
-  const handlePaymentSuccess = (id: string) => {
+  const handlePaymentSuccess = async (id: string) => {
     setPaymentId(id)
+
+    try {
+      const response = await fetch("/api/user/update-membership", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          membershipType: selectedPlan.name.toLowerCase(),
+          paymentId: id,
+        }),
+      })
+
+      if (response.ok) {
+        console.log("[v0] Membership status updated successfully")
+      }
+    } catch (error) {
+      console.error("[v0] Error updating membership status:", error)
+    }
+
     setCheckoutState("success")
   }
 
@@ -211,7 +232,7 @@ export default function CheckoutPage() {
             <RealPaymentGateway
               amount={selectedPlan.price}
               membershipType={selectedPlan.name}
-              userEmail="cliente@ejemplo.com"
+              userEmail={user?.email || ""}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
             />

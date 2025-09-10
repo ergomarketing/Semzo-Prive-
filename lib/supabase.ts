@@ -1,1 +1,1 @@
-export { supabase, supabaseAdmin, supabaseConfig, isSupabaseConfigured } from "../app/lib/supabase-unified"
+export { supabase, supabaseAdmin, supabaseConfig, isSupabaseConfigured } from "@/app/lib/supabase-unified"
