@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, LogOut, ShoppingBag, Loader2, Edit, Save, X, MapPin, Clock } from "lucide-react"
+import { User, ShoppingBag, Loader2, Edit, Save, X, MapPin, Clock } from "lucide-react"
 import { supabase } from "@/app/lib/supabase-unified"
 
 interface ShippingInfo {
@@ -244,35 +244,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-serif text-slate-900 tracking-wide">Semzo Privé</h1>
-            </div>
-            <div className="flex items-center space-x-6">
-              <span className="text-sm font-medium text-slate-700 font-serif">
-                Hola, {user.user_metadata?.first_name || user.email?.split("@")[0]}
-              </span>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="border-slate-300 text-slate-700 hover:bg-slate-100 bg-transparent"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-slate-50 pt-20">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12 text-center">
           <h2 className="text-4xl font-serif text-slate-900 mb-4">
-            ¡Bienvenido, {user.user_metadata?.first_name || "Usuario"}!
+            ¡Bienvenido, {user?.user_metadata?.first_name || "Usuario"}!
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">Accede a tu colección de bolsos de lujo</p>
         </div>
@@ -288,13 +264,13 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-3">
                   <p className="text-sm text-white/90">
-                    <span className="font-semibold text-white font-serif">Email:</span> {user.email}
+                    <span className="font-semibold text-white font-serif">Email:</span> {user?.email}
                   </p>
                   <p className="text-sm text-white/90">
                     <span className="font-semibold text-white font-serif">Nombre:</span>{" "}
-                    {user.user_metadata?.first_name || ""} {user.user_metadata?.last_name || ""}
+                    {user?.user_metadata?.first_name || ""} {user?.user_metadata?.last_name || ""}
                   </p>
-                  {user.user_metadata?.phone && (
+                  {user?.user_metadata?.phone && (
                     <p className="text-sm text-white/90">
                       <span className="font-semibold text-white font-serif">Teléfono:</span> {user.user_metadata.phone}
                     </p>
@@ -302,7 +278,7 @@ export default function Dashboard() {
                   <p className="text-sm text-white/90">
                     <span className="font-semibold text-white font-serif">Estado:</span>
                     <Badge variant="secondary" className="ml-2 bg-green-100 text-green-800 border-green-200">
-                      {user.email_confirmed_at ? "Confirmado" : "Pendiente"}
+                      {user?.email_confirmed_at ? "Confirmado" : "Pendiente"}
                     </Badge>
                   </p>
                 </div>
@@ -311,7 +287,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-nude via-rose-pastel/70 to-pink-100" />
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-nude via-rose-nude/80 to-rose-pastel/30" />
             <div className="relative z-10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-lg font-serif text-slate-900">Dirección de Envío</CardTitle>

@@ -24,6 +24,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log("🔍 Verificando si el email ya existe...")
+    const { data: existingUsers, error: checkError } = await supabase
+      .from("auth.users")
+      .select("email")
+      .eq("email", email.toLowerCase().trim())
+      .limit(1)
+
+    if (checkError) {
+      console.log("⚠️ No se pudo verificar duplicados, continuando con registro...")
+    } else if (existingUsers && existingUsers.length > 0) {
+      console.log("❌ Email ya existe en la base de datos")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+          error: "EMAIL_ALREADY_EXISTS",
+        },
+        { status: 400 },
+      )
+    }
+
     console.log("🔄 Registrando usuario con Supabase Auth (templates automáticos)...")
 
     const { data: authData, error: authError } = await supabase.auth.signUp({

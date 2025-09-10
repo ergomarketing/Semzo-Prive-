@@ -8,7 +8,7 @@ import Image from "next/image"
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen overflow-hidden bg-gradient-to-b from-indigo-dark/20 via-rose-pastel/10 to-rose-nude/5">
-      <div className="container mx-auto px-4 pt-24 md:pt-32 pb-12 md:pb-20">
+      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-12 md:pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-x-8 items-center">
           {/* Contenido principal - móvil primero */}
           <div className="lg:col-span-5 space-y-8 md:space-y-12 relative z-10 text-center lg:text-left">

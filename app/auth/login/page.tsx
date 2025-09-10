@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 import { supabase } from "@/app/lib/supabase-unified"
 import { useAuth } from "@/hooks/useAuth"
-import { useMembership } from "@/hooks/useMembership"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -22,7 +21,6 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
-  const { storePendingPlan } = useMembership()
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -39,18 +37,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      console.log(`[Login] Usuario autenticado, redirigiendo...`)
-      if (selectedPlan) {
-        storePendingPlan(selectedPlan).then(() => {
-          console.log(`[Login] Plan ${selectedPlan} almacenado, redirigiendo a dashboard`)
-          window.location.href = `/dashboard`
-        })
+      const plan = searchParams.get("plan")
+      if (plan) {
+        router.push(`/dashboard?plan=${plan}`)
       } else {
-        console.log(`[Login] Redirigiendo a dashboard`)
-        window.location.href = `/dashboard`
+        router.push("/dashboard")
       }
     }
-  }, [user, loading, selectedPlan, storePendingPlan])
+  }, [user, loading, router, searchParams])
 
   useEffect(() => {
     const urlMessage = searchParams.get("message")
@@ -85,34 +79,24 @@ export default function LoginPage() {
     }
 
     try {
-      console.log("[Login] Iniciando sesión con Supabase...")
-
-      const credentials = {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword(credentials)
+      })
 
       if (error) {
-        console.error("[Login] Error:", error.message)
-
-        if (error.message.includes("Email not confirmed")) {
-          setMessage("Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.")
-        } else if (error.message.includes("Invalid login credentials")) {
+        if (error.message.includes("Invalid login credentials")) {
           setMessage("Email o contraseña incorrectos")
         } else {
-          setMessage(error.message)
+          setMessage("Error de autenticación")
         }
         return
       }
 
       if (data.user) {
-        console.log("[Login] Login exitoso")
         setMessage("¡Login exitoso! Redirigiendo...")
       }
     } catch (error: any) {
-      console.error("[Login] Error catch:", error)
       setMessage("Error de conexión")
     } finally {
       setIsLoading(false)
