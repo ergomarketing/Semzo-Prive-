@@ -81,9 +81,6 @@ export async function POST(request: NextRequest) {
 
     console.log("🔄 Registrando usuario en Supabase Auth...")
 
-    const confirmationUrl = `https://www.semzoprive.com/auth/callback?type=signup&email=${encodeURIComponent(email)}`
-    console.log("🔗 Confirmation URL:", confirmationUrl)
-
     const userData = {
       email: email.toLowerCase().trim(),
       password: password,
@@ -98,7 +95,6 @@ export async function POST(request: NextRequest) {
 
     console.log("📤 Registrando usuario con confirmación de email requerida:", {
       email: userData.email,
-      confirmationUrl: confirmationUrl,
       userData: userData.options.data,
     })
 
@@ -131,7 +127,6 @@ export async function POST(request: NextRequest) {
     console.log("📊 Respuesta de Supabase:")
     console.log("- User creado:", !!authData.user)
     console.log("- User ID:", authData.user?.id)
-    console.log("- Email confirmado:", !!authData.user?.email_confirmed_at)
     console.log("- Session:", !!authData.session)
     console.log("- Error:", !!authError)
 
@@ -236,6 +231,23 @@ export async function POST(request: NextRequest) {
     console.log("✅ Usuario creado en auth.users:", authData.user.id)
 
     try {
+      console.log("🔗 Generando enlace de confirmación de Supabase...")
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: "signup",
+        email: userData.email,
+        options: {
+          redirectTo: "https://www.semzoprive.com/dashboard",
+        },
+      })
+
+      if (linkError) {
+        console.error("❌ Error generando enlace:", linkError)
+        throw new Error(`Error generando enlace: ${linkError.message}`)
+      }
+
+      const confirmationUrl = linkData.properties?.action_link
+      console.log("✅ URL de confirmación generada:", confirmationUrl)
+
       console.log("📧 Enviando email de bienvenida con servicio personalizado...")
       const emailService = new EmailServiceProduction()
       const emailSent = await emailService.sendWelcomeEmail(userData.email, `${firstName} ${lastName}`, confirmationUrl)

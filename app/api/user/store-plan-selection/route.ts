@@ -24,11 +24,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan selection required" }, { status: 400 })
     }
 
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      selected_plan: selectedPlan,
-      plan_selected_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        ...user.user_metadata,
+        pending_plan: selectedPlan,
+        plan_selected_at: new Date().toISOString(),
+      },
     })
 
     if (error) {
