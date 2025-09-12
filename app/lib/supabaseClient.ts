@@ -1,20 +1,12 @@
-/*
-  app/lib/supabaseClient.ts
-  Cliente Supabase unificado.
-  - Browser: getSupabaseBrowser()
-  - Server (SSR / Rutas): getSupabaseServer()
-  - Service Role (solo backend): getSupabaseServiceRole()
-*/
-
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const PUBLIC_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const PUBLIC_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Validación mínima (lanza si faltan públicas)
+// Validación suave (no lanzamos para no romper SSR)
 if (!PUBLIC_URL || !PUBLIC_ANON_KEY) {
-  throw new Error('[Supabase] Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  console.warn('[Supabase] Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
 declare global {
@@ -22,12 +14,15 @@ declare global {
   var __SUPABASE_BROWSER__: SupabaseClient | undefined;
 }
 
-export function getSupabaseBrowser(): SupabaseClient {
-  if (typeof window === 'undefined') {
-    throw new Error('getSupabaseBrowser() solo se usa en el navegador');
-  }
+/**
+ * Navegador: devuelve el cliente o null si aún estamos en SSR/prerender.
+ * NUNCA lanza error. Esto arregla el build de /cart y /_not-found.
+ */
+export function getSupabaseBrowser(): SupabaseClient | null {
+  if (typeof window === 'undefined') return null;
+  if (!PUBLIC_URL || !PUBLIC_ANON_KEY) return null;
   if (!globalThis.__SUPABASE_BROWSER__) {
-    globalThis.__SUPABASE_BROWSER__ = createClient(PUBLIC_URL!, PUBLIC_ANON_KEY!, {
+    globalThis.__SUPABASE_BROWSER__ = createClient(PUBLIC_URL, PUBLIC_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -38,29 +33,30 @@ export function getSupabaseBrowser(): SupabaseClient {
   return globalThis.__SUPABASE_BROWSER__;
 }
 
-export function getSupabaseServer(): SupabaseClient {
-  if (typeof window !== 'undefined') {
-    throw new Error('getSupabaseServer() solo servidor');
-  }
-  return createClient(PUBLIC_URL!, PUBLIC_ANON_KEY!, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
+/**
+ * Solo úsalo dentro de código de servidor (route handlers, actions, etc.)
+ */
+export function getSupabaseServer(): SupabaseClient | null {
+  if (!PUBLIC_URL || !PUBLIC_ANON_KEY) return null;
+  return createClient(PUBLIC_URL, PUBLIC_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
   });
 }
 
-export function getSupabaseServiceRole(): SupabaseClient {
+/**
+ * Service role (solo backend). Devuelve null en cliente.
+ */
+export function getSupabaseServiceRole(): SupabaseClient | null {
   if (typeof window !== 'undefined') {
-    throw new Error('Service role prohibido en el cliente');
+    return null;
   }
-  if (!SERVICE_ROLE_KEY) {
-    throw new Error('Falta SUPABASE_SERVICE_ROLE_KEY');
+  if (!PUBLIC_URL || !SERVICE_ROLE_KEY) {
+    console.warn('[Supabase] Service role no disponible (faltan variables).');
+    return null;
   }
-  return createClient(PUBLIC_URL!, SERVICE_ROLE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
+  return createClient(PUBLIC_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
   });
 }
+
+export type { SupabaseClient };
