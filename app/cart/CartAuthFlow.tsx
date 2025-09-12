@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getSupabaseBrowser } from '../lib/supabaseClient'; // <-- ajusta a '@/lib/supabaseClient' si tu alias funciona
+import { getSupabaseBrowser } from '../lib/supabaseClient'; // relativo (cart -> lib)
 
 type Phase = 'phone' | 'code' | 'details' | 'ready';
 
@@ -45,8 +45,8 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
         setUserId(user.id);
         setDetails(d => ({
           ...d,
-          email: user.email || d.email,
-          phone: user.phone || d.phone
+            email: user.email || d.email,
+            phone: user.phone || d.phone
         }));
         setPhase('details');
       }
@@ -58,24 +58,17 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
     return () => sub.subscription.unsubscribe();
   }, [supabase]);
 
-  function setError(e: string) {
-    setMsg(e);
-  }
+  function setError(e: string) { setMsg(e); }
 
   async function sendOtp() {
     setError('');
-    if (!phone.startsWith('+')) {
-      setError('Formato internacional: +52...');
-      return;
-    }
+    if (!phone.startsWith('+')) return setError('Formato internacional: +52...');
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({ phone, options: { channel: 'sms' } });
       if (error) return setError(error.message);
       setPhase('code');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function verifyCode() {
@@ -88,29 +81,19 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       setUserId(data.user.id);
       setDetails(d => ({ ...d, phone }));
       setPhase('details');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function saveDetails() {
     setError('');
-    const required: (keyof Details)[] = ['full_name', 'email', 'address_line1', 'city', 'postal_code', 'country'];
-    for (const k of required) {
-      if (!details[k]) {
-        setError('Completa todos los campos obligatorios.');
-        return;
-      }
-    }
+    const required: (keyof Details)[] = ['full_name','email','address_line1','city','postal_code','country'];
+    for (const k of required) if (!details[k]) return setError('Completa todos los campos obligatorios.');
     setLoading(true);
     try {
       await supabase.auth.updateUser({
-        data: {
-          full_name: details.full_name,
-          phone: details.phone
-        }
+        data: { full_name: details.full_name, phone: details.phone }
       });
-      const { data, error } = await supabase.rpc('save_checkout_profile', {
+      const { error } = await supabase.rpc('save_checkout_profile', {
         p_full_name: details.full_name,
         p_email: details.email,
         p_phone: details.phone,
@@ -123,33 +106,23 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       });
       if (error) return setError(error.message);
       setPhase('ready');
-      onProfileReady?.(data);
-    } finally {
-      setLoading(false);
-    }
+      onProfileReady?.(true);
+    } finally { setLoading(false); }
   }
 
   async function activarMembresia(planId: string) {
-    if (!userId) {
-      setError('No hay usuario.');
-      return;
-    }
+    if (!userId) return setError('No hay usuario.');
     setLoading(true);
     try {
       const res = await fetch('/api/membership/activate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ user_id: userId, plan_id: planId })
       });
       const json = await res.json();
-      if (!res.ok) {
-        setError(json.error || 'Error activando membresía');
-        return;
-      }
+      if (!res.ok) return setError(json.error || 'Error activando membresía');
       setMsg('Membresía activada.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   function input(name: keyof Details, label: string, required?: boolean) {
@@ -159,7 +132,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
           {label}{required && <span style={{ color: 'red' }}> *</span>}
         </label>
         <input
-          style={{ width: '100%', padding: 8, border: '1px solid #ccc', borderRadius: 6 }}
+          style={{ width:'100%', padding:8, border:'1px solid #ccc', borderRadius:6 }}
           value={details[name]}
           onChange={e => setDetails(d => ({ ...d, [name]: e.target.value }))}
           placeholder={label}
@@ -169,14 +142,14 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
   }
 
   return (
-    <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 12, maxWidth: 460 }}>
-      <h3 style={{ marginTop: 0 }}>Acceso rápido y datos</h3>
-      {msg && <div style={{ color: msg.startsWith('Error') ? 'crimson' : '#444', marginBottom: 8 }}>{msg}</div>}
+    <div style={{ border:'1px solid #ddd', padding:16, borderRadius:12, maxWidth:460 }}>
+      <h3 style={{ marginTop:0 }}>Acceso rápido y datos</h3>
+      {msg && <div style={{ color: msg.startsWith('Error') ? 'crimson':'#444', marginBottom:8 }}>{msg}</div>}
 
       {phase === 'phone' && (
         <>
           <input
-            style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 6, marginBottom: 8 }}
+            style={{ width:'100%', padding:10, border:'1px solid #ccc', borderRadius:6, marginBottom:8 }}
             placeholder="+52..."
             value={phone}
             onChange={e => setPhone(e.target.value)}
@@ -184,7 +157,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
           <button
             onClick={sendOtp}
             disabled={loading}
-            style={{ width: '100%', padding: 12, background: '#111', color: '#fff', borderRadius: 6 }}
+            style={{ width:'100%', padding:12, background:'#111', color:'#fff', borderRadius:6 }}
           >
             {loading ? 'Enviando...' : 'Enviar código'}
           </button>
@@ -194,7 +167,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       {phase === 'code' && (
         <>
           <input
-            style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 6, marginBottom: 8 }}
+            style={{ width:'100%', padding:10, border:'1px solid #ccc', borderRadius:6, marginBottom:8 }}
             placeholder="Código SMS"
             value={code}
             onChange={e => setCode(e.target.value)}
@@ -202,14 +175,14 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
           <button
             onClick={verifyCode}
             disabled={loading}
-            style={{ width: '100%', padding: 12, background: '#111', color: '#fff', borderRadius: 6 }}
+            style={{ width:'100%', padding:12, background:'#111', color:'#fff', borderRadius:6 }}
           >
             {loading ? 'Verificando...' : 'Verificar'}
           </button>
           <button
             type="button"
             onClick={() => setPhase('phone')}
-            style={{ marginTop: 6, width: '100%', padding: 10, background: '#eee', borderRadius: 6 }}
+            style={{ marginTop:6, width:'100%', padding:10, background:'#eee', borderRadius:6 }}
           >
             Cambiar teléfono
           </button>
@@ -218,20 +191,19 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
 
       {phase === 'details' && (
         <>
-          {input('full_name', 'Nombre completo', true)}
-          {input('email', 'Email', true)}
-          {input('phone', 'Teléfono')}
-          {input('address_line1', 'Dirección línea 1', true)}
-          {input('address_line2', 'Dirección línea 2')}
-          {input('city', 'Ciudad', true)}
-          {input('state', 'Estado / Provincia')}
-          {input('postal_code', 'Código Postal', true)}
-          {input('country', 'País', true)}
-
+          {input('full_name','Nombre completo',true)}
+          {input('email','Email',true)}
+          {input('phone','Teléfono')}
+          {input('address_line1','Dirección línea 1',true)}
+          {input('address_line2','Dirección línea 2')}
+          {input('city','Ciudad',true)}
+          {input('state','Estado / Provincia')}
+          {input('postal_code','Código Postal',true)}
+          {input('country','País',true)}
           <button
             onClick={saveDetails}
             disabled={loading}
-            style={{ width: '100%', padding: 12, background: '#111', color: '#fff', borderRadius: 6, marginTop: 4 }}
+            style={{ width:'100%', padding:12, background:'#111', color:'#fff', borderRadius:6, marginTop:4 }}
           >
             {loading ? 'Guardando...' : 'Guardar datos'}
           </button>
@@ -240,16 +212,16 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
 
       {phase === 'ready' && (
         <>
-          <div style={{ marginBottom: 12, background: '#f5f5f5', padding: 10, borderRadius: 6 }}>
+          <div style={{ marginBottom:12, background:'#f5f5f5', padding:10, borderRadius:6 }}>
             Datos guardados. Continúa con el pago y luego activa tu membresía.
           </div>
-          <button
-            onClick={() => activarMembresia('pro')}
-            disabled={loading}
-            style={{ width: '100%', padding: 12, background: '#0a7', color: '#fff', borderRadius: 6 }}
-          >
-            {loading ? 'Procesando...' : 'Activar membresía (demo)'}
-          </button>
+            <button
+              onClick={() => activarMembresia('pro')}
+              disabled={loading}
+              style={{ width:'100%', padding:12, background:'#0a7', color:'#fff', borderRadius:6 }}
+            >
+              {loading ? 'Procesando...' : 'Activar membresía (demo)'}
+            </button>
         </>
       )}
     </div>
