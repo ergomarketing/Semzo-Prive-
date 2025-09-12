@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getSupabaseBrowser } from '../lib/supabaseClient'; // relativo (cart -> lib)
+import { getSupabaseBrowser } from '../lib/supabaseClient';
 
 type Phase = 'phone' | 'code' | 'details' | 'ready';
 
@@ -45,8 +45,8 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
         setUserId(user.id);
         setDetails(d => ({
           ...d,
-            email: user.email || d.email,
-            phone: user.phone || d.phone
+          email: user.email || d.email,
+          phone: user.phone || d.phone
         }));
         setPhase('details');
       }
@@ -107,6 +107,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       if (error) return setError(error.message);
       setPhase('ready');
       onProfileReady?.(true);
+      setMsg('Datos guardados.');
     } finally { setLoading(false); }
   }
 
@@ -143,7 +144,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
 
   return (
     <div style={{ border:'1px solid #ddd', padding:16, borderRadius:12, maxWidth:460 }}>
-      <h3 style={{ marginTop:0 }}>Acceso rápido y datos</h3>
+      <h3 style={{ marginTop:0 }}>Acceso y Datos</h3>
       {msg && <div style={{ color: msg.startsWith('Error') ? 'crimson':'#444', marginBottom:8 }}>{msg}</div>}
 
       {phase === 'phone' && (
@@ -192,14 +193,14 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       {phase === 'details' && (
         <>
           {input('full_name','Nombre completo',true)}
-          {input('email','Email',true)}
-          {input('phone','Teléfono')}
-          {input('address_line1','Dirección línea 1',true)}
-          {input('address_line2','Dirección línea 2')}
-          {input('city','Ciudad',true)}
-          {input('state','Estado / Provincia')}
-          {input('postal_code','Código Postal',true)}
-          {input('country','País',true)}
+            {input('email','Email',true)}
+            {input('phone','Teléfono')}
+            {input('address_line1','Dirección línea 1',true)}
+            {input('address_line2','Dirección línea 2')}
+            {input('city','Ciudad',true)}
+            {input('state','Estado / Provincia')}
+            {input('postal_code','Código Postal',true)}
+            {input('country','País',true)}
           <button
             onClick={saveDetails}
             disabled={loading}
@@ -213,15 +214,15 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       {phase === 'ready' && (
         <>
           <div style={{ marginBottom:12, background:'#f5f5f5', padding:10, borderRadius:6 }}>
-            Datos guardados. Continúa con el pago y luego activa tu membresía.
+            Datos guardados. Puedes continuar.
           </div>
-            <button
-              onClick={() => activarMembresia('pro')}
-              disabled={loading}
-              style={{ width:'100%', padding:12, background:'#0a7', color:'#fff', borderRadius:6 }}
-            >
-              {loading ? 'Procesando...' : 'Activar membresía (demo)'}
-            </button>
+          <button
+            onClick={() => activarMembresia('pro')}
+            disabled={loading}
+            style={{ width:'100%', padding:12, background:'#0a7', color:'#fff', borderRadius:6 }}
+          >
+            {loading ? 'Procesando...' : 'Activar membresía (demo)'}
+          </button>
         </>
       )}
     </div>
