@@ -183,25 +183,4 @@ class AuthService {
 
       if (error) {
         return {
-          success: false,
-          message: "Error cerrando sesión: " + error.message,
-          error: error.message,
-        }
-      }
-
-      return {
-        success: true,
-        message: "Sesión cerrada exitosamente",
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: "Error interno",
-        error: error instanceof Error ? error.message : "Unknown error",
-      }
-    }
-  }
-}
-
-export const authService = new AuthService()
-export { AuthService }
+          success: false
