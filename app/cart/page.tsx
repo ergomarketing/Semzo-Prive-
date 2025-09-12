@@ -1,4 +1,4 @@
-import CartAuthFlow from './CartAuthFlow'; // sin dynamic
+import CartAuthFlow from './CartAuthFlow';
 
 export default function CartPage() {
   return (
