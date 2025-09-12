@@ -18,8 +18,6 @@ export interface AuthResponse {
 }
 
 class AuthServiceSupabase {
-  private static readonly STORAGE_KEY = "semzo_user"
-
   // Registrar nuevo usuario
   static async register(userData: {
     email: string
@@ -39,12 +37,6 @@ class AuthServiceSupabase {
       })
 
       const result = await response.json()
-
-      if (result.success && result.user) {
-        // Guardar usuario en localStorage
-        this.setUser(result.user)
-      }
-
       return result
     } catch (error: any) {
       return {
@@ -66,12 +58,6 @@ class AuthServiceSupabase {
       })
 
       const result = await response.json()
-
-      if (result.success && result.user) {
-        // Guardar usuario en localStorage
-        this.setUser(result.user)
-      }
-
       return result
     } catch (error: any) {
       return {
@@ -82,50 +68,48 @@ class AuthServiceSupabase {
   }
 
   // Cerrar sesión
-  static logout(): void {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(this.STORAGE_KEY)
-    }
+  static async logout(): Promise<void> {
+    await supabase.auth.signOut()
   }
 
-  // Obtener usuario actual
-  static getCurrentUser(): User | null {
-    if (typeof window === "undefined") return null
-
+  // Obtener usuario actual desde Supabase
+  static async getCurrentUser(): Promise<User | null> {
     try {
-      const userData = localStorage.getItem(this.STORAGE_KEY)
-      return userData ? JSON.parse(userData) : null
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return null
+
+      // Obtener perfil completo desde la tabla profiles
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+
+      return {
+        id: user.id,
+        email: user.email || "",
+        firstName: profile?.first_name || "",
+        lastName: profile?.last_name || "",
+        phone: profile?.phone || "",
+        membershipStatus: profile?.membership_status || "free",
+      }
     } catch (error) {
-      console.error("Error parsing user data:", error)
+      console.error("Error getting current user:", error)
       return null
     }
   }
 
   // Verificar si está autenticado
-  static isAuthenticated(): boolean {
-    return this.getCurrentUser() !== null
-  }
-
-  // Guardar usuario en localStorage
-  private static setUser(user: User): void {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(user))
-    }
-  }
-
-  // Actualizar datos del usuario
-  static updateUser(userData: Partial<User>): void {
-    const currentUser = this.getCurrentUser()
-    if (currentUser) {
-      const updatedUser = { ...currentUser, ...userData }
-      this.setUser(updatedUser)
-    }
+  static async isAuthenticated(): Promise<boolean> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    return !!user
   }
 
   // Verificar conexión con Supabase
   static async testConnection(): Promise<{ success: boolean; message: string }> {
     try {
-      const { data, error } = await supabase.from("users").select("count").limit(1)
+      const { data, error } = await supabase.from("profiles").select("count").limit(1)
 
       if (error) {
         return {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, ShoppingBag, Trash2, Share2 } from "lucide-react"
 import Image from "next/image"
+import { supabase } from "@/app/lib/supabase"
 
 interface WishlistItem {
   id: string
@@ -15,31 +16,47 @@ interface WishlistItem {
   image: string
   membership: "essentiel" | "signature" | "prive"
   availability: boolean
-  dateAdded: string // Cambiado a string para evitar problemas con localStorage
+  dateAdded: string
 }
 
 export default function WishlistSystem() {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
 
-  // Simular carga de wishlist desde localStorage
   useEffect(() => {
-    const savedWishlist = localStorage.getItem("semzo-wishlist")
-    if (savedWishlist) {
-      try {
-        setWishlistItems(JSON.parse(savedWishlist))
-      } catch (e) {
-        console.error("Error parsing wishlist from localStorage", e)
+    loadWishlistFromSupabase()
+  }, [])
+
+  const loadWishlistFromSupabase = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+
+      if (user) {
+        // Load user's wishlist from Supabase
+        const { data: wishlist, error } = await supabase.from("wishlists").select("*").eq("user_id", user.id)
+
+        if (error) {
+          console.error("Error loading wishlist:", error)
+          setDefaultItems()
+        } else {
+          setWishlistItems(wishlist || [])
+        }
+      } else {
         setDefaultItems()
       }
-    } else {
+    } catch (error) {
+      console.error("Error loading wishlist:", error)
       setDefaultItems()
     }
     setIsLoading(false)
-  }, [])
+  }
 
   const setDefaultItems = () => {
-    // Datos de ejemplo con fechas como strings
+    // Datos de ejemplo para usuarios no autenticados
     setWishlistItems([
       {
         id: "chanel-classic-flap",
@@ -50,48 +67,22 @@ export default function WishlistSystem() {
         image: "/placeholder.svg?height=80&width=80",
         membership: "signature",
         availability: true,
-        dateAdded: new Date().toISOString().split("T")[0], // Formato YYYY-MM-DD
-      },
-      {
-        id: "lv-capucines-mm",
-        name: "Capucines MM",
-        brand: "Louis Vuitton",
-        price: "129€/mes",
-        retailPrice: "4.900€",
-        image: "/placeholder.svg?height=80&width=80",
-        membership: "signature",
-        availability: false,
-        dateAdded: new Date().toISOString().split("T")[0], // Formato YYYY-MM-DD
-      },
-      {
-        id: "dior-lady-dior",
-        name: "Lady Dior Medium",
-        brand: "Dior",
-        price: "129€/mes",
-        retailPrice: "5.500€",
-        image: "/placeholder.svg?height=80&width=80",
-        membership: "signature",
-        availability: true,
-        dateAdded: new Date().toISOString().split("T")[0], // Formato YYYY-MM-DD
+        dateAdded: new Date().toISOString().split("T")[0],
       },
     ])
   }
 
-  // Guardar wishlist en localStorage
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("semzo-wishlist", JSON.stringify(wishlistItems))
+  const removeFromWishlist = async (itemId: string) => {
+    if (user) {
+      // Remove from Supabase
+      await supabase.from("wishlists").delete().eq("user_id", user.id).eq("id", itemId)
     }
-  }, [wishlistItems, isLoading])
 
-  const removeFromWishlist = (itemId: string) => {
     setWishlistItems((prev) => prev.filter((item) => item.id !== itemId))
   }
 
   const addToWaitingList = (item: WishlistItem) => {
-    // Aquí se integraría con el sistema de lista de espera
     console.log(`Añadido a lista de espera: ${item.brand} ${item.name}`)
-    // Simular notificación
     alert(
       `Te hemos añadido a la lista de espera para ${item.brand} ${item.name}. Te notificaremos cuando esté disponible.`,
     )
@@ -125,16 +116,12 @@ export default function WishlistSystem() {
     prive: "Privé",
   }
 
-  // Función para formatear fechas de manera segura
   const formatDate = (dateString: string) => {
     try {
-      // Intentar crear un objeto Date a partir del string
       const date = new Date(dateString)
-      // Verificar si la fecha es válida
       if (isNaN(date.getTime())) {
         return "Fecha no disponible"
       }
-      // Formatear la fecha
       return date.toLocaleDateString()
     } catch (e) {
       console.error("Error formatting date", e)
@@ -193,7 +180,7 @@ export default function WishlistSystem() {
         <Button
           variant="outline"
           onClick={shareWishlist}
-          className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
+          className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white bg-transparent"
         >
           <Share2 className="h-4 w-4 mr-2" />
           Compartir

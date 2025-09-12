@@ -4,6 +4,8 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
+import { useCart } from "@/app/components/cart-context"
+import { useRouter } from "next/navigation"
 
 const plans = [
   {
@@ -66,6 +68,23 @@ const plans = [
 
 export default function MembershipSection() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "quarterly">("monthly")
+  const { addItem } = useCart()
+  const router = useRouter()
+
+  const handleSelectPlan = (plan: any) => {
+    const cartItem = {
+      id: `${plan.id}-${billingCycle}`,
+      name: plan.name,
+      price: billingCycle === "monthly" ? plan.priceMonthly : plan.priceQuarterly,
+      billingCycle,
+      description: plan.description,
+      image: plan.image,
+      brand: plan.brand,
+    }
+
+    addItem(cartItem)
+    router.push("/cart")
+  }
 
   return (
     <section id="membresias" className="py-16 bg-slate-50">
@@ -179,11 +198,7 @@ export default function MembershipSection() {
 
                 {/* Botón */}
                 <Button
-                  onClick={() => {
-                    console.log("[v0] MembershipSection - Button clicked:", plan.name, plan.id)
-                    console.log("[v0] MembershipSection - Redirecting to:", `/signup?plan=${plan.id}`)
-                    window.location.href = `/signup?plan=${plan.id}`
-                  }}
+                  onClick={() => handleSelectPlan(plan)}
                   className={`w-full py-3 text-sm transition-all duration-300 font-light ${
                     plan.popular
                       ? "bg-rose-nude hover:bg-rose-nude/90 text-slate-900"

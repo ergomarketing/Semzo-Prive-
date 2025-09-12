@@ -7,7 +7,7 @@ import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import Link from "next/link"
 import RealPaymentGateway from "@/components/real-payment-gateway"
 import { PaymentSuccess, PaymentError } from "@/components/payment-gateway"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/app/lib/auth-context"
 
 type CheckoutState = "summary" | "payment" | "success" | "error"
 
@@ -42,17 +42,6 @@ export default function CheckoutPage() {
     }
   }, [])
 
-  useEffect(() => {
-    console.log("[v0] Checkout - Auth check:", { user: !!user, loading, userEmail: user?.email })
-
-    if (!loading && !user) {
-      const planFromUrl = new URLSearchParams(window.location.search).get("plan")
-      const signupUrl = planFromUrl ? `/signup?plan=${planFromUrl}` : "/signup"
-      console.log("[v0] Checkout - Redirecting to:", signupUrl)
-      window.location.href = signupUrl
-    }
-  }, [user, loading])
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 flex items-center justify-center">
@@ -65,7 +54,29 @@ export default function CheckoutPage() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle>Autenticación requerida</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-slate-600">Necesitas estar autenticado para acceder al checkout.</p>
+            <div className="space-y-2">
+              <Button
+                onClick={() => (window.location.href = "/cart")}
+                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90"
+              >
+                Volver al carrito
+              </Button>
+              <Button variant="outline" onClick={() => (window.location.href = "/auth/login")} className="w-full">
+                Iniciar sesión
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   const handlePaymentSuccess = async (id: string) => {
@@ -232,7 +243,7 @@ export default function CheckoutPage() {
             <RealPaymentGateway
               amount={selectedPlan.price}
               membershipType={selectedPlan.name}
-              userEmail={user?.email || ""}
+              userEmail={user?.email || user?.phone || ""}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
             />

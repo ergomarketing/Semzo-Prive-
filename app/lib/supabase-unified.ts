@@ -7,18 +7,22 @@ console.log("[v0] Supabase config check:", {
   url: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20) + "...",
 })
 
-// Vars públicas
+// Validar variables de entorno con mejor manejo de errores
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
 if (!supabaseUrl) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL is required")
-}
-if (!supabaseAnonKey) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is required")
+  console.error("[v0] NEXT_PUBLIC_SUPABASE_URL is missing from environment variables")
+  throw new Error("NEXT_PUBLIC_SUPABASE_URL is required. Please check your environment variables.")
 }
 
-// Cliente público (browser / server)
+if (!supabaseAnonKey) {
+  console.error("[v0] NEXT_PUBLIC_SUPABASE_ANON_KEY is missing from environment variables")
+  throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is required. Please check your environment variables.")
+}
+
+// Cliente principal (público)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -27,39 +31,24 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-/**
- * Admin (solo disponible en server). En cliente siempre será null.
- * Esto evita exponer accidentalmente la service key en el bundle.
- */
-let _supabaseAdmin: ReturnType<typeof createClient> | null = null
+// Cliente admin (servidor)
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null
 
-export function getSupabaseAdmin() {
-  if (typeof window !== "undefined") {
-    return null
-  }
-  if (_supabaseAdmin) return _supabaseAdmin
-
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY
-  if (!serviceKey) {
-    console.warn("[supabase-admin] SUPABASE_SERVICE_KEY no definida")
-    return null
-  }
-
-  _supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-  return _supabaseAdmin
-}
-
-// Compat para código existente que usaba supabaseAdmin directamente
-export const supabaseAdmin = typeof window === "undefined" ? getSupabaseAdmin() : null
-
+// Configuración
 export const supabaseConfig = {
   url: supabaseUrl,
   anonKey: supabaseAnonKey,
-  hasServiceKey: !!process.env.SUPABASE_SERVICE_KEY,
+  hasServiceKey: !!supabaseServiceKey,
 }
 
+// Verificar configuración
 export function isSupabaseConfigured(): boolean {
   return !!(
     supabaseUrl &&
