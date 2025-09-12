@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getSupabaseBrowser } from '@/lib/supabaseClient';
+import { getSupabaseBrowser } from '../lib/supabaseClient'; // <-- ajusta a '@/lib/supabaseClient' si tu alias funciona
 
 type Phase = 'phone' | 'code' | 'details' | 'ready';
 
@@ -38,7 +38,6 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
   const [msg, setMsg] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Cargar sesión si ya existe
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -52,15 +51,10 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
         setPhase('details');
       }
     })();
-
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-      } else {
-        setUserId(null);
-      }
+      if (session?.user) setUserId(session.user.id);
+      else setUserId(null);
     });
-
     return () => sub.subscription.unsubscribe();
   }, [supabase]);
 
@@ -101,7 +95,6 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
 
   async function saveDetails() {
     setError('');
-    // Validación mínima
     const required: (keyof Details)[] = ['full_name', 'email', 'address_line1', 'city', 'postal_code', 'country'];
     for (const k of required) {
       if (!details[k]) {
@@ -117,7 +110,6 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
           phone: details.phone
         }
       });
-
       const { data, error } = await supabase.rpc('save_checkout_profile', {
         p_full_name: details.full_name,
         p_email: details.email,
@@ -227,7 +219,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
       {phase === 'details' && (
         <>
           {input('full_name', 'Nombre completo', true)}
-            {input('email', 'Email', true)}
+          {input('email', 'Email', true)}
           {input('phone', 'Teléfono')}
           {input('address_line1', 'Dirección línea 1', true)}
           {input('address_line2', 'Dirección línea 2')}
@@ -252,7 +244,7 @@ export default function CartAuthFlow({ onProfileReady }: { onProfileReady?: (pro
             Datos guardados. Continúa con el pago y luego activa tu membresía.
           </div>
           <button
-            onClick={() => activarMembresia('pro')} // cambia 'pro' por el plan real
+            onClick={() => activarMembresia('pro')}
             disabled={loading}
             style={{ width: '100%', padding: 12, background: '#0a7', color: '#fff', borderRadius: 6 }}
           >
