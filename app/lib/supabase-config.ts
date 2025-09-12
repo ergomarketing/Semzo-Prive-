@@ -1,25 +1,30 @@
 import { env } from "./env"
 
-// Configuración centralizada de Supabase
-export const supabaseConfig = {
+// Configuración sólo para cliente (NO incluye service role key)
+export const supabaseClientConfig = {
   url: env.NEXT_PUBLIC_SUPABASE_URL,
   anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  serviceRoleKey: env.SUPABASE_SERVICE_KEY,
 }
 
-// Validar configuración
-export function validateSupabaseConfig() {
+// Acceso seguro a la Service Role Key (sólo en servidor)
+export function getServiceRoleKey(): string | null {
+  if (typeof window !== "undefined") return null
+  return env.SUPABASE_SERVICE_KEY || null
+}
+
+// Validar configuración pública (cliente)
+export function validateSupabaseClientConfig() {
   const errors: string[] = []
 
-  if (!supabaseConfig.url) {
+  if (!supabaseClientConfig.url) {
     errors.push("NEXT_PUBLIC_SUPABASE_URL no está configurada")
   }
 
-  if (!supabaseConfig.anonKey) {
+  if (!supabaseClientConfig.anonKey) {
     errors.push("NEXT_PUBLIC_SUPABASE_ANON_KEY no está configurada")
   }
 
-  if (supabaseConfig.url && !supabaseConfig.url.includes("supabase.co")) {
+  if (supabaseClientConfig.url && !supabaseClientConfig.url.includes("supabase.co")) {
     errors.push("URL de Supabase inválida")
   }
 
@@ -29,13 +34,13 @@ export function validateSupabaseConfig() {
   }
 }
 
-// Validar configuración del servidor (incluye service role)
-export function validateServerConfig() {
-  const clientValidation = validateSupabaseConfig()
+// Validar configuración completa (servidor)
+export function validateSupabaseServerConfig() {
+  const clientValidation = validateSupabaseClientConfig()
   const errors = [...clientValidation.errors]
 
-  if (!supabaseConfig.serviceRoleKey) {
-    errors.push("SUPABASE_SERVICE_KEY no está configurada")
+  if (!getServiceRoleKey()) {
+    errors.push("SUPABASE_SERVICE_KEY no está configurada (sólo requerida en server)")
   }
 
   return {
