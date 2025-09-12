@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic';
-const CartAuthFlow = dynamic(() => import('./CartAuthFlow'), { ssr: false });
+import CartAuthFlow from './CartAuthFlow'; // sin dynamic
 
 export default function CartPage() {
   return (
