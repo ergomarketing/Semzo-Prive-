@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getSupabaseBrowser } from './lib/supabaseClient'; // <-- antes '@/lib/supabaseClient'
+import { getSupabaseBrowser } from './lib/supabaseClient';
 
 interface SessionUser {
   id: string;
