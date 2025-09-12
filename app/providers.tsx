@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getSupabaseBrowser } from '@/lib/supabaseClient';
+import { getSupabaseBrowser } from './lib/supabaseClient'; // <-- antes '@/lib/supabaseClient'
 
 interface SessionUser {
   id: string;
@@ -34,11 +34,9 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         setLoadingUser(false);
       }
     })();
-
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
       setUser(session?.user as SessionUser | null);
     });
-
     return () => {
       active = false;
       sub.subscription.unsubscribe();
