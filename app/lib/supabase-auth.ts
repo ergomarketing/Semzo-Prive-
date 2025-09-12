@@ -45,7 +45,6 @@ class AuthService {
     try {
       console.log("🔄 Iniciando registro para:", data.email)
 
-      // USAR URL EXACTA HARDCODEADA
       const redirectUrl = "https://semzoprive.com/auth/callback"
       console.log("🔗 Redirect URL:", redirectUrl)
 
@@ -180,7 +179,26 @@ class AuthService {
   async logout(): Promise<AuthResponse> {
     try {
       const { error } = await supabase.auth.signOut()
-
       if (error) {
         return {
-          success: false
+          success: false,
+          message: "Error cerrando sesión: " + error.message,
+          error: error.message,
+        }
+      }
+      return {
+        success: true,
+        message: "Sesión cerrada exitosamente",
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: "Error interno",
+        error: error instanceof Error ? error.message : "Unknown error",
+      }
+    }
+  }
+}
+
+export const authService = new AuthService()
+export { AuthService }
