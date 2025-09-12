@@ -1,39 +1,91 @@
-import { createClient } from "@supabase/supabase-js"
+/* 
+  supabaseClient.ts
+  - Valida variables de entorno.
+  - Evita crear múltiples instancias en desarrollo (hot reload).
+  - Explica claramente qué falta si hay error.
+  - Incluye helper opcional para usar la SERVICE ROLE SOLO en el servidor (NO la importes en componentes client-side).
+*/
 
-// Obtener variables de entorno directamente
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Solo crear cliente si las variables existen
-let supabase: any = null
+/* ========= Validación de variables públicas ========= */
+const PUBLIC_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const PUBLIC_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (supabaseUrl && supabaseAnonKey) {
-  try {
-    supabase = createClient(supabaseUrl, supabaseAnonKey)
-  } catch (error) {
-    console.error("Error creating Supabase client:", error)
+function assertPublicEnv() {
+  const missing: string[] = [];
+  if (!PUBLIC_URL) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!PUBLIC_ANON_KEY) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+
+  if (missing.length) {
+    throw new Error(
+      `[Supabase] Faltan variables públicas: ${missing.join(', ')}
+Asegúrate de tenerlas en tu archivo .env.local, por ejemplo:
+
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+
+(Luego reinicia el servidor de desarrollo).`
+    );
   }
 }
+assertPublicEnv();
 
-export { supabase }
-
-export interface User {
-  id: string
-  email: string
-  first_name?: string
-  last_name?: string
-  phone?: string
-  membership_status?: string
-  created_at?: string
-  updated_at?: string
-  last_login?: string
+/* ========= Singleton (cliente navegador) ========= */
+declare global {
+  // Para evitar múltiples instancias en hot reload (Next.js dev)
+  // eslint-disable-next-line no-var
+  var __SUPABASE_BROWSER_CLIENT__: SupabaseClient | undefined;
 }
 
-export interface AuthResponse {
-  success: boolean
-  message: string
-  user?: User
-  session?: any
+/**
+ * Obtiene (o crea) el cliente para usar en componentes 'use client'
+ */
+export function getSupabaseBrowser(): SupabaseClient {
+  if (typeof window === 'undefined') {
+    throw new Error(
+      '[Supabase] getSupabaseBrowser() se llamó en el servidor. Usa getSupabaseServer() o getSupabaseServiceRole() allí.'
+    );
+  }
+  if (!globalThis.__SUPABASE_BROWSER_CLIENT__) {
+    globalThis.__SUPABASE_BROWSER_CLIENT__ = createClient(
+      PUBLIC_URL!,
+      PUBLIC_ANON_KEY!,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
+    );
+  }
+  return globalThis.__SUPABASE_BROWSER_CLIENT__;
 }
 
-export default supabase
+/* ========= Uso en el servidor (Rutas / Server Components) ========= */
+/**
+ * Crea un cliente para el servidor usando la ANON KEY (seguro para SSR).
+ * No persiste sesión automáticamente: deberás inyectar el token si quieres
+ * actuar en nombre del usuario (ej: leyendo cookies con auth-helpers).
+ */
+export function getSupabaseServer(): SupabaseClient {
+  if (typeof window !== 'undefined') {
+    throw new Error(
+      '[Supabase] getSupabaseServer() se llamó en el cliente. Usa getSupabaseBrowser() allí.'
+    );
+  }
+  return createClient(PUBLIC_URL!, PUBLIC_ANON_KEY!, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
+}
+
+/* ========= Service Role (SOLO SERVIDOR) ========= */
+/*
+  IMPORTANTE:
+  - NUNCA importes esto en código que pueda llegar al navegador.
+  - Úsalo sólo en /app/api/*, /pages/api/* o scripts Node.
+  - Esta key tiene poderes totales
