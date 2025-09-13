@@ -47,36 +47,17 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-dark mx-auto mb-4"></div>
-          <p className="text-slate-600">Verificando autenticación...</p>
+          <p className="text-slate-600">Cargando checkout...</p>
         </div>
       </div>
     )
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>Autenticación requerida</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-slate-600">Necesitas estar autenticado para acceder al checkout.</p>
-            <div className="space-y-2">
-              <Button
-                onClick={() => (window.location.href = "/cart")}
-                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90"
-              >
-                Volver al carrito
-              </Button>
-              <Button variant="outline" onClick={() => (window.location.href = "/auth/login")} className="w-full">
-                Iniciar sesión
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    if (typeof window !== "undefined") {
+      window.location.href = "/cart"
+    }
+    return null
   }
 
   const handlePaymentSuccess = async (id: string) => {
@@ -122,9 +103,9 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
-          <Link href="/" className="inline-flex items-center text-indigo-dark hover:underline mb-4">
+          <Link href="/cart" className="inline-flex items-center text-indigo-dark hover:underline mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al inicio
+            Volver al carrito
           </Link>
           <h1 className="font-serif text-3xl text-slate-900">Finalizar compra</h1>
 

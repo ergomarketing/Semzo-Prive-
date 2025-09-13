@@ -72,6 +72,20 @@ export default function MembershipSection() {
   const router = useRouter()
 
   const handleSelectPlan = (plan: any) => {
+    const selectedMembership = {
+      id: plan.id,
+      name: plan.name,
+      price: billingCycle === "monthly" ? plan.priceMonthly : plan.priceQuarterly,
+      billingCycle,
+      description: plan.description,
+      image: plan.image,
+      brand: plan.brand,
+      features: plan.features,
+      popular: plan.popular,
+    }
+
+    localStorage.setItem("selectedMembership", JSON.stringify(selectedMembership))
+
     const cartItem = {
       id: `${plan.id}-${billingCycle}`,
       name: plan.name,
