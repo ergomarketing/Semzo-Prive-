@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Loader2, MapPin, Search, Download, User, Phone, Mail, AlertCircle, Shield } from "lucide-react"
-import useAuth from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 
 interface ShippingAddress {
   id: string

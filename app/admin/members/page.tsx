@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Mail, Phone, Calendar, MapPin, Loader2 } from "lucide-react"
 import Navbar from "../../components/navbar"
-import useAuth from "../../../hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@supabase/supabase-js"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)

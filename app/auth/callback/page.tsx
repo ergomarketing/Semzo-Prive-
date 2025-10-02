@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2, ArrowRight, XCircle } from "lucide-react"
-import { getSupabaseBrowser } from "@/lib/supabaseClient"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 
 export default function AuthCallback() {
   const router = useRouter()

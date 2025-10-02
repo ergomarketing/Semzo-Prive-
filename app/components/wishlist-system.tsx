@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, ShoppingBag, Trash2, Share2 } from "lucide-react"
 import Image from "next/image"
-import { supabase } from "@/app/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 interface WishlistItem {
   id: string
