@@ -1,17 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/app/lib/supabase-unified"
+import { getSupabaseBrowser } from "@/lib/supabaseClient"
 
 export async function POST(request: NextRequest) {
   try {
     console.log("🔄 === INICIANDO REGISTRO ===")
 
     const body = await request.json()
-    const { email, password, firstName, lastName } = body
+    const { email, password, firstName, lastName, phone } = body
 
     console.log("📋 Datos recibidos:")
     console.log("- Email:", email)
     console.log("- First name:", firstName)
     console.log("- Last name:", lastName)
+    console.log("- Phone:", phone)
 
     if (!email || !password) {
       return NextResponse.json(
@@ -24,7 +25,63 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("🔍 Verificando si el email ya existe...")
+    const supabase = getSupabaseBrowser()
+    if (!supabase) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Error de configuración de Supabase",
+          error: "SUPABASE_CONFIG_ERROR",
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("🔍 Verificando si el email ya existe en profiles...")
+    const { data: existingEmailProfile, error: emailCheckError } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("email", email.toLowerCase().trim())
+      .limit(1)
+
+    if (emailCheckError) {
+      console.log("⚠️ Error al verificar email en profiles:", emailCheckError)
+    } else if (existingEmailProfile && existingEmailProfile.length > 0) {
+      console.log("❌ Email ya existe en la tabla profiles")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+          error: "EMAIL_ALREADY_EXISTS",
+        },
+        { status: 400 },
+      )
+    }
+
+    if (phone && phone.trim()) {
+      console.log("🔍 Verificando si el teléfono ya existe en profiles...")
+      const { data: existingPhoneProfile, error: phoneCheckError } = await supabase
+        .from("profiles")
+        .select("phone")
+        .eq("phone", phone.trim())
+        .limit(1)
+
+      if (phoneCheckError) {
+        console.log("⚠️ Error al verificar teléfono en profiles:", phoneCheckError)
+      } else if (existingPhoneProfile && existingPhoneProfile.length > 0) {
+        console.log("❌ Teléfono ya existe en la tabla profiles")
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Este número de teléfono ya está registrado. Si ya tienes una cuenta, intenta iniciar sesión.",
+            error: "PHONE_ALREADY_EXISTS",
+          },
+          { status: 400 },
+        )
+      }
+    }
+
+    console.log("🔍 Verificando si el email ya existe en auth.users...")
     const { data: existingUsers, error: checkError } = await supabase
       .from("auth.users")
       .select("email")
@@ -55,6 +112,7 @@ export async function POST(request: NextRequest) {
           full_name: `${firstName} ${lastName}`,
           first_name: firstName,
           last_name: lastName,
+          phone: phone || null,
         },
         emailRedirectTo: "https://www.semzoprive.com/auth/callback",
       },

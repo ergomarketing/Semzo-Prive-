@@ -7,7 +7,7 @@ import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import Link from "next/link"
 import RealPaymentGateway from "@/components/real-payment-gateway"
 import { PaymentSuccess, PaymentError } from "@/components/payment-gateway"
-import { useAuth } from "@/app/lib/auth-context"
+import { useAuth } from "../hooks/useAuth"
 
 type CheckoutState = "summary" | "payment" | "success" | "error"
 

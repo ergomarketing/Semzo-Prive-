@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseBrowser } from "@/lib/supabaseClient"
 
 interface SMSAuthModalProps {
   isOpen: boolean
@@ -21,13 +21,48 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [canResend, setCanResend] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendAttempts, setResendAttempts] = useState(0)
 
-  const handleSendCode = async () => {
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (resendCooldown > 0) {
+      interval = setInterval(() => {
+        setResendCooldown((prev) => {
+          if (prev <= 1) {
+            setCanResend(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [resendCooldown])
+
+  useEffect(() => {
+    if (!isOpen || step !== "code") {
+      setCanResend(false)
+      setResendCooldown(0)
+      setResendAttempts(0)
+    }
+  }, [isOpen, step])
+
+  const handleSendCode = async (isResend = false) => {
     setLoading(true)
     setError("")
 
     try {
       console.log("[v0] Sending SMS code to:", phone)
+
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setError("Error de configuración. Contacta al administrador.")
+        setLoading(false)
+        return
+      }
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: phone,
@@ -53,7 +88,14 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
         }
       } else {
         console.log("[v0] SMS sent successfully")
-        setStep("code")
+        if (!isResend) {
+          setStep("code")
+        }
+        setCanResend(false)
+        setResendCooldown(60) // 60 seconds cooldown
+        if (isResend) {
+          setResendAttempts((prev) => prev + 1)
+        }
       }
     } catch (err) {
       console.error("[v0] SMS send exception:", err)
@@ -63,12 +105,28 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
     }
   }
 
+  const handleResendCode = async () => {
+    if (resendAttempts >= 3) {
+      setError("Máximo de reenvíos alcanzado. Intenta con otro número o usa registro por email.")
+      return
+    }
+    await handleSendCode(true)
+  }
+
   const handleVerifyCode = async () => {
     setLoading(true)
     setError("")
 
     try {
       console.log("[v0] Verifying SMS code:", code)
+
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setError("Error de configuración. Contacta al administrador.")
+        setLoading(false)
+        return
+      }
 
       const { data, error } = await supabase.auth.verifyOtp({
         phone: phone,
@@ -103,6 +161,14 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
     setError("")
 
     try {
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setError("Error de configuración. Contacta al administrador.")
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase.auth.updateUser({
         data: {
           full_name: name,
@@ -174,7 +240,7 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
               <p className="text-sm text-gray-600 mt-1">Incluye el código de país (+34 para España)</p>
             </div>
             {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md whitespace-pre-line">{error}</div>}
-            <Button onClick={handleSendCode} disabled={!phone || loading} className="w-full">
+            <Button onClick={() => handleSendCode(false)} disabled={!phone || loading} className="w-full">
               {loading ? "Enviando..." : "Enviar código SMS"}
             </Button>
             <div className="text-center">
@@ -201,6 +267,27 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
               <p className="text-sm text-gray-600 mt-1">Enviado a {phone}</p>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">¿No recibiste el código?</p>
+              {resendCooldown > 0 ? (
+                <p className="text-sm text-gray-500">Reenviar en {resendCooldown}s</p>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendCode}
+                  disabled={!canResend || loading || resendAttempts >= 3}
+                  className="text-sm"
+                >
+                  {resendAttempts >= 3 ? "Máximo alcanzado" : "Reenviar código"}
+                </Button>
+              )}
+              {resendAttempts > 0 && resendAttempts < 3 && (
+                <p className="text-xs text-gray-500">Reenvíos: {resendAttempts}/3</p>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("phone")} className="flex-1">
                 Cambiar número

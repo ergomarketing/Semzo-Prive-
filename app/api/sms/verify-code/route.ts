@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/app/lib/supabase-unified"
+import { getSupabaseServiceRole } from "@/lib/supabaseClient"
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,6 +7,11 @@ export async function POST(request: NextRequest) {
 
     if (!phone || !code) {
       return NextResponse.json({ success: false, message: "Teléfono y código requeridos" }, { status: 400 })
+    }
+
+    const supabaseAdmin = getSupabaseServiceRole()
+    if (!supabaseAdmin) {
+      return NextResponse.json({ success: false, message: "Error de configuración" }, { status: 500 })
     }
 
     const { data, error } = await supabaseAdmin.auth.verifyOtp({

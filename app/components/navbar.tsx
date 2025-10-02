@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/app/lib/auth-context"
+import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag } from "lucide-react"
 import { useCart } from "@/app/components/cart-context"
 

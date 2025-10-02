@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
-import { createContext, useContext, useEffect, useState } from "react"
-import { supabase } from "./supabase-unified"
+import { createContext, useContext, useEffect, useState, useRef } from "react"
+import { getSupabaseBrowser } from "@/lib/supabase"
 
 export interface AuthUser {
   id: string
@@ -27,9 +26,15 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const supabaseRef = useRef(getSupabaseBrowser())
 
   useEffect(() => {
-    console.log("[v0] AuthProvider - Initializing")
+    if (typeof window === "undefined" || !supabaseRef.current) {
+      setLoading(false)
+      return
+    }
+
+    const supabase = supabaseRef.current
 
     const getInitialSession = async () => {
       try {
@@ -39,13 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (error) {
-          console.error("[v0] Error getting session:", error)
+          console.error("Error getting session:", error)
           if (error.message.includes("refresh_token_not_found") || error.message.includes("Invalid Refresh Token")) {
             await supabase.auth.signOut()
           }
           setUser(null)
         } else if (session?.user) {
-          console.log("[v0] AuthProvider - Initial session found")
           setUser({
             id: session.user.id,
             email: session.user.email || "",
@@ -53,11 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             metadata: session.user.user_metadata,
           })
         } else {
-          console.log("[v0] AuthProvider - No initial session")
           setUser(null)
         }
       } catch (error) {
-        console.error("[v0] Error getting initial session:", error)
+        console.error("Error getting initial session:", error)
         setUser(null)
       } finally {
         setLoading(false)
@@ -70,8 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] AuthProvider - Auth state change:", event, !!session?.user)
-
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -88,10 +89,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, []) // Array de dependencias vacío para evitar re-ejecuciones
+  }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    if (supabaseRef.current) {
+      await supabaseRef.current.auth.signOut()
+    }
   }
 
   return <AuthContext.Provider value={{ user, loading, signOut }}>{children}</AuthContext.Provider>

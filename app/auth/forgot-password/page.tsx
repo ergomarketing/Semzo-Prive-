@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { supabase } from "@/app/lib/supabase-auth"
+import { getSupabaseBrowser } from "../../lib/supabaseClient"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -28,8 +28,16 @@ export default function ForgotPasswordPage() {
     }
 
     try {
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setError("Error de configuración. Contacta al administrador.")
+        setIsLoading(false)
+        return
+      }
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: "https://semzoprive.com/auth/reset",
       })
 
       if (resetError) {

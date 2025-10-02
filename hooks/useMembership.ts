@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "./useAuth"
-import { supabase } from "@/app/lib/supabase-unified"
+import { supabase } from "@/lib/supabase"
 
 export interface MembershipState {
   currentPlan: string | null

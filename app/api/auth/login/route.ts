@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/app/lib/supabase-unified"
+import { getSupabaseBrowser } from "@/lib/supabaseClient"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +11,11 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
+    }
+
+    const supabase = getSupabaseBrowser()
+    if (!supabase) {
+      return NextResponse.json({ success: false, message: "Error de configuración de Supabase" }, { status: 500 })
     }
 
     console.log("[LOGIN] Intentando login...")

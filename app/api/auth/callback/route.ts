@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/app/lib/supabase-unified"
+import { getSupabaseServiceRole } from "@/lib/supabaseClient"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
@@ -9,6 +9,13 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get("code")
 
     console.log("[v0] Callback recibido:", { token_hash: !!token_hash, type, code: !!code })
+
+    const supabaseAdmin = getSupabaseServiceRole()
+    if (!supabaseAdmin) {
+      const errorUrl = new URL("/auth/login", origin)
+      errorUrl.searchParams.set("error", "supabase_config_error")
+      return NextResponse.redirect(errorUrl)
+    }
 
     if (code) {
       const { data, error } = await supabaseAdmin.auth.exchangeCodeForSession(code)

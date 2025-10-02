@@ -218,7 +218,7 @@ export default function CompleteReservationForm({
 
     setIsSubmitting(true)
     try {
-      const { supabase } = await import("@/app/lib/supabase-unified")
+      const { supabase } = await import("@/lib/supabase")
 
       const reservationData = {
         bag: selectedBag,

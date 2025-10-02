@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
-import { supabase } from "@/app/lib/supabase-unified"
-import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "../../lib/supabaseClient"
+import { useAuth } from "../../hooks/useAuth"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -214,6 +214,12 @@ export default function LoginPage() {
               </div>
             )}
           </form>
+
+          <div className="mt-6 text-center">
+            <a href="/auth/forgot-password" className="text-sm text-indigo-dark hover:underline font-medium">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
 
           <div className="mt-8 text-center">
             <p className="text-slate-600">

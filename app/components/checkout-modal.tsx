@@ -6,8 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
-import { useAuth } from "@/app/hooks/useAuth"
 import { useRouter } from "next/navigation"
+import { getSupabaseBrowser } from "../lib/supabaseClient"
 
 interface CheckoutModalProps {
   isOpen: boolean
@@ -20,7 +20,6 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
-  const { signIn, signUp } = useAuth()
   const router = useRouter()
 
   if (!isOpen) return null
@@ -30,18 +29,35 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     setLoading(true)
 
     try {
+      const supabase = getSupabaseBrowser()
+      if (!supabase) {
+        throw new Error("Supabase client not available")
+      }
+
       if (isLogin) {
-        await signIn(email, password)
-        // Redirect to checkout with cart items
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) throw error
         router.push("/checkout")
       } else {
-        await signUp(email, password, name)
-        // After signup, redirect to checkout
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            },
+          },
+        })
+        if (error) throw error
         router.push("/checkout")
       }
       onClose()
     } catch (error) {
       console.error("Auth error:", error)
+      alert(error instanceof Error ? error.message : "Error de autenticación")
     } finally {
       setLoading(false)
     }

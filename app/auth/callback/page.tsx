@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2, ArrowRight, XCircle } from "lucide-react"
-import { supabase } from "@/app/lib/supabase-unified"
+import { getSupabaseBrowser } from "@/lib/supabaseClient"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -18,6 +18,13 @@ export default function AuthCallback() {
       try {
         console.log("[v0] === CALLBACK INICIADO ===")
         console.log("[v0] URL completa:", window.location.href)
+
+        const supabase = getSupabaseBrowser()
+        if (!supabase) {
+          setStatus("error")
+          setMessage("Error de configuración de Supabase")
+          return
+        }
 
         const allParams = new URLSearchParams(window.location.search)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))

@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, Eye, EyeOff } from "lucide-react"
-import { getSupabaseBrowser } from "@/lib/supabaseClient"
+import { getSupabaseBrowser } from "../../../lib/supabaseClient"
 
-export default function ResetPasswordPage() {
+export default function ResetPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -23,19 +23,35 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    console.log("[v0] Reset page loaded, checking for tokens in URL")
+
     // Verificar si hay tokens de reset en la URL
     const accessToken = searchParams.get("access_token")
     const refreshToken = searchParams.get("refresh_token")
 
+    console.log("[v0] Access token present:", !!accessToken)
+    console.log("[v0] Refresh token present:", !!refreshToken)
+
     if (accessToken && refreshToken) {
       const supabase = getSupabaseBrowser()
       if (supabase) {
+        console.log("[v0] Setting session with tokens from URL")
         // Establecer la sesión con los tokens
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
+        supabase.auth
+          .setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          .then(({ data, error }) => {
+            if (error) {
+              console.error("[v0] Error setting session:", error)
+            } else {
+              console.log("[v0] Session set successfully:", data)
+            }
+          })
       }
+    } else {
+      console.log("[v0] No tokens found in URL")
     }
   }, [searchParams])
 
@@ -43,6 +59,8 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+
+    console.log("[v0] Submitting password reset form")
 
     if (!password || !confirmPassword) {
       setError("Todos los campos son obligatorios")
@@ -71,17 +89,18 @@ export default function ResetPasswordPage() {
         return
       }
 
+      console.log("[v0] Updating user password")
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       })
 
       if (updateError) {
-        console.error("Error actualizando contraseña:", updateError)
+        console.error("[v0] Error actualizando contraseña:", updateError)
         setError("Error al actualizar la contraseña. El enlace puede haber expirado.")
         return
       }
 
-      console.log("✅ Contraseña actualizada exitosamente")
+      console.log("[v0] ✅ Contraseña actualizada exitosamente")
       setIsSuccess(true)
 
       // Redirigir al login después de 3 segundos
@@ -89,7 +108,7 @@ export default function ResetPasswordPage() {
         router.push("/auth/login")
       }, 3000)
     } catch (error) {
-      console.error("Error en reset password:", error)
+      console.error("[v0] Error en reset password:", error)
       setError("Error al actualizar la contraseña. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)

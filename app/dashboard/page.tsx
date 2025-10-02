@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, ShoppingBag, Loader2, Edit, Save, X, MapPin, Clock } from "lucide-react"
-import { supabase } from "@/app/lib/supabase-unified"
+import { supabase } from "../lib/supabaseClient"
 
 interface ShippingInfo {
   shipping_address: string
