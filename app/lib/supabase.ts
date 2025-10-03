@@ -16,5 +16,6 @@ export const supabase = getSupabaseBrowser()
 // Export admin client
 export const supabaseAdmin = getSupabaseServiceRole()
 
-// Re-export other utilities
-export { getSupabaseBrowser, getSupabaseServiceRole, getSupabaseServer } from "./supabaseClient"
+// Re-export utilities
+export { getSupabaseBrowser, getSupabaseServiceRole } from "./supabaseClient"
+export { getSupabaseServer } from "./supabaseServer"
