@@ -109,80 +109,78 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto p-6 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-serif font-bold text-slate-900 mb-2">Panel de Administración</h1>
-          <p className="text-slate-600 text-lg">Semzo Privé - Centro de Control</p>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {quickStats.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
-                    <p className="text-sm text-green-600 mt-1">{stat.trend}</p>
-                  </div>
-                  <stat.icon className={`h-12 w-12 ${stat.color}`} />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Main Sections */}
-        <div className="space-y-8">
-          {mainSections.map((section, sectionIndex) => (
-            <div key={sectionIndex}>
-              <div className="mb-4">
-                <h2 className="text-2xl font-serif font-bold text-slate-900">{section.title}</h2>
-                <p className="text-slate-600">{section.description}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {section.cards.map((card, cardIndex) => (
-                  <Link key={cardIndex} href={card.href}>
-                    <Card className="h-full border-0 shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer group">
-                      <CardContent className="p-6">
-                        <div
-                          className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
-                        >
-                          <card.icon className="h-6 w-6 text-white" />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2 text-slate-900">{card.name}</h3>
-                        <p className="text-sm text-slate-600">{card.description}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="mt-8 border-0 shadow-lg bg-gradient-to-r from-indigo-500 to-purple-600">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between text-white">
-              <div>
-                <h3 className="text-xl font-semibold mb-2">¿Necesitas ayuda?</h3>
-                <p className="text-indigo-100">Accede a la documentación o contacta con soporte técnico</p>
-              </div>
-              <Link href="/admin/settings">
-                <button className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-indigo-50 transition-colors">
-                  <Settings className="inline h-5 w-5 mr-2" />
-                  Configuración
-                </button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="container mx-auto p-8 max-w-7xl">
+      {/* Header */}
+      <div className="mb-10">
+        <h1 className="text-4xl font-serif font-bold text-slate-900 mb-3">Dashboard Principal</h1>
+        <p className="text-slate-600 text-lg">Bienvenido al centro de control de Semzo Privé</p>
       </div>
+
+      {/* Quick Stats - Mejorado espaciado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        {quickStats.map((stat, index) => (
+          <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600 mb-2">{stat.label}</p>
+                  <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-sm text-green-600 mt-2">{stat.trend}</p>
+                </div>
+                <stat.icon className={`h-14 w-14 ${stat.color}`} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Main Sections - Mejorado espaciado entre secciones */}
+      <div className="space-y-12">
+        {mainSections.map((section, sectionIndex) => (
+          <div key={sectionIndex}>
+            <div className="mb-6">
+              <h2 className="text-2xl font-serif font-bold text-slate-900 mb-2">{section.title}</h2>
+              <p className="text-slate-600 text-base">{section.description}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {section.cards.map((card, cardIndex) => (
+                <Link key={cardIndex} href={card.href}>
+                  <Card className="h-full border-0 shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer group">
+                    <CardContent className="p-8">
+                      <div
+                        className={`${card.color} w-14 h-14 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}
+                      >
+                        <card.icon className="h-7 w-7 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-lg mb-3 text-slate-900">{card.name}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{card.description}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Actions - Mejorado espaciado */}
+      <Card className="mt-12 border-0 shadow-lg bg-gradient-to-r from-indigo-500 to-purple-600">
+        <CardContent className="p-8">
+          <div className="flex items-center justify-between text-white">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">¿Necesitas ayuda?</h3>
+              <p className="text-indigo-100">Accede a la documentación o contacta con soporte técnico</p>
+            </div>
+            <Link href="/admin/settings">
+              <button className="bg-white text-indigo-600 px-8 py-4 rounded-lg font-semibold hover:bg-indigo-50 transition-colors">
+                <Settings className="inline h-5 w-5 mr-2" />
+                Configuración
+              </button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
