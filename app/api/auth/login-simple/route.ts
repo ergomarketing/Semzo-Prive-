@@ -5,10 +5,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { username, password } = body
 
-    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin"
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "semzo2024!"
+    const HARDCODED_USERNAME = "admin"
+    const HARDCODED_PASSWORD = "semzo2024!"
 
     console.log("[v0] Login attempt:", { username, password: "***" })
+    console.log("[v0] HARDCODED CREDENTIALS:", {
+      expectedUsername: HARDCODED_USERNAME,
+      expectedPassword: "***",
+    })
 
     // Validaciones
     if (!username || !password) {
@@ -21,10 +25,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isValidUsername = username === ADMIN_USERNAME
-    const isValidPassword = password === ADMIN_PASSWORD
+    const isValidUsername = username === HARDCODED_USERNAME
+    const isValidPassword = password === HARDCODED_PASSWORD
 
     console.log("[v0] Validation results:", { isValidUsername, isValidPassword })
+    console.log("[v0] Exact comparison:", {
+      usernameMatch: `"${username}" === "${HARDCODED_USERNAME}"`,
+      passwordMatch: `"${password}" === "${HARDCODED_PASSWORD}"`,
+    })
 
     if (isValidUsername && isValidPassword) {
       console.log("[v0] Login successful")

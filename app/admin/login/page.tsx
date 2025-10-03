@@ -141,6 +141,7 @@ export default function AdminLogin() {
 
           <div className="mt-6 p-3 bg-rose-pastel/10 rounded-lg">
             <p className="text-xs text-slate-600 text-center">🔒 Acceso restringido solo para administradores</p>
+            <p className="text-xs text-slate-500 text-center mt-1">Credenciales por defecto: admin / semzo2024!</p>
           </div>
         </CardContent>
       </Card>

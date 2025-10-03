@@ -1,245 +1,187 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import {
-  Settings,
-  Database,
-  Mail,
-  CreditCard,
+  Package,
   Users,
+  Mail,
   BarChart3,
+  Settings,
+  Zap,
+  Database,
+  TrendingUp,
+  ShoppingBag,
+  Calendar,
   MessageSquare,
-  Shield,
-  Wrench,
-  FileText,
-  HelpCircle,
-  MapPin,
 } from "lucide-react"
 
 export default function AdminDashboard() {
-  const adminSections = [
+  const mainSections = [
     {
-      title: "Configuración del Sistema",
-      description: "Configurar y verificar servicios principales",
-      icon: Settings,
-      items: [
-        {
-          name: "Diagnóstico de Variables",
-          href: "/admin/env-debug",
-          icon: Wrench,
-          description: "Verificar variables de entorno",
-          status: "active",
-        },
-        {
-          name: "Configuración Supabase",
-          href: "/admin/supabase-diagnostics",
-          icon: Database,
-          description: "Verificar conexión a base de datos",
-          status: "active",
-        },
-        {
-          name: "Configuración Stripe",
-          href: "/admin/stripe-diagnostics",
-          icon: CreditCard,
-          description: "Verificar integración de pagos",
-          status: "active",
-        },
-        {
-          name: "Configuración Email",
-          href: "/admin/email-diagnostico",
-          icon: Mail,
-          description: "Verificar servicio de emails",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Gestión de Usuarios",
-      description: "Administrar usuarios y membresías",
-      icon: Users,
-      items: [
-        {
-          name: "Lista de Miembros",
-          href: "/admin/members",
-          icon: Users,
-          description: "Ver y gestionar usuarios registrados",
-          status: "active",
-        },
-        {
-          name: "Direcciones de Envío",
-          href: "/admin/shipping",
-          icon: MapPin,
-          description: "Ver direcciones de entrega de usuarios",
-          status: "active",
-        },
-        {
-          name: "Configurar Base de Datos",
-          href: "/admin/setup-database",
-          icon: Database,
-          description: "Crear tablas y configurar BD",
-          status: "active",
-        },
-        {
-          name: "Limpiar Usuarios Huérfanos",
-          href: "/auth/cleanup",
-          icon: Shield,
-          description: "Limpiar usuarios sin perfil",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Sistema de Emails",
-      description: "Gestionar y probar emails",
-      icon: Mail,
-      items: [
-        {
-          name: "Logs de Emails",
-          href: "/admin/email-logs",
-          icon: FileText,
-          description: "Ver historial de emails enviados",
-          status: "active",
-        },
-        {
-          name: "Dashboard de Emails",
-          href: "/admin/emails",
-          icon: BarChart3,
-          description: "Estadísticas de emails",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Herramientas de Desarrollo",
-      description: "Herramientas para desarrollo y debug",
-      icon: Wrench,
-      items: [
-        {
-          name: "Guía de Configuración",
-          href: "/admin/setup-guide",
-          icon: HelpCircle,
-          description: "Guía paso a paso de configuración",
-          status: "active",
-        },
-        {
-          name: "Chat de Soporte",
-          href: "/admin/chat",
-          icon: MessageSquare,
-          description: "Chat en vivo con soporte",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Analytics y Reportes",
-      description: "Métricas y análisis del sistema",
-      icon: BarChart3,
-      items: [
-        {
-          name: "Analytics",
-          href: "/admin/analytics",
-          icon: BarChart3,
-          description: "Métricas de uso y rendimiento",
-          status: "active",
-        },
+      title: "Operaciones",
+      description: "Gestión diaria del negocio",
+      cards: [
         {
           name: "Inventario",
           href: "/admin/inventory",
+          icon: Package,
+          description: "Gestión de bolsos y disponibilidad",
+          color: "bg-blue-500",
+        },
+        {
+          name: "Reservas",
+          href: "/admin/reservations",
+          icon: Calendar,
+          description: "Calendario y gestión de alquileres",
+          color: "bg-purple-500",
+        },
+        {
+          name: "Clientes",
+          href: "/admin/customers",
+          icon: Users,
+          description: "Base de datos de clientes",
+          color: "bg-green-500",
+        },
+        {
+          name: "Pedidos",
+          href: "/admin/orders",
+          icon: ShoppingBag,
+          description: "Gestión de pedidos y envíos",
+          color: "bg-orange-500",
+        },
+      ],
+    },
+    {
+      title: "Comunicación",
+      description: "Gestión de emails y mensajes",
+      cards: [
+        {
+          name: "Email Marketing",
+          href: "/admin/emails",
+          icon: Mail,
+          description: "Campañas y automatizaciones",
+          color: "bg-pink-500",
+        },
+        {
+          name: "Chat en Vivo",
+          href: "/admin/chat",
+          icon: MessageSquare,
+          description: "Soporte al cliente",
+          color: "bg-indigo-500",
+        },
+      ],
+    },
+    {
+      title: "Analytics & Integraciones",
+      description: "Métricas y conexiones externas",
+      cards: [
+        {
+          name: "Dashboard Analytics",
+          href: "/admin/analytics",
+          icon: BarChart3,
+          description: "Métricas de negocio",
+          color: "bg-cyan-500",
+        },
+        {
+          name: "Integraciones",
+          href: "/admin/integrations",
+          icon: Zap,
+          description: "Zoho, n8n y automatizaciones",
+          color: "bg-yellow-500",
+        },
+        {
+          name: "Base de Datos",
+          href: "/admin/database",
           icon: Database,
-          description: "Gestión de inventario de productos",
-          status: "active",
+          description: "Gestión de datos",
+          color: "bg-slate-500",
         },
       ],
     },
   ]
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "bg-green-500"
-      case "warning":
-        return "bg-yellow-500"
-      case "error":
-        return "bg-red-500"
-      default:
-        return "bg-blue-500"
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "success":
-        return "Listo"
-      case "warning":
-        return "Atención"
-      case "error":
-        return "Error"
-      default:
-        return "Activo"
-    }
-  }
+  const quickStats = [
+    { label: "Bolsos Disponibles", value: "12", trend: "+2", icon: Package, color: "text-blue-600" },
+    { label: "Reservas Activas", value: "8", trend: "+3", icon: Calendar, color: "text-purple-600" },
+    { label: "Clientes Totales", value: "45", trend: "+5", icon: Users, color: "text-green-600" },
+    { label: "Ingresos del Mes", value: "€2,450", trend: "+12%", icon: TrendingUp, color: "text-orange-600" },
+  ]
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Panel de Administración</h1>
-        <p className="text-gray-600 text-lg">Centro de control para Semzo Privé</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="container mx-auto p-6 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-serif font-bold text-slate-900 mb-2">Panel de Administración</h1>
+          <p className="text-slate-600 text-lg">Semzo Privé - Centro de Control</p>
+        </div>
 
-      <div className="grid gap-8">
-        {adminSections.map((section, sectionIndex) => (
-          <Card key={sectionIndex} className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-              <CardTitle className="flex items-center gap-3">
-                <section.icon className="h-6 w-6 text-blue-600" />
-                {section.title}
-              </CardTitle>
-              <CardDescription className="text-base">{section.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((item, itemIndex) => (
-                  <Link key={itemIndex} href={item.href}>
-                    <Card className="h-full transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <item.icon className="h-8 w-8 text-blue-600 flex-shrink-0" />
-                          <Badge className={`${getStatusColor(item.status)} text-white text-xs`}>
-                            {getStatusText(item.status)}
-                          </Badge>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {quickStats.map((stat, index) => (
+            <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600 mb-1">{stat.label}</p>
+                    <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
+                    <p className="text-sm text-green-600 mt-1">{stat.trend}</p>
+                  </div>
+                  <stat.icon className={`h-12 w-12 ${stat.color}`} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Main Sections */}
+        <div className="space-y-8">
+          {mainSections.map((section, sectionIndex) => (
+            <div key={sectionIndex}>
+              <div className="mb-4">
+                <h2 className="text-2xl font-serif font-bold text-slate-900">{section.title}</h2>
+                <p className="text-slate-600">{section.description}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {section.cards.map((card, cardIndex) => (
+                  <Link key={cardIndex} href={card.href}>
+                    <Card className="h-full border-0 shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer group">
+                      <CardContent className="p-6">
+                        <div
+                          className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                        >
+                          <card.icon className="h-6 w-6 text-white" />
                         </div>
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.name}</h3>
-                        <p className="text-gray-600 text-sm line-clamp-2">{item.description}</p>
+                        <h3 className="font-semibold text-lg mb-2 text-slate-900">{card.name}</h3>
+                        <p className="text-sm text-slate-600">{card.description}</p>
                       </CardContent>
                     </Card>
                   </Link>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
 
-      <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-center gap-3 mb-3">
-          <HelpCircle className="h-6 w-6 text-blue-600" />
-          <h3 className="text-lg font-semibold text-blue-900">¿Necesitas ayuda?</h3>
-        </div>
-        <p className="text-blue-700 mb-4">
-          Si tienes problemas con la configuración, comienza por el diagnóstico de variables de entorno y sigue la guía
-          de configuración paso a paso.
-        </p>
-        <div className="flex gap-3">
-          <Button asChild variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 bg-transparent">
-            <Link href="/admin/env-debug">Diagnóstico Rápido</Link>
-          </Button>
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
-            <Link href="/admin/setup-guide">Guía Completa</Link>
-          </Button>
-        </div>
+        {/* Quick Actions */}
+        <Card className="mt-8 border-0 shadow-lg bg-gradient-to-r from-indigo-500 to-purple-600">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between text-white">
+              <div>
+                <h3 className="text-xl font-semibold mb-2">¿Necesitas ayuda?</h3>
+                <p className="text-indigo-100">Accede a la documentación o contacta con soporte técnico</p>
+              </div>
+              <Link href="/admin/settings">
+                <button className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-indigo-50 transition-colors">
+                  <Settings className="inline h-5 w-5 mr-2" />
+                  Configuración
+                </button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
       }
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`,
+        redirectTo: "https://semzoprive.com/auth/reset",
       })
 
       if (resetError) {

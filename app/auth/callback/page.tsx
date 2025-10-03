@@ -29,20 +29,6 @@ export default function AuthCallback() {
         const allParams = new URLSearchParams(window.location.search)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
-        const type = allParams.get("type") || hashParams.get("type")
-        const isPasswordRecovery = type === "recovery"
-
-        console.log("[v0] Tipo de callback:", type)
-        console.log("[v0] Es recovery de contraseña:", isPasswordRecovery)
-
-        if (isPasswordRecovery) {
-          console.log("[v0] Recovery detectado - redirigiendo a /auth/reset")
-          // Simplemente redirigir con todos los parámetros de la URL
-          const fullHash = window.location.hash
-          router.push(`/auth/reset${fullHash}`)
-          return
-        }
-
         const {
           data: { user },
         } = await supabase.auth.getUser()
@@ -67,6 +53,7 @@ export default function AuthCallback() {
         console.log("[v0] Search params:", Object.fromEntries(allParams.entries()))
         console.log("[v0] Hash params:", Object.fromEntries(hashParams.entries()))
 
+        // Verificar todos los parámetros posibles que Supabase puede enviar
         const possibleParams = [
           "code",
           "access_token",
@@ -99,6 +86,7 @@ export default function AuthCallback() {
         const hashTokenHash = hashParams.get("token_hash")
         const hashType = hashParams.get("type")
         const token = searchParams.get("token")
+        const type = searchParams.get("type")
 
         console.log("[v0] Parámetros específicos:", {
           searchCode: code ? "✓" : "✗",
@@ -144,12 +132,14 @@ export default function AuthCallback() {
           return
         }
 
+        // Método 1: exchangeCodeForSession si hay código
         if (finalCode) {
           console.log("[v0] Método 1: Confirmando con exchangeCodeForSession...")
           const { data, error } = await supabase.auth.exchangeCodeForSession(finalCode)
 
           if (error) {
             console.log("[v0] Error método 1:", error.message)
+            // Continuar con otros métodos
           } else if (data.user) {
             console.log("[v0] ✅ Método 1 exitoso - Email confirmado:", {
               userId: data.user.id,
@@ -167,6 +157,7 @@ export default function AuthCallback() {
           }
         }
 
+        // Método 2: verifyOtp si hay token (parámetro directo de Supabase)
         if (token && type) {
           console.log("[v0] Método 2: Confirmando con verifyOtp usando token...")
           const { data, error } = await supabase.auth.verifyOtp({
@@ -194,6 +185,7 @@ export default function AuthCallback() {
           }
         }
 
+        // Método 3: verifyOtp si hay token_hash
         if (hashTokenHash && hashType) {
           console.log("[v0] Método 3: Confirmando con verifyOtp usando token_hash...")
           const { data, error } = await supabase.auth.verifyOtp({
@@ -221,6 +213,7 @@ export default function AuthCallback() {
           }
         }
 
+        // Si llegamos aquí, ningún método funcionó
         console.log("[v0] ❌ Todos los métodos fallaron")
 
         const {
