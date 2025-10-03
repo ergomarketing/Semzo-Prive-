@@ -35,18 +35,11 @@ export default function AuthCallback() {
         console.log("[v0] Tipo de callback:", type)
         console.log("[v0] Es recovery de contraseña:", isPasswordRecovery)
 
-        // Si es recovery, redirigir directamente a la página de reset
         if (isPasswordRecovery) {
-          console.log("[v0] Redirigiendo a página de reset de contraseña")
-          const accessToken = hashParams.get("access_token")
-          const refreshToken = hashParams.get("refresh_token")
-
-          if (accessToken && refreshToken) {
-            // Pasar los tokens a la página de reset
-            router.push(`/auth/reset?access_token=${accessToken}&refresh_token=${refreshToken}`)
-          } else {
-            router.push("/auth/reset")
-          }
+          console.log("[v0] Recovery detectado - redirigiendo a /auth/reset")
+          // Simplemente redirigir con todos los parámetros de la URL
+          const fullHash = window.location.hash
+          router.push(`/auth/reset${fullHash}`)
           return
         }
 

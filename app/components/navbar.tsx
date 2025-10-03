@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag } from "lucide-react"
 import { useCart } from "@/app/components/cart-context"
+import { usePathname } from "next/navigation"
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const { user, loading, signOut } = useAuth()
   const { itemCount } = useCart()
+  const pathname = usePathname()
+  const isAdminRoute = pathname?.startsWith("/admin")
 
   useEffect(() => {
     console.log("[v0] Navbar - Auth state:", {
@@ -62,6 +65,10 @@ export default function Navbar() {
     await signOut()
     console.log("[v0] Navbar - After signOut, redirecting to /")
     window.location.href = "/"
+  }
+
+  if (isAdminRoute) {
+    return null
   }
 
   return (
