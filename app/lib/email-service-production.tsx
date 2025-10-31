@@ -328,19 +328,6 @@ export class EmailServiceProduction {
                   font-weight: bold;
                   margin-right: 8px;
               }
-              .fallback {
-                  background: #f8f9fa;
-                  padding: 20px;
-                  margin: 30px 0;
-                  border-radius: 8px;
-                  font-size: 14px;
-                  color: #666;
-                  text-align: center;
-              }
-              .fallback p {
-                  margin: 5px 0;
-                  word-break: break-all;
-              }
               .footer { 
                   background: #2B2D6B; 
                   color: white; 
@@ -387,18 +374,12 @@ export class EmailServiceProduction {
                       </ul>
                   </div>
                   
-                  <div class="fallback">
-                      <p><strong>Si tienes problemas con el botón, copia y pega este enlace en tu navegador:</strong></p>
-                      <p>${confirmationUrl}</p>
-                  </div>
-                  
                   <p style="margin-top: 30px; font-size: 14px; color: #999;">Si no creaste esta cuenta, puedes ignorar este email de forma segura.</p>
               </div>
               
               <div class="footer">
-                  <p><strong>SEMZO PRIVÉ</strong></p>
-                  <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
-                  <p>📞 +34 624 23 9394 | 📧 hola@semzoprive.com</p>
+                  <p>© 2025 Semzo Privé. Todos los derechos reservados.</p>
+                  <p>Soporte: <a href="mailto:contacto@semzoprive.com" style="color: white; text-decoration: underline;">contacto@semzoprive.com</a></p>
               </div>
           </div>
       </body>
@@ -421,13 +402,12 @@ export class EmailServiceProduction {
       - Acceder a ofertas especiales
       - Recibir notificaciones de nuevas llegadas
       
-      Si tienes alguna pregunta, contactanos en: hola@semzoprive.com
+      Si tienes alguna pregunta, contactanos en: contacto@semzoprive.com
       
       ¡Gracias por unirte a Semzo Privé!
       
       El equipo de Semzo Privé
       Avenida Ricardo Soriano s.n, Marbella, España
-      +34 624 23 9394
     `
   }
 

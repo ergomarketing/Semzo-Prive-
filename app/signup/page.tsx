@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
+import { Mail, CheckCircle2, AlertCircle } from "lucide-react"
+import { createBrowserClient } from "@supabase/ssr"
 
 export default function SignupPage() {
   const searchParams = useSearchParams()
@@ -22,8 +24,9 @@ export default function SignupPage() {
     phone: "",
   })
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [requiresConfirmation, setRequiresConfirmation] = useState(false)
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -50,51 +53,86 @@ export default function SignupPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setMessage({ type: "error", text: "La contraseña debe tener al menos 6 caracteres" })
+    if (formData.password.length < 8) {
+      setMessage({ type: "error", text: "La contraseña debe tener al menos 8 caracteres" })
+      setLoading(false)
+      return
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (!passwordRegex.test(formData.password)) {
+      setMessage({
+        type: "error",
+        text: "La contraseña debe contener al menos una mayúscula, una minúscula y un número",
+      })
       setLoading(false)
       return
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/login?confirmed=true`,
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+          },
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-        }),
       })
 
-      const result = await response.json()
+      if (error) {
+        if (error.message.includes("already registered")) {
+          setMessage({
+            type: "error",
+            text: "Este correo ya está registrado. Por favor inicia sesión o usa la opción de recuperar contraseña.",
+          })
+        } else {
+          setMessage({ type: "error", text: error.message })
+        }
+        setLoading(false)
+        return
+      }
 
-      if (result.success) {
-        setMessage({ type: "success", text: result.message })
+      const needsConfirmation = data.user && !data.session
+      setRequiresConfirmation(needsConfirmation)
 
-        setFormData({
-          email: "",
-          password: "",
-          confirmPassword: "",
-          firstName: "",
-          lastName: "",
-          phone: "",
+      if (needsConfirmation) {
+        setMessage({
+          type: "success",
+          text: "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
+        })
+      } else {
+        setMessage({
+          type: "success",
+          text: "Cuenta creada exitosamente. Redirigiendo...",
         })
 
         setTimeout(() => {
-          const loginUrl = selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"
-          console.log("[v0] Redirecting to login after successful registration:", loginUrl)
+          const loginUrl = selectedPlan
+            ? `/auth/login?plan=${selectedPlan}&registered=true`
+            : "/auth/login?registered=true"
           router.push(loginUrl)
-        }, 3000)
-      } else {
-        setMessage({ type: "error", text: result.message || result.error || "Error en el registro" })
+        }, 2000)
       }
+
+      setFormData({
+        email: "",
+        password: "",
+        confirmPassword: "",
+        firstName: "",
+        lastName: "",
+        phone: "",
+      })
     } catch (error) {
-      setMessage({ type: "error", text: "Error inesperado. Inténtalo de nuevo." })
+      setMessage({ type: "error", text: "Error de conexión. Por favor verifica tu internet e inténtalo de nuevo." })
     } finally {
       setLoading(false)
     }
@@ -188,6 +226,9 @@ export default function SignupPage() {
                 required
                 disabled={loading}
               />
+              <p className="text-xs text-gray-500">
+                Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas y números
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -204,13 +245,42 @@ export default function SignupPage() {
             </div>
 
             {message && (
-              <Alert className={message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
-                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-                  {message.text}
-                  {message.type === "success" && (
-                    <div className="mt-2 text-sm text-green-700">Serás redirigido al login en 3 segundos...</div>
-                  )}
-                </AlertDescription>
+              <Alert
+                className={
+                  message.type === "error"
+                    ? "border-red-200 bg-red-50"
+                    : message.type === "info"
+                      ? "border-blue-200 bg-blue-50"
+                      : "border-rose-200 bg-rose-50"
+                }
+              >
+                <div className="flex items-start gap-2">
+                  {message.type === "error" && <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />}
+                  {message.type === "success" && <CheckCircle2 className="h-4 w-4 text-indigo-dark mt-0.5" />}
+                  {message.type === "info" && <Mail className="h-4 w-4 text-blue-600 mt-0.5" />}
+                  <AlertDescription
+                    className={
+                      message.type === "error"
+                        ? "text-red-800"
+                        : message.type === "info"
+                          ? "text-blue-800"
+                          : "text-indigo-dark"
+                    }
+                  >
+                    {message.text}
+                    {message.type === "success" && requiresConfirmation && (
+                      <div className="mt-3 p-3 bg-white/50 rounded border border-indigo-dark">
+                        <p className="text-sm font-medium text-indigo-dark mb-1">Revisa tu bandeja de entrada</p>
+                        <p className="text-xs text-indigo-dark">
+                          Te hemos enviado un email de confirmación. Haz clic en el enlace para activar tu cuenta.
+                        </p>
+                      </div>
+                    )}
+                    {message.type === "success" && !requiresConfirmation && (
+                      <div className="mt-2 text-sm text-indigo-dark">Serás redirigido al login en 2 segundos...</div>
+                    )}
+                  </AlertDescription>
+                </div>
               </Alert>
             )}
 

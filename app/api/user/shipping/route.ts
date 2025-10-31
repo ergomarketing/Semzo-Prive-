@@ -25,14 +25,14 @@ export async function GET(request: NextRequest) {
       .from("profiles")
       .select("shipping_address, shipping_city, shipping_postal_code, shipping_phone, shipping_country")
       .eq("id", user.id)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error("Error fetching shipping info:", error)
       return NextResponse.json({ error: "Error al obtener información de envío" }, { status: 500 })
     }
 
-    return NextResponse.json({ shipping: profile })
+    return NextResponse.json({ shipping: profile || null })
   } catch (error) {
     console.error("Error in GET /api/user/shipping:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

@@ -1,5 +1,6 @@
-import { getSupabaseServiceRole } from "@/lib/supabaseClient"
+import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,50 +9,46 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type")
     const code = searchParams.get("code")
 
-    console.log("[v0] Callback recibido:", { token_hash: !!token_hash, type, code: !!code })
+    console.log("[v0] 📨 Callback received:", { token_hash: !!token_hash, type, code: !!code })
 
-    const supabaseAdmin = getSupabaseServiceRole()
-    if (!supabaseAdmin) {
-      const errorUrl = new URL("/auth/login", origin)
-      errorUrl.searchParams.set("error", "supabase_config_error")
-      return NextResponse.redirect(errorUrl)
-    }
+    const cookieStore = cookies()
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: any) {
+            cookieStore.set({ name, value: "", ...options })
+          },
+        },
+      },
+    )
 
     if (code) {
-      const { data, error } = await supabaseAdmin.auth.exchangeCodeForSession(code)
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
       if (error || !data.user) {
-        console.log("[v0] Error en exchangeCodeForSession:", error)
+        console.log("[v0] ❌ Error in exchangeCodeForSession:", error?.message)
         const errorUrl = new URL("/auth/login", origin)
         errorUrl.searchParams.set("error", "confirmation_failed")
         return NextResponse.redirect(errorUrl)
       }
 
-      console.log("[v0] Usuario confirmado exitosamente:", {
+      console.log("[v0] ✅ User confirmed successfully:", {
         userId: data.user.id,
         email: data.user.email,
-        emailConfirmed: data.user.email_confirmed_at,
+        emailConfirmed: data.user.email_confirmed_at ? "✓" : "✗",
       })
 
-      const response = NextResponse.redirect(new URL("/dashboard", origin))
-
-      response.cookies.set("sb-access-token", data.session.access_token, {
-        path: "/",
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: data.session.expires_in,
-      })
-
-      response.cookies.set("sb-refresh-token", data.session.refresh_token, {
-        path: "/",
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-      })
-
-      return response
+      const successUrl = new URL("/dashboard", origin)
+      return NextResponse.redirect(successUrl)
     }
 
     if (!token_hash || !type) {
@@ -60,29 +57,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl)
     }
 
-    const { data, error } = await supabaseAdmin.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
       type: type as any,
     })
 
     if (error || !data.user) {
-      console.log("[v0] Error en verifyOtp:", error)
+      console.log("[v0] ❌ Error in verifyOtp:", error?.message)
       const errorUrl = new URL("/auth/login", origin)
       errorUrl.searchParams.set("error", "confirmation_failed")
       return NextResponse.redirect(errorUrl)
     }
 
-    console.log("[v0] Usuario confirmado con verifyOtp:", {
+    console.log("[v0] ✅ User confirmed with verifyOtp:", {
       userId: data.user.id,
       email: data.user.email,
-      emailConfirmed: data.user.email_confirmed_at,
+      emailConfirmed: data.user.email_confirmed_at ? "✓" : "✗",
     })
 
     const successUrl = new URL("/auth/login", origin)
     successUrl.searchParams.set("message", "email_confirmed")
     return NextResponse.redirect(successUrl)
   } catch (error) {
-    console.log("[v0] Error inesperado en callback:", error)
+    console.log("[v0] ❌ Unexpected error in callback:", error)
     const errorUrl = new URL("/auth/login", request.url)
     errorUrl.searchParams.set("error", "unexpected_error")
     return NextResponse.redirect(errorUrl)

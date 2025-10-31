@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { getSupabaseBrowser } from "../../lib/supabaseClient"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -27,7 +27,28 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Por favor ingresa un email válido")
+      setIsLoading(false)
+      return
+    }
+
     try {
+      const checkResponse = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+
+      const checkData = await checkResponse.json()
+
+      if (!checkData.exists) {
+        setError("Este email no está registrado en nuestro sistema")
+        setIsLoading(false)
+        return
+      }
+
       const supabase = getSupabaseBrowser()
 
       if (!supabase) {
@@ -37,20 +58,19 @@ export default function ForgotPasswordPage() {
       }
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://semzoprive.com/auth/reset",
+        redirectTo: `${window.location.origin}/auth/reset`,
       })
 
       if (resetError) {
-        console.error("Error enviando reset password:", resetError)
-        setError("Error al enviar el email. Verifica que el email esté registrado.")
+        setError("Error al enviar el email. Inténtalo de nuevo más tarde.")
+        setIsLoading(false)
         return
       }
 
-      console.log("✅ Email de reset enviado exitosamente a:", email)
       setIsSubmitted(true)
     } catch (error) {
-      console.error("Error en forgot password:", error)
-      setError("Error al enviar el email. Inténtalo de nuevo.")
+      setError("Error al procesar la solicitud. Inténtalo de nuevo.")
+      setIsLoading(false)
     } finally {
       setIsLoading(false)
     }
@@ -114,6 +134,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   className="h-12"
+                  autoComplete="email"
                 />
               </div>
 
@@ -125,7 +146,7 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Enviando...
+                    Verificando...
                   </>
                 ) : (
                   "Enviar instrucciones"

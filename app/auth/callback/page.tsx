@@ -16,9 +16,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        console.log("[v0] === CALLBACK INICIADO ===")
-        console.log("[v0] URL completa:", window.location.href)
-
         const supabase = getSupabaseBrowser()
         if (!supabase) {
           setStatus("error")
@@ -29,17 +26,20 @@ export default function AuthCallback() {
         const allParams = new URLSearchParams(window.location.search)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
+        const type = allParams.get("type") || hashParams.get("type")
+        const isPasswordRecovery = type === "recovery"
+
+        if (isPasswordRecovery) {
+          const fullHash = window.location.hash
+          router.push(`/auth/reset${fullHash}`)
+          return
+        }
+
         const {
           data: { user },
         } = await supabase.auth.getUser()
 
         if (user && user.email_confirmed_at) {
-          console.log("[v0] ✅ Usuario ya confirmado y autenticado:", {
-            userId: user.id,
-            email: user.email,
-            confirmed: !!user.email_confirmed_at,
-          })
-
           setStatus("success")
           setMessage("Tu email ha sido confirmado correctamente")
 
@@ -49,59 +49,14 @@ export default function AuthCallback() {
           return
         }
 
-        console.log("[v0] === DIAGNÓSTICO COMPLETO ===")
-        console.log("[v0] Search params:", Object.fromEntries(allParams.entries()))
-        console.log("[v0] Hash params:", Object.fromEntries(hashParams.entries()))
-
-        // Verificar todos los parámetros posibles que Supabase puede enviar
-        const possibleParams = [
-          "code",
-          "access_token",
-          "refresh_token",
-          "token_hash",
-          "type",
-          "token",
-          "confirmation_token",
-          "email",
-          "redirect_to",
-        ]
-
-        const foundParams: Record<string, string> = {}
-        possibleParams.forEach((param) => {
-          const searchValue = allParams.get(param) || hashParams.get(param)
-          if (searchValue) {
-            foundParams[param] = searchValue
-            console.log(`[v0] ✓ Encontrado ${param}:`, searchValue.substring(0, 20) + "...")
-          }
-        })
-
-        console.log("[v0] Parámetros encontrados:", Object.keys(foundParams))
-
         const code = searchParams.get("code")
         const error_code = searchParams.get("error_code")
         const error_description = searchParams.get("error_description")
 
         const hashCode = hashParams.get("code")
-        const hashAccessToken = hashParams.get("access_token")
-        const hashTokenHash = hashParams.get("token_hash")
-        const hashType = hashParams.get("type")
         const token = searchParams.get("token")
-        const type = searchParams.get("type")
-
-        console.log("[v0] Parámetros específicos:", {
-          searchCode: code ? "✓" : "✗",
-          hashCode: hashCode ? "✓" : "✗",
-          hashAccessToken: hashAccessToken ? "✓" : "✗",
-          hashTokenHash: hashTokenHash ? "✓" : "✗",
-          hashType: hashType,
-          token: token ? "✓" : "✗",
-          type: type,
-          error_code,
-          error_description,
-        })
 
         if (error_code || error_description) {
-          console.log("[v0] Error en URL:", { error_code, error_description })
           setStatus("error")
           setMessage(`Error: ${error_description || error_code}`)
           return
@@ -109,15 +64,12 @@ export default function AuthCallback() {
 
         const finalCode = code || hashCode
 
-        if (!finalCode && !hashAccessToken && !hashTokenHash && !token) {
-          console.log("[v0] No hay código ni tokens de confirmación")
-
+        if (!finalCode && !token) {
           const {
             data: { session },
           } = await supabase.auth.getSession()
 
           if (session?.user) {
-            console.log("[v0] ✅ Sesión activa encontrada - confirmación exitosa")
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -132,21 +84,16 @@ export default function AuthCallback() {
           return
         }
 
-        // Método 1: exchangeCodeForSession si hay código
         if (finalCode) {
-          console.log("[v0] Método 1: Confirmando con exchangeCodeForSession...")
           const { data, error } = await supabase.auth.exchangeCodeForSession(finalCode)
 
           if (error) {
-            console.log("[v0] Error método 1:", error.message)
-            // Continuar con otros métodos
-          } else if (data.user) {
-            console.log("[v0] ✅ Método 1 exitoso - Email confirmado:", {
-              userId: data.user.id,
-              email: data.user.email,
-              confirmed: !!data.user.email_confirmed_at,
-            })
+            setStatus("error")
+            setMessage("Error al confirmar el email")
+            return
+          }
 
+          if (data.user) {
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -157,24 +104,19 @@ export default function AuthCallback() {
           }
         }
 
-        // Método 2: verifyOtp si hay token (parámetro directo de Supabase)
         if (token && type) {
-          console.log("[v0] Método 2: Confirmando con verifyOtp usando token...")
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: token,
             type: type as any,
           })
 
           if (error) {
-            console.log("[v0] Error método 2:", error.message)
-            console.log("[v0] Error completo método 2:", error)
-          } else if (data.user) {
-            console.log("[v0] ✅ Método 2 exitoso - Email confirmado:", {
-              userId: data.user.id,
-              email: data.user.email,
-              confirmed: !!data.user.email_confirmed_at,
-            })
+            setStatus("error")
+            setMessage("Error al confirmar el email")
+            return
+          }
 
+          if (data.user) {
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -184,44 +126,12 @@ export default function AuthCallback() {
             return
           }
         }
-
-        // Método 3: verifyOtp si hay token_hash
-        if (hashTokenHash && hashType) {
-          console.log("[v0] Método 3: Confirmando con verifyOtp usando token_hash...")
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: hashTokenHash,
-            type: "signup" as const,
-          })
-
-          if (error) {
-            console.log("[v0] Error método 3:", error.message)
-            console.log("[v0] Error completo método 3:", error)
-          } else if (data.user) {
-            console.log("[v0] ✅ Método 3 exitoso - Email confirmado:", {
-              userId: data.user.id,
-              email: data.user.email,
-              confirmed: !!data.user.email_confirmed_at,
-            })
-
-            setStatus("success")
-            setMessage("Tu email ha sido confirmado correctamente")
-
-            setTimeout(() => {
-              router.push("/auth/login?message=email_confirmed")
-            }, 2000)
-            return
-          }
-        }
-
-        // Si llegamos aquí, ningún método funcionó
-        console.log("[v0] ❌ Todos los métodos fallaron")
 
         const {
           data: { session: finalSession },
         } = await supabase.auth.getSession()
 
         if (finalSession?.user) {
-          console.log("[v0] ✅ Confirmación exitosa detectada en verificación final")
           setStatus("success")
           setMessage("Tu email ha sido confirmado correctamente")
 
@@ -234,7 +144,6 @@ export default function AuthCallback() {
         setStatus("error")
         setMessage("Confirmación procesada. Intenta iniciar sesión - si funciona, la confirmación fue exitosa.")
       } catch (error) {
-        console.log("[v0] Error inesperado:", error)
         setStatus("error")
         setMessage(`Error inesperado: ${error instanceof Error ? error.message : "Error desconocido"}`)
       }

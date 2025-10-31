@@ -9,18 +9,22 @@ export interface AuthUser {
   email: string
   phone?: string
   metadata?: any
+  emailVerified: boolean
+  lastSignIn?: string
 }
 
 export interface AuthContextType {
   user: AuthUser | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
+  refreshSession: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -30,24 +34,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initRef = useRef(false)
 
   useEffect(() => {
-    console.log("[v0] AuthProvider - Starting initialization")
-    console.log("[v0] AuthProvider - Window defined:", typeof window !== "undefined")
-    console.log("[v0] AuthProvider - Supabase client exists:", !!supabaseRef.current)
+    console.log("[v0] 🔐 AuthProvider - Starting initialization")
+    console.log("[v0] 🌐 Window defined:", typeof window !== "undefined")
+    console.log("[v0] ✅ Supabase client exists:", !!supabaseRef.current)
 
-    // Prevent double initialization
     if (initRef.current) {
-      console.log("[v0] AuthProvider - Already initialized, skipping")
+      console.log("[v0] ⏭️ Already initialized, skipping")
       return
     }
 
     if (typeof window === "undefined") {
-      console.log("[v0] AuthProvider - SSR detected, setting loading to false")
+      console.log("[v0] 🖥️ SSR detected, setting loading to false")
       setLoading(false)
       return
     }
 
     if (!supabaseRef.current) {
-      console.error("[v0] AuthProvider - Supabase client is null, check environment variables")
+      console.error("[v0] ❌ Supabase client is null, check environment variables")
       setLoading(false)
       return
     }
@@ -57,52 +60,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getInitialSession = async () => {
       try {
-        console.log("[v0] AuthProvider - Getting initial session")
+        console.log("[v0] 🔍 Getting initial session")
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession()
 
         if (error) {
-          console.error("[v0] AuthProvider - Error getting session:", error)
-          if (error.message.includes("refresh_token_not_found") || error.message.includes("Invalid Refresh Token")) {
+          console.error("[v0] ❌ Error getting session:", error.message)
+          if (
+            error.message.includes("refresh_token_not_found") ||
+            error.message.includes("Invalid Refresh Token") ||
+            error.message.includes("session_not_found")
+          ) {
+            console.log("[v0] 🔄 Clearing invalid session")
             await supabase.auth.signOut()
           }
           setUser(null)
         } else if (session?.user) {
-          console.log("[v0] AuthProvider - Session found, user:", session.user.email)
+          console.log("[v0] ✅ Session found:", {
+            email: session.user.email,
+            verified: session.user.email_confirmed_at ? "✓" : "✗",
+          })
           setUser({
             id: session.user.id,
             email: session.user.email || "",
             phone: session.user.phone,
             metadata: session.user.user_metadata,
+            emailVerified: !!session.user.email_confirmed_at,
+            lastSignIn: session.user.last_sign_in_at,
           })
         } else {
-          console.log("[v0] AuthProvider - No session found")
+          console.log("[v0] ℹ️ No session found")
           setUser(null)
         }
       } catch (error) {
-        console.error("[v0] AuthProvider - Error getting initial session:", error)
+        console.error("[v0] ❌ Error getting initial session:", error)
         setUser(null)
       } finally {
-        console.log("[v0] AuthProvider - Setting loading to false")
+        console.log("[v0] ✓ Setting loading to false")
         setLoading(false)
       }
     }
 
     getInitialSession()
 
-    console.log("[v0] AuthProvider - Setting up auth state listener")
+    console.log("[v0] 👂 Setting up auth state listener")
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] AuthProvider - Auth state changed:", event)
+      console.log("[v0] 🔔 Auth state changed:", event)
+
+      if (event === "SIGNED_OUT") {
+        console.log("[v0] 👋 User signed out")
+        setUser(null)
+      } else if (event === "TOKEN_REFRESHED") {
+        console.log("[v0] 🔄 Token refreshed successfully")
+      } else if (event === "USER_UPDATED") {
+        console.log("[v0] 👤 User updated")
+      }
+
       if (session?.user) {
         setUser({
           id: session.user.id,
           email: session.user.email || "",
           phone: session.user.phone,
           metadata: session.user.user_metadata,
+          emailVerified: !!session.user.email_confirmed_at,
+          lastSignIn: session.user.last_sign_in_at,
         })
       } else {
         setUser(null)
@@ -111,18 +136,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
-      console.log("[v0] AuthProvider - Cleaning up subscription")
+      console.log("[v0] 🧹 Cleaning up subscription")
       subscription.unsubscribe()
     }
   }, [])
 
   const signOut = async () => {
+    console.log("[v0] 🚪 Signing out user")
     if (supabaseRef.current) {
       await supabaseRef.current.auth.signOut()
+      setUser(null)
     }
   }
 
-  return <AuthContext.Provider value={{ user, loading, signOut }}>{children}</AuthContext.Provider>
+  const refreshSession = async () => {
+    console.log("[v0] 🔄 Manually refreshing session")
+    if (supabaseRef.current) {
+      const {
+        data: { session },
+        error,
+      } = await supabaseRef.current.auth.refreshSession()
+      if (error) {
+        console.error("[v0] ❌ Error refreshing session:", error.message)
+      } else if (session?.user) {
+        console.log("[v0] ✅ Session refreshed successfully")
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          phone: session.user.phone,
+          metadata: session.user.user_metadata,
+          emailVerified: !!session.user.email_confirmed_at,
+          lastSignIn: session.user.last_sign_in_at,
+        })
+      }
+    }
+  }
+
+  return <AuthContext.Provider value={{ user, loading, signOut, refreshSession }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

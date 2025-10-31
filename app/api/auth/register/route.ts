@@ -1,108 +1,69 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseBrowser } from "@/lib/supabaseClient"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 === INICIANDO REGISTRO ===")
-
     const body = await request.json()
     const { email, password, firstName, lastName, phone } = body
 
-    console.log("📋 Datos recibidos:")
-    console.log("- Email:", email)
-    console.log("- First name:", firstName)
-    console.log("- Last name:", lastName)
-    console.log("- Phone:", phone)
-
     if (!email || !password) {
+      return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
+    }
+
+    if (password.length < 8) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Email y contraseña son requeridos",
-          error: "MISSING_FIELDS",
-        },
+        { success: false, message: "La contraseña debe tener al menos 8 caracteres" },
         { status: 400 },
       )
     }
 
-    const supabase = getSupabaseBrowser()
-    if (!supabase) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Error de configuración de Supabase",
-          error: "SUPABASE_CONFIG_ERROR",
-        },
-        { status: 500 },
-      )
-    }
+    const cookieStore = await cookies()
 
-    console.log("🔍 Verificando si el email ya existe en profiles...")
-    const { data: existingEmailProfile, error: emailCheckError } = await supabase
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          },
+        },
+      },
+    )
+
+    // Verificar si el email ya existe
+    const { data: existingEmailProfile } = await supabase
       .from("profiles")
       .select("email")
       .eq("email", email.toLowerCase().trim())
       .limit(1)
 
-    if (emailCheckError) {
-      console.log("⚠️ Error al verificar email en profiles:", emailCheckError)
-    } else if (existingEmailProfile && existingEmailProfile.length > 0) {
-      console.log("❌ Email ya existe en la tabla profiles")
+    if (existingEmailProfile && existingEmailProfile.length > 0) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
-          error: "EMAIL_ALREADY_EXISTS",
-        },
+        { success: false, message: "Este correo ya está registrado", error: "EMAIL_ALREADY_EXISTS" },
         { status: 400 },
       )
     }
 
+    // Verificar si el teléfono ya existe
     if (phone && phone.trim()) {
-      console.log("🔍 Verificando si el teléfono ya existe en profiles...")
-      const { data: existingPhoneProfile, error: phoneCheckError } = await supabase
+      const { data: existingPhoneProfile } = await supabase
         .from("profiles")
         .select("phone")
         .eq("phone", phone.trim())
         .limit(1)
 
-      if (phoneCheckError) {
-        console.log("⚠️ Error al verificar teléfono en profiles:", phoneCheckError)
-      } else if (existingPhoneProfile && existingPhoneProfile.length > 0) {
-        console.log("❌ Teléfono ya existe en la tabla profiles")
+      if (existingPhoneProfile && existingPhoneProfile.length > 0) {
         return NextResponse.json(
-          {
-            success: false,
-            message: "Este número de teléfono ya está registrado. Si ya tienes una cuenta, intenta iniciar sesión.",
-            error: "PHONE_ALREADY_EXISTS",
-          },
+          { success: false, message: "Este número de teléfono ya está registrado", error: "PHONE_ALREADY_EXISTS" },
           { status: 400 },
         )
       }
     }
-
-    console.log("🔍 Verificando si el email ya existe en auth.users...")
-    const { data: existingUsers, error: checkError } = await supabase
-      .from("auth.users")
-      .select("email")
-      .eq("email", email.toLowerCase().trim())
-      .limit(1)
-
-    if (checkError) {
-      console.log("⚠️ No se pudo verificar duplicados, continuando con registro...")
-    } else if (existingUsers && existingUsers.length > 0) {
-      console.log("❌ Email ya existe en la base de datos")
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
-          error: "EMAIL_ALREADY_EXISTS",
-        },
-        { status: 400 },
-      )
-    }
-
-    console.log("🔄 Registrando usuario con Supabase Auth (templates automáticos)...")
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email.toLowerCase().trim(),
@@ -114,28 +75,18 @@ export async function POST(request: NextRequest) {
           last_name: lastName,
           phone: phone || null,
         },
-        emailRedirectTo: "https://www.semzoprive.com/auth/callback",
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.semzoprive.com"}/auth/callback`,
       },
     })
 
-    console.log("📊 Respuesta de Supabase:")
-    console.log("- User creado:", !!authData.user)
-    console.log("- User ID:", authData.user?.id)
-    console.log("- Session:", !!authData.session)
-    console.log("- Error:", !!authError)
-
     if (authError) {
-      console.error("❌ Error creando usuario:", authError)
+      console.error("[v0] Error de Supabase Auth:", authError)
 
-      if (
-        authError.message?.toLowerCase().includes("user already registered") ||
-        authError.message?.toLowerCase().includes("email already registered") ||
-        authError.message?.toLowerCase().includes("already been registered")
-      ) {
+      if (authError.message?.toLowerCase().includes("user already registered")) {
         return NextResponse.json(
           {
             success: false,
-            message: "Este email ya está registrado. Intenta iniciar sesión o usar la opción de recuperar contraseña.",
+            message: "Este correo ya está registrado. Por favor inicia sesión.",
             error: "EMAIL_ALREADY_EXISTS",
           },
           { status: 400 },
@@ -143,32 +94,29 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        {
-          success: false,
-          message: `Error al crear usuario: ${authError.message}`,
-          error: authError.message,
-        },
+        { success: false, message: `Error al crear usuario: ${authError.message}`, error: "SUPABASE_AUTH_ERROR" },
         { status: 400 },
       )
     }
 
     if (!authData.user) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "No se pudo crear el usuario",
-          error: "NO_USER_CREATED",
-        },
+        { success: false, message: "No se pudo crear el usuario", error: "USER_CREATION_FAILED" },
         { status: 400 },
       )
     }
 
-    console.log("✅ Usuario creado - Supabase enviará email con template configurado automáticamente")
+    const requiresConfirmation = !authData.user.email_confirmed_at
+    const message = requiresConfirmation
+      ? "Registro exitoso. Por favor revisa tu email para confirmar tu cuenta."
+      : "Registro exitoso. Ya puedes iniciar sesión."
+
+    console.log("[v0] Usuario registrado exitosamente:", authData.user.email)
 
     return NextResponse.json({
       success: true,
-      message:
-        "Registro exitoso. Por favor revisa tu email y haz clic en el enlace de confirmación para activar tu cuenta.",
+      message: message,
+      requiresConfirmation: requiresConfirmation,
       user: {
         id: authData.user.id,
         email: authData.user.email,
@@ -176,13 +124,9 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("❌ Error inesperado en registro:", error)
+    console.error("[v0] Error en registro:", error)
     return NextResponse.json(
-      {
-        success: false,
-        message: "Error interno del servidor",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      { success: false, message: "Error interno del servidor", error: "INTERNAL_SERVER_ERROR" },
       { status: 500 },
     )
   }

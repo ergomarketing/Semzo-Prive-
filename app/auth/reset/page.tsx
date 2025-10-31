@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,49 +18,40 @@ export default function ResetPage() {
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isReady, setIsReady] = useState(false)
+  const [recoveryTokens, setRecoveryTokens] = useState<{ access: string; refresh: string } | null>(null)
 
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    console.log("[v0] Reset page loaded, checking for tokens in URL")
+    const checkRecoveryLink = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
-    // Verificar si hay tokens de reset en la URL
-    const accessToken = searchParams.get("access_token")
-    const refreshToken = searchParams.get("refresh_token")
+      const accessToken = hashParams.get("access_token")
+      const refreshToken = hashParams.get("refresh_token")
+      const type = hashParams.get("type")
 
-    console.log("[v0] Access token present:", !!accessToken)
-    console.log("[v0] Refresh token present:", !!refreshToken)
-
-    if (accessToken && refreshToken) {
-      const supabase = getSupabaseBrowser()
-      if (supabase) {
-        console.log("[v0] Setting session with tokens from URL")
-        // Establecer la sesión con los tokens
-        supabase.auth
-          .setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          .then(({ data, error }) => {
-            if (error) {
-              console.error("[v0] Error setting session:", error)
-            } else {
-              console.log("[v0] Session set successfully:", data)
-            }
-          })
+      if (!accessToken || !refreshToken) {
+        setError("Enlace inválido o expirado. Solicita un nuevo enlace de recuperación.")
+        return
       }
-    } else {
-      console.log("[v0] No tokens found in URL")
+
+      if (type !== "recovery") {
+        setError("Enlace inválido. Este no es un enlace de recuperación de contraseña.")
+        return
+      }
+
+      setRecoveryTokens({ access: accessToken, refresh: refreshToken })
+      setIsReady(true)
     }
-  }, [searchParams])
+
+    checkRecoveryLink()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-
-    console.log("[v0] Submitting password reset form")
 
     if (!password || !confirmPassword) {
       setError("Todos los campos son obligatorios")
@@ -74,8 +65,24 @@ export default function ResetPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres")
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres")
+      setIsLoading(false)
+      return
+    }
+
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumber = /[0-9]/.test(password)
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      setError("La contraseña debe contener al menos una mayúscula, una minúscula y un número")
+      setIsLoading(false)
+      return
+    }
+
+    if (!recoveryTokens) {
+      setError("No hay tokens de recuperación válidos")
       setIsLoading(false)
       return
     }
@@ -89,26 +96,35 @@ export default function ResetPage() {
         return
       }
 
-      console.log("[v0] Updating user password")
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: recoveryTokens.access,
+        refresh_token: recoveryTokens.refresh,
+      })
+
+      if (sessionError) {
+        setError("Error al procesar el enlace. Puede haber expirado. Solicita un nuevo enlace.")
+        setIsLoading(false)
+        return
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       })
 
       if (updateError) {
-        console.error("[v0] Error actualizando contraseña:", updateError)
-        setError("Error al actualizar la contraseña. El enlace puede haber expirado.")
+        setError("Error al actualizar la contraseña. El enlace puede haber expirado. Solicita un nuevo enlace.")
+        setIsLoading(false)
         return
       }
 
-      console.log("[v0] ✅ Contraseña actualizada exitosamente")
+      await supabase.auth.signOut()
+
       setIsSuccess(true)
 
-      // Redirigir al login después de 3 segundos
       setTimeout(() => {
-        router.push("/auth/login")
+        router.push("/auth/login?message=password_updated")
       }, 3000)
     } catch (error) {
-      console.error("[v0] Error en reset password:", error)
       setError("Error al actualizar la contraseña. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)
@@ -126,7 +142,7 @@ export default function ResetPage() {
               </div>
               <h2 className="font-serif text-2xl text-slate-900 mb-4">¡Contraseña actualizada!</h2>
               <p className="text-slate-600 mb-6">
-                Tu contraseña ha sido actualizada exitosamente. Serás redirigido al login en unos segundos.
+                Tu contraseña ha sido actualizada exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.
               </p>
               <Button
                 onClick={() => router.push("/auth/login")}
@@ -161,6 +177,13 @@ export default function ResetPage() {
               </div>
             )}
 
+            {!isReady && !error && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
+                <Loader2 className="h-5 w-5 text-blue-500 mr-3 animate-spin" />
+                <span className="text-blue-700">Verificando enlace...</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
@@ -172,13 +195,15 @@ export default function ResetPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     className="h-12 pr-12"
+                    disabled={!isReady}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    disabled={!isReady}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -197,11 +222,13 @@ export default function ResetPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repite la contraseña"
                     className="h-12 pr-12"
+                    disabled={!isReady}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    disabled={!isReady}
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -210,7 +237,7 @@ export default function ResetPage() {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !isReady}
                 className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
               >
                 {isLoading ? (

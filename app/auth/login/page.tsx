@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
-import { supabase } from "../../lib/supabaseClient"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 import { useAuth } from "../../hooks/useAuth"
 
 export default function LoginPage() {
@@ -25,6 +25,7 @@ export default function LoginPage() {
   useEffect(() => {
     const plan = searchParams.get("plan")
     const registered = searchParams.get("registered")
+    const confirmed = searchParams.get("confirmed")
 
     if (plan) {
       setSelectedPlan(plan)
@@ -33,16 +34,20 @@ export default function LoginPage() {
     if (registered === "true") {
       setMessage("Registro exitoso. Ahora puedes iniciar sesión para continuar con tu membresía.")
     }
+
+    if (confirmed === "true") {
+      setMessage("¡Email confirmado exitosamente! Por favor inicia sesión.")
+    }
   }, [searchParams])
 
   useEffect(() => {
     if (!loading && user) {
       const plan = searchParams.get("plan")
-      if (plan) {
-        router.push(`/dashboard?plan=${plan}`)
-      } else {
-        router.push("/dashboard")
-      }
+      const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+
+      setTimeout(() => {
+        router.push(redirectUrl)
+      }, 500)
     }
   }, [user, loading, router, searchParams])
 
@@ -52,6 +57,8 @@ export default function LoginPage() {
 
     if (urlMessage === "email_confirmed") {
       setMessage("¡Email confirmado exitosamente! Ya puedes iniciar sesión.")
+    } else if (urlMessage === "password_updated") {
+      setMessage("¡Contraseña actualizada! Ya puedes iniciar sesión con tu nueva contraseña.")
     } else if (urlMessage === "already_confirmed") {
       setMessage("Tu email ya está confirmado. Puedes iniciar sesión.")
     } else if (urlError === "confirmation_failed") {
@@ -78,26 +85,59 @@ export default function LoginPage() {
       return
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setMessage("Por favor ingresa un email válido")
+      setIsLoading(false)
+      return
+    }
+
+    if (password.trim().length < 6) {
+      setMessage("La contraseña debe tener al menos 6 caracteres")
+      setIsLoading(false)
+      return
+    }
+
     try {
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setMessage("Error de configuración. Contacta al administrador.")
+        setIsLoading(false)
+        return
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password: password.trim(),
       })
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        if (
+          error.message.includes("Invalid login credentials") ||
+          error.message.includes("Email not confirmed") ||
+          error.message.includes("Invalid email or password")
+        ) {
           setMessage("Email o contraseña incorrectos")
+        } else if (error.message.includes("Email not confirmed")) {
+          setMessage("Por favor confirma tu email antes de iniciar sesión")
         } else {
-          setMessage("Error de autenticación")
+          setMessage("Error de autenticación. Inténtalo de nuevo.")
         }
         return
       }
 
       if (data.user) {
         setMessage("¡Login exitoso! Redirigiendo...")
+        const plan = searchParams.get("plan")
+        const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+
+        setTimeout(() => {
+          router.push(redirectUrl)
+        }, 1000)
       }
     } catch (error: any) {
-      setMessage("Error de conexión")
+      setMessage("Error de conexión. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)
     }
@@ -200,12 +240,12 @@ export default function LoginPage() {
             {message && (
               <div
                 className={`text-center text-sm p-3 rounded-lg flex items-center justify-center gap-2 ${
-                  message.includes("exitoso") || message.includes("confirmado")
-                    ? "text-green-700 bg-green-50 border border-green-200"
+                  message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada")
+                    ? "text-indigo-dark bg-rose-50 border border-rose-200"
                     : "text-red-700 bg-red-50 border border-red-200"
                 }`}
               >
-                {message.includes("exitoso") || message.includes("confirmado") ? (
+                {message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada") ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
                   <AlertCircle className="h-4 w-4" />

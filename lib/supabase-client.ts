@@ -1,15 +1,17 @@
-import { createClient } from "@supabase/supabase-js"
 import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("⚠️ Supabase environment variables not found")
+  console.warn("Supabase environment variables not found")
 }
 
+// Cliente para el navegador (cliente)
 export function getSupabaseBrowser() {
+  // Retorna null en SSR/prerender para evitar errores
   if (typeof window === "undefined") {
     return null
   }
@@ -21,6 +23,7 @@ export function getSupabaseBrowser() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
+// Cliente con rol de servicio (admin)
 export function getSupabaseServiceRole() {
   if (!supabaseUrl || !supabaseServiceKey) {
     return null
@@ -30,7 +33,6 @@ export function getSupabaseServiceRole() {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
-      detectSessionInUrl: false,
     },
   })
 }
