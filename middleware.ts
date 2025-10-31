@@ -75,23 +75,18 @@ export async function middleware(request: NextRequest) {
     "/about",
     "/contact",
     "/membership",
+    "/admin/login", // Permitir acceso al login de admin
   ]
 
-  // Rutas de admin que requieren rol específico
-  const adminRoutes = [
-    "/admin",
-    "/admin/analytics",
-    "/admin/chat",
-    "/admin/emails",
-    "/admin/inventory",
-    "/admin/orders",
-    "/admin/shipping",
-    "/admin/users",
-  ]
+  // No necesitan verificación de Supabase en el middleware
+  const isAdminRoute = pathname.startsWith("/admin")
 
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
-  const isAdminRoute = adminRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
+
+  if (isAdminRoute) {
+    return response
+  }
 
   // Si no hay sesión y la ruta no es pública, redirigir a login
   if (!session && !isPublicRoute) {
@@ -103,15 +98,6 @@ export async function middleware(request: NextRequest) {
   // Si hay sesión y está en ruta de auth, redirigir a dashboard
   if (session && isAuthRoute && pathname !== "/auth/callback") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  // Verificar permisos de admin
-  if (isAdminRoute && session) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
   }
 
   return response

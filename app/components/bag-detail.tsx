@@ -3,8 +3,9 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw } from "lucide-react"
+import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Bell } from "lucide-react"
 import Link from "next/link"
+import { createBrowserClient } from "@supabase/ssr"
 
 interface BagDetailProps {
   id: string
@@ -21,7 +22,7 @@ interface BagDetailProps {
   condition: string
   year: string
   availability: {
-    status: "available" | "reserved" | "unavailable"
+    status: "available" | "rented" | "maintenance"
     date?: string
   }
   features?: string[]
@@ -35,6 +36,8 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
   const [inWishlist, setInWishlist] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
+  const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
+  const [isInWaitlist, setIsInWaitlist] = useState(false)
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -55,17 +58,17 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
       bgColor: "bg-green-50",
       message: "Este bolso está disponible para reserva inmediata",
     },
-    reserved: {
-      label: "Reservado",
+    rented: {
+      label: "Fuera con Miembro",
+      color: "text-rose-600",
+      bgColor: "bg-rose-pastel/20",
+      message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
+    },
+    maintenance: {
+      label: "En Mantenimiento",
       color: "text-amber-600",
       bgColor: "bg-amber-50",
-      message: "Este bolso estará disponible a partir del ",
-    },
-    unavailable: {
-      label: "No disponible",
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-      message: "Este bolso no está disponible actualmente",
+      message: "Este bolso está en mantenimiento y estará disponible pronto",
     },
   }
 
@@ -96,9 +99,57 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
     },
   ]
 
+  const addToWaitlist = async () => {
+    setIsAddingToWaitlist(true)
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        alert("Debes iniciar sesión para unirte a la lista de espera")
+        window.location.href = "/login"
+        return
+      }
+
+      const { data: existing } = await supabase
+        .from("waitlist")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("bag_id", bag.id)
+        .single()
+
+      if (existing) {
+        setIsInWaitlist(true)
+        alert("Ya estás en la lista de espera para este bolso")
+        return
+      }
+
+      const { error } = await supabase.from("waitlist").insert({
+        user_id: user.id,
+        bag_id: bag.id,
+        bag_name: `${bag.brand} ${bag.name}`,
+      })
+
+      if (error) throw error
+
+      setIsInWaitlist(true)
+      alert("¡Te notificaremos cuando este bolso esté disponible!")
+    } catch (error) {
+      console.error("Error al agregar a lista de espera:", error)
+      alert("Hubo un error. Por favor intenta de nuevo.")
+    } finally {
+      setIsAddingToWaitlist(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white">
-      {/* Navegación superior */}
       <div className="container mx-auto px-4 py-6">
         <Link
           href="/catalog"
@@ -111,9 +162,15 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
 
       <div className="container mx-auto px-4 pb-12">
         <div className="grid lg:grid-cols-2 gap-12">
-          {/* Galería de imágenes mejorada */}
           <div className="space-y-4">
             <div className="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden group">
+              {bag.availability.status === "rented" && (
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <p className="text-2xl font-serif mb-2">FUERA CON MIEMBRO</p>
+                  </div>
+                </div>
+              )}
               <Image
                 src={bag.images[selectedImage] || "/placeholder.svg"}
                 alt={bag.name}
@@ -128,7 +185,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
                 <ZoomIn className="h-5 w-5 text-slate-700" />
               </button>
 
-              {/* Indicadores de imagen */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
                 {bag.images.map((_, index) => (
                   <button
@@ -142,7 +198,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
               </div>
             </div>
 
-            {/* Miniaturas */}
             <div className="grid grid-cols-4 gap-3">
               {bag.images.map((image, index) => (
                 <button
@@ -166,9 +221,7 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
             </div>
           </div>
 
-          {/* Información del producto mejorada */}
           <div className="space-y-8">
-            {/* Header del producto */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <span
@@ -192,7 +245,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
               <h1 className="font-serif text-4xl text-slate-900 mb-2">{bag.name}</h1>
               <p className="text-2xl text-slate-700 mb-4">{bag.brand}</p>
 
-              {/* Rating */}
               {bag.rating && (
                 <div className="flex items-center mb-4">
                   <div className="flex items-center">
@@ -218,51 +270,62 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
               </div>
             </div>
 
-            {/* Estado de disponibilidad */}
             <div className={`p-6 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
               <div className="flex items-start">
                 <Clock className={`h-6 w-6 mr-3 mt-0.5 ${availabilityStatus[bag.availability.status].color}`} />
-                <div>
+                <div className="flex-1">
                   <h4 className={`font-semibold mb-2 ${availabilityStatus[bag.availability.status].color}`}>
                     {availabilityStatus[bag.availability.status].label}
                   </h4>
-                  <p className="text-slate-700">
-                    {availabilityStatus[bag.availability.status].message}
-                    {bag.availability.date && bag.availability.status === "reserved" && (
-                      <span className="font-medium">{bag.availability.date}</span>
-                    )}
-                  </p>
+                  <p className="text-slate-700">{availabilityStatus[bag.availability.status].message}</p>
                 </div>
               </div>
             </div>
 
-            {/* Botones de acción */}
             <div className="flex space-x-4">
-              <Button
-                className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
-                disabled={bag.availability.status !== "available"}
-                onClick={() => {
-                  if (bag.availability.status === "available") {
-                    window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
-                  }
-                }}
-              >
-                {bag.availability.status === "available" ? "Reservar ahora" : "No disponible"}
-              </Button>
-              <Button
-                variant="outline"
-                className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6 bg-transparent"
-                onClick={() => {
-                  const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name} (${bag.id}). ¿Podrían darme más información?`
-                  const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
-                  window.open(whatsappUrl, "_blank")
-                }}
-              >
-                Consultar
-              </Button>
+              {bag.availability.status === "available" ? (
+                <>
+                  <Button
+                    className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
+                    onClick={() => {
+                      window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
+                    }}
+                  >
+                    Reservar ahora
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6 bg-transparent"
+                    onClick={() => {
+                      const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name} (${bag.id}). ¿Podrían darme más información?`
+                      const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
+                      window.open(whatsappUrl, "_blank")
+                    }}
+                  >
+                    Consultar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    className="flex-1 bg-slate-200 text-slate-500 h-14 text-lg font-medium cursor-not-allowed"
+                    disabled
+                  >
+                    Fuera con Miembro
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-8 bg-transparent"
+                    onClick={addToWaitlist}
+                    disabled={isAddingToWaitlist || isInWaitlist}
+                  >
+                    <Bell className="w-5 h-5 mr-2" />
+                    {isInWaitlist ? "En Lista de Espera" : "Notificarme"}
+                  </Button>
+                </>
+              )}
             </div>
 
-            {/* Tabs de información */}
             <div className="border-t pt-8">
               <div className="flex space-x-8 border-b">
                 {["details", "features", "care"].map((tab) => (
@@ -377,7 +440,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
               </div>
             </div>
 
-            {/* Garantías y servicios */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8 border-t">
               <div className="flex items-center space-x-3">
                 <Shield className="h-6 w-6 text-indigo-dark" />
@@ -404,7 +466,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
           </div>
         </div>
 
-        {/* Productos relacionados */}
         <div className="mt-20">
           <h3 className="font-serif text-3xl text-slate-900 mb-8 text-center">También te puede interesar</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -430,7 +491,6 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
         </div>
       </div>
 
-      {/* Modal de zoom */}
       {showZoom && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"

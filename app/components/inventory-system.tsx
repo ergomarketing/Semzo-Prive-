@@ -206,6 +206,45 @@ export default function InventorySystem() {
     notifyWaitingList(bagId)
   }
 
+  const toggleBagStatus = async (bagId: string, newStatus: "available" | "rented") => {
+    try {
+      const response = await fetch("/api/admin/inventory", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bagId,
+          status: newStatus,
+        }),
+      })
+
+      if (response.ok) {
+        setInventory((prev) =>
+          prev.map((bag) =>
+            bag.id === bagId
+              ? {
+                  ...bag,
+                  status: newStatus,
+                  currentRenter: newStatus === "available" ? undefined : bag.currentRenter,
+                  rentedUntil: newStatus === "available" ? undefined : bag.rentedUntil,
+                }
+              : bag,
+          ),
+        )
+
+        if (newStatus === "available") {
+          notifyWaitingList(bagId)
+        }
+
+        console.log(`[v0] Bag ${bagId} status changed to ${newStatus}`)
+      }
+    } catch (error) {
+      console.error("[v0] Error updating bag status:", error)
+      alert("Error al actualizar el estado del bolso")
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -321,13 +360,21 @@ export default function InventorySystem() {
 
                 {/* Acciones */}
                 <div className="flex space-x-2">
-                  {bag.status === "rented" && (
+                  {bag.status === "available" ? (
                     <Button
                       size="sm"
-                      onClick={() => markAsAvailable(bag.id)}
+                      onClick={() => toggleBagStatus(bag.id, "rented")}
+                      className="flex-1 bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark"
+                    >
+                      Marcar como Rentado
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => toggleBagStatus(bag.id, "available")}
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
-                      Marcar disponible
+                      Marcar Disponible
                     </Button>
                   )}
 

@@ -92,3 +92,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { bagId, status } = body
+
+    if (!bagId || !status) {
+      return NextResponse.json({ error: "bagId y status son requeridos" }, { status: 400 })
+    }
+
+    if (!["available", "rented", "maintenance", "reserved"].includes(status)) {
+      return NextResponse.json({ error: "Estado inválido" }, { status: 400 })
+    }
+
+    console.log(`[v0] Updating bag ${bagId} to status ${status}`)
+
+    const { data, error } = await supabase
+      .from("bags")
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bagId)
+      .select()
+
+    if (error) {
+      console.error("[v0] Error updating bag status:", error)
+      return NextResponse.json({ error: "Error al actualizar el estado del bolso" }, { status: 500 })
+    }
+
+    console.log(`[v0] Bag ${bagId} status updated successfully to ${status}`)
+
+    return NextResponse.json({ success: true, bag: data[0] })
+  } catch (error) {
+    console.error("[v0] PATCH inventory API error:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
