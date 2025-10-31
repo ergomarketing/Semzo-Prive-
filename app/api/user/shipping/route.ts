@@ -42,38 +42,24 @@ export async function GET(request: NextRequest) {
 // PUT - Actualizar información de envío del usuario
 export async function PUT(request: NextRequest) {
   try {
-    console.log("[v0] PUT /api/user/shipping - Starting request")
-
     const authHeader = request.headers.get("Authorization")
-    console.log("[v0] Authorization header present:", !!authHeader)
-
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[v0] No valid Authorization header found")
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const token = authHeader.replace("Bearer ", "")
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-    console.log("[v0] Getting user from Supabase with token...")
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser(token)
 
-    console.log("[v0] Auth result:", {
-      user: user ? { id: user.id, email: user.email } : null,
-      error: authError?.message,
-    })
-
     if (authError || !user) {
-      console.log("[v0] Authorization failed:", authError?.message || "No user")
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log("[v0] Request body:", body)
-
     const { shipping_address, shipping_city, shipping_postal_code, shipping_phone, shipping_country } = body
 
     // Validar campos requeridos
@@ -86,6 +72,32 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const { data: profileCheck } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle()
+
+    if (!profileCheck) {
+      // Crear perfil usando Service Role Key para bypass de RLS
+      const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      })
+
+      const { error: insertError } = await supabaseAdmin.from("profiles").insert({
+        id: user.id,
+        email: user.email,
+        first_name: user.user_metadata?.first_name || "",
+        last_name: user.user_metadata?.last_name || "",
+        phone: user.user_metadata?.phone || "",
+      })
+
+      if (insertError) {
+        console.error("Error creating profile:", insertError)
+        return NextResponse.json({ error: "Error al crear el perfil del usuario" }, { status: 500 })
+      }
+    }
+
+    // Actualizar la dirección
     const { data, error } = await supabase
       .from("profiles")
       .update({
@@ -97,14 +109,17 @@ export async function PUT(request: NextRequest) {
       })
       .eq("id", user.id)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error("Error updating shipping info:", error)
       return NextResponse.json({ error: "Error al actualizar información de envío" }, { status: 500 })
     }
 
-    console.log("[v0] Shipping info updated successfully")
+    if (!data) {
+      return NextResponse.json({ error: "No se encontró el perfil del usuario" }, { status: 404 })
+    }
+
     return NextResponse.json({
       message: "Información de envío actualizada correctamente",
       shipping: {
@@ -116,7 +131,7 @@ export async function PUT(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[v0] Error in PUT /api/user/shipping:", error)
+    console.error("Error in PUT /api/user/shipping:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

@@ -91,5 +91,5 @@
 
 /* Usar fuentes del sistema en lugar de Google Fonts */
 .font-serif {
-  font-family: "Times New Roman", "Georgia", serif;
+  font-family: "Playfair Display", "Georgia", "Times New Roman", serif;
 }

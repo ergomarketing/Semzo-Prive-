@@ -15,6 +15,7 @@ export default function Navbar() {
   const { itemCount } = useCart()
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith("/admin")
+  const isDashboardRoute = pathname?.startsWith("/dashboard")
 
   useEffect(() => {
     console.log("[v0] Navbar - Auth state:", {
@@ -67,7 +68,7 @@ export default function Navbar() {
     window.location.href = "/"
   }
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isDashboardRoute) {
     return null
   }
 

@@ -2,12 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Heart, ShoppingBag, Info } from "lucide-react"
+import { supabase } from "../lib/supabaseClient"
+import { useAuth } from "../hooks/useAuth"
 
 interface BagItem {
   id: string
@@ -26,13 +28,58 @@ interface BagItem {
 }
 
 export default function CatalogSection() {
+  const { user } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
 
-  const toggleWishlist = (id: string) => {
-    if (wishlist.includes(id)) {
-      setWishlist(wishlist.filter((itemId) => itemId !== id))
-    } else {
-      setWishlist([...wishlist, id])
+  useEffect(() => {
+    const loadWishlist = async () => {
+      if (!user) return
+
+      try {
+        const { data, error } = await supabase.from("wishlists").select("bag_id").eq("user_id", user.id)
+
+        if (error) throw error
+
+        if (data) {
+          setWishlist(data.map((item) => item.bag_id))
+        }
+      } catch (error) {
+        console.error("Error loading wishlist:", error)
+      }
+    }
+
+    loadWishlist()
+  }, [user])
+
+  const toggleWishlist = async (id: string) => {
+    if (!user) {
+      // Si no hay usuario, redirigir al login
+      window.location.href = "/auth/login"
+      return
+    }
+
+    try {
+      if (wishlist.includes(id)) {
+        // Eliminar de wishlist
+        const { error } = await supabase.from("wishlists").delete().eq("user_id", user.id).eq("bag_id", id)
+
+        if (error) throw error
+
+        setWishlist(wishlist.filter((itemId) => itemId !== id))
+      } else {
+        // Agregar a wishlist
+        const { error } = await supabase.from("wishlists").insert({
+          user_id: user.id,
+          bag_id: id,
+          created_at: new Date().toISOString(),
+        })
+
+        if (error) throw error
+
+        setWishlist([...wishlist, id])
+      }
+    } catch (error) {
+      console.error("Error toggling wishlist:", error)
     }
   }
 
