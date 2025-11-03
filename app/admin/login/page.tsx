@@ -24,7 +24,7 @@ export default function AdminLogin() {
     setError("")
 
     try {
-      console.log("🔍 Intentando login admin con:", username)
+      console.log("[v0] 🔍 Intentando login admin con:", username)
 
       const response = await fetch("/api/auth/login-simple", {
         method: "POST",
@@ -32,26 +32,26 @@ export default function AdminLogin() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username, // Cambiado de 'email' a 'username'
+          username: username,
           password: password,
         }),
       })
 
       const data = await response.json()
-      console.log("Respuesta de API:", data)
+      console.log("[v0] Respuesta de API:", data)
 
       if (data.success) {
         // Guardar sesión
         localStorage.setItem("admin_session", "authenticated")
         localStorage.setItem("admin_login_time", Date.now().toString())
 
-        console.log("✅ Login exitoso, redirigiendo...")
+        console.log("[v0] ✅ Login exitoso, redirigiendo...")
         router.push("/admin")
       } else {
         setError(data.message || "Credenciales incorrectas")
       }
     } catch (error) {
-      console.error("Error en login:", error)
+      console.error("[v0] Error en login:", error)
       setError("Error de conexión. Intenta nuevamente.")
     }
 
@@ -125,15 +125,15 @@ export default function AdminLogin() {
             </Button>
 
             {showDebug && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs">
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
                 <p>
                   <strong>Usuario esperado:</strong> {ADMIN_CONFIG.username}
                 </p>
                 <p>
-                  <strong>Variables de entorno:</strong> {process.env.ADMIN_USERNAME ? "✅" : "❌"}
-                </p>
-                <p>
                   <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
+                </p>
+                <p className="text-slate-500 text-[10px] mt-2">
+                  Las credenciales se verifican en el servidor de forma segura
                 </p>
               </div>
             )}

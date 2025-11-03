@@ -78,13 +78,13 @@ export async function middleware(request: NextRequest) {
     "/admin/login", // Permitir acceso al login de admin
   ]
 
-  // No necesitan verificación de Supabase en el middleware
   const isAdminRoute = pathname.startsWith("/admin")
+  const isApiRoute = pathname.startsWith("/api")
 
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isApiRoute) {
     return response
   }
 
