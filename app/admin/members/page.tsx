@@ -4,10 +4,13 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, Mail, Phone, Calendar, MapPin, Loader2 } from "lucide-react"
+import { Users, Mail, Phone, Calendar, MapPin, Loader2, Send } from "lucide-react"
 import Navbar from "../../components/navbar"
-import { useAuth } from "../../hooks/useAuth"
 import { createClient } from "@supabase/supabase-js"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -27,8 +30,19 @@ interface Member {
   shippingCountry?: string
 }
 
+interface Reservation {
+  id: string
+  created_at: string
+  status: string
+  start_date: string
+  end_date: string
+  bags: {
+    name: string
+    brand: string
+  }
+}
+
 export default function MembersAdminPage() {
-  const { user, loading: authLoading } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,39 +54,36 @@ export default function MembersAdminPage() {
     free: 0,
     active: 0,
   })
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [memberHistory, setMemberHistory] = useState<Reservation[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false)
+  const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailBody, setEmailBody] = useState("")
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   useEffect(() => {
-    if (!authLoading && user) {
-      fetchMembers()
-    }
-  }, [user, authLoading])
+    fetchMembers()
+  }, [])
 
   const fetchMembers = async () => {
     try {
       setLoading(true)
       console.log("[v0] Fetching members from API...")
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        setError("No hay sesión de usuario")
-        return
-      }
+      const response = await fetch("/api/admin/members")
 
-      const response = await fetch("/api/admin/members", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-      })
+      console.log("[v0] Response status:", response.status)
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        const errorData = await response.json()
+        console.log("[v0] Error response:", errorData)
+        throw new Error(`Error ${response.status}: ${errorData.error || response.statusText}`)
       }
 
       const data = await response.json()
-      console.log("[v0] Members data received:", data)
+      console.log("[v0] Received data:", data)
 
       setMembers(data.members || [])
       setStats(data.stats || stats)
@@ -85,39 +96,79 @@ export default function MembersAdminPage() {
     }
   }
 
-  const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
+  const fetchMemberHistory = async (memberId: string) => {
+    setLoadingHistory(true)
+    try {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("id, created_at, status, start_date, end_date, bags(name, brand)")
+        .eq("user_id", memberId)
+        .order("created_at", { ascending: false })
 
-  // Verificar autorización de admin
-  const isAdmin = user && adminEmails.includes(user.email || "")
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-      </div>
-    )
+      if (error) throw error
+      setMemberHistory(data || [])
+    } catch (err) {
+      console.error("[v0] Error fetching member history:", err)
+      setMemberHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">Acceso Requerido</h2>
-          <p className="text-slate-600">Debes iniciar sesión para acceder al panel de administración.</p>
-        </Card>
-      </div>
-    )
+  const handleViewHistory = async (member: Member) => {
+    setSelectedMember(member)
+    setShowHistoryDialog(true)
+    await fetchMemberHistory(member.id)
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">Acceso Denegado</h2>
-          <p className="text-slate-600">No tienes permisos para acceder al panel de administración.</p>
-        </Card>
-      </div>
-    )
+  const handleContact = (member: Member) => {
+    setSelectedMember(member)
+    setEmailSubject(`Contacto desde Semzo Privé - ${member.name}`)
+    setEmailBody(`Hola ${member.name},\n\n`)
+    setShowEmailDialog(true)
+  }
+
+  const handleSendEmail = async () => {
+    if (!selectedMember) return
+
+    console.log("[v0] 📧 Starting email send to:", selectedMember.email)
+
+    setSendingEmail(true)
+    try {
+      console.log("[v0] 📧 Sending request to API...")
+
+      const response = await fetch("/api/admin/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: selectedMember.email,
+          subject: emailSubject,
+          body: emailBody,
+        }),
+      })
+
+      console.log("[v0] 📧 Response status:", response.status)
+
+      const data = await response.json()
+      console.log("[v0] 📧 Response data:", data)
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Error al enviar el email")
+      }
+
+      console.log("[v0] ✅ Email sent successfully")
+      alert("Email enviado correctamente")
+      setShowEmailDialog(false)
+      setEmailSubject("")
+      setEmailBody("")
+    } catch (err) {
+      console.error("[v0] ❌ Error sending email:", err)
+      alert(`Error al enviar el email: ${err instanceof Error ? err.message : "Error desconocido"}`)
+    } finally {
+      setSendingEmail(false)
+    }
   }
 
   const getMembershipColor = (membership: string) => {
@@ -130,6 +181,23 @@ export default function MembersAdminPage() {
         return "bg-indigo-100 text-indigo-800"
       default:
         return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pendiente"
+      case "confirmed":
+        return "Confirmada"
+      case "active":
+        return "Activa"
+      case "completed":
+        return "Completada"
+      case "cancelled":
+        return "Cancelada"
+      default:
+        return status
     }
   }
 
@@ -266,10 +334,12 @@ export default function MembersAdminPage() {
                         <p className="text-sm text-slate-600">Total alquileres</p>
                         <p className="text-2xl font-bold text-slate-900">{member.totalRentals}</p>
                         <div className="flex space-x-2 mt-4">
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleViewHistory(member)}>
                             Ver historial
                           </Button>
-                          <Button size="sm">Contactar</Button>
+                          <Button size="sm" onClick={() => handleContact(member)}>
+                            Contactar
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -287,6 +357,119 @@ export default function MembersAdminPage() {
           </div>
         </div>
       </main>
+
+      <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Historial de Reservas</DialogTitle>
+            <DialogDescription>
+              {selectedMember?.name} - {selectedMember?.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <span className="ml-2 text-slate-600">Cargando historial...</span>
+            </div>
+          ) : memberHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-600">No hay reservas registradas para este miembro.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {memberHistory.map((reservation) => (
+                <Card key={reservation.id} className="border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-slate-900">
+                          {reservation.bags?.name || "Bolso no especificado"}
+                        </h4>
+                        <p className="text-sm text-slate-600">{reservation.bags?.brand || ""}</p>
+                        <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
+                          <span>Desde: {new Date(reservation.start_date).toLocaleDateString()}</span>
+                          <span>Hasta: {new Date(reservation.end_date).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Creada: {new Date(reservation.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge
+                        className={
+                          reservation.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : reservation.status === "active"
+                              ? "bg-blue-100 text-blue-800"
+                              : reservation.status === "cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                        }
+                      >
+                        {getStatusLabel(reservation.status)}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Enviar Email</DialogTitle>
+            <DialogDescription>
+              Enviar email a {selectedMember?.name} ({selectedMember?.email})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="subject">Asunto</Label>
+              <Input
+                id="subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Asunto del email"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="body">Mensaje</Label>
+              <Textarea
+                id="body"
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Escribe tu mensaje aquí..."
+                rows={10}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowEmailDialog(false)} disabled={sendingEmail}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSendEmail} disabled={sendingEmail || !emailSubject || !emailBody}>
+                {sendingEmail ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar Email
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

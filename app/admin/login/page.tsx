@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ADMIN_CONFIG } from "@/app/config/email-config"
+import { ADMIN_CONFIG } from "@/app/config/admin-config"
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("")
@@ -26,21 +26,13 @@ export default function AdminLogin() {
     try {
       console.log("[v0] 🔍 Intentando login admin con:", username)
 
-      const response = await fetch("/api/auth/login-simple", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-        }),
-      })
+      // Verificar credenciales contra ADMIN_CONFIG
+      const isValidUsername = username === ADMIN_CONFIG.username
+      const isValidPassword = password === ADMIN_CONFIG.password
 
-      const data = await response.json()
-      console.log("[v0] Respuesta de API:", data)
+      console.log("[v0] Validación:", { isValidUsername, passwordMatch: isValidPassword })
 
-      if (data.success) {
+      if (isValidUsername && isValidPassword) {
         // Guardar sesión
         localStorage.setItem("admin_session", "authenticated")
         localStorage.setItem("admin_login_time", Date.now().toString())
@@ -48,11 +40,12 @@ export default function AdminLogin() {
         console.log("[v0] ✅ Login exitoso, redirigiendo...")
         router.push("/admin")
       } else {
-        setError(data.message || "Credenciales incorrectas")
+        setError("Usuario o contraseña incorrectos")
+        console.log("[v0] ❌ Credenciales inválidas")
       }
     } catch (error) {
       console.error("[v0] Error en login:", error)
-      setError("Error de conexión. Intenta nuevamente.")
+      setError("Error al procesar el login. Intenta nuevamente.")
     }
 
     setLoading(false)
@@ -133,7 +126,7 @@ export default function AdminLogin() {
                   <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
                 </p>
                 <p className="text-slate-500 text-[10px] mt-2">
-                  Las credenciales se verifican en el servidor de forma segura
+                  Las credenciales se verifican localmente para acceso rápido
                 </p>
               </div>
             )}

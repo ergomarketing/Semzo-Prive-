@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,14 +11,13 @@ export async function GET(request: NextRequest) {
       .from("reservations")
       .select(`
         *,
-        profiles(full_name, email, membership_type),
+        profiles(full_name, email),
         bags(name, brand)
       `)
       .order("created_at", { ascending: false })
 
     if (reservationsError) {
       console.log("[v0] Error fetching reservations:", reservationsError)
-      // Si no existe la tabla, devolver estructura vacía
       return NextResponse.json({
         reservations: [],
         stats: {
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
         bag_brand: reservation.bags?.brand || "Marca desconocida",
         customer_name: reservation.profiles?.full_name || "Cliente desconocido",
         customer_email: reservation.profiles?.email || "Email desconocido",
-        membership_type: reservation.profiles?.membership_type || "free",
         start_date: reservation.start_date,
         end_date: reservation.end_date,
         status: reservation.status,
@@ -65,5 +63,25 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[v0] Admin reservations API error:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { id, status } = await request.json()
+
+    const { data, error } = await supabase
+      .from("reservations")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("Error updating reservation:", error)
+    return NextResponse.json({ error: "Error updating reservation" }, { status: 500 })
   }
 }

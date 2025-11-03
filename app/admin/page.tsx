@@ -1,246 +1,159 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import {
-  Settings,
-  Database,
-  Mail,
-  CreditCard,
-  Users,
-  BarChart3,
-  MessageSquare,
-  Shield,
-  Wrench,
-  FileText,
-  HelpCircle,
-  MapPin,
-} from "lucide-react"
+import { Package, Calendar, Users, Clock, DollarSign } from "lucide-react"
+
+interface DashboardStats {
+  totalBags: number
+  availableBags: number
+  rentedBags: number
+  totalReservations: number
+  activeReservations: number
+  totalMembers: number
+  monthlyRevenue: number
+}
 
 export default function AdminDashboard() {
-  const adminSections = [
-    {
-      title: "Configuración del Sistema",
-      description: "Configurar y verificar servicios principales",
-      icon: Settings,
-      items: [
-        {
-          name: "Diagnóstico de Variables",
-          href: "/admin/env-debug",
-          icon: Wrench,
-          description: "Verificar variables de entorno",
-          status: "active",
-        },
-        {
-          name: "Configuración Supabase",
-          href: "/admin/supabase-diagnostics",
-          icon: Database,
-          description: "Verificar conexión a base de datos",
-          status: "active",
-        },
-        {
-          name: "Configuración Stripe",
-          href: "/admin/stripe-diagnostics",
-          icon: CreditCard,
-          description: "Verificar integración de pagos",
-          status: "active",
-        },
-        {
-          name: "Configuración Email",
-          href: "/admin/email-diagnostico",
-          icon: Mail,
-          description: "Verificar servicio de emails",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Gestión de Usuarios",
-      description: "Administrar usuarios y membresías",
-      icon: Users,
-      items: [
-        {
-          name: "Lista de Miembros",
-          href: "/admin/members",
-          icon: Users,
-          description: "Ver y gestionar usuarios registrados",
-          status: "active",
-        },
-        {
-          name: "Direcciones de Envío",
-          href: "/admin/shipping",
-          icon: MapPin,
-          description: "Ver direcciones de entrega de usuarios",
-          status: "active",
-        },
-        {
-          name: "Configurar Base de Datos",
-          href: "/admin/setup-database",
-          icon: Database,
-          description: "Crear tablas y configurar BD",
-          status: "active",
-        },
-        {
-          name: "Limpiar Usuarios Huérfanos",
-          href: "/auth/cleanup",
-          icon: Shield,
-          description: "Limpiar usuarios sin perfil",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Sistema de Emails",
-      description: "Gestionar y probar emails",
-      icon: Mail,
-      items: [
-        {
-          name: "Logs de Emails",
-          href: "/admin/email-logs",
-          icon: FileText,
-          description: "Ver historial de emails enviados",
-          status: "active",
-        },
-        {
-          name: "Dashboard de Emails",
-          href: "/admin/emails",
-          icon: BarChart3,
-          description: "Estadísticas de emails",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Herramientas de Desarrollo",
-      description: "Herramientas para desarrollo y debug",
-      icon: Wrench,
-      items: [
-        {
-          name: "Guía de Configuración",
-          href: "/admin/setup-guide",
-          icon: HelpCircle,
-          description: "Guía paso a paso de configuración",
-          status: "active",
-        },
-        {
-          name: "Chat de Soporte",
-          href: "/admin/chat",
-          icon: MessageSquare,
-          description: "Chat en vivo con soporte",
-          status: "active",
-        },
-      ],
-    },
-    {
-      title: "Analytics y Reportes",
-      description: "Métricas y análisis del sistema",
-      icon: BarChart3,
-      items: [
-        {
-          name: "Analytics",
-          href: "/admin/analytics",
-          icon: BarChart3,
-          description: "Métricas de uso y rendimiento",
-          status: "active",
-        },
-        {
-          name: "Inventario",
-          href: "/admin/inventory",
-          icon: Database,
-          description: "Gestión de inventario de productos",
-          status: "active",
-        },
-      ],
-    },
-  ]
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBags: 0,
+    availableBags: 0,
+    rentedBags: 0,
+    totalReservations: 0,
+    activeReservations: 0,
+    totalMembers: 0,
+    monthlyRevenue: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "bg-green-500"
-      case "warning":
-        return "bg-yellow-500"
-      case "error":
-        return "bg-red-500"
-      default:
-        return "bg-blue-500"
+  useEffect(() => {
+    loadDashboardStats()
+  }, [])
+
+  async function loadDashboardStats() {
+    try {
+      console.log("[v0] 📊 Cargando estadísticas del dashboard...")
+
+      const response = await fetch("/api/admin/dashboard-stats")
+
+      if (!response.ok) {
+        throw new Error(`Error loading stats: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log("[v0] ✅ Estadísticas recibidas:", data)
+
+      setStats(data)
+    } catch (error) {
+      console.error("[v0] ❌ Error loading dashboard stats:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "success":
-        return "Listo"
-      case "warning":
-        return "Atención"
-      case "error":
-        return "Error"
-      default:
-        return "Activo"
-    }
+  const kpiCards = [
+    {
+      title: "Bolsos Disponibles",
+      value: stats.availableBags,
+      total: stats.totalBags,
+      icon: Package,
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+      description: `${stats.rentedBags} rentados`,
+      href: "/admin/inventory",
+    },
+    {
+      title: "Reservas Activas",
+      value: stats.activeReservations,
+      total: stats.totalReservations,
+      icon: Calendar,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+      description: "En curso",
+      href: "/admin/reservations",
+    },
+    {
+      title: "Miembros Totales",
+      value: stats.totalMembers,
+      icon: Users,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+      description: "Usuarios registrados",
+      href: "/admin/members",
+    },
+    {
+      title: "Ingresos del Mes",
+      value: `$${stats.monthlyRevenue.toFixed(2)}`,
+      icon: DollarSign,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+      description: "Total facturado",
+      href: "/admin/payments",
+    },
+  ]
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando datos...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Panel de Administración</h1>
-        <p className="text-gray-600 text-lg">Centro de control para Semzo Privé</p>
+        <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+        <p className="text-gray-600 text-lg">Panel de control de Semzo Privé</p>
       </div>
 
-      <div className="grid gap-8">
-        {adminSections.map((section, sectionIndex) => (
-          <Card key={sectionIndex} className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-              <CardTitle className="flex items-center gap-3">
-                <section.icon className="h-6 w-6 text-blue-600" />
-                {section.title}
-              </CardTitle>
-              <CardDescription className="text-base">{section.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((item, itemIndex) => (
-                  <Link key={itemIndex} href={item.href}>
-                    <Card className="h-full transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <item.icon className="h-8 w-8 text-blue-600 flex-shrink-0" />
-                          <Badge className={`${getStatusColor(item.status)} text-white text-xs`}>
-                            {getStatusText(item.status)}
-                          </Badge>
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.name}</h3>
-                        <p className="text-gray-600 text-sm line-clamp-2">{item.description}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {kpiCards.map((kpi, index) => (
+          <Link key={index} href={kpi.href}>
+            <Card className="overflow-hidden h-full transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-lg ${kpi.bgColor}`}>
+                    <kpi.icon className={`h-6 w-6 ${kpi.color}`} />
+                  </div>
+                  {kpi.total && (
+                    <Badge variant="outline" className="text-xs">
+                      {kpi.value}/{kpi.total}
+                    </Badge>
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold mb-1">{typeof kpi.value === "number" ? kpi.value : kpi.value}</h3>
+                <p className="text-sm text-gray-600 mb-1">{kpi.title}</p>
+                <p className="text-xs text-gray-500">{kpi.description}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
-      <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-center gap-3 mb-3">
-          <HelpCircle className="h-6 w-6 text-blue-600" />
-          <h3 className="text-lg font-semibold text-blue-900">¿Necesitas ayuda?</h3>
-        </div>
-        <p className="text-blue-700 mb-4">
-          Si tienes problemas con la configuración, comienza por el diagnóstico de variables de entorno y sigue la guía
-          de configuración paso a paso.
-        </p>
-        <div className="flex gap-3">
-          <Button asChild variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 bg-transparent">
-            <Link href="/admin/env-debug">Diagnóstico Rápido</Link>
-          </Button>
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
-            <Link href="/admin/setup-guide">Guía Completa</Link>
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Actividad Reciente
+          </CardTitle>
+          <CardDescription>Últimas acciones en el sistema</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Las actividades recientes se mostrarán aquí</p>
+            <p className="text-sm mt-1">Próximamente: logs de reservas, cambios de estado, etc.</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
