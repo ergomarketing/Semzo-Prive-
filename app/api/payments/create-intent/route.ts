@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (typeof userEmail !== "string" || userEmail.trim() === "") {
+    if (typeof userEmail !== "string" || userEmail.trim() === "" || !userEmail.includes("@")) {
       console.error("❌ Email vacío o inválido:", userEmail)
       return NextResponse.json(
         {
