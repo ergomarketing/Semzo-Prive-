@@ -14,9 +14,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("profiles")
       .update({
-        member_type: membershipType,
-        payment_id: paymentId,
-        subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días
+        membership_status: membershipType,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId)

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         name: profile.full_name || `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Usuario",
         email: profile.email,
         phone: profile.shipping_phone || "No disponible",
-        membership: profile.member_type || "free",
+        membership: profile.membership_status || "inactive",
         joinDate: profile.created_at,
         status: profile.membership_status || "active",
         currentBag: null,

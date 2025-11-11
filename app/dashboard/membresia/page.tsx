@@ -11,6 +11,7 @@ import { supabase } from "../../lib/supabaseClient"
 
 interface MembershipData {
   membership_status: string
+  created_at: string | null
 }
 
 export default function MembresiaPage() {
@@ -26,7 +27,7 @@ export default function MembresiaPage() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("membership_status")
+          .select("membership_status, created_at")
           .eq("id", user.id)
           .maybeSingle()
 
@@ -53,8 +54,8 @@ export default function MembresiaPage() {
     )
   }
 
-  const membershipType = membershipData?.membership_status || "free"
-  const isPremium = membershipType === "active" || membershipType === "premium" || membershipType === "prive"
+  const membershipType = membershipData?.membership_status || "inactive"
+  const isPremium = membershipType === "active"
   const isActive = membershipType === "active"
 
   const priveFeatures = [
@@ -134,9 +135,17 @@ export default function MembresiaPage() {
             <div className="flex items-center justify-between py-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-slate-600" />
-                <span className="text-slate-600">Fecha de renovación</span>
+                <span className="text-slate-600">Miembro desde</span>
               </div>
-              <span className="font-medium text-slate-900">Renovación automática</span>
+              <span className="font-medium text-slate-900">
+                {membershipData?.created_at
+                  ? new Date(membershipData.created_at).toLocaleDateString("es-ES", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "No disponible"}
+              </span>
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-slate-600">Método de pago</span>
