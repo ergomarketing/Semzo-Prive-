@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
       {
         id: userId,
         membership_status: "active",
-        subscription_end_date: subscriptionEndDate.toISOString(),
         updated_at: new Date().toISOString(),
       },
       {
