@@ -135,8 +135,17 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
       })
 
       if (error) {
-        console.error("[v0] SMS verify error:", error)
-        setError(`Código incorrecto: ${error.message}`)
+        console.error("[v0] SMS verify error:", error.message)
+
+        if (error.message.includes("expired")) {
+          setError("❌ Código expirado. Los códigos SMS expiran en 60 segundos. Solicita un nuevo código.")
+          setCanResend(true)
+          setResendCooldown(0)
+        } else if (error.message.includes("invalid")) {
+          setError("❌ Código incorrecto. Verifica el código recibido por SMS e inténtalo de nuevo.")
+        } else {
+          setError(`❌ Error: ${error.message}`)
+        }
       } else if (data.user) {
         console.log("[v0] SMS verification successful:", data.user)
 
@@ -265,8 +274,9 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
                 maxLength={6}
               />
               <p className="text-sm text-gray-600 mt-1">Enviado a {phone}</p>
+              <p className="text-xs text-amber-600 mt-1">⏱️ El código expira en 60 segundos</p>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md whitespace-pre-line">{error}</div>}
 
             <div className="text-center space-y-2">
               <p className="text-sm text-gray-600">¿No recibiste el código?</p>
