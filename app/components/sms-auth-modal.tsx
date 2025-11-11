@@ -219,7 +219,7 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
         first_name: name.split(" ")[0],
         last_name: name.split(" ").slice(1).join(" "),
         email_confirmed: false, // SMS users don't have email confirmed
-        member: "free", // Default membership
+        member_type: "free", // Cambiado de 'member' a 'member_type'
         updated_at: new Date().toISOString(),
       })
 
