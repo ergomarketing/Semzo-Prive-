@@ -1,94 +1,87 @@
-import { NextResponse } from "next/server"
-import { getSupabaseServiceRole } from "@/app/lib/supabaseClient"
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-export async function GET() {
-  console.log("[v0] 📅 Fetching reservations from API...")
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
+export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServiceRole()
+    console.log("[v0] Admin reservations API called")
 
-    // Fetch reservations with related bag and profile data
-    const { data: reservations, error } = await supabase
+    const { data: reservations, error: reservationsError } = await supabase
       .from("reservations")
-      .select(
-        `
-        id,
-        start_date,
-        end_date,
-        status,
-        total_amount,
-        created_at,
-        bag_id,
-        bags (
-          id,
-          name,
-          brand
-        ),
-        user_id,
-        profiles (
-          id,
-          full_name,
-          email
-        )
-      `,
-      )
+      .select(`
+        *,
+        profiles(full_name, email),
+        bags(name, brand)
+      `)
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("[v0] ❌ Error fetching reservations:", error)
-      return NextResponse.json({ error: "Failed to fetch reservations" }, { status: 500 })
+    if (reservationsError) {
+      console.log("[v0] Error fetching reservations:", reservationsError)
+      return NextResponse.json({
+        reservations: [],
+        stats: {
+          total: 0,
+          active: 0,
+          pending: 0,
+          completed: 0,
+          cancelled: 0,
+        },
+      })
     }
 
-    console.log("[v0] ✅ Fetched reservations:", reservations?.length || 0)
-
-    // Transform the data to match the frontend interface
-    const formattedReservations =
-      reservations?.map((reservation: any) => ({
+    const processedReservations =
+      reservations?.map((reservation) => ({
         id: reservation.id,
-        bagName: reservation.bags ? `${reservation.bags.brand} ${reservation.bags.name}` : "Unknown Bag",
-        memberName: reservation.profiles?.full_name || reservation.profiles?.email || "Unknown Member",
-        startDate: reservation.start_date,
-        endDate: reservation.end_date,
+        bag_id: reservation.bag_id,
+        bag_name: reservation.bags?.name || "Bolso desconocido",
+        bag_brand: reservation.bags?.brand || "Marca desconocida",
+        customer_name: reservation.profiles?.full_name || "Cliente desconocido",
+        customer_email: reservation.profiles?.email || "Email desconocido",
+        start_date: reservation.start_date,
+        end_date: reservation.end_date,
         status: reservation.status,
-        totalPrice: reservation.total_amount || 0,
+        total_amount: reservation.total_amount,
+        created_at: reservation.created_at,
+        updated_at: reservation.updated_at,
       })) || []
 
-    return NextResponse.json(formattedReservations)
+    const stats = {
+      total: processedReservations.length,
+      active: processedReservations.filter((r) => r.status === "active").length,
+      pending: processedReservations.filter((r) => r.status === "pending").length,
+      completed: processedReservations.filter((r) => r.status === "completed").length,
+      cancelled: processedReservations.filter((r) => r.status === "cancelled").length,
+    }
+
+    console.log("[v0] Reservations data processed:", { count: processedReservations.length, stats })
+
+    return NextResponse.json({
+      reservations: processedReservations,
+      stats,
+    })
   } catch (error) {
-    console.error("[v0] ❌ Error in reservations API:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[v0] Admin reservations API error:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
 export async function PATCH(request: Request) {
-  console.log("[v0] 📝 Updating reservation status...")
-
   try {
-    const { reservationId, status } = await request.json()
-
-    if (!reservationId || !status) {
-      return NextResponse.json({ error: "Missing reservationId or status" }, { status: 400 })
-    }
-
-    const supabase = getSupabaseServiceRole()
+    const { id, status } = await request.json()
 
     const { data, error } = await supabase
       .from("reservations")
-      .update({ status })
-      .eq("id", reservationId)
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id)
       .select()
       .single()
 
-    if (error) {
-      console.error("[v0] ❌ Error updating reservation:", error)
-      return NextResponse.json({ error: "Failed to update reservation" }, { status: 500 })
-    }
+    if (error) throw error
 
-    console.log("[v0] ✅ Reservation updated:", data)
-
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("[v0] ❌ Error in reservation update:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error updating reservation:", error)
+    return NextResponse.json({ error: "Error updating reservation" }, { status: 500 })
   }
 }

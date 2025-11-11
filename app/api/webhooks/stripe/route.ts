@@ -1,90 +1,90 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { headers } from "next/headers"
 import Stripe from "stripe"
-import { getSupabaseServiceRole } from "@/app/lib/supabaseClient"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2024-06-20",
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
+  console.log("🎣 Webhook recibido:", new Date().toISOString())
+
   try {
     const body = await request.text()
-    const signature = (await headers()).get("stripe-signature")!
+    const signature = request.headers.get("stripe-signature")
 
+    console.log("📝 Datos del webhook:", {
+      bodyLength: body.length,
+      hasSignature: !!signature,
+      signature: signature?.substring(0, 20) + "...",
+      webhookSecretConfigured: !!webhookSecret,
+    })
+
+    if (!signature) {
+      console.error("❌ No se encontró la firma del webhook")
+      return NextResponse.json({ error: "No signature" }, { status: 400 })
+    }
+
+    if (!webhookSecret) {
+      console.error("❌ STRIPE_WEBHOOK_SECRET no configurado")
+      return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
+    }
+
+    // Verificar el webhook
     let event: Stripe.Event
-
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err: any) {
-      console.error(`[v0] Webhook signature verification failed:`, err.message)
+      console.log("✅ Webhook verificado exitosamente:", event.type)
+    } catch (err) {
+      console.error("❌ Error al verificar webhook:", err)
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
-    const supabase = getSupabaseServiceRole()
+    // Manejar el evento
+    console.log("🔄 Procesando evento:", event.type)
 
-    // Cuando se completa un pago de membresía
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        console.log("💰 Pago exitoso:", {
+          id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          metadata: paymentIntent.metadata,
+        })
 
-      const userId = session.metadata?.user_id
-      const membershipType = session.metadata?.membership_type
-      const selectedBagId = session.metadata?.bag_id
+        // TODO: Activar membresía en base de datos
+        // Aquí deberías guardar la información en tu base de datos
 
-      if (userId && selectedBagId) {
-        // Asignar bolso al usuario automáticamente
-        const { error } = await supabase
-          .from("bags")
-          .update({
-            status: "rented",
-            current_member_id: userId,
-          })
-          .eq("id", selectedBagId)
+        break
 
-        if (error) {
-          console.error("[v0] Error assigning bag:", error)
-        } else {
-          console.log(`[v0] ✅ Bolso ${selectedBagId} asignado automáticamente a usuario ${userId}`)
-        }
+      case "payment_intent.payment_failed":
+        const failedPayment = event.data.object as Stripe.PaymentIntent
+        console.log("❌ Pago fallido:", {
+          id: failedPayment.id,
+          lastPaymentError: failedPayment.last_payment_error,
+        })
+        break
 
-        // Actualizar membresía del usuario
-        await supabase
-          .from("profiles")
-          .update({
-            membership_status: membershipType,
-          })
-          .eq("id", userId)
-      }
+      case "payment_intent.created":
+        console.log("📝 Payment intent creado:", event.data.object.id)
+        break
+
+      default:
+        console.log(`ℹ️ Evento no manejado: ${event.type}`)
     }
 
-    // Cuando expira una suscripción
-    if (event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object as Stripe.Subscription
-      const userId = subscription.metadata?.user_id
-
-      if (userId) {
-        // Liberar bolso del usuario automáticamente
-        const { error } = await supabase
-          .from("bags")
-          .update({
-            status: "available",
-            current_member_id: null,
-          })
-          .eq("current_member_id", userId)
-
-        if (error) {
-          console.error("[v0] Error releasing bag:", error)
-        } else {
-          console.log(`[v0] ✅ Bolso liberado automáticamente de usuario ${userId}`)
-        }
-      }
-    }
-
+    console.log("✅ Webhook procesado exitosamente")
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("[v0] Error in webhook:", error)
-    return NextResponse.json({ error: "Webhook error" }, { status: 500 })
+    console.error("❌ Error general en webhook:", error)
+    return NextResponse.json(
+      {
+        error: "Webhook error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 400 },
+    )
   }
 }

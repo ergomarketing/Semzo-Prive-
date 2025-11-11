@@ -1,33 +1,60 @@
 import { createClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr"
 
-export function getSupabaseServiceRole() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[v0] ❌ Missing Supabase environment variables:", {
-      hasUrl: !!supabaseUrl,
-      hasServiceKey: !!supabaseServiceKey,
-    })
-    throw new Error("Missing Supabase environment variables")
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("⚠️ Supabase environment variables not found")
+}
+
+export function getSupabaseBrowser() {
+  if (typeof window === "undefined") {
+    return null
   }
 
-  console.log("[v0] ✅ Creating Supabase service role client")
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null
+  }
+
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+}
+
+export function getSupabaseServiceRole() {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null
+  }
+
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+      detectSessionInUrl: false,
     },
   })
 }
 
-export function getSupabaseBrowser() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Cliente principal para compatibilidad con código existente
+export const supabase = getSupabaseBrowser()
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing Supabase environment variables")
-  }
+// Cliente admin para compatibilidad
+export const supabaseAdmin = getSupabaseServiceRole()
 
-  return createClient(supabaseUrl, supabaseAnonKey)
+// Configuración
+export const supabaseConfig = {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
+  hasServiceKey: !!supabaseServiceKey,
+}
+
+// Verificar configuración
+export function isSupabaseConfigured(): boolean {
+  return !!(
+    supabaseUrl &&
+    supabaseAnonKey &&
+    supabaseUrl !== "https://placeholder.supabase.co" &&
+    supabaseAnonKey !== "placeholder-key" &&
+    supabaseUrl.includes("supabase.co")
+  )
 }
