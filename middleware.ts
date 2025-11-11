@@ -75,6 +75,7 @@ export async function middleware(request: NextRequest) {
     "/about",
     "/contact",
     "/membership",
+    "/cart", // Permitir acceso público al carrito para compras sin login
     "/admin/login", // Permitir acceso al login de admin
   ]
 
