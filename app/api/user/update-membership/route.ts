@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,8 +8,6 @@ export async function POST(request: NextRequest) {
     if (!userId || !membershipType || !paymentId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
-
-    const cookieStore = await cookies()
 
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey =
@@ -29,24 +26,27 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return []
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-          } catch {
-            // Cookie set intentado en Server Component - OK ignorar
-          }
-        },
+        setAll() {},
       },
     })
 
-    // Actualizar el perfil en la tabla profiles
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: userId,
-      membership_status: membershipType,
-      updated_at: new Date().toISOString(),
-    })
+    const subscriptionEndDate = new Date()
+    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
+
+    // Actualizar o crear el perfil en la tabla profiles con Service Role
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        membership_status: "active",
+        subscription_end_date: subscriptionEndDate.toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "id",
+      },
+    )
 
     if (profileError) {
       console.error("[v0] Error updating profile:", profileError)
