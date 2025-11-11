@@ -13,6 +13,7 @@ export default function CartPage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [user, setUser] = useState(null)
   const [selectedMembership, setSelectedMembership] = useState<any>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem("selectedMembership")
@@ -25,7 +26,6 @@ export default function CartPage() {
     setUser(authenticatedUser)
     console.log("[v0] User authenticated via SMS, proceeding to checkout:", authenticatedUser)
 
-    // Obtener el plan de la membresía del carrito
     const firstItem = items[0]
     let planParam = ""
 
@@ -37,8 +37,15 @@ export default function CartPage() {
       planParam = "signature"
     }
 
-    // Redirigir al checkout con el plan
     window.location.href = `/checkout?plan=${planParam}`
+  }
+
+  const handleFinalizarCompra = () => {
+    if (!termsAccepted) {
+      alert("Por favor, acepta los Términos y Condiciones para continuar.")
+      return
+    }
+    setShowAuthModal(true)
   }
 
   if (itemCount === 0 && !selectedMembership) {
@@ -67,7 +74,6 @@ export default function CartPage() {
             <Card className="border-0 shadow-lg overflow-hidden">
               <CardContent className="p-0">
                 <div className="grid md:grid-cols-2 gap-0">
-                  {/* Imagen de la membresía */}
                   <div className="relative h-64 md:h-80">
                     <Image
                       src={displayMembership.image || "/placeholder.svg"}
@@ -81,13 +87,11 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  {/* Detalles de la membresía */}
                   <div className="p-6 flex flex-col justify-center">
                     <div className="mb-4">
                       <h2 className="font-serif text-2xl text-slate-900 mb-2">Membresía {displayMembership.name}</h2>
                       <p className="text-slate-600 mb-4">{displayMembership.description}</p>
 
-                      {/* Precio destacado */}
                       <div className="mb-4">
                         <span className="font-serif text-3xl font-light text-slate-900">{displayMembership.price}</span>
                         <span className="text-base text-slate-600 ml-2">
@@ -100,7 +104,6 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      {/* Características */}
                       {displayMembership.features && (
                         <ul className="space-y-2 text-sm text-slate-700">
                           {displayMembership.features.map((feature: string, index: number) => (
@@ -119,7 +122,6 @@ export default function CartPage() {
           </div>
         )}
 
-        {/* Cart Header */}
         <div className="bg-slate-200 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-4 gap-4 text-sm font-medium text-slate-700 uppercase tracking-wide">
             <div>PRODUCTO</div>
@@ -129,13 +131,11 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Cart Items */}
         <div className="space-y-4 mb-8">
           {items.map((item) => (
             <Card key={item.id} className="border-0 shadow-sm">
               <CardContent className="p-6">
                 <div className="grid grid-cols-4 gap-4 items-center">
-                  {/* Product Info */}
                   <div className="flex items-center space-x-4">
                     <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100">
                       <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
@@ -149,17 +149,14 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  {/* Quantity */}
                   <div className="text-center">
                     <span className="text-slate-900">1</span>
                   </div>
 
-                  {/* Price */}
                   <div className="text-center">
                     <span className="text-slate-900">{item.price}</span>
                   </div>
 
-                  {/* Total */}
                   <div className="text-center">
                     <span className="text-slate-900">{item.price}</span>
                     <button
@@ -175,7 +172,6 @@ export default function CartPage() {
           ))}
         </div>
 
-        {/* Cart Actions */}
         <div className="flex justify-between items-center mb-8">
           <Link href="/#membresias">
             <Button variant="outline" className="border-slate-300 text-slate-700 bg-transparent">
@@ -193,7 +189,6 @@ export default function CartPage() {
           </Button>
         </div>
 
-        {/* Cart Summary */}
         <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
           <h3 className="text-xl font-serif text-slate-900 mb-4">Resumen del pedido</h3>
 
@@ -209,21 +204,27 @@ export default function CartPage() {
           </p>
 
           <div className="flex items-center mb-6">
-            <input type="checkbox" id="terms" className="mr-2" />
-            <label htmlFor="terms" className="text-sm text-slate-600">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mr-2 w-4 h-4 cursor-pointer"
+            />
+            <label htmlFor="terms" className="text-sm text-slate-600 cursor-pointer">
               He leído y acepto los <span className="underline">Términos y Condiciones</span>
             </label>
           </div>
 
           <Button
-            onClick={() => setShowAuthModal(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+            onClick={handleFinalizarCompra}
+            disabled={!termsAccepted}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg disabled:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             FINALIZAR COMPRA
           </Button>
         </div>
 
-        {/* Botón para cambiar selección */}
         <div className="text-center">
           <Link href="/#membresias">
             <Button variant="outline" className="border-slate-300 text-slate-700 bg-transparent">
@@ -233,7 +234,6 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* SMS Authentication Modal */}
       <SMSAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={handleAuthSuccess} />
     </div>
   )
