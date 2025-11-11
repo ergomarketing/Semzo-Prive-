@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag } from "lucide-react"
-import { useCart } from "@/app/components/cart-context"
+import { useCart } from "@/app/contexts/cart-context"
 import { usePathname } from "next/navigation"
 
 export default function Navbar() {

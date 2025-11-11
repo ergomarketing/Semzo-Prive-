@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useState } from "react"
-import { useCart } from "@/app/components/cart-context"
+import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 
 const plans = [

@@ -6,7 +6,7 @@ import "./globals.css"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
 import CookieConsent from "./components/cookie-consent"
-import { CartProvider } from "./contexts/cart-context"
+import { CartProvider } from "./contexts/cart-context" // Corregido import del CartProvider a la ubicación correcta
 import { AuthProvider } from "./hooks/useAuth"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
