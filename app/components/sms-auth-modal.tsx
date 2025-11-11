@@ -213,18 +213,18 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
 
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: data.user?.id,
-        email: data.user?.email || null,
+        email: data.user?.email || `${phone}@phone.semzoprive.com`,
         phone: phone,
         full_name: name,
         first_name: name.split(" ")[0],
         last_name: name.split(" ").slice(1).join(" "),
-        email_confirmed: false, // SMS users don't have email confirmed
-        member_type: "free", // Cambiado de 'member' a 'member_type'
+        email_confirmed: false,
+        membership_status: "free",
         updated_at: new Date().toISOString(),
       })
 
       if (profileError) {
-        console.error("[v0] Profile table insert error:", profileError)
+        console.error("[v0] Profile table insert error:", profileError.message)
         // No mostramos error al usuario ya que el auth funcionó
         console.log("[v0] User authenticated but profile creation failed - will continue")
       } else {
