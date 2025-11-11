@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (typeof userEmail !== "string" || userEmail.trim() === "") {
+      console.error("❌ Email vacío o inválido:", userEmail)
+      return NextResponse.json(
+        {
+          error: "Dirección de correo electrónico no válida",
+          details: "Se requiere un email válido para procesar el pago",
+        },
+        { status: 400 },
+      )
+    }
+
     // Crear payment intent
     console.log("💳 Creando payment intent con Stripe...")
 

@@ -224,7 +224,13 @@ export default function CheckoutPage() {
             <RealPaymentGateway
               amount={selectedPlan.price}
               membershipType={selectedPlan.name}
-              userEmail={user?.email || user?.phone || ""}
+              userEmail={
+                user?.email && user.email !== ""
+                  ? user.email
+                  : user?.phone
+                    ? `sms_${user.phone}@semzoprive.temp`
+                    : "guest@semzoprive.temp"
+              }
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
             />
