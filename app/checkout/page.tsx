@@ -64,6 +64,13 @@ export default function CheckoutPage() {
     setPaymentId(id)
 
     try {
+      let membershipType = "essentiel"
+      if (selectedPlan.name.includes("Privé")) {
+        membershipType = "prive"
+      } else if (selectedPlan.name.includes("Signature")) {
+        membershipType = "signature"
+      }
+
       const response = await fetch("/api/user/update-membership", {
         method: "POST",
         headers: {
@@ -71,7 +78,7 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           userId: user?.id,
-          membershipType: selectedPlan.name.toLowerCase(),
+          membershipType: membershipType,
           paymentId: id,
         }),
       })
