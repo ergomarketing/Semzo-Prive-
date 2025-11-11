@@ -17,6 +17,7 @@ interface UserProfile {
   shipping_address: string
   shipping_city: string
   shipping_postal_code: string
+  membership_status: string
 }
 
 export default function DashboardHome() {
@@ -47,8 +48,8 @@ export default function DashboardHome() {
     fetchProfile()
   }, [user])
 
-  const membershipType = user?.user_metadata?.membership_status || "free"
-  const isPremium = membershipType === "premium" || membershipType === "prive"
+  const membershipStatus = profile?.membership_status || "free"
+  const isPremium = membershipStatus === "active"
 
   const userName =
     user?.user_metadata?.first_name && user?.user_metadata?.last_name

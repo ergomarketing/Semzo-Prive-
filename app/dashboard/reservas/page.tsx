@@ -19,19 +19,24 @@ interface Reservation {
     name: string
     brand: string
     image_url: string
-  }
+  } | null
 }
 
 export default function ReservasPage() {
   const { user } = useAuth()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchReservations = async () => {
-      if (!user) return
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
       try {
+        console.log("[v0] Fetching reservations for user:", user.id)
         const { data, error } = await supabase
           .from("reservations")
           .select(`
@@ -50,10 +55,17 @@ export default function ReservasPage() {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
 
-        if (error) throw error
+        if (error) {
+          console.error("[v0] Error fetching reservations:", error)
+          setError(error.message)
+          throw error
+        }
+
+        console.log("[v0] Reservations fetched:", data)
         setReservations(data || [])
       } catch (error) {
-        console.error("Error fetching reservations:", error)
+        console.error("[v0] Error in fetchReservations:", error)
+        setError(error instanceof Error ? error.message : "Error desconocido")
       } finally {
         setLoading(false)
       }
@@ -83,6 +95,19 @@ export default function ReservasPage() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <h3 className="text-red-900 font-serif text-lg mb-2">Error al cargar reservas</h3>
+            <p className="text-red-700 text-sm">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -120,7 +145,7 @@ export default function ReservasPage() {
                   {reservation.bags?.image_url ? (
                     <img
                       src={reservation.bags.image_url || "/placeholder.svg"}
-                      alt={reservation.bags?.name}
+                      alt={reservation.bags?.name || "Bolso"}
                       className="w-full h-full object-cover"
                     />
                   ) : (
