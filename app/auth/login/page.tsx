@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, Smartphone } from "lucide-react"
 import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 import { useAuth } from "../../hooks/useAuth"
+import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [showSMSModal, setShowSMSModal] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
@@ -143,6 +145,16 @@ export default function LoginPage() {
     }
   }
 
+  const handleSMSSuccess = (user: any) => {
+    setMessage("¡Login exitoso! Redirigiendo...")
+    const plan = searchParams.get("plan")
+    const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+
+    setTimeout(() => {
+      router.push(redirectUrl)
+    }, 1000)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -255,6 +267,27 @@ export default function LoginPage() {
             )}
           </form>
 
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-slate-500">O continúa con</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4 h-12 border-slate-300 hover:bg-slate-50 bg-transparent"
+              onClick={() => setShowSMSModal(true)}
+            >
+              <Smartphone className="h-5 w-5 mr-2" />
+              Iniciar sesión con teléfono
+            </Button>
+          </div>
+
           <div className="mt-6 text-center">
             <a href="/auth/forgot-password" className="text-sm text-indigo-dark hover:underline font-medium">
               ¿Olvidaste tu contraseña?
@@ -274,6 +307,8 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+
+      <SMSAuthModal isOpen={showSMSModal} onClose={() => setShowSMSModal(false)} onSuccess={handleSMSSuccess} />
     </div>
   )
 }
