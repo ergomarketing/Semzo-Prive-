@@ -41,7 +41,7 @@ export default function PerfilPage() {
           setProfile({
             first_name: data.first_name || "",
             last_name: data.last_name || "",
-            email: data.email || user.email || "",
+            email: data.email || "", // Mostrar el email real de la tabla profiles
             phone: data.phone || "",
           })
         } else {
