@@ -26,17 +26,27 @@ export default function CartPage() {
     setUser(authenticatedUser)
     console.log("[v0] User authenticated via SMS, proceeding to checkout:", authenticatedUser)
 
-    const firstItem = items[0]
-    let planParam = ""
+    let planParam = "signature" // default
 
-    if (firstItem?.name.toLowerCase().includes("essentiel")) {
-      planParam = "essentiel"
-    } else if (firstItem?.name.toLowerCase().includes("privé")) {
-      planParam = "prive"
-    } else {
-      planParam = "signature"
+    // Primero intentar desde selectedMembership
+    if (selectedMembership?.id) {
+      planParam = selectedMembership.id
+      console.log("[v0] Plan detected from selectedMembership:", planParam)
+    }
+    // Si no, intentar desde items en el carrito
+    else if (items.length > 0) {
+      const firstItem = items[0]
+      if (firstItem.id.includes("essentiel")) {
+        planParam = "essentiel"
+      } else if (firstItem.id.includes("prive")) {
+        planParam = "prive"
+      } else if (firstItem.id.includes("signature")) {
+        planParam = "signature"
+      }
+      console.log("[v0] Plan detected from cart items:", planParam, "from item ID:", firstItem.id)
     }
 
+    console.log("[v0] Redirecting to checkout with plan:", planParam)
     window.location.href = `/checkout?plan=${planParam}`
   }
 
