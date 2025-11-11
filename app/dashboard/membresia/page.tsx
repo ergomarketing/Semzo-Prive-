@@ -10,8 +10,7 @@ import { Crown, Check, Loader2, CreditCard, Calendar } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 
 interface MembershipData {
-  member_type: string
-  subscription_end_date: string | null
+  membership_status: string
 }
 
 export default function MembresiaPage() {
@@ -27,7 +26,7 @@ export default function MembresiaPage() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("member_type, subscription_end_date")
+          .select("membership_status")
           .eq("id", user.id)
           .maybeSingle()
 
@@ -54,11 +53,9 @@ export default function MembresiaPage() {
     )
   }
 
-  const membershipType = membershipData?.member_type || "free"
-  const isPremium = membershipType === "premium" || membershipType === "prive"
-  const isActive =
-    membershipType !== "free" &&
-    (!membershipData?.subscription_end_date || new Date(membershipData.subscription_end_date) > new Date())
+  const membershipType = membershipData?.membership_status || "free"
+  const isPremium = membershipType === "active" || membershipType === "premium" || membershipType === "prive"
+  const isActive = membershipType === "active"
 
   const priveFeatures = [
     "Acceso completo al catálogo exclusivo",
@@ -139,15 +136,7 @@ export default function MembresiaPage() {
                 <Calendar className="h-4 w-4 text-slate-600" />
                 <span className="text-slate-600">Fecha de renovación</span>
               </div>
-              <span className="font-medium text-slate-900">
-                {membershipData?.subscription_end_date
-                  ? new Date(membershipData.subscription_end_date).toLocaleDateString("es-ES", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "No disponible"}
-              </span>
+              <span className="font-medium text-slate-900">Renovación automática</span>
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-slate-600">Método de pago</span>
