@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Bell } from "lucide-react"
@@ -38,6 +38,21 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
   const [activeTab, setActiveTab] = useState("details")
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+    checkAuth()
+  }, [])
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -288,7 +303,11 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
                   <Button
                     className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
                     onClick={() => {
-                      window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
+                      if (isAuthenticated) {
+                        window.location.href = `/dashboard/reservas?bag=${bag.id}`
+                      } else {
+                        window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
+                      }
                     }}
                   >
                     Reservar ahora

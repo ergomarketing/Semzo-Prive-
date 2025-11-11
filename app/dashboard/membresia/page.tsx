@@ -6,7 +6,7 @@ import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Crown, Check, Loader2, CreditCard, Calendar } from "lucide-react"
+import { Crown, Check, Loader2, Calendar } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 
 interface MembershipData {
@@ -94,7 +94,7 @@ export default function MembresiaPage() {
             </Badge>
           </div>
           <CardDescription className="text-3xl font-bold text-slate-900 mt-2">
-            {isPremium ? "€49/mes" : "€0/mes"}
+            {isPremium ? "€59/mes" : "€0/mes"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -146,18 +146,6 @@ export default function MembresiaPage() {
                     })
                   : "No disponible"}
               </span>
-            </div>
-            <div className="flex items-center justify-between py-3">
-              <span className="text-slate-600">Método de pago</span>
-              <Button
-                onClick={() => router.push("/dashboard/membresia/facturacion")}
-                variant="outline"
-                size="sm"
-                className="border-slate-300 text-slate-700 hover:bg-slate-100"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Gestionar
-              </Button>
             </div>
           </CardContent>
         </Card>
