@@ -118,7 +118,8 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
     setError("")
 
     try {
-      console.log("[v0] Verifying SMS code:", code)
+      const verifyTimestamp = new Date().toISOString()
+      console.log("[v0] Verifying SMS code:", code, "at", verifyTimestamp)
 
       const supabase = getSupabaseBrowser()
 
@@ -136,15 +137,33 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
 
       if (error) {
         console.error("[v0] SMS verify error:", error.message)
+        console.error("[v0] SMS verify error full:", JSON.stringify(error))
 
-        if (error.message.includes("expired")) {
-          setError("❌ Código expirado. Los códigos SMS expiran en 60 segundos. Solicita un nuevo código.")
+        if (error.message.includes("expired") || error.message.includes("Token has expired")) {
+          setError(
+            "Código expirado. Los códigos SMS de Supabase expiran en 60 segundos. Solicita un nuevo código haciendo clic en 'Reenviar código'.",
+          )
           setCanResend(true)
           setResendCooldown(0)
-        } else if (error.message.includes("invalid")) {
-          setError("❌ Código incorrecto. Verifica el código recibido por SMS e inténtalo de nuevo.")
+        } else if (
+          error.message.includes("invalid") ||
+          error.message.includes("Token") ||
+          error.message.includes("OTP")
+        ) {
+          setError(
+            `Código incorrecto o expirado. 
+
+Posibles causas:
+- El código ingresado no coincide con el enviado por SMS
+- Han pasado más de 60 segundos desde que recibiste el código
+- Ya usaste este código anteriormente
+
+Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
+          )
+          setCanResend(true)
+          setResendCooldown(0)
         } else {
-          setError(`❌ Error: ${error.message}`)
+          setError(`Error: ${error.message}`)
         }
       } else if (data.user) {
         console.log("[v0] SMS verification successful:", data.user)
