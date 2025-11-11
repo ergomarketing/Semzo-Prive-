@@ -11,6 +11,7 @@ import { supabase } from "../../lib/supabaseClient"
 
 interface MembershipData {
   membership_status: string
+  membership_type: string | null
   created_at: string | null
 }
 
@@ -27,7 +28,7 @@ export default function MembresiaPage() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("membership_status, created_at")
+          .select("membership_status, membership_type, created_at")
           .eq("id", user.id)
           .maybeSingle()
 
@@ -54,9 +55,17 @@ export default function MembresiaPage() {
     )
   }
 
-  const membershipType = membershipData?.membership_status || "inactive"
-  const isPremium = membershipType === "active"
-  const isActive = membershipType === "active"
+  const membershipType = membershipData?.membership_type || "free"
+  const isActive = membershipData?.membership_status === "active"
+
+  const membershipInfo = {
+    essentiel: { name: "L'Essentiel", price: 59 },
+    signature: { name: "Signature", price: 129 },
+    prive: { name: "Privé", price: 189 },
+    free: { name: "Free", price: 0 },
+  }
+
+  const currentMembership = membershipInfo[membershipType as keyof typeof membershipInfo] || membershipInfo.free
 
   const priveFeatures = [
     "Acceso completo al catálogo exclusivo",
@@ -86,20 +95,20 @@ export default function MembresiaPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="font-serif text-2xl flex items-center gap-2">
-              {isPremium && <Crown className="h-6 w-6 text-slate-900" />}
-              {isPremium ? "Privé" : "Free"}
+              {isActive && <Crown className="h-6 w-6 text-slate-900" />}
+              {currentMembership.name}
             </CardTitle>
             <Badge variant="secondary" className="bg-rose-100 text-blue-900 border-rose-200">
               Actual
             </Badge>
           </div>
           <CardDescription className="text-3xl font-bold text-slate-900 mt-2">
-            {isPremium ? "€59/mes" : "€0/mes"}
+            €{currentMembership.price}/mes
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3 mb-6">
-            {(isPremium ? priveFeatures : freeFeatures).map((feature, index) => (
+            {(isActive ? priveFeatures : freeFeatures).map((feature, index) => (
               <li key={index} className="flex items-start gap-2">
                 <Check className="h-5 w-5 text-slate-600 mt-0.5 flex-shrink-0" />
                 <span className="text-slate-700">{feature}</span>
@@ -107,7 +116,7 @@ export default function MembresiaPage() {
             ))}
           </ul>
 
-          {!isPremium && (
+          {!isActive && (
             <Button
               onClick={() => router.push("/membership/upgrade")}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
@@ -119,11 +128,11 @@ export default function MembresiaPage() {
         </CardContent>
       </Card>
 
-      {isPremium && (
+      {isActive && (
         <Card>
           <CardHeader>
             <CardTitle className="font-serif">Información de Suscripción</CardTitle>
-            <CardDescription>Detalles de tu membresía Privé</CardDescription>
+            <CardDescription>Detalles de tu membresía {currentMembership.name}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-slate-200">

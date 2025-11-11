@@ -9,6 +9,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    let cleanMembershipType = membershipType.toLowerCase().replace(/^l'/, "").trim()
+
+    if (cleanMembershipType.includes("essentiel")) {
+      cleanMembershipType = "essentiel"
+    } else if (cleanMembershipType.includes("signature")) {
+      cleanMembershipType = "signature"
+    } else if (cleanMembershipType.includes("prive") || cleanMembershipType.includes("privé")) {
+      cleanMembershipType = "prive"
+    }
+
+    console.log("[v0] Updating membership - User:", userId, "Type:", cleanMembershipType, "Payment:", paymentId)
+
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey =
       process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
@@ -35,11 +47,11 @@ export async function POST(request: NextRequest) {
     const subscriptionEndDate = new Date()
     subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
 
-    // Actualizar o crear el perfil en la tabla profiles con Service Role
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: userId,
         membership_status: "active",
+        membership_type: cleanMembershipType,
         updated_at: new Date().toISOString(),
       },
       {
