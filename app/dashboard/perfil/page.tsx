@@ -142,8 +142,29 @@ export default function PerfilPage() {
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={profile.email} disabled className="bg-slate-50" />
-                <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar</p>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  disabled={
+                    !profile.email.includes("@phone.semzoprive.com") && !profile.email.includes("@temp.semzoprive.com")
+                  }
+                  className={
+                    !profile.email.includes("@phone.semzoprive.com") && !profile.email.includes("@temp.semzoprive.com")
+                      ? "bg-slate-50"
+                      : ""
+                  }
+                  placeholder="tu@email.com"
+                />
+                {(profile.email.includes("@phone.semzoprive.com") ||
+                  profile.email.includes("@temp.semzoprive.com")) && (
+                  <p className="text-xs text-amber-600 mt-1">Actualiza tu email temporal a uno real</p>
+                )}
+                {!profile.email.includes("@phone.semzoprive.com") &&
+                  !profile.email.includes("@temp.semzoprive.com") && (
+                    <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar</p>
+                  )}
               </div>
               <div>
                 <Label htmlFor="phone">Teléfono</Label>
