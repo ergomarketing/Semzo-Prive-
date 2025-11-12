@@ -2,24 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth } from "../../../hooks/useAuth"
+import { useAuth } from "@/app/hooks/useAuth"
+import { supabase } from "@/lib/supabaseClient"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Calendar, Clock, Package, CreditCard, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
-import { supabase } from "../../../lib/supabaseClient"
 
 interface ReservationDetails {
   id: string
@@ -544,43 +534,47 @@ export default function ReservationDetailsPage() {
       </div>
 
       {/* Dialog de cancelación */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar esta reserva?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para otros
-              usuarios.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="my-4">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">Motivo de cancelación (opcional)</label>
-            <Textarea
-              value={cancellationReason}
-              onChange={(e) => setCancellationReason(e.target.value)}
-              placeholder="Cuéntanos por qué cancelas esta reserva..."
-              className="min-h-[100px]"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelling}>No, mantener reserva</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelReservation}
-              disabled={cancelling}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {cancelling ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Cancelando...
-                </>
-              ) : (
-                "Sí, cancelar reserva"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showCancelDialog && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <Card className="max-w-lg w-full">
+            <CardHeader>
+              <CardTitle>¿Cancelar esta reserva?</CardTitle>
+              <p className="text-sm text-slate-600 mt-2">
+                Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para otros
+                usuarios.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  Motivo de cancelación (opcional)
+                </label>
+                <Textarea
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Cuéntanos por qué cancelas esta reserva..."
+                  className="min-h-[100px]"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelling}>
+                  No, mantener reserva
+                </Button>
+                <Button onClick={handleCancelReservation} disabled={cancelling} className="bg-red-600 hover:bg-red-700">
+                  {cancelling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cancelando...
+                    </>
+                  ) : (
+                    "Sí, cancelar reserva"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
