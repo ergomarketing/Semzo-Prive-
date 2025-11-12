@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
 import Script from "next/script"
+import TikTokPixel from "@/components/TikTokPixel"
 import "./globals.css"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        <TikTokPixel />
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-0BMNYQLWLZ" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
