@@ -55,17 +55,11 @@ export async function POST(request: NextRequest) {
           metadata: paymentIntent.metadata,
         })
 
-        // TODO: Activar membresía en base de datos
-        // Asumo que la lógica de activación está en una función externa o se implementará aquí.
-        // Por ahora, solo logueamos.
-        // await activateMembership(paymentIntent.metadata.userId, paymentIntent.metadata.planId)
+        const paymentUserId = paymentIntent.metadata.user_id
+        const planId = paymentIntent.metadata.plan_id
 
-        // Lógica de activación (ejemplo, asumiendo que el user_id está en metadata)
-        const userId = paymentIntent.metadata.user_id
-        const planId = paymentIntent.metadata.plan_id // O el tipo de membresía
-
-        if (userId && planId) {
-          console.log(`Attempting to activate membership for user ${userId} with plan ${planId}`)
+        if (paymentUserId && planId) {
+          console.log(`Attempting to activate membership for user ${paymentUserId} with plan ${planId}`)
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -74,20 +68,16 @@ export async function POST(request: NextRequest) {
               stripe_customer_id: paymentIntent.customer,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", userId)
+            .eq("id", paymentUserId)
 
           if (error) {
             console.error("❌ Error al activar membresía:", error)
           } else {
-            console.log(`✅ Membresía activada para el usuario ${userId}`)
+            console.log(`✅ Membresía activada para el usuario ${paymentUserId}`)
           }
         } else {
           console.warn("⚠️ No se encontró userId o planId en los metadatos para activar la membresía.")
         }
-        // Asumo que la lógica de activación está en una función externa o se implementará aquí.
-        // Por ahora, solo logueamos.
-        // await activateMembership(paymentIntent.metadata.userId, paymentIntent.metadata.planId)
-        // Aquí deberías guardar la información en tu base de datos
 
         break
 
@@ -107,25 +97,22 @@ export async function POST(request: NextRequest) {
           metadata: refundedCharge.metadata,
         })
 
-        // Lógica CRÍTICA: Desactivar la membresía o marcarla como "en disputa"
-        // Asumo que el ID del usuario o de la suscripción está en los metadatos.
-        // Lógica CRÍTICA: Desactivar la membresía o marcarla como "en disputa"
-        const userId = refundedCharge.metadata.user_id
-        if (userId) {
-          console.log(`Attempting to deactivate membership for user ${userId} due to refund.`)
+        const refundUserId = refundedCharge.metadata.user_id
+        if (refundUserId) {
+          console.log(`Attempting to deactivate membership for user ${refundUserId} due to refund.`)
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
-              membership_status: "inactive", // O 'refunded'
+              membership_status: "inactive",
               membership_type: null,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", userId)
+            .eq("id", refundUserId)
 
           if (error) {
             console.error("❌ Error al desactivar membresía por reembolso:", error)
           } else {
-            console.log(`✅ Membresía desactivada para el usuario ${userId} por reembolso.`)
+            console.log(`✅ Membresía desactivada para el usuario ${refundUserId} por reembolso.`)
           }
         } else {
           console.warn("⚠️ No se encontró userId en los metadatos para desactivar la membresía por reembolso.")
@@ -141,23 +128,21 @@ export async function POST(request: NextRequest) {
           chargeId: dispute.charge,
         })
 
-        // Lógica CRÍTICA: Desactivar la membresía inmediatamente
-        // Lógica CRÍTICA: Desactivar la membresía inmediatamente
-        const userId = dispute.metadata.user_id
-        if (userId) {
-          console.log(`Attempting to deactivate membership for user ${userId} due to dispute.`)
+        const disputeUserId = dispute.metadata.user_id
+        if (disputeUserId) {
+          console.log(`Attempting to deactivate membership for user ${disputeUserId} due to dispute.`)
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
-              membership_status: "disputed", // Nuevo estado para disputas
+              membership_status: "disputed",
               updated_at: new Date().toISOString(),
             })
-            .eq("id", userId)
+            .eq("id", disputeUserId)
 
           if (error) {
             console.error("❌ Error al desactivar membresía por disputa:", error)
           } else {
-            console.log(`✅ Membresía marcada como 'disputed' para el usuario ${userId}.`)
+            console.log(`✅ Membresía marcada como 'disputed' para el usuario ${disputeUserId}.`)
           }
         } else {
           console.warn("⚠️ No se encontró userId en los metadatos para desactivar la membresía por disputa.")
