@@ -1,203 +1,261 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Package, User, Clock, CheckCircle, XCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar, Package, User, CreditCard, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 interface Reservation {
   id: string
-  bagName: string
-  memberName: string
-  startDate: string
-  endDate: string
-  status: "pending" | "active" | "completed" | "cancelled"
-  totalPrice: number
+  created_at: string
+  start_date: string
+  end_date: string
+  status: string
+  total_price: number
+  profiles: {
+    full_name: string
+    email: string
+    member_type: string
+  }
+  bags: {
+    name: string
+    brand: string
+  }
 }
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+  const [filter, setFilter] = useState("all")
 
   useEffect(() => {
-    loadReservations()
+    fetchReservations()
   }, [])
 
-  async function loadReservations() {
+  const fetchReservations = async () => {
     try {
-      console.log("[v0] Fetching reservations from API...")
       const response = await fetch("/api/admin/reservations")
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch reservations")
-      }
-
       const data = await response.json()
-      console.log("[v0] Loaded reservations:", data)
       setReservations(data)
     } catch (error) {
-      console.error("[v0] Error loading reservations:", error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las reservas",
-        variant: "destructive",
-      })
+      console.error("Error fetching reservations:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  async function updateReservationStatus(reservationId: string, status: string) {
+  const updateReservationStatus = async (id: string, newStatus: string) => {
     try {
-      console.log("[v0] Updating reservation status:", reservationId, status)
       const response = await fetch("/api/admin/reservations", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reservationId, status }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: newStatus }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to update reservation")
+      if (response.ok) {
+        fetchReservations()
       }
-
-      toast({
-        title: "Éxito",
-        description: `Reserva ${status === "active" ? "aprobada" : "cancelada"} correctamente`,
-      })
-
-      // Reload reservations
-      loadReservations()
     } catch (error) {
-      console.error("[v0] Error updating reservation:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la reserva",
-        variant: "destructive",
-      })
+      console.error("Error updating reservation:", error)
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-blue-100 text-blue-800"
-      case "completed":
-        return "bg-green-100 text-green-800"
-      case "cancelled":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-yellow-100 text-yellow-800"
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: "secondary",
+      confirmed: "default",
+      active: "default",
+      completed: "outline",
+      cancelled: "destructive",
     }
+    return <Badge variant={variants[status] || "default"}>{status}</Badge>
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Activa"
-      case "completed":
-        return "Completada"
-      case "cancelled":
-        return "Cancelada"
-      default:
-        return "Pendiente"
+  const getMembershipBadge = (type: string) => {
+    const colors: Record<string, string> = {
+      free: "bg-gray-100 text-gray-800",
+      essentiel: "bg-blue-100 text-blue-800",
+      signature: "bg-purple-100 text-purple-800",
+      prive: "bg-amber-100 text-amber-800",
     }
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[type] || colors.free}`}>{type}</span>
+  }
+
+  const filteredReservations = reservations.filter((r) => {
+    if (filter === "all") return true
+    return r.status === filter
+  })
+
+  const stats = {
+    total: reservations.length,
+    pending: reservations.filter((r) => r.status === "pending").length,
+    active: reservations.filter((r) => r.status === "active").length,
+    completed: reservations.filter((r) => r.status === "completed").length,
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Cargando reservas...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando reservas...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-serif mb-2">Reservas</h1>
-          <p className="text-gray-600">Gestiona las reservas de bolsos</p>
+          <Link href="/admin">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al Dashboard
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Reservas</h1>
+          <p className="text-gray-600 mt-2">Administra todas las reservas de bolsos</p>
         </div>
 
-        {reservations.length === 0 ? (
-          <Card className="bg-white">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Calendar className="h-16 w-16 text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No hay reservas</h3>
-              <p className="text-gray-600 text-center max-w-md">
-                Cuando los miembros realicen reservas, aparecerán aquí para que puedas gestionarlas.
-              </p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Reservas</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4">
-            {reservations.map((reservation) => (
-              <Card key={reservation.id} className="bg-white">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <Package className="h-6 w-6 text-blue-600" />
-                      </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+              <Calendar className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pending}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Activas</CardTitle>
+              <CreditCard className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.active}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completadas</CardTitle>
+              <User className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.completed}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="pending">Pendientes</SelectItem>
+                <SelectItem value="confirmed">Confirmadas</SelectItem>
+                <SelectItem value="active">Activas</SelectItem>
+                <SelectItem value="completed">Completadas</SelectItem>
+                <SelectItem value="cancelled">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {/* Reservations Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Reservas</CardTitle>
+            <CardDescription>{filteredReservations.length} reserva(s) encontrada(s)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Bolso</TableHead>
+                  <TableHead>Membresía</TableHead>
+                  <TableHead>Fechas</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredReservations.map((reservation) => (
+                  <TableRow key={reservation.id}>
+                    <TableCell>
                       <div>
-                        <CardTitle className="text-xl mb-1">{reservation.bagName}</CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <User className="h-4 w-4" />
-                          <span>{reservation.memberName}</span>
+                        <div className="font-medium">{reservation.profiles.full_name}</div>
+                        <div className="text-sm text-gray-500">{reservation.profiles.email}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{reservation.bags.name}</div>
+                        <div className="text-sm text-gray-500">{reservation.bags.brand}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getMembershipBadge(reservation.profiles.member_type)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{new Date(reservation.start_date).toLocaleDateString("es-ES")}</div>
+                        <div className="text-gray-500">
+                          {new Date(reservation.end_date).toLocaleDateString("es-ES")}
                         </div>
                       </div>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(reservation.status)}`}
-                    >
-                      {getStatusText(reservation.status)}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-gray-500" />
-                        <span className="text-gray-600">
-                          {new Date(reservation.startDate).toLocaleDateString()} -{" "}
-                          {new Date(reservation.endDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="text-sm font-semibold">${reservation.totalPrice.toFixed(2)}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      {reservation.status === "pending" && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => updateReservationStatus(reservation.id, "active")}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Aprobar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => updateReservationStatus(reservation.id, "cancelled")}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Rechazar
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    </TableCell>
+                    <TableCell className="font-medium">€{reservation.total_price}</TableCell>
+                    <TableCell>{getStatusBadge(reservation.status)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={reservation.status}
+                        onValueChange={(value) => updateReservationStatus(reservation.id, value)}
+                      >
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pendiente</SelectItem>
+                          <SelectItem value="confirmed">Confirmada</SelectItem>
+                          <SelectItem value="active">Activa</SelectItem>
+                          <SelectItem value="completed">Completada</SelectItem>
+                          <SelectItem value="cancelled">Cancelada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
