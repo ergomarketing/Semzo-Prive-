@@ -9,7 +9,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Clock, Package, CreditCard, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Package,
+  CreditCard,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Info,
+  Copy,
+} from "lucide-react"
 
 interface ReservationDetails {
   id: string
@@ -53,6 +64,7 @@ export default function ReservationDetailsPage() {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
+  const [copiedId, setCopiedId] = useState(false)
 
   useEffect(() => {
     const fetchReservationDetails = async () => {
@@ -187,6 +199,18 @@ export default function ReservationDetailsPage() {
 
   const canCancel = reservation && ["pending", "confirmed"].includes(reservation.status)
 
+  const copyReservationId = async () => {
+    if (!reservation) return
+
+    try {
+      await navigator.clipboard.writeText(reservation.id)
+      setCopiedId(true)
+      setTimeout(() => setCopiedId(false), 2000)
+    } catch (error) {
+      console.error("Error copying to clipboard:", error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -240,7 +264,22 @@ export default function ReservationDetailsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-3xl font-serif text-slate-900 mb-2">Detalles de Reserva</h2>
-            <p className="text-slate-600">ID: {reservation.id.substring(0, 8)}...</p>
+            <div className="flex items-center gap-2">
+              <p className="text-slate-600 font-mono text-sm">ID: {reservation.id.substring(0, 13)}...</p>
+              <Button
+                onClick={copyReservationId}
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 hover:bg-slate-100"
+                title="Copiar ID completo"
+              >
+                {copiedId ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 text-slate-500" />
+                )}
+              </Button>
+            </div>
           </div>
           {getStatusBadge(reservation.status)}
         </div>
@@ -516,17 +555,34 @@ export default function ReservationDetailsPage() {
               <CardTitle className="text-sm">Información</CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-slate-600 space-y-2">
-              <p>
-                <strong>Última actualización:</strong>
-                <br />
-                {new Date(reservation.updated_at).toLocaleString("es-ES")}
-              </p>
-              {reservation.profiles?.membership_type && (
+              <div className="pb-2 border-b border-slate-100">
+                <p className="font-medium text-slate-700 mb-1">Fecha del pedido</p>
                 <p>
-                  <strong>Tu membresía:</strong>
-                  <br />
-                  {reservation.profiles.membership_type}
+                  {new Date(reservation.created_at).toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
+              </div>
+              <div className="pt-2">
+                <p className="font-medium text-slate-700 mb-1">Última actualización</p>
+                <p>{new Date(reservation.updated_at).toLocaleString("es-ES")}</p>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <p className="font-medium text-slate-700 mb-1">ID de la reserva</p>
+                <div className="flex items-center gap-1">
+                  <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono break-all">{reservation.id}</code>
+                </div>
+              </div>
+              {reservation.profiles?.membership_type && (
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="font-medium text-slate-700 mb-1">Tu membresía</p>
+                  <p className="capitalize">{reservation.profiles.membership_type}</p>
+                </div>
               )}
             </CardContent>
           </Card>

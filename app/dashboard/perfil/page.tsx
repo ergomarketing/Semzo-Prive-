@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Edit, Save, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, Edit, Save, X, CheckCircle } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 
 interface UserProfile {
@@ -87,6 +88,14 @@ export default function PerfilPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const isEmailVerified = (email: string) => {
+    return email && !email.includes("@phone.semzoprive.com") && !email.includes("@temp.semzoprive.com")
+  }
+
+  const isPhoneVerified = (phone: string) => {
+    return phone && phone.trim().length > 5
   }
 
   if (loading) {
@@ -199,12 +208,36 @@ export default function PerfilPage() {
                 </div>
               </div>
               <div>
-                <Label className="text-slate-600">Email</Label>
+                <div className="flex items-center gap-2 mb-1">
+                  <Label className="text-slate-600">Email</Label>
+                  {isEmailVerified(profile.email) && (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      VERIFICADO
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-lg font-medium text-slate-900">{profile.email}</p>
+                {!isEmailVerified(profile.email) && (
+                  <p className="text-xs text-amber-600 mt-1">Por favor, actualiza tu email temporal</p>
+                )}
               </div>
               <div>
-                <Label className="text-slate-600">Teléfono</Label>
+                <div className="flex items-center gap-2 mb-1">
+                  <Label className="text-slate-600">Teléfono</Label>
+                  {isPhoneVerified(profile.phone) && (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      VERIFICADO
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-lg font-medium text-slate-900">{profile.phone || "No especificado"}</p>
+                {!isPhoneVerified(profile.phone) && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Agrega tu número de teléfono para recibir notificaciones importantes
+                  </p>
+                )}
               </div>
             </div>
           )}
