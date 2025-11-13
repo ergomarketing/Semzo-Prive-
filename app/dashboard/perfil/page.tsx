@@ -69,10 +69,22 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
-      const emailChanged = profile.email !== user.email && isEmailTemporary(user.email || "")
-      if (emailChanged) {
+      const newEmail = profile.email.trim()
+      const currentEmail = user.email || ""
+      const emailChanged = newEmail !== currentEmail && !isEmailTemporary(newEmail)
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (newEmail && !emailRegex.test(newEmail)) {
+        alert("Por favor, introduce un email válido.")
+        setSaving(false)
+        return
+      }
+
+      // Solo actualizar el email en auth si cambió y el nuevo email es válido
+      if (emailChanged && newEmail && emailRegex.test(newEmail)) {
         const { error: authError } = await supabase.auth.updateUser({
-          email: profile.email,
+          email: newEmail,
         })
         if (authError) {
           console.error("Error updating auth email:", authError)
@@ -87,7 +99,7 @@ export default function PerfilPage() {
         .update({
           first_name: profile.first_name,
           last_name: profile.last_name,
-          email: profile.email,
+          email: newEmail || currentEmail, // Usar el email actual si el nuevo está vacío
           phone: profile.phone,
           updated_at: new Date().toISOString(),
         })
