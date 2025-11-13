@@ -163,7 +163,7 @@ export default function PerfilPage() {
                 )}
                 {!profile.email.includes("@phone.semzoprive.com") &&
                   !profile.email.includes("@temp.semzoprive.com") && (
-                    <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar</p>
+                    <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar una vez establecido</p>
                   )}
               </div>
               <div>

@@ -27,7 +27,7 @@ interface ReservationDetails {
     name: string
     brand: string
     image_url: string
-    daily_price: number
+    monthly_price: number
     description?: string
     status: string
   } | null
@@ -73,7 +73,7 @@ export default function ReservationDetailsPage() {
               name,
               brand,
               image_url,
-              daily_price,
+              monthly_price,
               description,
               status
             ),
@@ -315,7 +315,7 @@ export default function ReservationDetailsPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      ${reservation.bags?.daily_price || 0}/día
+                      ${reservation.bags?.monthly_price || 0}/mes
                     </Badge>
                     <Badge
                       variant="outline"
@@ -398,12 +398,12 @@ export default function ReservationDetailsPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Precio por día:</span>
-                  <span className="font-medium">${reservation.bags?.daily_price || 0}</span>
+                  <span className="text-slate-600">Precio mensual:</span>
+                  <span className="font-medium">${reservation.bags?.monthly_price || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Número de días:</span>
-                  <span className="font-medium">{daysTotal}</span>
+                  <span className="text-slate-600">Período:</span>
+                  <span className="font-medium">{daysTotal} días</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-200">
                   <span className="text-lg font-medium text-slate-900">Total:</span>
