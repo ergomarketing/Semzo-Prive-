@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Edit, Save, X, CheckCircle, Info } from "lucide-react"
-import { supabase } from "../../lib/supabaseClient"
+import { getSupabaseBrowser } from "@/lib/supabaseClient"
 
 interface UserProfile {
   first_name: string
@@ -34,6 +34,12 @@ export default function PerfilPage() {
       if (!user) return
 
       try {
+        const supabase = getSupabaseBrowser()
+        if (!supabase) {
+          console.error("Supabase client not available")
+          return
+        }
+
         const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
         if (error) throw error
@@ -42,7 +48,7 @@ export default function PerfilPage() {
           setProfile({
             first_name: data.first_name || "",
             last_name: data.last_name || "",
-            email: data.email || "",
+            email: data.email || user.email || "",
             phone: data.phone || "",
           })
         } else {
@@ -68,6 +74,25 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
+      const supabase = getSupabaseBrowser()
+      if (!supabase) {
+        throw new Error("Supabase client not available")
+      }
+
+      const emailChanged = profile.email !== user.email && isEmailTemporary(user.email || "")
+      if (emailChanged) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: profile.email,
+        })
+        if (authError) {
+          console.error("Error updating auth email:", authError)
+          alert("Error al actualizar el email. Verifica que sea válido y no esté en uso.")
+          setSaving(false)
+          return
+        }
+      }
+
+      // Actualizar datos en profiles
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -84,6 +109,12 @@ export default function PerfilPage() {
         throw error
       }
 
+      if (emailChanged) {
+        alert(
+          "Perfil guardado. Hemos enviado un email de confirmación a tu nueva dirección. Por favor, verifica tu bandeja de entrada.",
+        )
+      }
+
       setIsEditing(false)
     } catch (error) {
       console.error("Error saving profile:", error)
@@ -93,8 +124,17 @@ export default function PerfilPage() {
     }
   }
 
+  const isEmailTemporary = (email: string) => {
+    return (
+      !email ||
+      email.includes("@phone.semzoprive.com") ||
+      email.includes("@temp.semzoprive.com") ||
+      email === "tu@email.com"
+    )
+  }
+
   const isEmailVerified = (email: string) => {
-    return email && !email.includes("@phone.semzoprive.com") && !email.includes("@temp.semzoprive.com")
+    return email && !isEmailTemporary(email)
   }
 
   const isPhoneVerified = (phone: string) => {
@@ -165,24 +205,19 @@ export default function PerfilPage() {
                   type="email"
                   value={profile.email}
                   onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  disabled={
-                    !profile.email.includes("@phone.semzoprive.com") && !profile.email.includes("@temp.semzoprive.com")
-                  }
-                  className={
-                    !profile.email.includes("@phone.semzoprive.com") && !profile.email.includes("@temp.semzoprive.com")
-                      ? "bg-slate-50"
-                      : ""
-                  }
+                  disabled={!isEmailTemporary(profile.email)}
+                  className={!isEmailTemporary(profile.email) ? "bg-slate-50" : ""}
                   placeholder="tu@email.com"
                 />
-                {(profile.email.includes("@phone.semzoprive.com") ||
-                  profile.email.includes("@temp.semzoprive.com")) && (
-                  <p className="text-xs text-amber-600 mt-1">Actualiza tu email temporal a uno real</p>
+                {isEmailTemporary(profile.email) && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Actualiza tu email temporal a uno real para recibir notificaciones
+                  </p>
                 )}
-                {!profile.email.includes("@phone.semzoprive.com") &&
-                  !profile.email.includes("@temp.semzoprive.com") && (
-                    <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar una vez establecido</p>
-                  )}
+                {!isEmailTemporary(profile.email) && (
+                  <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar una vez establecido</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="phone">Teléfono</Label>
