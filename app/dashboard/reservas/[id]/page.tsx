@@ -97,14 +97,6 @@ export default function ReservationDetailsPage() {
               daily_price,
               description,
               status
-            ),
-            profiles (
-              id,
-              full_name,
-              email,
-              phone,
-              membership_type,
-              membership_status
             )
           `)
           .eq("id", reservationId)
@@ -113,12 +105,34 @@ export default function ReservationDetailsPage() {
 
         if (error) {
           console.error("[ReservationDetails] Error fetching reservation:", error)
-          setError("No se pudo cargar la reserva. Verifica que existe y te pertenece.")
-          throw error
+          console.error("[ReservationDetails] Error details:", JSON.stringify(error, null, 2))
+          setError(`No se pudo cargar la reserva: ${error.message || 'Error desconocido'}`)
+          setLoading(false)
+          return
+        }
+
+        if (!data) {
+          console.error("[ReservationDetails] No data returned")
+          setError("Reserva no encontrada")
+          setLoading(false)
+          return
+        }
+
+        // Obtener datos del perfil del usuario por separado
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone, membership_type, membership_status")
+          .eq("id", user.id)
+          .single()
+
+        // Combinar datos
+        const enrichedData = {
+          ...data,
+          profiles: profileData || null
         }
 
         console.log("[ReservationDetails] Reservation loaded successfully")
-        setReservation(data)
+        setReservation(enrichedData as ReservationDetails)
       } catch (error) {
         console.error("[ReservationDetails] Error:", error)
         setError(error instanceof Error ? error.message : "Error desconocido")
