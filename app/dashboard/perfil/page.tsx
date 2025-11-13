@@ -34,13 +34,7 @@ export default function PerfilPage() {
       if (!user) return
 
       try {
-        const supabaseClient = supabase()
-        if (!supabaseClient) {
-          console.error("Supabase client not available")
-          return
-        }
-
-        const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle()
+        const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
         if (error) throw error
 
@@ -74,14 +68,9 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
-      const supabaseClient = supabase()
-      if (!supabaseClient) {
-        throw new Error("Supabase client not available")
-      }
-
       const emailChanged = profile.email !== user.email && isEmailTemporary(user.email || "")
       if (emailChanged) {
-        const { error: authError } = await supabaseClient.auth.updateUser({
+        const { error: authError } = await supabase.auth.updateUser({
           email: profile.email,
         })
         if (authError) {
@@ -93,7 +82,7 @@ export default function PerfilPage() {
       }
 
       // Actualizar datos en profiles
-      const { error } = await supabaseClient
+      const { error } = await supabase
         .from("profiles")
         .update({
           first_name: profile.first_name,
