@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Edit, Save, X, CheckCircle } from "lucide-react"
+import { Loader2, Edit, Save, X, CheckCircle, Info } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 
 interface UserProfile {
@@ -98,7 +98,7 @@ export default function PerfilPage() {
   }
 
   const isPhoneVerified = (phone: string) => {
-    return phone && phone.trim().length > 5
+    return phone && phone.trim().length > 5 && !phone.includes("temp")
   }
 
   if (loading) {
@@ -205,45 +205,54 @@ export default function PerfilPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label className="text-slate-600">Nombre</Label>
-                  <p className="text-lg font-medium text-slate-900">{profile.first_name || "No especificado"}</p>
+                  <Label className="text-slate-600 text-sm">Nombre</Label>
+                  <p className="text-lg font-medium text-slate-900 mt-1">{profile.first_name || "No especificado"}</p>
                 </div>
                 <div>
-                  <Label className="text-slate-600">Apellido</Label>
-                  <p className="text-lg font-medium text-slate-900">{profile.last_name || "No especificado"}</p>
+                  <Label className="text-slate-600 text-sm">Apellido</Label>
+                  <p className="text-lg font-medium text-slate-900 mt-1">{profile.last_name || "No especificado"}</p>
                 </div>
               </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Label className="text-slate-600">Email</Label>
+
+              <div className="border-t border-slate-100 pt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Label className="text-slate-600 text-sm">Email</Label>
                   {isEmailVerified(profile.email) && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                    <Badge className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       VERIFICADO
                     </Badge>
                   )}
+                  {!isEmailVerified(profile.email) && (
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs px-2 py-0.5">Temporal</Badge>
+                  )}
                 </div>
-                <p className="text-lg font-medium text-slate-900">{profile.email}</p>
+                <p className="text-base font-medium text-slate-900 break-all">{profile.email}</p>
                 {!isEmailVerified(profile.email) && (
-                  <p className="text-xs text-amber-600 mt-1">Por favor, actualiza tu email temporal</p>
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Por favor, actualiza tu email temporal a uno real para recibir notificaciones
+                  </p>
                 )}
               </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Label className="text-slate-600">Teléfono</Label>
+
+              <div className="border-t border-slate-100 pt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Label className="text-slate-600 text-sm">Teléfono</Label>
                   {isPhoneVerified(profile.phone) && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                    <Badge className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       VERIFICADO
                     </Badge>
                   )}
                 </div>
-                <p className="text-lg font-medium text-slate-900">{profile.phone || "No especificado"}</p>
+                <p className="text-base font-medium text-slate-900">{profile.phone || "No especificado"}</p>
                 {!isPhoneVerified(profile.phone) && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
                     Agrega tu número de teléfono para recibir notificaciones importantes
                   </p>
                 )}

@@ -277,19 +277,27 @@ export default function ReservationDetailsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-3xl font-serif text-slate-900 mb-2">Detalles de Reserva</h2>
-            <div className="flex items-center gap-2">
-              <p className="text-slate-600 font-mono text-sm">ID: {reservation.id.substring(0, 13)}...</p>
+            <div className="flex items-center gap-3">
+              <code className="text-slate-600 font-mono text-sm bg-slate-50 px-3 py-1.5 rounded border border-slate-200">
+                ID: {reservation.id.substring(0, 18)}...
+              </code>
               <Button
                 onClick={copyReservationId}
                 size="sm"
-                variant="ghost"
-                className="h-7 px-2 hover:bg-slate-100"
+                variant="outline"
+                className="h-8 px-3 hover:bg-green-50 hover:border-green-200 transition-colors bg-transparent"
                 title="Copiar ID completo"
               >
                 {copiedId ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+                    <span className="text-green-600 text-xs font-medium">Copiado</span>
+                  </>
                 ) : (
-                  <Copy className="h-4 w-4 text-slate-500" />
+                  <>
+                    <Copy className="h-4 w-4 text-slate-500 mr-1" />
+                    <span className="text-slate-600 text-xs">Copiar</span>
+                  </>
                 )}
               </Button>
             </div>
@@ -586,10 +594,11 @@ export default function ReservationDetailsPage() {
                 <p>{new Date(reservation.updated_at).toLocaleString("es-ES")}</p>
               </div>
               <div className="pt-2 border-t border-slate-100">
-                <p className="font-medium text-slate-700 mb-1">ID de la reserva</p>
-                <div className="flex items-center gap-1">
-                  <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono break-all">{reservation.id}</code>
-                </div>
+                <p className="font-medium text-slate-700 mb-2">ID de la reserva</p>
+                <code className="text-xs bg-slate-50 px-2 py-1.5 rounded font-mono break-all block border border-slate-200">
+                  {reservation.id}
+                </code>
+                <p className="text-[10px] text-slate-500 mt-1">Usa este ID para soporte o seguimiento</p>
               </div>
               {reservation.profiles?.membership_type && (
                 <div className="pt-2 border-t border-slate-100">
