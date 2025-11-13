@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Edit, Save, X, CheckCircle, Info } from "lucide-react"
-import { getSupabaseBrowser } from "../../../lib/supabase"
+import { supabase } from "../../lib/supabaseClient"
 
 interface UserProfile {
   first_name: string
@@ -34,13 +34,13 @@ export default function PerfilPage() {
       if (!user) return
 
       try {
-        const supabase = getSupabaseBrowser()
-        if (!supabase) {
+        const supabaseClient = supabase()
+        if (!supabaseClient) {
           console.error("Supabase client not available")
           return
         }
 
-        const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+        const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
         if (error) throw error
 
@@ -74,14 +74,14 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
-      const supabase = getSupabaseBrowser()
-      if (!supabase) {
+      const supabaseClient = supabase()
+      if (!supabaseClient) {
         throw new Error("Supabase client not available")
       }
 
       const emailChanged = profile.email !== user.email && isEmailTemporary(user.email || "")
       if (emailChanged) {
-        const { error: authError } = await supabase.auth.updateUser({
+        const { error: authError } = await supabaseClient.auth.updateUser({
           email: profile.email,
         })
         if (authError) {
@@ -93,7 +93,7 @@ export default function PerfilPage() {
       }
 
       // Actualizar datos en profiles
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from("profiles")
         .update({
           first_name: profile.first_name,

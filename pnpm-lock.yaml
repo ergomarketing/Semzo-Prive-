@@ -120,7 +120,7 @@ importers:
         specifier: latest
         version: 1.4.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       lib:
-        specifier: latest
+        specifier: 5.1.0
         version: 5.1.0
       lucide-react:
         specifier: ^0.454.0

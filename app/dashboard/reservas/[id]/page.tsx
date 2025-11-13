@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/app/hooks/useAuth"
-import { getSupabaseBrowser } from "../../../../../lib/supabase"
+import { supabase } from "../../../lib/supabaseClient"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -73,8 +73,8 @@ export default function ReservationDetailsPage() {
         return
       }
 
-      const supabase = getSupabaseBrowser()
-      if (!supabase) {
+      const supabaseClient = supabase()
+      if (!supabaseClient) {
         setError("Error de configuración: cliente Supabase no disponible")
         setLoading(false)
         return
@@ -83,7 +83,7 @@ export default function ReservationDetailsPage() {
       try {
         console.log("[ReservationDetails] Fetching reservation:", reservationId)
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from("reservations")
           .select(`
             *,
@@ -131,15 +131,15 @@ export default function ReservationDetailsPage() {
   const handleCancelReservation = async () => {
     if (!reservation || !user) return
 
-    const supabase = getSupabaseBrowser()
-    if (!supabase) {
+    const supabaseClient = supabase()
+    if (!supabaseClient) {
       alert("Error de configuración: cliente Supabase no disponible")
       return
     }
 
     setCancelling(true)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from("reservations")
         .update({
           status: "cancelled",
