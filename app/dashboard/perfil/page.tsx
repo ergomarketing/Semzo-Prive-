@@ -42,7 +42,7 @@ export default function PerfilPage() {
           setProfile({
             first_name: data.first_name || "",
             last_name: data.last_name || "",
-            email: data.email || "", // Mostrar el email real de la tabla profiles
+            email: data.email || "",
             phone: data.phone || "",
           })
         } else {
@@ -70,21 +70,24 @@ export default function PerfilPage() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .upsert({
-          id: user.id,
+        .update({
           first_name: profile.first_name,
           last_name: profile.last_name,
           email: profile.email,
           phone: profile.phone,
           updated_at: new Date().toISOString(),
         })
-        .select()
+        .eq("id", user.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("Error saving profile:", error)
+        throw error
+      }
 
       setIsEditing(false)
     } catch (error) {
       console.error("Error saving profile:", error)
+      alert("Error al guardar el perfil. Por favor, intenta de nuevo.")
     } finally {
       setSaving(false)
     }
@@ -131,7 +134,9 @@ export default function PerfilPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="first_name">Nombre</Label>
+                  <Label htmlFor="first_name">
+                    Nombre <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="first_name"
                     value={profile.first_name}
@@ -140,7 +145,9 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="last_name">Apellido</Label>
+                  <Label htmlFor="last_name">
+                    Apellido <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="last_name"
                     value={profile.last_name}
@@ -150,7 +157,9 @@ export default function PerfilPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">
+                  Email <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="email"
                   type="email"
