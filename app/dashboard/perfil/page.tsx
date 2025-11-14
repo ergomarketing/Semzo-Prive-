@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Edit, Save, X, CheckCircle, AlertCircle } from "lucide-react"
+import { Loader2, Edit, Save, X, CheckCircle, AlertCircle, Mail, Phone } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 
 interface UserProfile {
@@ -38,9 +38,18 @@ export default function PerfilPage() {
       if (!user) return
 
       try {
+        console.log("[Profile] User data:", {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          metadata: user.user_metadata,
+        })
+
         const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
-        if (error) throw error
+        if (error) {
+          console.error("[Profile] Error fetching profile:", error)
+        }
 
         if (data) {
           setProfile({
@@ -48,20 +57,20 @@ export default function PerfilPage() {
             last_name: data.last_name || "",
             full_name: data.full_name || "",
             email: data.email || user.email || "",
-            phone: data.phone || "",
+            phone: data.phone || user.phone || "",
           })
         } else {
-          // Si no existe perfil, crear uno con datos del auth
+          // Si no existe perfil, usar datos del auth
           setProfile({
             first_name: user.user_metadata?.first_name || "",
             last_name: user.user_metadata?.last_name || "",
             full_name: user.user_metadata?.full_name || "",
             email: user.email || "",
-            phone: user.user_metadata?.phone || "",
+            phone: user.phone || "",
           })
         }
       } catch (error) {
-        console.error("Error fetching profile:", error)
+        console.error("[Profile] Error:", error)
         setErrorMessage("Error al cargar el perfil")
       } finally {
         setLoading(false)
@@ -71,7 +80,24 @@ export default function PerfilPage() {
     fetchProfile()
   }, [user])
 
+  // Detectar si el usuario necesita agregar email
+  const needsEmail = () => {
+    if (!user) return false
+    
+    // Si no tiene email en absoluto (login por SMS)
+    if (!user.email || user.email.trim() === "") {
+      console.log("[Profile] User has no email (SMS login)")
+      return true
+    }
+    
+    // Si tiene email temporal
+    const isTemp = isTemporaryEmail(user.email)
+    console.log("[Profile] Email check:", { email: user.email, isTemp })
+    return isTemp
+  }
+
   const isTemporaryEmail = (email: string) => {
+    if (!email) return false
     return (
       email.includes("@phone.semzoprive.com") ||
       email.includes("@temp.semzoprive.com") ||
@@ -97,7 +123,7 @@ export default function PerfilPage() {
       return
     }
 
-    if (!profile.email) {
+    if (!profile.email || profile.email.trim() === "") {
       setErrorMessage("El email es obligatorio")
       return
     }
@@ -109,12 +135,21 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
-      const isChangingFromTempEmail = isTemporaryEmail(user.email || "") && !isTemporaryEmail(profile.email)
+      const userCurrentEmail = user.email || ""
+      const isAddingEmail = !userCurrentEmail || userCurrentEmail.trim() === ""
+      const isChangingFromTempEmail = !isAddingEmail && isTemporaryEmail(userCurrentEmail) && !isTemporaryEmail(profile.email)
       const full_name = `${profile.first_name} ${profile.last_name}`.trim()
 
-      // 1. Actualizar email en Supabase Auth si está cambiando de email temporal a real
-      if (isChangingFromTempEmail) {
-        console.log("[Profile] Updating email in Supabase Auth from temporary to real")
+      console.log("[Profile] Save operation:", {
+        userCurrentEmail,
+        newEmail: profile.email,
+        isAddingEmail,
+        isChangingFromTempEmail,
+      })
+
+      // 1. Actualizar email en Supabase Auth si está agregando o cambiando de temporal
+      if (isAddingEmail || isChangingFromTempEmail) {
+        console.log("[Profile] Updating email in Supabase Auth")
         
         const { error: authError } = await supabase.auth.updateUser({
           email: profile.email,
@@ -128,6 +163,12 @@ export default function PerfilPage() {
 
         if (authError) {
           console.error("[Profile] Error updating auth email:", authError)
+          
+          // Manejar errores específicos
+          if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
+            throw new Error("Este email ya está registrado en otra cuenta")
+          }
+          
           throw new Error(`Error al actualizar el email: ${authError.message}`)
         }
 
@@ -157,18 +198,22 @@ export default function PerfilPage() {
 
       setIsEditing(false)
       
-      if (isChangingFromTempEmail) {
+      if (isAddingEmail) {
         setSuccessMessage(
-          "Perfil actualizado. Se ha enviado un email de confirmación a tu nueva dirección. Por favor, verifica tu bandeja de entrada."
+          "¡Perfil actualizado! Se ha enviado un email de confirmación a tu dirección. Por favor, verifica tu bandeja de entrada para confirmar tu email."
+        )
+      } else if (isChangingFromTempEmail) {
+        setSuccessMessage(
+          "Perfil actualizado. Se ha enviado un email de confirmación a tu nueva dirección."
         )
       } else {
         setSuccessMessage("Perfil actualizado correctamente")
       }
 
-      // Limpiar mensaje después de 5 segundos
-      setTimeout(() => setSuccessMessage(null), 5000)
+      // Limpiar mensaje después de 7 segundos
+      setTimeout(() => setSuccessMessage(null), 7000)
     } catch (error) {
-      console.error("Error saving profile:", error)
+      console.error("[Profile] Error saving profile:", error)
       setErrorMessage(error instanceof Error ? error.message : "Error al guardar los cambios")
     } finally {
       setSaving(false)
@@ -183,7 +228,7 @@ export default function PerfilPage() {
     )
   }
 
-  const canEditEmail = isTemporaryEmail(profile.email)
+  const canEditEmail = needsEmail()
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -207,13 +252,34 @@ export default function PerfilPage() {
         </Alert>
       )}
 
-      {/* Alerta de email temporal */}
+      {/* Alerta de email faltante o temporal */}
       {canEditEmail && !isEditing && (
         <Alert className="mb-6 border-amber-200 bg-amber-50">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <Mail className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900">
-            <strong>Email temporal detectado:</strong> Tienes un email temporal. Por favor, actualízalo a tu email
-            real para recibir notificaciones y confirmaciones.
+            {!user?.email || user.email.trim() === "" ? (
+              <>
+                <strong>Email no configurado:</strong> Registraste tu cuenta con teléfono. Por favor, agrega tu email
+                para recibir notificaciones, confirmaciones de reserva y poder recuperar tu cuenta.
+              </>
+            ) : (
+              <>
+                <strong>Email temporal detectado:</strong> Tienes un email temporal. Por favor, actualízalo a tu email
+                real para recibir notificaciones y confirmaciones.
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Información de método de registro */}
+      {user?.phone && (!user?.email || user.email.trim() === "") && !isEditing && (
+        <Alert className="mb-6 border-blue-200 bg-blue-50">
+          <Phone className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900">
+            <strong>Registrado con teléfono:</strong> {user.phone}
+            <br />
+            <span className="text-sm">Agrega tu email para mejorar la seguridad de tu cuenta</span>
           </AlertDescription>
         </Alert>
       )}
@@ -272,8 +338,13 @@ export default function PerfilPage() {
                   placeholder="tu@email.com"
                 />
                 {canEditEmail && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ <strong>Actualiza tu email temporal a uno real</strong> para recibir notificaciones
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {!user?.email || user.email.trim() === "" ? (
+                      <strong>Agrega tu email para recibir notificaciones y confirmaciones</strong>
+                    ) : (
+                      <strong>Actualiza tu email temporal a uno real</strong>
+                    )}
                   </p>
                 )}
                 {!canEditEmail && (
@@ -289,7 +360,14 @@ export default function PerfilPage() {
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                   placeholder="+34 600 000 000"
+                  disabled={!!user?.phone}
+                  className={user?.phone ? "bg-slate-50" : ""}
                 />
+                {user?.phone && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    El teléfono no se puede cambiar (registrado con SMS)
+                  </p>
+                )}
               </div>
               <div className="flex space-x-2 pt-2">
                 <Button onClick={handleSave} disabled={saving} className="bg-slate-900 hover:bg-slate-800 font-serif">
@@ -324,9 +402,15 @@ export default function PerfilPage() {
               <div>
                 <Label className="text-slate-600">Email</Label>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-medium text-slate-900">{profile.email}</p>
-                  {canEditEmail && (
-                    <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Temporal</span>
+                  <p className="text-lg font-medium text-slate-900">
+                    {profile.email || (
+                      <span className="text-slate-400 italic">No configurado - Haz clic en Editar para agregar</span>
+                    )}
+                  </p>
+                  {profile.email && canEditEmail && (
+                    <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                      {!user?.email || user.email.trim() === "" ? "Sin email" : "Temporal"}
+                    </span>
                   )}
                 </div>
               </div>
