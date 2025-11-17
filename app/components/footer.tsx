@@ -129,15 +129,33 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Semzo Privé. Todos los derechos reservados.
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            <a 
+              href="https://www.instagram.com/semzoprive/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+              aria-label="Síguenos en Instagram"
+            >
               Instagram
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
-              Facebook
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
-              LinkedIn
-            </Link>
+            </a>
+            <a 
+              href="https://es.pinterest.com/semzoprive" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+              aria-label="Síguenos en Pinterest"
+            >
+              Pinterest
+            </a>
+            <a 
+              href="https://www.tiktok.com/@semzoprive" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+              aria-label="Síguenos en TikTok"
+            >
+              TikTok
+            </a>
           </div>
         </div>
       </div>
