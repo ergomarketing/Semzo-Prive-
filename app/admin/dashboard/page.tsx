@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, CalendarDays, Clock, Package, PieChart, Users, Shield } from "lucide-react"
+import { Calendar, CalendarDays, Clock, Package, PieChart, Users, Shield, Mail } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,8 +32,15 @@ interface Transaction {
   status: string
 }
 
+interface NewsletterSubscription {
+  id: string
+  email: string
+  subscribed_at: string
+  status: string
+}
+
 export default function AdminDashboardPage() {
-  const [activeView, setActiveView] = useState<"overview" | "inventory" | "reservations" | "calendar" | "timeline">(
+  const [activeView, setActiveView] = useState<"overview" | "inventory" | "reservations" | "calendar" | "timeline" | "newsletter">(
     "overview",
   )
   const [stats, setStats] = useState<DashboardStats>({
@@ -45,6 +52,7 @@ export default function AdminDashboardPage() {
     pendingReservations: 0,
   })
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [newsletters, setNewsletters] = useState<NewsletterSubscription[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -67,6 +75,9 @@ export default function AdminDashboardPage() {
         // Obtener estadísticas de reservas
         const reservationsResponse = await fetch("/api/admin/reservations", { headers })
         const reservationsData = await reservationsResponse.json()
+
+        const newsletterResponse = await fetch("/api/admin/newsletter", { headers })
+        const newsletterData = await newsletterResponse.json()
 
         if (inventoryData.stats && reservationsData.stats) {
           const realStats: DashboardStats = {
@@ -97,6 +108,10 @@ export default function AdminDashboardPage() {
             }))
 
           setTransactions(recentTransactions)
+        }
+
+        if (newsletterData.subscriptions) {
+          setNewsletters(newsletterData.subscriptions)
         }
       } catch (error) {
         console.error("[v0] Error loading dashboard stats:", error)
@@ -195,6 +210,14 @@ export default function AdminDashboardPage() {
           >
             <CalendarDays className="h-4 w-4 mr-3" />
             Calendario
+          </Button>
+
+          <Button
+            onClick={() => setActiveView("newsletter")}
+            className="w-full justify-start bg-white text-slate-700 hover:bg-slate-50"
+          >
+            <Mail className="h-4 w-4 mr-3" />
+            Newsletter
           </Button>
 
           <Button
@@ -368,6 +391,56 @@ export default function AdminDashboardPage() {
             onDateSelect={(date) => console.log("Fecha seleccionada:", date)}
             onReservationCreate={(reservation) => console.log("Reserva creada:", reservation)}
           />
+        )}
+
+        {activeView === "newsletter" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Suscriptores de Newsletter</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {newsletters.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Fecha de suscripción</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {newsletters.map((sub) => (
+                      <TableRow key={sub.id}>
+                        <TableCell className="font-medium">{sub.email}</TableCell>
+                        <TableCell>{new Date(sub.subscribed_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={sub.status === "active" ? "default" : "secondary"}>
+                            {sub.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-500">No hay suscriptores aún</p>
+                </div>
+              )}
+              <div className="mt-6 p-4 bg-slate-50 rounded-lg">
+                <h3 className="font-semibold mb-2">¿Cómo enviar newsletters?</h3>
+                <p className="text-sm text-slate-600">
+                  Para enviar newsletters a estos suscriptores, puedes usar servicios como:
+                  <br />
+                  • <strong>Mailchimp</strong> - Importa la lista de emails desde Supabase
+                  <br />
+                  • <strong>SendGrid</strong> - API para envío masivo de emails
+                  <br />
+                  • <strong>Brevo (Sendinblue)</strong> - Plataforma de email marketing
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
