@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { Package, Calendar, Users, Clock, DollarSign } from "lucide-react"
+import { Package, Calendar, Users, Clock, DollarSign, Mail } from 'lucide-react'
 
 interface DashboardStats {
   totalBags: number
@@ -92,6 +92,15 @@ export default function AdminDashboard() {
       description: "Total facturado",
       href: "/admin/payments",
     },
+    {
+      title: "Newsletter",
+      value: "Ver",
+      icon: Mail,
+      color: "text-pink-600",
+      bgColor: "bg-pink-50",
+      description: "Suscriptores",
+      href: "/admin/newsletter",
+    },
   ]
 
   if (loading) {
@@ -114,7 +123,7 @@ export default function AdminDashboard() {
         <p className="text-gray-600 text-lg">Panel de control de Semzo Privé</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         {kpiCards.map((kpi, index) => (
           <Link key={index} href={kpi.href}>
             <Card className="overflow-hidden h-full transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-200">
