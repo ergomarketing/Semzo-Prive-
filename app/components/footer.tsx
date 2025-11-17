@@ -103,8 +103,23 @@ export default function Footer() {
           </div>
         </div>
 
+        <div className="mt-12 mb-8 pt-8 border-t" style={{ borderTopColor: "rgba(244, 196, 204, 0.2)" }}>
+          <div className="max-w-4xl mx-auto">
+            <h4 className="text-xs uppercase tracking-widest font-medium mb-3 text-slate-700">
+              Disclaimer de Marcas
+            </h4>
+            <p className="text-xs leading-relaxed text-slate-500 font-light">
+              Semzo Privé es un servicio independiente de alquiler de bolsos de lujo. No somos vendedores oficiales, 
+              distribuidores autorizados ni tenemos afiliación comercial con las marcas de lujo mencionadas en nuestro 
+              sitio (Louis Vuitton, Chanel, Hermès, Gucci, Prada, Dior, entre otras). Todos los nombres de marcas, 
+              logotipos y productos son propiedad de sus respectivos dueños y se utilizan únicamente con fines 
+              descriptivos e informativos sobre los productos disponibles para alquiler en nuestra plataforma.
+            </p>
+          </div>
+        </div>
+
         <div
-          className="mt-16 pt-8 flex flex-col md:flex-row justify-between items-center p-6 rounded-lg backdrop-blur-sm"
+          className="pt-8 flex flex-col md:flex-row justify-between items-center p-6 rounded-lg backdrop-blur-sm"
           style={{
             borderTop: "1px solid rgba(244, 196, 204, 0.3)",
             backgroundColor: "rgba(255, 240, 243, 0.2)",
