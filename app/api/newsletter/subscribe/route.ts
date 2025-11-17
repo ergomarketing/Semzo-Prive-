@@ -11,11 +11,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: true, message: "Email inválido" }, { status: 400 })
     }
 
-    // Crear cliente de Supabase con service role key para bypasear RLS
     const cookieStore = await cookies()
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!,
       {
         cookies: {
           getAll() {
