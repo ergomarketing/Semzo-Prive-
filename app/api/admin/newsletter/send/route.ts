@@ -64,10 +64,6 @@ export async function POST(request: Request) {
         email: "newsletter@semzoprive.com", // Usa un email específico para newsletters
         name: "Semzo Privé Magazine",
       },
-      reply_to: {
-        email: "info@semzoprive.com",
-        name: "Semzo Privé",
-      },
       subject: subject,
       content: [
         {
