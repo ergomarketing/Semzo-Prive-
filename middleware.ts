@@ -75,23 +75,17 @@ export async function middleware(request: NextRequest) {
     "/about",
     "/contact",
     "/membership",
-    "/cart",
-    "/admin/login",
+    "/cart", // Permitir acceso público al carrito para compras sin login
+    "/admin/login", // Permitir acceso al login de admin
   ]
 
-  const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login"
+  const isAdminRoute = pathname.startsWith("/admin")
   const isApiRoute = pathname.startsWith("/api")
 
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
 
-  if (isApiRoute) {
-    return response
-  }
-
-  // El middleware no puede acceder a localStorage del cliente
-  // La verificación se hace en el cliente en app/admin/page.tsx
-  if (isAdminRoute) {
+  if (isAdminRoute || isApiRoute) {
     return response
   }
 

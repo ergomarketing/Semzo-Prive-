@@ -1,11 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { Package, Calendar, Users, Clock, DollarSign, Mail } from 'lucide-react'
+import { Package, Calendar, Users, Clock, DollarSign } from "lucide-react"
 
 interface DashboardStats {
   totalBags: number
@@ -18,7 +17,6 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalBags: 0,
     availableBags: 0,
@@ -29,35 +27,10 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
   })
   const [loading, setLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    const adminSession = localStorage.getItem("admin_session")
-    const loginTime = localStorage.getItem("admin_login_time")
-
-    if (!adminSession || adminSession !== "authenticated") {
-      console.log("[v0] ❌ No hay sesión admin, redirigiendo a login...")
-      router.push("/admin/login")
-      return
-    }
-
-    if (loginTime) {
-      const elapsed = Date.now() - parseInt(loginTime)
-      const twentyFourHours = 24 * 60 * 60 * 1000
-      
-      if (elapsed > twentyFourHours) {
-        console.log("[v0] ⏰ Sesión expirada, redirigiendo a login...")
-        localStorage.removeItem("admin_session")
-        localStorage.removeItem("admin_login_time")
-        router.push("/admin/login")
-        return
-      }
-    }
-
-    console.log("[v0] ✅ Sesión admin válida")
-    setIsAuthenticated(true)
     loadDashboardStats()
-  }, [router])
+  }, [])
 
   async function loadDashboardStats() {
     try {
@@ -119,20 +92,7 @@ export default function AdminDashboard() {
       description: "Total facturado",
       href: "/admin/payments",
     },
-    {
-      title: "Newsletter",
-      value: "Ver",
-      icon: Mail,
-      color: "text-pink-600",
-      bgColor: "bg-pink-50",
-      description: "Suscriptores",
-      href: "/admin/newsletter",
-    },
   ]
-
-  if (!isAuthenticated) {
-    return null
-  }
 
   if (loading) {
     return (
@@ -154,7 +114,7 @@ export default function AdminDashboard() {
         <p className="text-gray-600 text-lg">Panel de control de Semzo Privé</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((kpi, index) => (
           <Link key={index} href={kpi.href}>
             <Card className="overflow-hidden h-full transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-200">

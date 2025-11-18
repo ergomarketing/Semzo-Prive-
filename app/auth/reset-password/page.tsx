@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,26 +18,70 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isReady, setIsReady] = useState(false)
 
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Verificar si hay tokens de reset en la URL
-    const accessToken = searchParams.get("access_token")
-    const refreshToken = searchParams.get("refresh_token")
+    const checkRecoveryLink = async () => {
+      // Leer tokens del hash (formato de Supabase)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
-    if (accessToken && refreshToken) {
+      const accessToken = hashParams.get("access_token")
+      const refreshToken = hashParams.get("refresh_token")
+      const type = hashParams.get("type")
+
+      console.log("[ResetPassword] Hash params:", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type: type,
+      })
+
+      if (!accessToken || !refreshToken) {
+        console.error("[ResetPassword] Missing tokens in hash")
+        setError("Enlace inválido o expirado. Solicita un nuevo enlace de recuperación.")
+        setIsReady(false)
+        return
+      }
+
+      if (type !== "recovery") {
+        console.error("[ResetPassword] Invalid type:", type)
+        setError("Enlace inválido. Este no es un enlace de recuperación de contraseña.")
+        setIsReady(false)
+        return
+      }
+
+      // Establecer la sesión con los tokens
       const supabase = getSupabaseBrowser()
       if (supabase) {
-        // Establecer la sesión con los tokens
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+
+          if (sessionError) {
+            console.error("[ResetPassword] Error setting session:", sessionError)
+            setError("Error al validar el enlace. Por favor, solicita uno nuevo.")
+            setIsReady(false)
+            return
+          }
+
+          console.log("[ResetPassword] Session established successfully")
+          setIsReady(true)
+        } catch (err) {
+          console.error("[ResetPassword] Exception setting session:", err)
+          setError("Error al procesar el enlace. Por favor, intenta de nuevo.")
+          setIsReady(false)
+        }
+      } else {
+        setError("Error de configuración. Contacta al administrador.")
+        setIsReady(false)
       }
     }
-  }, [searchParams])
+
+    checkRecoveryLink()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,17 +115,20 @@ export default function ResetPasswordPage() {
         return
       }
 
+      console.log("[ResetPassword] Updating password...")
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       })
 
       if (updateError) {
-        console.error("Error actualizando contraseña:", updateError)
+        console.error("[ResetPassword] Error updating password:", updateError)
         setError("Error al actualizar la contraseña. El enlace puede haber expirado.")
+        setIsLoading(false)
         return
       }
 
-      console.log("✅ Contraseña actualizada exitosamente")
+      console.log("[ResetPassword] Password updated successfully")
       setIsSuccess(true)
 
       // Redirigir al login después de 3 segundos
@@ -89,13 +136,13 @@ export default function ResetPasswordPage() {
         router.push("/auth/login")
       }, 3000)
     } catch (error) {
-      console.error("Error en reset password:", error)
+      console.error("[ResetPassword] Exception:", error)
       setError("Error al actualizar la contraseña. Inténtalo de nuevo.")
-    } finally {
       setIsLoading(false)
     }
   }
 
+  // Pantalla de éxito
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
@@ -122,6 +169,48 @@ export default function ResetPasswordPage() {
     )
   }
 
+  // Pantalla de error (enlace inválido)
+  if (!isReady && error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
+        <div className="container mx-auto px-4 max-w-md">
+          <Card className="border-0 shadow-xl">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h2 className="font-serif text-2xl text-slate-900 mb-4">Enlace inválido</h2>
+              <p className="text-slate-600 mb-6">{error}</p>
+              <Button
+                onClick={() => router.push("/auth/forgot-password")}
+                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90"
+              >
+                Solicitar nuevo enlace
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Pantalla de carga mientras valida el enlace
+  if (!isReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
+        <div className="container mx-auto px-4 max-w-md">
+          <Card className="border-0 shadow-xl">
+            <CardContent className="p-8 text-center">
+              <Loader2 className="animate-spin h-12 w-12 text-indigo-dark mx-auto mb-4" />
+              <p className="text-slate-600">Validando enlace...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Formulario de cambio de contraseña
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
       <div className="container mx-auto px-4 max-w-md">

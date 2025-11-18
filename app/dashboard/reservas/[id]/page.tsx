@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth } from "@/app/hooks/useAuth"
-import { useSupabase } from "@/app/hooks/useSupabase"
+import { useAuth } from "../../../hooks/useAuth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import {
   ArrowLeft,
@@ -15,12 +24,13 @@ import {
   Clock,
   Package,
   CreditCard,
+  AlertCircle,
   CheckCircle,
   XCircle,
   Loader2,
   Info,
-  Copy,
 } from "lucide-react"
+import { supabase } from "../../../lib/supabaseClient"
 
 interface ReservationDetails {
   id: string
@@ -38,7 +48,7 @@ interface ReservationDetails {
     name: string
     brand: string
     image_url: string
-    monthly_price: number
+    daily_price: number
     description?: string
     status: string
   } | null
@@ -56,7 +66,6 @@ export default function ReservationDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = useSupabase()
   const reservationId = params.id as string
 
   const [reservation, setReservation] = useState<ReservationDetails | null>(null)
@@ -65,7 +74,6 @@ export default function ReservationDetailsPage() {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
-  const [copiedId, setCopiedId] = useState(false)
 
   useEffect(() => {
     const fetchReservationDetails = async () => {
@@ -86,17 +94,9 @@ export default function ReservationDetailsPage() {
               name,
               brand,
               image_url,
-              monthly_price,
+              daily_price,
               description,
               status
-            ),
-            profiles (
-              id,
-              full_name,
-              email,
-              phone,
-              membership_type,
-              membership_status
             )
           `)
           .eq("id", reservationId)
@@ -105,12 +105,34 @@ export default function ReservationDetailsPage() {
 
         if (error) {
           console.error("[ReservationDetails] Error fetching reservation:", error)
-          setError("No se pudo cargar la reserva. Verifica que existe y te pertenece.")
-          throw error
+          console.error("[ReservationDetails] Error details:", JSON.stringify(error, null, 2))
+          setError(`No se pudo cargar la reserva: ${error.message || 'Error desconocido'}`)
+          setLoading(false)
+          return
+        }
+
+        if (!data) {
+          console.error("[ReservationDetails] No data returned")
+          setError("Reserva no encontrada")
+          setLoading(false)
+          return
+        }
+
+        // Obtener datos del perfil del usuario por separado
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone, membership_type, membership_status")
+          .eq("id", user.id)
+          .single()
+
+        // Combinar datos
+        const enrichedData = {
+          ...data,
+          profiles: profileData || null
         }
 
         console.log("[ReservationDetails] Reservation loaded successfully")
-        setReservation(data)
+        setReservation(enrichedData as ReservationDetails)
       } catch (error) {
         console.error("[ReservationDetails] Error:", error)
         setError(error instanceof Error ? error.message : "Error desconocido")
@@ -120,7 +142,7 @@ export default function ReservationDetailsPage() {
     }
 
     fetchReservationDetails()
-  }, [user, reservationId, supabase])
+  }, [user, reservationId])
 
   const handleCancelReservation = async () => {
     if (!reservation || !user) return
@@ -200,18 +222,6 @@ export default function ReservationDetailsPage() {
 
   const canCancel = reservation && ["pending", "confirmed"].includes(reservation.status)
 
-  const copyReservationId = async () => {
-    if (!reservation) return
-
-    try {
-      await navigator.clipboard.writeText(reservation.id)
-      setCopiedId(true)
-      setTimeout(() => setCopiedId(false), 2000)
-    } catch (error) {
-      console.error("Error copying to clipboard:", error)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -223,7 +233,11 @@ export default function ReservationDetailsPage() {
   if (error || !reservation) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Button onClick={() => router.push("/dashboard/reservas")} variant="ghost" className="mb-4">
+        <Button
+          onClick={() => router.push("/dashboard/reservas")}
+          variant="ghost"
+          className="mb-4"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Reservas
         </Button>
@@ -258,37 +272,18 @@ export default function ReservationDetailsPage() {
     <div className="max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Button onClick={() => router.push("/dashboard/reservas")} variant="ghost" className="mb-4">
+        <Button
+          onClick={() => router.push("/dashboard/reservas")}
+          variant="ghost"
+          className="mb-4"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Reservas
         </Button>
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-3xl font-serif text-slate-900 mb-2">Detalles de Reserva</h2>
-            <div className="flex items-center gap-3">
-              <code className="text-slate-600 font-mono text-sm bg-slate-50 px-3 py-1.5 rounded border border-slate-200">
-                ID: {reservation.id.substring(0, 18)}...
-              </code>
-              <Button
-                onClick={copyReservationId}
-                size="sm"
-                variant="outline"
-                className="h-8 px-3 hover:bg-green-50 hover:border-green-200 transition-colors bg-transparent"
-                title="Copiar ID completo"
-              >
-                {copiedId ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
-                    <span className="text-green-600 text-xs font-medium">Copiado</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 text-slate-500 mr-1" />
-                    <span className="text-slate-600 text-xs">Copiar</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            <p className="text-slate-600">ID: {reservation.id.substring(0, 8)}...</p>
           </div>
           {getStatusBadge(reservation.status)}
         </div>
@@ -318,7 +313,9 @@ export default function ReservationDetailsPage() {
           <XCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
             Esta reserva fue cancelada
-            {reservation.cancelled_at && <> el {new Date(reservation.cancelled_at).toLocaleDateString("es-ES")}</>}
+            {reservation.cancelled_at && (
+              <> el {new Date(reservation.cancelled_at).toLocaleDateString("es-ES")}</>
+            )}
             {reservation.cancellation_reason && (
               <>
                 <br />
@@ -345,7 +342,7 @@ export default function ReservationDetailsPage() {
                 <div className="w-32 h-32 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                   {reservation.bags?.image_url ? (
                     <img
-                      src={reservation.bags.image_url || "/placeholder.svg"}
+                      src={reservation.bags.image_url}
                       alt={reservation.bags.name}
                       className="w-full h-full object-cover"
                     />
@@ -363,7 +360,7 @@ export default function ReservationDetailsPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      ${reservation.bags?.monthly_price || 0}/mes
+                      ${reservation.bags?.daily_price || 0}/día
                     </Badge>
                     <Badge
                       variant="outline"
@@ -446,12 +443,12 @@ export default function ReservationDetailsPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Precio mensual:</span>
-                  <span className="font-medium">${reservation.bags?.monthly_price || 0}</span>
+                  <span className="text-slate-600">Precio por día:</span>
+                  <span className="font-medium">${reservation.bags?.daily_price || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Período:</span>
-                  <span className="font-medium">{daysTotal} días</span>
+                  <span className="text-slate-600">Número de días:</span>
+                  <span className="font-medium">{daysTotal}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-200">
                   <span className="text-lg font-medium text-slate-900">Total:</span>
@@ -484,7 +481,9 @@ export default function ReservationDetailsPage() {
                   />
                   <div className="flex-1">
                     <p className="font-medium text-sm">Creada</p>
-                    <p className="text-xs text-slate-600">{new Date(reservation.created_at).toLocaleString("es-ES")}</p>
+                    <p className="text-xs text-slate-600">
+                      {new Date(reservation.created_at).toLocaleString("es-ES")}
+                    </p>
                   </div>
                 </div>
 
@@ -544,15 +543,27 @@ export default function ReservationDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {canCancel && (
-                <Button onClick={() => setShowCancelDialog(true)} variant="destructive" className="w-full">
+                <Button
+                  onClick={() => setShowCancelDialog(true)}
+                  variant="destructive"
+                  className="w-full"
+                >
                   <XCircle className="h-4 w-4 mr-2" />
                   Cancelar Reserva
                 </Button>
               )}
-              <Button onClick={() => router.push("/dashboard/reservas")} variant="outline" className="w-full">
+              <Button
+                onClick={() => router.push("/dashboard/reservas")}
+                variant="outline"
+                className="w-full"
+              >
                 Volver a Mis Reservas
               </Button>
-              <Button onClick={() => router.push("/catalog")} variant="outline" className="w-full">
+              <Button
+                onClick={() => router.push("/catalog")}
+                variant="outline"
+                className="w-full"
+              >
                 Explorar Catálogo
               </Button>
             </CardContent>
@@ -564,35 +575,17 @@ export default function ReservationDetailsPage() {
               <CardTitle className="text-sm">Información</CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-slate-600 space-y-2">
-              <div className="pb-2 border-b border-slate-100">
-                <p className="font-medium text-slate-700 mb-1">Fecha del pedido</p>
-                <p>
-                  {new Date(reservation.created_at).toLocaleDateString("es-ES", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <div className="pt-2">
-                <p className="font-medium text-slate-700 mb-1">Última actualización</p>
-                <p>{new Date(reservation.updated_at).toLocaleString("es-ES")}</p>
-              </div>
-              <div className="pt-2 border-t border-slate-100">
-                <p className="font-medium text-slate-700 mb-2">ID de la reserva</p>
-                <code className="text-xs bg-slate-50 px-2 py-1.5 rounded font-mono break-all block border border-slate-200">
-                  {reservation.id}
-                </code>
-                <p className="text-[10px] text-slate-500 mt-1">Usa este ID para soporte o seguimiento</p>
-              </div>
+              <p>
+                <strong>Última actualización:</strong>
+                <br />
+                {new Date(reservation.updated_at).toLocaleString("es-ES")}
+              </p>
               {reservation.profiles?.membership_type && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="font-medium text-slate-700 mb-1">Tu membresía</p>
-                  <p className="capitalize">{reservation.profiles.membership_type}</p>
-                </div>
+                <p>
+                  <strong>Tu membresía:</strong>
+                  <br />
+                  {reservation.profiles.membership_type}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -600,47 +593,45 @@ export default function ReservationDetailsPage() {
       </div>
 
       {/* Dialog de cancelación */}
-      {showCancelDialog && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <Card className="max-w-lg w-full">
-            <CardHeader>
-              <CardTitle>¿Cancelar esta reserva?</CardTitle>
-              <p className="text-sm text-slate-600 mt-2">
-                Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para otros
-                usuarios.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700 mb-2 block">
-                  Motivo de cancelación (opcional)
-                </label>
-                <Textarea
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  placeholder="Cuéntanos por qué cancelas esta reserva..."
-                  className="min-h-[100px]"
-                />
-              </div>
-              <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelling}>
-                  No, mantener reserva
-                </Button>
-                <Button onClick={handleCancelReservation} disabled={cancelling} className="bg-red-600 hover:bg-red-700">
-                  {cancelling ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Cancelando...
-                    </>
-                  ) : (
-                    "Sí, cancelar reserva"
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cancelar esta reserva?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para
+              otros usuarios.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            <label className="text-sm font-medium text-slate-700 mb-2 block">
+              Motivo de cancelación (opcional)
+            </label>
+            <Textarea
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              placeholder="Cuéntanos por qué cancelas esta reserva..."
+              className="min-h-[100px]"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>No, mantener reserva</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelReservation}
+              disabled={cancelling}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelling ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                "Sí, cancelar reserva"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

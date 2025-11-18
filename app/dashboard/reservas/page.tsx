@@ -1,11 +1,11 @@
 "use client"
 
-// Reservas Dashboard - v1.0.1
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ShoppingBag, Loader2, Package, Calendar, Filter, X } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
@@ -196,10 +196,7 @@ export default function ReservasPage() {
               <div className="text-sm text-slate-600">Activas</div>
             </CardContent>
           </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("confirmed")}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("confirmed")}>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
               <div className="text-sm text-slate-600">Confirmadas</div>
@@ -211,19 +208,13 @@ export default function ReservasPage() {
               <div className="text-sm text-slate-600">Pendientes</div>
             </CardContent>
           </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("completed")}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("completed")}>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
               <div className="text-sm text-slate-600">Completadas</div>
             </CardContent>
           </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("cancelled")}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
               <div className="text-sm text-slate-600">Canceladas</div>
@@ -263,7 +254,7 @@ export default function ReservasPage() {
                 <Button
                   onClick={clearFilter}
                   variant="outline"
-                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
+                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif"
                 >
                   Ver Todas
                 </Button>

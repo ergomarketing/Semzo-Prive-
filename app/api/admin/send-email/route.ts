@@ -15,52 +15,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    const smtpHost = process.env.SMTP_HOST
-    const smtpUser = process.env.SMTP_USER
-    const smtpPass = process.env.SMTP_PASS
-
-    console.log("[v0] 📧 SMTP Config check:", {
-      hasHost: !!smtpHost,
-      hasUser: !!smtpUser,
-      hasPass: !!smtpPass,
-    })
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.log("[v0] ⚠️ SMTP not configured, email would be sent to:", to)
-      console.log("[v0] ⚠️ Subject:", subject)
-      console.log("[v0] ⚠️ Body:", body)
-
-      // Return success but explain SMTP is not configured
-      return NextResponse.json({
-        success: true,
-        message: "SMTP no configurado. Configura SMTP_HOST, SMTP_USER, SMTP_PASS en las variables de entorno.",
-        details: {
-          to,
-          subject,
-          previewBody: body.substring(0, 100),
-        },
-      })
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.log("[v0] ❌ Missing SMTP environment variables")
+      return NextResponse.json({ error: "Configuración SMTP incompleta" }, { status: 500 })
     }
 
     const smtpPort = Number.parseInt(process.env.SMTP_PORT || "465")
     const isSecure = smtpPort === 465
 
     console.log("[v0] 📧 Creating transporter with:", {
-      host: smtpHost,
+      host: process.env.SMTP_HOST,
       port: smtpPort,
       secure: isSecure,
-      user: smtpUser,
+      user: process.env.SMTP_USER,
     })
 
     const nodemailer = await import("nodemailer")
 
     const transporter = nodemailer.default.createTransport({
-      host: smtpHost,
+      host: process.env.SMTP_HOST,
       port: smtpPort,
       secure: isSecure,
       auth: {
-        user: smtpUser,
-        pass: smtpPass,
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
       connectionTimeout: 30000,
       greetingTimeout: 30000,
@@ -73,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log("[v0] 📧 Sending email...")
 
     const info = await transporter.sendMail({
-      from: `"Semzo Privé" <${smtpUser}>`,
+      from: `"Semzo Privé" <${process.env.SMTP_USER}>`,
       to,
       subject,
       text: body,

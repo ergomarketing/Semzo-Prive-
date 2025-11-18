@@ -42,7 +42,7 @@ export default function CTASection() {
                 Comenzar suscripción
               </Button>
               <Button
-                asChild
+                onClick={() => (window.location.href = "/support")}
                 className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium backdrop-blur-sm transition-all duration-300"
                 style={{
                   backgroundColor: "rgba(255, 240, 243, 0.6)",
@@ -50,13 +50,7 @@ export default function CTASection() {
                   border: "1px solid rgba(244, 196, 204, 0.3)",
                 }}
               >
-                <a 
-                  href="https://wa.me/34624239394?text=Hola%2C%20me%20gustar%C3%ADa%20agendar%20una%20consulta%20sobre%20la%20membres%C3%ADa%20Semzo%20Priv%C3%A9" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  Agendar consulta
-                </a>
+                Agendar consulta
               </Button>
             </div>
           </div>
