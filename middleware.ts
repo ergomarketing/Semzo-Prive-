@@ -85,7 +85,27 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
 
-  if (isAdminRoute || isApiRoute) {
+  // Proteger rutas de admin
+  if (isAdminRoute && pathname !== "/admin/login") {
+    if (!session) {
+      console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
+      return NextResponse.redirect(new URL("/admin/login", request.url))
+    }
+
+    // Verificar si el usuario es administrador
+    const userEmail = session.user.email
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
+      "admin@semzoprive.com",
+    ]
+    const isAdmin = adminEmails.includes(userEmail || "")
+
+    if (!isAdmin) {
+      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /dashboard`)
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+  }
+
+  if (isApiRoute) {
     return response
   }
 

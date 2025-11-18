@@ -46,7 +46,9 @@ export default function AdminShippingPage() {
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
-    const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
+    // Obtener emails de admin desde variables de entorno
+    const adminEmailsEnv = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@semzoprive.com"
+    const adminEmails = adminEmailsEnv.split(",").map((email) => email.trim())
 
     if (!authLoading && user) {
       console.log("[v0] Admin Panel - Checking authorization for:", user.email)
