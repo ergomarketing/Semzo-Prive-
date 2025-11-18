@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     const { data: subscribers, error } = await supabase
-      .from("newsletter_subscriptions")
+      .from("newsletter_subscribers")
       .select("*")
       .order("subscribed_at", { ascending: false })
 
