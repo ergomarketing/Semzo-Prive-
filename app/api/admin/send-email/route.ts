@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
 
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.log("[v0] ❌ Missing SMTP environment variables")
-      return NextResponse.json({ error: "Configuración SMTP incompleta" }, { status: 500 })
+      return NextResponse.json({ 
+        error: "Configuración SMTP incompleta. Por favor configura las variables SMTP_HOST, SMTP_USER, SMTP_PASS en Vercel." 
+      }, { status: 500 })
     }
 
     const smtpPort = Number.parseInt(process.env.SMTP_PORT || "465")
