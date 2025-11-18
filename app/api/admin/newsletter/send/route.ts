@@ -6,12 +6,12 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📧 Iniciando envío de newsletter")
 
-    // Validar que tenemos la API key de SendGrid
+    // Validar que tenemos la API key de Resend
     const apiKey = process.env.EMAIL_API_KEY
     if (!apiKey) {
-      console.error("[v0] ❌ SendGrid API key not found")
+      console.error("[v0] ❌ Resend API key not found")
       return NextResponse.json(
-        { error: "SendGrid API key not configured" },
+        { error: "Email API key not configured" },
         { status: 500 }
       )
     }
@@ -56,74 +56,46 @@ export async function POST(request: Request) {
       })
     }
 
-    const sendGridPayload = {
-      personalizations: subscribers.map((sub: { email: string }) => ({
-        to: [{ email: sub.email }],
-      })),
-      from: {
-        email: "newsletter@semzoprive.com", // Usa un email específico para newsletters
-        name: "Semzo Privé Magazine",
-      },
-      subject: subject,
-      content: [
-        {
-          type: "text/plain",
-          value: textContent || "Para ver este mensaje, por favor habilita HTML en tu cliente de correo.",
-        },
-        {
-          type: "text/html",
-          value: htmlContent,
-        },
-      ],
-    }
+    console.log("[v0] 📤 Enviando newsletters con Resend...")
 
-    console.log("[v0] 📤 Enviando a SendGrid:", {
-      recipients: subscribers.length,
-      subject,
-    })
+    const results = await Promise.allSettled(
+      subscribers.map(async (sub: { email: string }) => {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Semzo Magazine <newsletter@semzoprive.com>",
+            to: sub.email,
+            subject: subject,
+            html: htmlContent,
+            text: textContent || htmlContent.replace(/<[^>]*>/g, ""),
+          }),
+        })
 
-    // Enviar emails usando SendGrid
-    const sendGridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sendGridPayload),
-    })
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`[v0] ❌ Error enviando a ${sub.email}:`, errorText)
+          throw new Error(`Failed to send to ${sub.email}`)
+        }
 
-    const responseText = await sendGridResponse.text()
-
-    if (!sendGridResponse.ok) {
-      console.error("[v0] ❌ SendGrid error:", {
-        status: sendGridResponse.status,
-        statusText: sendGridResponse.statusText,
-        body: responseText,
+        return { email: sub.email, success: true }
       })
-      
-      // Parsear el error de SendGrid si es JSON
-      let errorDetails = responseText
-      try {
-        const errorJson = JSON.parse(responseText)
-        errorDetails = JSON.stringify(errorJson, null, 2)
-      } catch {}
-      
-      return NextResponse.json(
-        {
-          error: "Failed to send via SendGrid",
-          details: errorDetails,
-          status: sendGridResponse.status,
-        },
-        { status: 500 }
-      )
-    }
+    )
 
-    console.log("[v0] ✅ Newsletter sent successfully to", subscribers.length, "subscribers")
+    const successful = results.filter((r) => r.status === "fulfilled").length
+    const failed = results.filter((r) => r.status === "rejected").length
+
+    console.log(`[v0] ✅ Newsletter enviado: ${successful} exitosos, ${failed} fallidos`)
 
     return NextResponse.json({
       success: true,
-      message: `Newsletter sent to ${subscribers.length} subscribers`,
-      sent: subscribers.length,
+      message: `Newsletter enviado a ${successful} de ${subscribers.length} suscriptores`,
+      sent: successful,
+      failed: failed,
+      total: subscribers.length,
     })
   } catch (error) {
     console.error("[v0] ❌ Error sending newsletter:", error)
