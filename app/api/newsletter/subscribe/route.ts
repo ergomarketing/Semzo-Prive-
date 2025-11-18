@@ -17,8 +17,7 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Verificar si ya está suscrito
-    const { data: existing } = await supabase.from("newsletter_subscribers").select("*").eq("email", email).single()
+    const { data: existing } = await supabase.from("newsletter_subscribers").select("*").eq("email", email).maybeSingle()
 
     if (existing) {
       if (existing.status === "active") {
