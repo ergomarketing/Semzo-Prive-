@@ -76,7 +76,6 @@ export async function middleware(request: NextRequest) {
     "/contact",
     "/membership",
     "/cart", // Permitir acceso público al carrito para compras sin login
-    "/admin/login", // Permitir acceso al login de admin
   ]
 
   const isAdminRoute = pathname.startsWith("/admin")
@@ -85,7 +84,7 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
 
-  if (isAdminRoute || isApiRoute) {
+  if (isApiRoute) {
     return response
   }
 
