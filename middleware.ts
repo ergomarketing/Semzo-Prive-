@@ -75,8 +75,8 @@ export async function middleware(request: NextRequest) {
     "/about",
     "/contact",
     "/membership",
-    "/cart", // Permitir acceso público al carrito para compras sin login
-    "/admin/login", // Permitir acceso al login de admin sin autenticación
+    "/cart",
+    "/admin/login",
   ]
 
   const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login"
@@ -89,10 +89,10 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  if (isAdminRoute && !session) {
-    const redirectUrl = new URL("/admin/login", request.url)
-    redirectUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(redirectUrl)
+  // El middleware no puede acceder a localStorage del cliente
+  // La verificación se hace en el cliente en app/admin/page.tsx
+  if (isAdminRoute) {
+    return response
   }
 
   // Si no hay sesión y la ruta no es pública, redirigir a login

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
@@ -17,6 +18,7 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalBags: 0,
     availableBags: 0,
@@ -27,10 +29,35 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
+    const adminSession = localStorage.getItem("admin_session")
+    const loginTime = localStorage.getItem("admin_login_time")
+
+    if (!adminSession || adminSession !== "authenticated") {
+      console.log("[v0] ❌ No hay sesión admin, redirigiendo a login...")
+      router.push("/admin/login")
+      return
+    }
+
+    if (loginTime) {
+      const elapsed = Date.now() - parseInt(loginTime)
+      const twentyFourHours = 24 * 60 * 60 * 1000
+      
+      if (elapsed > twentyFourHours) {
+        console.log("[v0] ⏰ Sesión expirada, redirigiendo a login...")
+        localStorage.removeItem("admin_session")
+        localStorage.removeItem("admin_login_time")
+        router.push("/admin/login")
+        return
+      }
+    }
+
+    console.log("[v0] ✅ Sesión admin válida")
+    setIsAuthenticated(true)
     loadDashboardStats()
-  }, [])
+  }, [router])
 
   async function loadDashboardStats() {
     try {
@@ -102,6 +129,10 @@ export default function AdminDashboard() {
       href: "/admin/newsletter",
     },
   ]
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   if (loading) {
     return (
