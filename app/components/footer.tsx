@@ -114,15 +114,15 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Semzo Privé. Todos los derechos reservados.
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            <a href="https://instagram.com/semzoprive" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-700 transition-colors">
               Instagram
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            </a>
+            <a href="https://facebook.com/semzoprive" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-700 transition-colors">
               Facebook
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            </a>
+            <a href="https://linkedin.com/company/semzoprive" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-700 transition-colors">
               LinkedIn
-            </Link>
+            </a>
           </div>
         </div>
       </div>
