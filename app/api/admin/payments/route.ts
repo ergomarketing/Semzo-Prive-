@@ -10,13 +10,7 @@ export async function GET() {
       .select(
         `
         *,
-        profiles!payments_user_id_fkey(full_name, email),
-        reservations!payments_reservation_id_fkey(
-          id,
-          start_date,
-          end_date,
-          bags(name, brand)
-        )
+        profiles!payments_user_id_fkey(full_name, email)
       `,
       )
       .order("created_at", { ascending: false })
@@ -26,7 +20,29 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    return NextResponse.json(data || [])
+    const paymentsWithReservations = await Promise.all(
+      (data || []).map(async (payment) => {
+        if (payment.reservation_id) {
+          const { data: reservation } = await supabase
+            .from("reservations")
+            .select(
+              `
+              id,
+              start_date,
+              end_date,
+              bags(name, brand)
+            `,
+            )
+            .eq("id", payment.reservation_id)
+            .single()
+
+          return { ...payment, reservations: reservation }
+        }
+        return payment
+      }),
+    )
+
+    return NextResponse.json(paymentsWithReservations || [])
   } catch (error) {
     console.error("Error fetching payments:", error)
     return NextResponse.json([])
