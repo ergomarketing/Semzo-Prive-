@@ -76,9 +76,10 @@ export async function middleware(request: NextRequest) {
     "/contact",
     "/membership",
     "/cart", // Permitir acceso público al carrito para compras sin login
+    "/admin/login", // Permitir acceso al login de admin sin autenticación
   ]
 
-  const isAdminRoute = pathname.startsWith("/admin")
+  const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login"
   const isApiRoute = pathname.startsWith("/api")
 
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
@@ -86,6 +87,12 @@ export async function middleware(request: NextRequest) {
 
   if (isApiRoute) {
     return response
+  }
+
+  if (isAdminRoute && !session) {
+    const redirectUrl = new URL("/admin/login", request.url)
+    redirectUrl.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
   // Si no hay sesión y la ruta no es pública, redirigir a login
