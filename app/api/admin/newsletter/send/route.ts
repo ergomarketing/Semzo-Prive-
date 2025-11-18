@@ -4,9 +4,12 @@ export async function POST(request: Request) {
   try {
     const { subject, htmlContent, textContent } = await request.json()
 
+    console.log("[v0] 📧 Iniciando envío de newsletter")
+
     // Validar que tenemos la API key de SendGrid
     const apiKey = process.env.EMAIL_API_KEY
     if (!apiKey) {
+      console.error("[v0] ❌ SendGrid API key not found")
       return NextResponse.json(
         { error: "SendGrid API key not configured" },
         { status: 500 }
@@ -24,6 +27,8 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log("[v0] 📊 Obteniendo suscriptores activos...")
+
     const subsResponse = await fetch(
       `${supabaseUrl}/rest/v1/newsletter_subscriptions?status=eq.active&select=email`,
       {
@@ -35,10 +40,13 @@ export async function POST(request: Request) {
     )
 
     if (!subsResponse.ok) {
+      const errorText = await subsResponse.text()
+      console.error("[v0] ❌ Error fetching subscribers:", errorText)
       throw new Error("Failed to fetch subscribers")
     }
 
     const subscribers = await subsResponse.json()
+    console.log(`[v0] 👥 Found ${subscribers.length} active subscribers`)
 
     if (subscribers.length === 0) {
       return NextResponse.json({
@@ -48,6 +56,36 @@ export async function POST(request: Request) {
       })
     }
 
+    const sendGridPayload = {
+      personalizations: subscribers.map((sub: { email: string }) => ({
+        to: [{ email: sub.email }],
+      })),
+      from: {
+        email: "newsletter@semzoprive.com", // Usa un email específico para newsletters
+        name: "Semzo Privé Magazine",
+      },
+      reply_to: {
+        email: "info@semzoprive.com",
+        name: "Semzo Privé",
+      },
+      subject: subject,
+      content: [
+        {
+          type: "text/plain",
+          value: textContent || "Para ver este mensaje, por favor habilita HTML en tu cliente de correo.",
+        },
+        {
+          type: "text/html",
+          value: htmlContent,
+        },
+      ],
+    }
+
+    console.log("[v0] 📤 Enviando a SendGrid:", {
+      recipients: subscribers.length,
+      subject,
+    })
+
     // Enviar emails usando SendGrid
     const sendGridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
@@ -55,33 +93,36 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        personalizations: subscribers.map((sub: { email: string }) => ({
-          to: [{ email: sub.email }],
-        })),
-        from: {
-          email: "info@semzoprive.com",
-          name: "Semzo Privé",
-        },
-        subject: subject,
-        content: [
-          {
-            type: "text/plain",
-            value: textContent,
-          },
-          {
-            type: "text/html",
-            value: htmlContent,
-          },
-        ],
-      }),
+      body: JSON.stringify(sendGridPayload),
     })
 
+    const responseText = await sendGridResponse.text()
+
     if (!sendGridResponse.ok) {
-      const errorText = await sendGridResponse.text()
-      console.error("SendGrid error:", errorText)
-      throw new Error(`SendGrid API error: ${sendGridResponse.status}`)
+      console.error("[v0] ❌ SendGrid error:", {
+        status: sendGridResponse.status,
+        statusText: sendGridResponse.statusText,
+        body: responseText,
+      })
+      
+      // Parsear el error de SendGrid si es JSON
+      let errorDetails = responseText
+      try {
+        const errorJson = JSON.parse(responseText)
+        errorDetails = JSON.stringify(errorJson, null, 2)
+      } catch {}
+      
+      return NextResponse.json(
+        {
+          error: "Failed to send via SendGrid",
+          details: errorDetails,
+          status: sendGridResponse.status,
+        },
+        { status: 500 }
+      )
     }
+
+    console.log("[v0] ✅ Newsletter sent successfully to", subscribers.length, "subscribers")
 
     return NextResponse.json({
       success: true,
@@ -89,9 +130,12 @@ export async function POST(request: Request) {
       sent: subscribers.length,
     })
   } catch (error) {
-    console.error("Error sending newsletter:", error)
+    console.error("[v0] ❌ Error sending newsletter:", error)
     return NextResponse.json(
-      { error: "Failed to send newsletter", details: error instanceof Error ? error.message : "Unknown error" },
+      { 
+        error: "Failed to send newsletter", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      },
       { status: 500 }
     )
   }
