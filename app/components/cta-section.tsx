@@ -42,10 +42,7 @@ export default function CTASection() {
                 Comenzar suscripción
               </Button>
               <Button
-                onClick={() => {
-                  const message = encodeURIComponent("Hola, me gustaría agendar una consulta sobre las membresías Semzo Privé")
-                  window.open(`https://wa.me/34624239394?text=${message}`, "_blank")
-                }}
+                onClick={() => (window.location.href = "/support")}
                 className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium backdrop-blur-sm transition-all duration-300"
                 style={{
                   backgroundColor: "rgba(255, 240, 243, 0.6)",
