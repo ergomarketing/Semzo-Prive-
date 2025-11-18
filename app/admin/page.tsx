@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { Package, Calendar, Users, Clock, DollarSign } from "lucide-react"
+import { Package, Calendar, Users, Clock, DollarSign, Mail } from 'lucide-react'
 
 interface DashboardStats {
   totalBags: number
@@ -91,6 +91,15 @@ export default function AdminDashboard() {
       bgColor: "bg-emerald-50",
       description: "Total facturado",
       href: "/admin/payments",
+    },
+    {
+      title: "Newsletter",
+      value: "Enviar",
+      icon: Mail,
+      color: "text-rose-600",
+      bgColor: "bg-rose-50",
+      description: "Gestionar suscriptores",
+      href: "/admin/newsletter",
     },
   ]
 
