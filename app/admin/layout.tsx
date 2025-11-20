@@ -108,18 +108,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Si estamos en la página de login, no aplicar el layout de protección
+  // Si estamos en la página de login, no aplicar el layout de navegación
   if (pathname === "/admin/login") {
     return <>{children}</>
   }
 
+  // Si no hay usuario, el middleware debería haber redirigido a /admin/login
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <Card className="w-full max-w-md">
           <div className="p-6 text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Restringido</h3>
-            <p className="text-gray-600 mb-4">Debes iniciar sesión para acceder al panel de administración.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error de Sesión</h3>
+            <p className="text-gray-600 mb-4">No se pudo cargar la sesión. Por favor, inicia sesión de nuevo.</p>
             <Button onClick={() => router.push("/admin/login")} className="bg-blue-600 hover:bg-blue-700 w-full">
               Iniciar Sesión
             </Button>

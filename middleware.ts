@@ -102,8 +102,8 @@ export async function middleware(request: NextRequest) {
     const isAdmin = adminEmails.includes(userEmail || "")
 
     if (!isAdmin) {
-      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /dashboard`)
-      return NextResponse.redirect(new URL("/dashboard", request.url))
+      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /`)
+      return NextResponse.redirect(new URL("/", request.url))
     }
   }
 
@@ -120,6 +120,17 @@ export async function middleware(request: NextRequest) {
 
   // Si hay sesión y está en ruta de auth, redirigir a dashboard
   if (session && isAuthRoute && pathname !== "/auth/callback") {
+    // Si el usuario es admin, redirigir a /admin, si no, a /dashboard
+    const userEmail = session.user.email
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
+      "admin@semzoprive.com",
+    ]
+    const isAdmin = adminEmails.includes(userEmail || "")
+
+    if (isAdmin) {
+      return NextResponse.redirect(new URL("/admin", request.url))
+    }
+
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
