@@ -99,6 +99,7 @@ export async function middleware(request: NextRequest) {
     // Usar un valor por defecto seguro si la variable no está configurada
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
       "admin@semzoprive.com", // Valor por defecto
+      "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
     ]
     const isAdmin = adminEmails.includes(userEmail || "")
 
@@ -126,6 +127,7 @@ export async function middleware(request: NextRequest) {
     // Usar un valor por defecto seguro si la variable no está configurada
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
       "admin@semzoprive.com", // Valor por defecto
+      "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
     ]
     const isAdmin = adminEmails.includes(userEmail || "")
 
