@@ -107,6 +107,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
+  // Si estamos en la página de login, no aplicar el layout de protección
+  if (pathname === "/admin/login") {
+    return <>{children}</>
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
