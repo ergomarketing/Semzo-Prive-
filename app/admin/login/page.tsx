@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ADMIN_CONFIG } from "@/app/config/admin-config"
+import { createClient } from "@/utils/supabase/client"
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -24,24 +24,21 @@ export default function AdminLogin() {
     setError("")
 
     try {
-      console.log("[v0] 🔍 Intentando login admin con:", username)
+      console.log("[v0] 🔍 Intentando login admin con:", email)
 
-      // Verificar credenciales contra ADMIN_CONFIG
-      const isValidUsername = username === ADMIN_CONFIG.username
-      const isValidPassword = password === ADMIN_CONFIG.password
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      console.log("[v0] Validación:", { isValidUsername, passwordMatch: isValidPassword })
-
-      if (isValidUsername && isValidPassword) {
-        // Guardar sesión
-        localStorage.setItem("admin_session", "authenticated")
-        localStorage.setItem("admin_login_time", Date.now().toString())
-
+      if (error) {
+        setError("Credenciales inválidas. Verifica tu email y contraseña.")
+        console.error("[v0] ❌ Error de login de Supabase:", error)
+      } else {
+        // Supabase maneja la sesión. Solo redirigimos.
         console.log("[v0] ✅ Login exitoso, redirigiendo...")
         router.push("/admin")
-      } else {
-        setError("Usuario o contraseña incorrectos")
-        console.log("[v0] ❌ Credenciales inválidas")
       }
     } catch (error) {
       console.error("[v0] Error en login:", error)
@@ -64,17 +61,17 @@ export default function AdminLogin() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="username" className="text-sm font-medium text-slate-700">
-                Usuario
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1"
-                required
-              />
+                <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1"
+                  required
+                />
             </div>
 
             <div>
@@ -107,29 +104,7 @@ export default function AdminLogin() {
           </form>
 
           <div className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDebug(!showDebug)}
-              className="w-full text-xs"
-            >
-              {showDebug ? "Ocultar" : "Mostrar"} Info Debug
-            </Button>
-
-            {showDebug && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
-                <p>
-                  <strong>Usuario esperado:</strong> {ADMIN_CONFIG.username}
-                </p>
-                <p>
-                  <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
-                </p>
-                <p className="text-slate-500 text-[10px] mt-2">
-                  Las credenciales se verifican localmente para acceso rápido
-                </p>
-              </div>
-            )}
+            {/* Eliminada la sección de debug de credenciales fijas */}
           </div>
 
           <div className="mt-6 p-3 bg-rose-pastel/10 rounded-lg">
