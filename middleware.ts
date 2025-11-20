@@ -96,8 +96,9 @@ export async function middleware(request: NextRequest) {
 
     // Verificar si el usuario es administrador
     const userEmail = session.user.email
+    // Usar un valor por defecto seguro si la variable no está configurada
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
-      "admin@semzoprive.com",
+      "admin@semzoprive.com", // Valor por defecto
     ]
     const isAdmin = adminEmails.includes(userEmail || "")
 
@@ -122,8 +123,9 @@ export async function middleware(request: NextRequest) {
   if (session && isAuthRoute && pathname !== "/auth/callback") {
     // Si el usuario es admin, redirigir a /admin, si no, a /dashboard
     const userEmail = session.user.email
+    // Usar un valor por defecto seguro si la variable no está configurada
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
-      "admin@semzoprive.com",
+      "admin@semzoprive.com", // Valor por defecto
     ]
     const isAdmin = adminEmails.includes(userEmail || "")
 
