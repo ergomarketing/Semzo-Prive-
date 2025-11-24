@@ -33,12 +33,27 @@ interface NavItem {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    // Verificar si el usuario está logueado como admin (sistema de credenciales fijas)
+    const token = localStorage.getItem("admin_session_token")
+    const email = localStorage.getItem("admin_email")
+    if (token === "valid_admin_token" && email) {
+      setIsAdmin(true)
+    } else {
+      setIsAdmin(false)
+    }
+  }, [user]) // Re-evaluar si el usuario de Supabase cambia (aunque ya no se usa)
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const handleSignOut = async () => {
-    await signOut()
+    // Cerrar sesión del sistema de credenciales fijas
+    localStorage.removeItem("admin_session_token")
+    localStorage.removeItem("admin_email")
+    setIsAdmin(false)
     router.push("/")
   }
 
@@ -113,15 +128,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>
   }
 
-  // Si no hay usuario, el middleware debería haber redirigido a /admin/login
-  if (!user) {
+  // Si no hay sesión de admin, redirigir a login
+  if (!isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <Card className="w-full max-w-md">
           <div className="p-6 text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error de Sesión</h3>
-            <p className="text-gray-600 mb-4">No se pudo cargar la sesión. Por favor, inicia sesión de nuevo.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Requerido</h3>
+            <p className="text-gray-600 mb-4">Debes iniciar sesión como administrador.</p>
             <Button onClick={() => router.push("/admin/login")} className="bg-blue-600 hover:bg-blue-700 w-full">
               Iniciar Sesión
             </Button>
@@ -187,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {sidebarOpen && (
             <div className="px-4 py-2 text-sm">
               <p className="text-gray-400 text-xs">Conectado como:</p>
-              <p className="text-white font-medium truncate">{user.email}</p>
+              <p className="text-white font-medium truncate">{localStorage.getItem("admin_email")}</p>
             </div>
           )}
           <button
@@ -210,7 +225,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{user.email}</p>
+              <p className="text-sm font-medium text-gray-900">{localStorage.getItem("admin_email")}</p>
               <p className="text-xs text-gray-500">Administrador</p>
             </div>
           </div>
