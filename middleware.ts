@@ -59,9 +59,10 @@ export async function middleware(request: NextRequest) {
   const adminToken = request.cookies.get("admin_session_token")?.value
   const adminEmail = request.cookies.get("admin_email")?.value
 
+  let session = null
   if (adminToken === "valid_admin_token" && adminEmail) {
     // Simular una sesión para el middleware
-    const session = { user: { email: adminEmail } }
+    session = { user: { email: adminEmail } }
 
   const { pathname } = request.nextUrl
 
@@ -93,7 +94,7 @@ export async function middleware(request: NextRequest) {
 
   // Proteger rutas de admin
   if (isAdminRoute && pathname !== "/admin/login") {
-    if (adminToken === "valid_admin_token") {{
+    if (!adminToken) {
       console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
       return NextResponse.redirect(new URL("/admin/login", request.url))
     }
