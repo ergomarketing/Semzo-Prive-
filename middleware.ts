@@ -97,7 +97,8 @@ export async function middleware(request: NextRequest) {
     // Verificar si el usuario es administrador
     const userEmail = session.user.email
     // Usar un valor por defecto seguro si la variable no está configurada
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
+    // Usar la variable de entorno del usuario para el email de administrador
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
       "admin@semzoprive.com", // Valor por defecto
       "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
     ]
@@ -125,7 +126,8 @@ export async function middleware(request: NextRequest) {
     // Si el usuario es admin, redirigir a /admin, si no, a /dashboard
     const userEmail = session.user.email
     // Usar un valor por defecto seguro si la variable no está configurada
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
+    // Usar la variable de entorno del usuario para el email de administrador
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
       "admin@semzoprive.com", // Valor por defecto
       "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
     ]
