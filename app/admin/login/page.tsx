@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/utils/supabase/client"
+// import { createClient } from "@/utils/supabase/client" // Ya no se usa Supabase para este login
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -23,26 +23,20 @@ export default function AdminLogin() {
     setLoading(true)
     setError("")
 
-    try {
-      console.log("[v0] 🔍 Intentando login admin con:", email)
+    const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD
 
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      // Simular la creación de una sesión simple (usando localStorage o cookies)
+      // Para mantener la sesión, usaremos un simple token en localStorage
+      localStorage.setItem("admin_session_token", "valid_admin_token")
+      localStorage.setItem("admin_email", email)
 
-      if (error) {
-        setError("Credenciales inválidas. Verifica tu email y contraseña.")
-        console.error("[v0] ❌ Error de login de Supabase:", error)
-      } else {
-        // Supabase maneja la sesión. Solo redirigimos.
-        console.log("[v0] ✅ Login exitoso, redirigiendo...")
-        router.push("/admin")
-      }
-    } catch (error) {
-      console.error("[v0] Error en login:", error)
-      setError("Error al procesar el login. Intenta nuevamente.")
+      // Redirigir al panel de administración
+      console.log("[v0] ✅ Login exitoso, redirigiendo...")
+      router.push("/admin")
+    } else {
+      setError("Credenciales inválidas. Verifica tu email y contraseña.")
     }
 
     setLoading(false)

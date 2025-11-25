@@ -55,9 +55,14 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refrescar sesión si existe
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Verificar la sesión de administrador en localStorage (sistema de credenciales fijas)
+  const adminToken = request.cookies.get("admin_session_token")?.value
+  const adminEmail = request.cookies.get("admin_email")?.value
+
+  let session = null
+  if (adminToken === "valid_admin_token" && adminEmail) {
+    // Simular una sesión para el middleware
+    session = { user: { email: adminEmail } }
 
   const { pathname } = request.nextUrl
 
@@ -89,13 +94,13 @@ export async function middleware(request: NextRequest) {
 
   // Proteger rutas de admin
   if (isAdminRoute && pathname !== "/admin/login") {
-    if (!session) {
+    if (!adminToken) {
       console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
       return NextResponse.redirect(new URL("/admin/login", request.url))
     }
 
     // Verificar si el usuario es administrador
-    const userEmail = session.user.email
+    const userEmail = adminEmail
     // Usar un valor por defecto seguro si la variable no está configurada
     // Usar la variable de entorno del usuario para el email de administrador
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
@@ -122,9 +127,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Si hay sesión y está en ruta de auth, redirigir a dashboard
-  if (session && isAuthRoute && pathname !== "/auth/callback") {
+  if (adminToken === "valid_admin_token" && isAuthRoute && pathname !== "/auth/callback") {
     // Si el usuario es admin, redirigir a /admin, si no, a /dashboard
-    const userEmail = session.user.email
+    const userEmail = adminEmail
     // Usar un valor por defecto seguro si la variable no está configurada
     // Usar la variable de entorno del usuario para el email de administrador
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
