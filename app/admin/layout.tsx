@@ -114,6 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Si no hay usuario, el middleware debería haber redirigido a /admin/login
+  // Si llegamos aquí sin usuario, es un error de sesión, pero no de autorización.
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
