@@ -60,9 +60,15 @@ export default function PrivacyPage() {
             <p className="text-slate-700">
               Para cualquier consulta sobre privacidad, contacta con nosotros en:
               <br />
-              Email: privacy@semzoprive.com
+              Email:{" "}
+              <a href="mailto:info@semzoprive.com" className="text-rose-400 hover:text-rose-500">
+                info@semzoprive.com
+              </a>
               <br />
-              Teléfono: +34 911 234 567
+              Teléfono:{" "}
+              <a href="tel:+34624239394" className="text-rose-400 hover:text-rose-500">
+                +34 624 239 394
+              </a>
             </p>
 
             <p className="text-sm text-slate-500 mt-8 pt-8 border-t border-slate-200">
