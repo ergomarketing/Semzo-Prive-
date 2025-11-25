@@ -65,7 +65,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className="text-slate-500 hover:text-slate-700 transition-colors">
+                <Link href="/legal/cookies" className="text-slate-500 hover:text-slate-700 transition-colors">
                   Cookies
                 </Link>
               </li>

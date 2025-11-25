@@ -83,6 +83,9 @@ export async function middleware(request: NextRequest) {
     "/membership",
     "/cart", // Permitir acceso público al carrito para compras sin login
     "/admin/login", // Permitir acceso al login de admin
+    "/legal/terms", // Agregar rutas legales como públicas
+    "/legal/privacy",
+    "/legal/cookies",
   ]
 
   const isAdminRoute = pathname.startsWith("/admin")
