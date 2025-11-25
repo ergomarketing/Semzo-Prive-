@@ -1,4 +1,4 @@
-'''"use client" 
+"use client"
 
 import type React from "react"
 import { useState, useEffect } from "react"
@@ -229,4 +229,4 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   )
 }
-'''
+
