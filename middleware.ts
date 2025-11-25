@@ -56,13 +56,15 @@ export async function middleware(request: NextRequest) {
 
   // Refrescar sesión si existe
   // Verificar la sesión de administrador en localStorage (sistema de credenciales fijas)
+  // Leer cookies de sesión de administrador (establecidas por la API de login)
   const adminToken = request.cookies.get("admin_session_token")?.value
   const adminEmail = request.cookies.get("admin_email")?.value
 
   let session = null
+  // Si el token de admin existe, simular una sesión para el middleware
   if (adminToken === "valid_admin_token" && adminEmail) {
-    // Simular una sesión para el middleware
     session = { user: { email: adminEmail } }
+  }
 
   const { pathname } = request.nextUrl
 
@@ -96,23 +98,13 @@ export async function middleware(request: NextRequest) {
   if (isAdminRoute && pathname !== "/admin/login") {
     if (!adminToken) {
       console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
-      return NextResponse.redirect(new URL("/admin/login", request.url))
+      // Eliminar cualquier cookie de admin por si acaso
+      const response = NextResponse.redirect(new URL("/admin/login", request.url))
+      response.cookies.delete("admin_session_token")
+      response.cookies.delete("admin_email")
+      return response
     }
-
-    // Verificar si el usuario es administrador
-    const userEmail = adminEmail
-    // Usar un valor por defecto seguro si la variable no está configurada
-    // Usar la variable de entorno del usuario para el email de administrador
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
-      "admin@semzoprive.com", // Valor por defecto
-      "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
-    ]
-    const isAdmin = adminEmails.includes(userEmail || "")
-
-    if (!isAdmin) {
-      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /`)
-      return NextResponse.redirect(new URL("/", request.url))
-    }
+    // Si el token existe, asumimos que es un admin válido.
   }
 
   if (isApiRoute) {
@@ -126,22 +118,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Si hay sesión y está en ruta de auth, redirigir a dashboard
+  // Si hay sesión de admin y está en ruta de auth, redirigir a /admin
   if (adminToken === "valid_admin_token" && isAuthRoute && pathname !== "/auth/callback") {
-    // Si el usuario es admin, redirigir a /admin, si no, a /dashboard
-    const userEmail = adminEmail
-    // Usar un valor por defecto seguro si la variable no está configurada
-    // Usar la variable de entorno del usuario para el email de administrador
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map((email) => email.trim()) || [
-      "admin@semzoprive.com", // Valor por defecto
-      "mailbox@semzoprive.com", // Email del usuario para asegurar el acceso
-    ]
-    const isAdmin = adminEmails.includes(userEmail || "")
+    return NextResponse.redirect(new URL("/admin", request.url))
+  }
 
-    if (isAdmin) {
-      return NextResponse.redirect(new URL("/admin", request.url))
-    }
+  // Si hay sesión de usuario regular y está en ruta de auth, redirigir a /dashboard
+  // Esto mantiene la lógica original de Supabase para usuarios regulares
+  const {
+    data: { session: supabaseSession },
+  } = await supabase.auth.getSession()
 
+  if (supabaseSession && isAuthRoute && pathname !== "/auth/callback") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

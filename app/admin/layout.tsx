@@ -50,6 +50,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const handleSignOut = async () => {
+    // Llamar a la API de logout para limpiar las cookies
+    await fetch("/api/admin/logout", { method: "POST" })
+    
     localStorage.removeItem("admin_session_token")
     localStorage.removeItem("admin_email")
     setIsAdmin(false)

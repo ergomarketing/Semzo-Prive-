@@ -23,20 +23,31 @@ export default function AdminLogin() {
     setLoading(true)
     setError("")
 
-    const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
-    const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      // Simular la creación de una sesión simple (usando localStorage o cookies)
-      // Para mantener la sesión, usaremos un simple token en localStorage
-      localStorage.setItem("admin_session_token", "valid_admin_token")
-      localStorage.setItem("admin_email", email)
+      if (response.ok) {
+        // La API ya estableció las cookies HTTP-only.
+        // Ahora, establecemos el email en localStorage para el uso en el cliente (layout, etc.)
+        localStorage.setItem("admin_email", email)
+        // También establecemos un token simple en localStorage para la verificación rápida en el cliente (layout)
+        localStorage.setItem("admin_session_token", "valid_admin_token")
 
-      // Redirigir al panel de administración
-      console.log("[v0] ✅ Login exitoso, redirigiendo...")
-      router.push("/admin")
-    } else {
-      setError("Credenciales inválidas. Verifica tu email y contraseña.")
+        console.log("[v1] ✅ Login exitoso, redirigiendo...")
+        router.push("/admin")
+      } else {
+        const data = await response.json()
+        setError(data.error || "Error al iniciar sesión. Inténtalo de nuevo.")
+      }
+    } catch (err) {
+      console.error("Error de red o servidor:", err)
+      setError("Error de conexión. Por favor, verifica tu red.")
     }
 
     setLoading(false)
