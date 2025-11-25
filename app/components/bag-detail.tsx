@@ -8,30 +8,40 @@ import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 
 interface BagDetailProps {
-  id: string
-  name: string
-  brand: string
-  description: string
-  price: string
-  retailPrice: string
-  images: string[]
-  membership: "essentiel" | "signature" | "prive"
-  color: string
-  material: string
-  dimensions: string
-  condition: string
-  year: string
-  availability: {
-    status: "available" | "rented" | "maintenance"
-    date?: string
+  bag: {
+    id: string
+    name: string
+    brand: string
+    description: string
+    price: string
+    retailPrice: string
+    images: string[]
+    membership: "essentiel" | "signature" | "prive"
+    color: string
+    material: string
+    dimensions: string
+    condition: string
+    year: string
+    availability: {
+      status: "available" | "rented"
+      returnDate?: string
+    }
+    rating: number
+    reviews: number
+    features: string[]
+    careInstructions: string[]
   }
-  features?: string[]
-  careInstructions?: string[]
-  rating?: number
-  reviews?: number
+  relatedBags?: {
+    id: string
+    name: string
+    brand: string
+    price: string
+    image: string
+    membership: string
+  }[]
 }
 
-export default function BagDetail({ bag }: { bag: BagDetailProps }) {
+export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [inWishlist, setInWishlist] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
@@ -79,40 +89,9 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
       bgColor: "bg-rose-pastel/20",
       message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
     },
-    maintenance: {
-      label: "En Mantenimiento",
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-      message: "Este bolso está en mantenimiento y estará disponible pronto",
-    },
   }
 
-  const relatedBags = [
-    {
-      id: "chanel-classic-flap",
-      name: "Classic Flap Medium",
-      brand: "Chanel",
-      price: "129€/mes",
-      image: "/images/catalog/chanel-classic-flap.png",
-      membership: "signature",
-    },
-    {
-      id: "dior-lady-dior",
-      name: "Lady Dior Medium",
-      brand: "Dior",
-      price: "129€/mes",
-      image: "/images/catalog/dior-lady-dior.png",
-      membership: "signature",
-    },
-    {
-      id: "lv-capucines-mm",
-      name: "Capucines MM",
-      brand: "Louis Vuitton",
-      price: "129€/mes",
-      image: "/images/catalog/lv-capucines.png",
-      membership: "signature",
-    },
-  ]
+  const bagsToShow = relatedBags || []
 
   const addToWaitlist = async () => {
     setIsAddingToWaitlist(true)
@@ -399,61 +378,23 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
 
                 {activeTab === "features" && (
                   <div className="space-y-4">
-                    {bag.features?.map((feature, index) => (
+                    {bag.features.map((feature, index) => (
                       <div key={index} className="flex items-start">
                         <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
                         <p className="text-slate-700">{feature}</p>
                       </div>
-                    )) || (
-                      <div className="space-y-4">
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Diseño icónico y atemporal</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Materiales de la más alta calidad</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Perfecto para ocasiones especiales</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Compartimentos organizados</p>
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
                 {activeTab === "care" && (
                   <div className="space-y-4">
-                    {bag.careInstructions?.map((instruction, index) => (
+                    {bag.careInstructions.map((instruction, index) => (
                       <div key={index} className="flex items-start">
                         <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
                         <p className="text-slate-700">{instruction}</p>
                       </div>
-                    )) || (
-                      <div className="space-y-4">
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Evitar el contacto con agua y humedad excesiva</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Guardar en lugar seco y ventilado</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Limpiar con paño suave y seco</p>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <p className="text-slate-700">Evitar exposición directa al sol</p>
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -488,7 +429,7 @@ export default function BagDetail({ bag }: { bag: BagDetailProps }) {
         <div className="mt-20">
           <h3 className="font-serif text-3xl text-slate-900 mb-8 text-center">También te puede interesar</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {relatedBags.map((relatedBag) => (
+            {bagsToShow.map((relatedBag) => (
               <div key={relatedBag.id} className="group cursor-pointer">
                 <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-4 group-hover:shadow-lg transition-shadow">
                   <Image

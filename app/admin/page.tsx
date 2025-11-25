@@ -17,8 +17,6 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  // No hay lógica de autorización aquí, el middleware se encarga de eso.
-  // Si llegamos aquí, el usuario es admin.
   const [stats, setStats] = useState<DashboardStats>({
     totalBags: 0,
     availableBags: 0,

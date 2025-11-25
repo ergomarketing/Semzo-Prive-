@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-// import { createClient } from "@/utils/supabase/client" // Ya no se usa Supabase para este login
+import { ADMIN_CONFIG } from "@/app/config/admin-config"
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -24,30 +24,28 @@ export default function AdminLogin() {
     setError("")
 
     try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      console.log("[v0] 🔍 Intentando login admin con:", username)
 
-      if (response.ok) {
-        // La API ya estableció las cookies HTTP-only.
-        // Ahora, establecemos el email en localStorage para el uso en el cliente (layout, etc.)
-        localStorage.setItem("admin_email", email)
-        // También establecemos un token simple en localStorage para la verificación rápida en el cliente (layout)
-        localStorage.setItem("admin_session_token", "valid_admin_token")
+      // Verificar credenciales contra ADMIN_CONFIG
+      const isValidUsername = username === ADMIN_CONFIG.username
+      const isValidPassword = password === ADMIN_CONFIG.password
 
-        console.log("[v1] ✅ Login exitoso, redirigiendo...")
+      console.log("[v0] Validación:", { isValidUsername, passwordMatch: isValidPassword })
+
+      if (isValidUsername && isValidPassword) {
+        // Guardar sesión
+        localStorage.setItem("admin_session", "authenticated")
+        localStorage.setItem("admin_login_time", Date.now().toString())
+
+        console.log("[v0] ✅ Login exitoso, redirigiendo...")
         router.push("/admin")
       } else {
-        const data = await response.json()
-        setError(data.error || "Error al iniciar sesión. Inténtalo de nuevo.")
+        setError("Usuario o contraseña incorrectos")
+        console.log("[v0] ❌ Credenciales inválidas")
       }
-    } catch (err) {
-      console.error("Error de red o servidor:", err)
-      setError("Error de conexión. Por favor, verifica tu red.")
+    } catch (error) {
+      console.error("[v0] Error en login:", error)
+      setError("Error al procesar el login. Intenta nuevamente.")
     }
 
     setLoading(false)
@@ -66,17 +64,17 @@ export default function AdminLogin() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-                <Label htmlFor="email" className="text-sm font-medium text-slate-700">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1"
-                  required
-                />
+              <Label htmlFor="username" className="text-sm font-medium text-slate-700">
+                Usuario
+              </Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="mt-1"
+                required
+              />
             </div>
 
             <div>
@@ -109,7 +107,29 @@ export default function AdminLogin() {
           </form>
 
           <div className="mt-4">
-            {/* Eliminada la sección de debug de credenciales fijas */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDebug(!showDebug)}
+              className="w-full text-xs"
+            >
+              {showDebug ? "Ocultar" : "Mostrar"} Info Debug
+            </Button>
+
+            {showDebug && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
+                <p>
+                  <strong>Usuario esperado:</strong> {ADMIN_CONFIG.username}
+                </p>
+                <p>
+                  <strong>Timeout sesión:</strong> {ADMIN_CONFIG.sessionTimeout / (1000 * 60 * 60)}h
+                </p>
+                <p className="text-slate-500 text-[10px] mt-2">
+                  Las credenciales se verifican localmente para acceso rápido
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 p-3 bg-rose-pastel/10 rounded-lg">
