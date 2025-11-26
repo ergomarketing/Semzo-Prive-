@@ -6,7 +6,7 @@ interface CartItem {
   id: string
   name: string
   price: string
-  billingCycle: "monthly" | "quarterly"
+  billingCycle: "weekly" | "monthly" | "quarterly"
   description: string
   image: string
   brand: string
@@ -45,8 +45,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const itemCount = items.length
 
   const total = items.reduce((sum, item) => {
-    const price = Number.parseFloat(item.price.replace("€", ""))
-    return sum + price
+    const priceStr = item.price.replace("€", "").replace(",", ".").trim()
+    const price = Number.parseFloat(priceStr)
+    return sum + (isNaN(price) ? 0 : price)
   }, 0)
 
   return (

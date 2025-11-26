@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Users, Send, Loader2 } from 'lucide-react'
+import { Mail, Users, Send, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 interface Subscriber {
   id: string
@@ -16,6 +16,12 @@ interface Subscriber {
   subscribed_at: string
 }
 
+const colors = {
+  primary: "#1a2c4e",
+  accent: "#d4a5a5",
+  bg: "#faf8f7",
+}
+
 export default function NewsletterPage() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +29,7 @@ export default function NewsletterPage() {
   const [showComposer, setShowComposer] = useState(false)
   const [subject, setSubject] = useState("")
   const [content, setContent] = useState("")
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   useEffect(() => {
     loadSubscribers()
@@ -42,12 +49,16 @@ export default function NewsletterPage() {
     }
   }
 
+  function showNotificationMsg(type: "success" | "error", message: string) {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
+
   async function sendNewsletter() {
     if (!subject.trim() || !content.trim()) {
-      alert("Por favor completa el asunto y el contenido del newsletter")
+      showNotificationMsg("error", "Por favor completa el asunto y el contenido")
       return
     }
-
     setSending(true)
     try {
       const response = await fetch("/api/admin/newsletter/send", {
@@ -55,20 +66,17 @@ export default function NewsletterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, content }),
       })
-
       const data = await response.json()
-
       if (response.ok) {
-        alert(`Newsletter enviado exitosamente a ${data.sent} suscriptores`)
+        showNotificationMsg("success", `Newsletter enviado a ${data.sent} suscriptores`)
         setSubject("")
         setContent("")
         setShowComposer(false)
       } else {
-        alert(`Error: ${data.error}`)
+        showNotificationMsg("error", data.error || "Error al enviar")
       }
     } catch (error) {
-      console.error("Error sending newsletter:", error)
-      alert("Error al enviar el newsletter")
+      showNotificationMsg("error", "Error al enviar el newsletter")
     } finally {
       setSending(false)
     }
@@ -77,50 +85,89 @@ export default function NewsletterPage() {
   const activeSubscribers = subscribers.filter((s) => s.status === "active")
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="max-w-6xl mx-auto">
+      {/* Notificación minimalista */}
+      {notification && (
+        <div
+          className="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3"
+          style={{
+            backgroundColor: notification.type === "success" ? colors.primary : colors.accent,
+            color: "white",
+          }}
+        >
+          {notification.type === "success" ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          <p>{notification.message}</p>
+        </div>
+      )}
+
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Newsletter</h1>
-        <p className="text-gray-600">Gestiona suscriptores y envía newsletters</p>
+        <h1 className="text-3xl font-bold" style={{ color: colors.primary }}>
+          Newsletter
+        </h1>
+        <p style={{ color: "#888" }}>Gestiona suscriptores y envía newsletters</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Total Suscriptores
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{subscribers.length}</div>
-            <p className="text-sm text-gray-600">{activeSubscribers.length} activos</p>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 mb-8">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: colors.accent }}
+              >
+                <Users className="h-6 w-6" style={{ color: colors.primary }} />
+              </div>
+              <div>
+                <p className="text-3xl font-bold" style={{ color: colors.primary }}>
+                  {subscribers.length}
+                </p>
+                <p style={{ color: "#888" }}>Total Suscriptores ({activeSubscribers.length} activos)</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Envío de Newsletter
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => setShowComposer(!showComposer)} className="w-full">
-              {showComposer ? "Cancelar" : "Componer Newsletter"}
-            </Button>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: colors.accent }}
+              >
+                <Mail className="h-6 w-6" style={{ color: colors.primary }} />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium mb-2" style={{ color: colors.primary }}>
+                  Envío de Newsletter
+                </p>
+                <Button
+                  onClick={() => setShowComposer(!showComposer)}
+                  className="text-white"
+                  style={{ backgroundColor: showComposer ? colors.accent : colors.primary }}
+                >
+                  {showComposer ? "Cancelar" : "Componer"}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Composer */}
       {showComposer && (
-        <Card className="mb-8">
+        <Card className="mb-8 border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Componer Newsletter</CardTitle>
-            <CardDescription>Enviar a {activeSubscribers.length} suscriptores activos</CardDescription>
+            <CardTitle style={{ color: colors.primary }}>Componer Newsletter</CardTitle>
+            <CardDescription style={{ color: "#888" }}>
+              Enviar a {activeSubscribers.length} suscriptores activos
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Asunto</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.primary }}>
+                Asunto
+              </label>
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -129,16 +176,23 @@ export default function NewsletterPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Contenido (HTML)</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.primary }}>
+                Contenido
+              </label>
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Contenido HTML del newsletter"
-                rows={10}
+                placeholder="Contenido del newsletter"
+                rows={8}
                 disabled={sending}
               />
             </div>
-            <Button onClick={sendNewsletter} disabled={sending} className="w-full">
+            <Button
+              onClick={sendNewsletter}
+              disabled={sending}
+              className="w-full text-white"
+              style={{ backgroundColor: colors.primary }}
+            >
               {sending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -155,28 +209,50 @@ export default function NewsletterPage() {
         </Card>
       )}
 
-      <Card>
+      {/* Subscribers List */}
+      <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle>Lista de Suscriptores</CardTitle>
-          <CardDescription>{subscribers.length} suscriptores totales</CardDescription>
+          <CardTitle style={{ color: colors.primary }}>Lista de Suscriptores</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Cargando suscriptores...</p>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.accent }} />
+              <span className="ml-2" style={{ color: "#888" }}>
+                Cargando...
+              </span>
+            </div>
           ) : subscribers.length === 0 ? (
-            <p className="text-gray-500">No hay suscriptores aún</p>
+            <p style={{ color: "#888" }}>No hay suscriptores aún</p>
           ) : (
             <div className="space-y-2">
               {subscribers.map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between p-3 border rounded">
+                <div
+                  key={sub.id}
+                  className="flex items-center justify-between p-4 rounded-lg"
+                  style={{ backgroundColor: colors.bg }}
+                >
                   <div>
-                    <p className="font-medium">{sub.email}</p>
-                    {sub.name && <p className="text-sm text-gray-600">{sub.name}</p>}
-                    <p className="text-xs text-gray-500">
+                    <p className="font-medium" style={{ color: colors.primary }}>
+                      {sub.email}
+                    </p>
+                    {sub.name && (
+                      <p className="text-sm" style={{ color: "#888" }}>
+                        {sub.name}
+                      </p>
+                    )}
+                    <p className="text-xs" style={{ color: "#888" }}>
                       Suscrito: {new Date(sub.subscribed_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
+                  <Badge
+                    style={{
+                      backgroundColor: sub.status === "active" ? colors.primary : colors.accent,
+                      color: "white",
+                    }}
+                  >
+                    {sub.status === "active" ? "Activo" : sub.status}
+                  </Badge>
                 </div>
               ))}
             </div>

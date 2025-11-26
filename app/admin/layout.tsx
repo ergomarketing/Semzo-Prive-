@@ -3,8 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -31,114 +30,108 @@ interface NavItem {
   badge?: string
 }
 
+const colors = {
+  primary: "#1a2c4e",
+  accent: "#fff1f2", // rosa muy pálido (equivalente a bg-rose-50)
+  accentText: "#1a2c4e", // texto sobre el acento
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Eliminamos la dependencia de useAuth y usamos la lógica de sesión de administrador
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [loading, setLoading] = useState(true) // Añadimos loading para evitar flash de contenido
+  const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
+    if (pathname === "/admin/login") {
+      setIsAdmin(false)
+      return
+    }
     const token = localStorage.getItem("admin_session_token")
     const email = localStorage.getItem("admin_email")
     if (token === "valid_admin_token" && email) {
       setIsAdmin(true)
+      setAdminEmail(email)
     } else {
       setIsAdmin(false)
+      setAdminEmail(null)
     }
-    setLoading(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const token = localStorage.getItem("admin_session_token")
+      const email = localStorage.getItem("admin_email")
+      if (token === "valid_admin_token" && email) {
+        setIsAdmin(true)
+        setAdminEmail(email)
+      } else {
+        setIsAdmin(false)
+        setAdminEmail(null)
+      }
+    }
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
   }, [])
 
-  const pathname = usePathname()
-  const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-
-  const handleSignOut = async () => {
-    // Llamar a la API de logout para limpiar las cookies
-    await fetch("/api/admin/logout", { method: "POST" })
-    
+  const handleSignOut = () => {
     localStorage.removeItem("admin_session_token")
     localStorage.removeItem("admin_email")
+    localStorage.removeItem("admin_login_time")
     setIsAdmin(false)
-    router.push("/admin/login") // Redirigir al login del admin
+    setAdminEmail(null)
+    window.location.href = "/admin/login"
   }
 
   const navItems: NavItem[] = [
-    {
-      label: "Dashboard",
-      href: "/admin",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-    },
-    {
-      label: "Inventario",
-      href: "/admin/inventory",
-      icon: <Package className="h-5 w-5" />,
-    },
-    {
-      label: "Reservas",
-      href: "/admin/reservations",
-      icon: <Calendar className="h-5 w-5" />,
-    },
-    {
-      label: "Miembros",
-      href: "/admin/members",
-      icon: <Users className="h-5 w-5" />,
-    },
-    {
-      label: "Pagos",
-      href: "/admin/payments",
-      icon: <CreditCard className="h-5 w-5" />,
-    },
-    {
-      label: "Envíos",
-      href: "/admin/shipping",
-      icon: <MapPin className="h-5 w-5" />,
-    },
-    {
-      label: "Logística",
-      href: "/admin/logistics",
-      icon: <Truck className="h-5 w-5" />,
-      badge: "Nuevo",
-    },
-    {
-      label: "Análisis",
-      href: "/admin/analytics",
-      icon: <BarChart3 className="h-5 w-5" />,
-    },
-    {
-      label: "Email Logs",
-      href: "/admin/email-logs",
-      icon: <Mail className="h-5 w-5" />,
-    },
-    {
-      label: "Chat",
-      href: "/admin/chat",
-      icon: <MessageSquare className="h-5 w-5" />,
-    },
+    { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: "Inventario", href: "/admin/inventory", icon: <Package className="h-5 w-5" /> },
+    { label: "Reservas", href: "/admin/reservations", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Miembros", href: "/admin/members", icon: <Users className="h-5 w-5" /> },
+    { label: "Pagos", href: "/admin/payments", icon: <CreditCard className="h-5 w-5" /> },
+    { label: "Envíos", href: "/admin/shipping", icon: <MapPin className="h-5 w-5" /> },
+    { label: "Logística", href: "/admin/logistics", icon: <Truck className="h-5 w-5" /> },
+    { label: "Análisis", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
+    { label: "Newsletter", href: "/admin/newsletter", icon: <Mail className="h-5 w-5" /> },
+    { label: "Email Logs", href: "/admin/email-logs", icon: <Mail className="h-5 w-5" /> },
+    { label: "Chat", href: "/admin/chat", icon: <MessageSquare className="h-5 w-5" /> },
   ]
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    )
-  }
 
   if (pathname === "/admin/login") {
     return <>{children}</>
   }
 
+  if (isAdmin === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: "#faf8f7" }}>
+        <div className="text-center">
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+            style={{ borderColor: colors.primary }}
+          ></div>
+          <p style={{ color: colors.primary }}>Verificando acceso...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: "#faf8f7" }}>
+        <Card className="w-full max-w-md border-0 shadow-lg">
           <div className="p-6 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Acceso Requerido</h3>
-            <p className="text-gray-600 mb-4">Debes iniciar sesión como administrador.</p>
-            <Button onClick={() => router.push("/admin/login")} className="bg-blue-600 hover:bg-blue-700 w-full">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4" style={{ color: "#d4a5a5" }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: colors.primary }}>
+              Acceso Requerido
+            </h3>
+            <p className="mb-4" style={{ color: "#666" }}>
+              Debes iniciar sesión como administrador.
+            </p>
+            <Button
+              onClick={() => (window.location.href = "/admin/login")}
+              className="w-full text-white"
+              style={{ backgroundColor: colors.primary }}
+            >
               Iniciar Sesión
             </Button>
           </div>
@@ -148,67 +141,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: "#faf8f7" }}>
       {/* Sidebar */}
       <aside
-        className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-slate-900 text-white transition-all duration-300 overflow-y-auto flex flex-col`}
+        className={`${sidebarOpen ? "w-64" : "w-20"} transition-all duration-300 overflow-y-auto flex flex-col`}
+        style={{ backgroundColor: colors.primary }}
       >
-        {/* Logo / Header */}
-        <div className="p-6 border-b border-slate-700">
+        <div className="p-6 border-b" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
           <div className="flex items-center justify-between">
-            {sidebarOpen && <h1 className="text-xl font-bold">Semzo Admin</h1>}
+            {sidebarOpen && <h1 className="text-xl font-bold text-white">Semzo Privé</h1>}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-1 rounded-lg transition-colors text-white hover:bg-white/10"
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 space-y-2">
+        <nav className="flex-1 px-3 py-6 space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+            const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
             return (
               <Link key={item.href} href={item.href}>
                 <div
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-300 hover:bg-slate-800 hover:text-white"
-                  }`}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+                  style={{
+                    backgroundColor: isActive ? colors.accent : "transparent",
+                    color: isActive ? colors.primary : "rgba(255,255,255,0.7)",
+                  }}
                 >
                   {item.icon}
-                  {sidebarOpen && (
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">{item.label}</span>
-                      {item.badge && (
-                        <span className="ml-2 inline-block px-2 py-1 text-xs bg-green-600 rounded-full">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
                 </div>
               </Link>
             )
           })}
         </nav>
 
-        {/* User Section */}
-        <div className="border-t border-slate-700 p-3 space-y-2">
+        <div className="border-t p-3 space-y-2" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
           {sidebarOpen && (
             <div className="px-4 py-2 text-sm">
-              <p className="text-gray-400 text-xs">Conectado como:</p>
-              <p className="text-white font-medium truncate">{localStorage.getItem("admin_email")}</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+                Conectado como:
+              </p>
+              <p className="text-white font-medium truncate">{adminEmail}</p>
             </div>
           )}
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+            style={{ color: "rgba(255,255,255,0.7)" }}
           >
             <LogOut className="h-5 w-5" />
             {sidebarOpen && <span className="text-sm font-medium">Cerrar Sesión</span>}
@@ -216,23 +199,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main content */}
       <main className="flex-1 overflow-auto">
-        {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div
+          className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+          style={{ borderColor: "#e5e5e5" }}
+        >
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Panel de Administración</h2>
-            <p className="text-sm text-gray-600">Gestión de Semzo Privé</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{localStorage.getItem("admin_email")}</p>
-              <p className="text-xs text-gray-500">Administrador</p>
-            </div>
+            <h2 className="text-2xl font-bold" style={{ color: colors.primary }}>
+              Panel de Administración
+            </h2>
+            <p className="text-sm" style={{ color: "#888" }}>
+              Gestión de Semzo Privé
+            </p>
           </div>
         </div>
-
-        {/* Page Content */}
         <div className="p-6">{children}</div>
       </main>
     </div>

@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Bell } from "lucide-react"
+import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Check } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
+import { useCart } from "@/app/contexts/cart-context"
+import { useRouter } from "next/navigation"
 
 interface BagDetailProps {
   bag: {
@@ -49,6 +51,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { addItem } = useCart()
+  const router = useRouter()
+  const [selectedMembership, setSelectedMembership] = useState<"petite" | "essentiel" | "essentiel-quarterly">("petite")
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,17 +81,50 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     prive: "Privé",
   }
 
+  const membershipOptions = {
+    petite: {
+      name: "MEMBRESÍA PETITE",
+      badge: "Semanal",
+      badgeColor: "bg-rose-50 text-rose-500",
+      description:
+        "Accede a este bolso por una semana. Perfecto para eventos especiales o para probar antes de comprometerte.",
+      basePrice: 19.99,
+      bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137,
+      period: "/semana",
+      billingCycle: "weekly" as const,
+    },
+    essentiel: {
+      name: "MEMBRESÍA L'ESSENTIEL",
+      badge: "Mensual",
+      badgeColor: "bg-rose-50 text-rose-500",
+      description: `Accede a este bolso y cámbialo por otro de la colección L'Essentiel cada mes.`,
+      price: 59,
+      period: "/mes",
+      billingCycle: "monthly" as const,
+    },
+    "essentiel-quarterly": {
+      name: "MEMBRESÍA L'ESSENTIEL",
+      badge: "Ahorra 16%",
+      badgeColor: "bg-rose-50 text-rose-500",
+      description: "Accede a la colección L'Essentiel completa durante 3 meses con descuento especial.",
+      price: 149,
+      monthlyEquivalent: "49.67€/mes",
+      period: "/trimestre",
+      billingCycle: "quarterly" as const,
+    },
+  }
+
   const availabilityStatus = {
     available: {
       label: "Disponible",
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-[#1a2c4e]",
+      bgColor: "bg-rose-50",
       message: "Este bolso está disponible para reserva inmediata",
     },
     rented: {
       label: "Fuera con Miembro",
-      color: "text-rose-600",
-      bgColor: "bg-rose-pastel/20",
+      color: "text-[#1a2c4e]",
+      bgColor: "bg-rose-50",
       message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
     },
   }
@@ -140,6 +178,25 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     } finally {
       setIsAddingToWaitlist(false)
     }
+  }
+
+  const handleReserve = () => {
+    const option = membershipOptions[selectedMembership]
+    const price =
+      selectedMembership === "petite" ? `${(option.basePrice + option.bagPass).toFixed(2)}€` : `${option.price}€`
+
+    const cartItem = {
+      id: `${selectedMembership}-${bag.id}`,
+      name: option.name.replace("MEMBRESÍA ", ""),
+      price,
+      billingCycle: option.billingCycle,
+      description: `${bag.brand} ${bag.name}`,
+      image: bag.images[0],
+      brand: bag.brand,
+    }
+
+    addItem(cartItem)
+    router.push("/cart")
   }
 
   return (
@@ -218,9 +275,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
           <div className="space-y-8">
             <div>
               <div className="flex items-center justify-between mb-4">
-                <span
-                  className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${membershipColors[bag.membership]}`}
-                >
+                <span className="inline-block px-4 py-2 rounded-full text-sm font-medium bg-rose-50 text-[#1a2c4e]">
                   {membershipNames[bag.membership]}
                 </span>
                 <div className="flex items-center space-x-2">
@@ -236,11 +291,15 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 </div>
               </div>
 
+              <p className="text-lg text-slate-500 mb-1">{bag.brand}</p>
               <h1 className="font-serif text-4xl text-slate-900 mb-2">{bag.name}</h1>
-              <p className="text-2xl text-slate-700 mb-4">{bag.brand}</p>
+
+              <p className="text-sm text-slate-500 uppercase tracking-wide mb-2">
+                PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>
+              </p>
 
               {bag.rating && (
-                <div className="flex items-center mb-4">
+                <div className="flex items-center mb-6">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -254,74 +313,156 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   <span className="ml-2 text-slate-600">({bag.reviews} reseñas)</span>
                 </div>
               )}
+            </div>
 
-              <div className="flex items-baseline space-x-4">
-                <p className="text-3xl font-semibold text-slate-900">{bag.price}</p>
-                <p className="text-lg text-slate-500 line-through">{bag.retailPrice}</p>
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                  Ahorro del 85%
-                </span>
+            <div className="space-y-4">
+              <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
+
+              <div
+                onClick={() => setSelectedMembership("petite")}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "petite"
+                    ? "border-[#1a2c4e] bg-white"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                      {membershipOptions.petite.name}
+                    </span>
+                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                      {membershipOptions.petite.badge}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mb-3">{membershipOptions.petite.description}</p>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMembership === "petite" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
+                    }`}
+                  >
+                    {selectedMembership === "petite" && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="font-semibold text-slate-900">
+                    {(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€
+                  </span>
+                  <span className="text-slate-500">{membershipOptions.petite.period}</span>
+                </div>
+                <p className="text-xs text-[#1a2c4e] mt-1 ml-7">
+                  Base {membershipOptions.petite.basePrice}€ + Bolso {membershipNames[bag.membership]}{" "}
+                  {membershipOptions.petite.bagPass}€
+                </p>
               </div>
+
+              <div
+                onClick={() => setSelectedMembership("essentiel")}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "essentiel"
+                    ? "border-[#1a2c4e] bg-white"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                      {membershipOptions.essentiel.name}
+                    </span>
+                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                      {membershipOptions.essentiel.badge}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mb-3">{membershipOptions.essentiel.description}</p>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMembership === "essentiel" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
+                    }`}
+                  >
+                    {selectedMembership === "essentiel" && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="font-semibold text-slate-900">{membershipOptions.essentiel.price}€</span>
+                  <span className="text-slate-500">{membershipOptions.essentiel.period}</span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setSelectedMembership("essentiel-quarterly")}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "essentiel-quarterly"
+                    ? "border-[#1a2c4e] bg-white"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                      {membershipOptions["essentiel-quarterly"].name}
+                    </span>
+                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                      {membershipOptions["essentiel-quarterly"].badge}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mb-3">{membershipOptions["essentiel-quarterly"].description}</p>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedMembership === "essentiel-quarterly"
+                        ? "border-[#1a2c4e] bg-[#1a2c4e]"
+                        : "border-slate-300"
+                    }`}
+                  >
+                    {selectedMembership === "essentiel-quarterly" && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="font-semibold text-slate-900">
+                    {membershipOptions["essentiel-quarterly"].price}€
+                  </span>
+                  <span className="text-slate-500">{membershipOptions["essentiel-quarterly"].period}</span>
+                  <span className="text-slate-400 text-sm">
+                    ({membershipOptions["essentiel-quarterly"].monthlyEquivalent})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                className="w-full bg-[#1a2c4e] text-white hover:bg-[#0f1d33] h-14 text-lg font-medium"
+                onClick={handleReserve}
+              >
+                Reservar por{" "}
+                {selectedMembership === "petite"
+                  ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€/semana`
+                  : selectedMembership === "essentiel"
+                    ? `${membershipOptions.essentiel.price}€/mes`
+                    : `${membershipOptions["essentiel-quarterly"].price}€/trimestre`}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 h-12 bg-transparent"
+                onClick={() => {
+                  const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name}. ¿Podrían darme más información?`
+                  const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
+                  window.open(whatsappUrl, "_blank")
+                }}
+              >
+                Consultar por WhatsApp
+              </Button>
             </div>
 
             <div className={`p-6 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
               <div className="flex items-start">
                 <Clock className={`h-6 w-6 mr-3 mt-0.5 ${availabilityStatus[bag.availability.status].color}`} />
                 <div className="flex-1">
-                  <h4 className={`font-semibold mb-2 ${availabilityStatus[bag.availability.status].color}`}>
+                  <h4 className={`font-semibold mb-1 ${availabilityStatus[bag.availability.status].color}`}>
                     {availabilityStatus[bag.availability.status].label}
                   </h4>
-                  <p className="text-slate-700">{availabilityStatus[bag.availability.status].message}</p>
+                  <p className="text-[#1a2c4e]">{availabilityStatus[bag.availability.status].message}</p>
                 </div>
               </div>
-            </div>
-
-            <div className="flex space-x-4">
-              {bag.availability.status === "available" ? (
-                <>
-                  <Button
-                    className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
-                    onClick={() => {
-                      if (isAuthenticated) {
-                        window.location.href = `/dashboard/reservas?bag=${bag.id}`
-                      } else {
-                        window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
-                      }
-                    }}
-                  >
-                    Reservar ahora
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6 bg-transparent"
-                    onClick={() => {
-                      const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name} (${bag.id}). ¿Podrían darme más información?`
-                      const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
-                      window.open(whatsappUrl, "_blank")
-                    }}
-                  >
-                    Consultar
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    className="flex-1 bg-slate-200 text-slate-500 h-14 text-lg font-medium cursor-not-allowed"
-                    disabled
-                  >
-                    Fuera con Miembro
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-8 bg-transparent"
-                    onClick={addToWaitlist}
-                    disabled={isAddingToWaitlist || isInWaitlist}
-                  >
-                    <Bell className="w-5 h-5 mr-2" />
-                    {isInWaitlist ? "En Lista de Espera" : "Notificarme"}
-                  </Button>
-                </>
-              )}
             </div>
 
             <div className="border-t pt-8">
@@ -332,7 +473,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     onClick={() => setActiveTab(tab)}
                     className={`pb-4 text-sm font-medium transition-colors ${
                       activeTab === tab
-                        ? "text-indigo-dark border-b-2 border-indigo-dark"
+                        ? "text-[#1a2c4e] border-b-2 border-[#1a2c4e]"
                         : "text-slate-500 hover:text-slate-700"
                     }`}
                   >

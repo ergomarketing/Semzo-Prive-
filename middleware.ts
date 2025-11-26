@@ -8,13 +8,19 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const { pathname } = request.nextUrl
+
+  // El admin usa su propio sistema de autenticación con localStorage
+  if (pathname.startsWith("/admin")) {
+    return response
+  }
+
   const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey =
     process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // Si no hay variables de Supabase, permitir continuar sin autenticación
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.log("[Middleware] Supabase not configured, allowing public access")
     return response
   }
 
@@ -60,12 +66,9 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Refrescar sesión si existe
   const {
     data: { session },
   } = await supabase.auth.getSession()
-
-  const { pathname } = request.nextUrl
 
   // Rutas públicas que no requieren autenticación
   const publicRoutes = [
@@ -81,51 +84,28 @@ export async function middleware(request: NextRequest) {
     "/about",
     "/contact",
     "/membership",
-    "/cart", // Permitir acceso público al carrito para compras sin login
-    "/admin/login", // Permitir acceso al login de admin
-    "/legal/terms", // Agregar rutas legales como públicas
+    "/cart",
+    "/checkout",
+    "/legal/terms",
     "/legal/privacy",
     "/legal/cookies",
+    "/images",
   ]
 
-  const isAdminRoute = pathname.startsWith("/admin")
   const isApiRoute = pathname.startsWith("/api")
-
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
-
-  // Proteger rutas de admin
-  if (isAdminRoute && pathname !== "/admin/login") {
-    if (!session) {
-      console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
-      return NextResponse.redirect(new URL("/admin/login", request.url))
-    }
-
-    // Verificar si el usuario es administrador
-    const userEmail = session.user.email
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
-      "admin@semzoprive.com",
-    ]
-    const isAdmin = adminEmails.includes(userEmail || "")
-
-    if (!isAdmin) {
-      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /dashboard`)
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-  }
 
   if (isApiRoute) {
     return response
   }
 
-  // Si no hay sesión y la ruta no es pública, redirigir a login
   if (!session && !isPublicRoute) {
     const redirectUrl = new URL("/auth/login", request.url)
     redirectUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Si hay sesión y está en ruta de auth, redirigir a dashboard
   if (session && isAuthRoute && pathname !== "/auth/callback") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
@@ -134,14 +114,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 }

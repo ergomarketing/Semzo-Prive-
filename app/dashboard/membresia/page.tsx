@@ -59,13 +59,24 @@ export default function MembresiaPage() {
   const isActive = membershipData?.membership_status === "active"
 
   const membershipInfo = {
-    essentiel: { name: "L'Essentiel", price: 59 },
-    signature: { name: "Signature", price: 129 },
-    prive: { name: "Privé", price: 189 },
-    free: { name: "Free", price: 0 },
+    petite: { name: "Petite", price: "19,99", period: "semana" },
+    essentiel: { name: "L'Essentiel", price: "59", period: "mes" },
+    signature: { name: "Signature", price: "129", period: "mes" },
+    prive: { name: "Privé", price: "189", period: "mes" },
+    free: { name: "Free", price: "0", period: "mes" },
   }
 
   const currentMembership = membershipInfo[membershipType as keyof typeof membershipInfo] || membershipInfo.free
+
+  const isPetite = membershipType === "petite"
+
+  const petiteFeatures = [
+    "1 bolso por semana",
+    "Renovación flexible",
+    "Ampliable hasta 3 meses",
+    "Envío gratuito",
+    "Seguro incluido",
+  ]
 
   const priveFeatures = [
     "Acceso completo al catálogo exclusivo",
@@ -84,6 +95,12 @@ export default function MembresiaPage() {
     "Soporte por email",
   ]
 
+  const getFeatures = () => {
+    if (isPetite) return petiteFeatures
+    if (isActive) return priveFeatures
+    return freeFeatures
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
@@ -98,17 +115,17 @@ export default function MembresiaPage() {
               {isActive && <Crown className="h-6 w-6 text-slate-900" />}
               {currentMembership.name}
             </CardTitle>
-            <Badge variant="secondary" className="bg-rose-100 text-blue-900 border-rose-200">
+            <Badge variant="secondary" className="bg-rose-50 text-[#1a2c4e] border-rose-200">
               Actual
             </Badge>
           </div>
           <CardDescription className="text-3xl font-bold text-slate-900 mt-2">
-            €{currentMembership.price}/mes
+            €{currentMembership.price}/{currentMembership.period}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3 mb-6">
-            {(isActive ? priveFeatures : freeFeatures).map((feature, index) => (
+            {getFeatures().map((feature, index) => (
               <li key={index} className="flex items-start gap-2">
                 <Check className="h-5 w-5 text-slate-600 mt-0.5 flex-shrink-0" />
                 <span className="text-slate-700">{feature}</span>
@@ -116,7 +133,16 @@ export default function MembresiaPage() {
             ))}
           </ul>
 
-          {!isActive && (
+          {isPetite && (
+            <Button
+              onClick={() => router.push("/catalog")}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
+            >
+              Elegir mi bolso de la semana
+            </Button>
+          )}
+
+          {!isActive && !isPetite && (
             <Button
               onClick={() => router.push("/membership/upgrade")}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"

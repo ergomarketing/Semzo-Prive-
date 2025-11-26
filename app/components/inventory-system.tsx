@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, Users, AlertCircle, CheckCircle2, Package, Mail, Trash2, Plus, Edit, Eye } from "lucide-react"
 
+const INDIGO = "#1a2c4e"
+
 interface BagInventory {
   id: string
   name: string
@@ -26,7 +28,7 @@ interface BagInventory {
   condition: "excellent" | "very-good" | "good"
   lastMaintenance?: Date
   description?: string
-  price?: string
+  membership_type?: string
   retail_price?: string
   image_url?: string
   category?: string
@@ -65,20 +67,16 @@ export default function InventorySystem() {
     const fetchRealData = async () => {
       try {
         setLoading(true)
-        console.log("[v0] Fetching real inventory data...")
 
-        // Obtener token de autenticación
         const token = localStorage.getItem("supabase.auth.token")
         const headers = {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         }
 
-        // Obtener inventario real
         const inventoryResponse = await fetch("/api/admin/inventory", { headers })
         const inventoryData = await inventoryResponse.json()
 
-        // Obtener reservas reales
         const reservationsResponse = await fetch("/api/admin/reservations", { headers })
         const reservationsData = await reservationsResponse.json()
 
@@ -96,14 +94,13 @@ export default function InventorySystem() {
             condition: bag.condition,
             lastMaintenance: bag.last_maintenance ? new Date(bag.last_maintenance) : undefined,
             description: bag.description,
-            price: bag.price,
+            membership_type: bag.membership_type,
             retail_price: bag.retail_price,
             image_url: bag.image_url,
             category: bag.category,
           }))
 
           setInventory(processedInventory)
-          console.log("[v0] Real inventory loaded:", processedInventory.length, "bags")
         }
 
         if (reservationsData.reservations) {
@@ -119,21 +116,10 @@ export default function InventorySystem() {
           }))
 
           setReservations(processedReservations)
-          console.log("[v0] Real reservations loaded:", processedReservations.length, "reservations")
         }
       } catch (error) {
-        console.error("[v0] Error loading real data:", error)
-        setInventory([
-          {
-            id: "sample-bag-1",
-            name: "Bolso de Ejemplo",
-            brand: "Marca Ejemplo",
-            status: "available",
-            waitingList: [],
-            totalRentals: 0,
-            condition: "excellent",
-          },
-        ])
+        console.error("Error loading data:", error)
+        setInventory([])
       } finally {
         setLoading(false)
       }
@@ -145,15 +131,30 @@ export default function InventorySystem() {
   const getStatusColor = (status: BagInventory["status"]) => {
     switch (status) {
       case "available":
-        return "bg-green-100 text-green-800"
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200"
       case "rented":
-        return "bg-blue-100 text-blue-800"
+        return "bg-rose-50 text-[#1a2c4e] border border-rose-200"
       case "maintenance":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-amber-50 text-amber-700 border border-amber-200"
       case "reserved":
-        return "bg-purple-100 text-purple-800"
+        return "bg-violet-50 text-violet-700 border border-violet-200"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-slate-50 text-slate-700 border border-slate-200"
+    }
+  }
+
+  const getStatusText = (status: BagInventory["status"]) => {
+    switch (status) {
+      case "available":
+        return "Disponible"
+      case "rented":
+        return "Alquilado"
+      case "maintenance":
+        return "Mantenimiento"
+      case "reserved":
+        return "Reservado"
+      default:
+        return status
     }
   }
 
@@ -172,20 +173,30 @@ export default function InventorySystem() {
     }
   }
 
-  const addToWaitingList = async (bagId: string, customerEmail: string, customerName: string) => {
-    const newEntry: WaitingListEntry = {
-      id: `w${Date.now()}`,
-      customerEmail,
-      customerName,
-      addedDate: new Date(),
-      notified: false,
+  const getMembershipLabel = (type?: string) => {
+    switch (type) {
+      case "essentiel":
+        return "L'Essentiel"
+      case "signature":
+        return "Signature"
+      case "prive":
+        return "Privé"
+      default:
+        return "Sin asignar"
     }
+  }
 
-    setInventory((prev) =>
-      prev.map((bag) => (bag.id === bagId ? { ...bag, waitingList: [...bag.waitingList, newEntry] } : bag)),
-    )
-
-    console.log(`[v0] Added to waiting list: ${customerEmail} for ${bagId}`)
+  const getMembershipColor = (type?: string) => {
+    switch (type) {
+      case "essentiel":
+        return "bg-rose-50 text-[#1a2c4e] border border-rose-200"
+      case "signature":
+        return "bg-[#1a2c4e] text-white"
+      case "prive":
+        return "bg-amber-50 text-amber-800 border border-amber-300"
+      default:
+        return "bg-slate-100 text-slate-600"
+    }
   }
 
   const notifyWaitingList = async (bagId: string) => {
@@ -204,26 +215,6 @@ export default function InventorySystem() {
           : b,
       ),
     )
-
-    console.log(`[v0] Notified waiting list: ${firstInLine.customerEmail} for ${bag.name}`)
-  }
-
-  const markAsAvailable = (bagId: string) => {
-    setInventory((prev) =>
-      prev.map((bag) =>
-        bag.id === bagId
-          ? {
-              ...bag,
-              status: "available",
-              currentRenter: undefined,
-              rentedUntil: undefined,
-              nextAvailable: undefined,
-            }
-          : bag,
-      ),
-    )
-
-    notifyWaitingList(bagId)
   }
 
   const toggleBagStatus = async (bagId: string, newStatus: "available" | "rented" | "maintenance") => {
@@ -259,13 +250,11 @@ export default function InventorySystem() {
 
         toast({
           title: "Estado actualizado",
-          description: `El bolso ahora está marcado como ${newStatus === "available" ? "disponible" : newStatus === "rented" ? "rentado" : "en mantenimiento"}.`,
+          description: `El bolso ahora está ${newStatus === "available" ? "disponible" : newStatus === "rented" ? "alquilado" : "en mantenimiento"}.`,
         })
-
-        console.log(`[v0] Bag ${bagId} status changed to ${newStatus}`)
       }
     } catch (error) {
-      console.error("[v0] Error updating bag status:", error)
+      console.error("Error updating bag status:", error)
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado del bolso.",
@@ -286,7 +275,7 @@ export default function InventorySystem() {
         setInventory((prev) => prev.filter((bag) => bag.id !== bagId))
         toast({
           title: "Bolso eliminado",
-          description: "El bolso ha sido eliminado del inventario correctamente.",
+          description: "El bolso ha sido eliminado del inventario.",
         })
       } else {
         toast({
@@ -296,7 +285,7 @@ export default function InventorySystem() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error deleting bag:", error)
+      console.error("Error deleting bag:", error)
       toast({
         title: "Error",
         description: "No se pudo eliminar el bolso.",
@@ -340,7 +329,7 @@ export default function InventorySystem() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error saving bag:", error)
+      console.error("Error saving bag:", error)
       toast({
         title: "Error",
         description: "No se pudo guardar el bolso.",
@@ -353,79 +342,92 @@ export default function InventorySystem() {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando inventario real...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a2c4e] mx-auto mb-4"></div>
+          <p className="text-slate-600">Cargando inventario...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-serif text-slate-900">Sistema de Inventario Real</h2>
-        <div className="flex items-center space-x-3">
+    <div className="space-y-6 bg-rose-50/30 p-6 rounded-xl">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-2xl font-serif text-[#1a2c4e]">Sistema de Inventario</h2>
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             onClick={() => {
               setEditingBag(null)
               setShowEditModal(true)
             }}
-            className="bg-indigo-600 hover:bg-indigo-700"
+            className="bg-[#1a2c4e] hover:bg-[#2a3c5e] text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             Agregar Bolso
           </Button>
-          <Badge variant="outline" className="bg-green-50">
+          <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1">
             {inventory.filter((b) => b.status === "available").length} Disponibles
           </Badge>
-          <Badge variant="outline" className="bg-blue-50">
+          <Badge className="bg-rose-50 text-[#1a2c4e] border border-rose-200 px-3 py-1">
             {inventory.filter((b) => b.status === "rented").length} Alquilados
           </Badge>
-          <Badge variant="outline" className="bg-yellow-50">
+          <Badge className="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1">
             {inventory.filter((b) => b.status === "maintenance").length} Mantenimiento
           </Badge>
         </div>
       </div>
 
       {inventory.length === 0 ? (
-        <Card className="border-0 shadow-lg">
+        <Card className="border border-rose-100 shadow-sm bg-white">
           <CardContent className="p-8 text-center">
-            <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No hay bolsos en el inventario</h3>
+            <Package className="h-12 w-12 text-[#1a2c4e]/40 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-[#1a2c4e] mb-2">No hay bolsos en el inventario</h3>
             <p className="text-slate-600">Agrega bolsos al inventario para comenzar a gestionar reservas.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
           {inventory.map((bag) => (
-            <Card key={bag.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card key={bag.id} className="border border-rose-100 shadow-sm hover:shadow-md transition-shadow bg-white">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base font-serif truncate">{bag.name}</CardTitle>
-                    <p className="text-xs text-slate-600 truncate">{bag.brand}</p>
+                    <CardTitle className="text-base font-serif text-[#1a2c4e] truncate">{bag.name}</CardTitle>
+                    <p className="text-xs text-slate-500 truncate">{bag.brand}</p>
                   </div>
-                  <Badge className={`${getStatusColor(bag.status)} text-xs ml-2 flex-shrink-0`}>
+                  <Badge className={`${getStatusColor(bag.status)} text-xs ml-2 flex-shrink-0 flex items-center gap-1`}>
                     {getStatusIcon(bag.status)}
+                    <span>{getStatusText(bag.status)}</span>
                   </Badge>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge className={`${getMembershipColor(bag.membership_type)} text-xs`}>
+                    {getMembershipLabel(bag.membership_type)}
+                  </Badge>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <p className="text-slate-500">Alquileres</p>
-                    <p className="font-medium">{bag.totalRentals}</p>
+                    <p className="text-slate-400">Alquileres</p>
+                    <p className="font-medium text-[#1a2c4e]">{bag.totalRentals}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Condición</p>
-                    <p className="font-medium capitalize">{bag.condition}</p>
+                    <p className="text-slate-400">Condición</p>
+                    <p className="font-medium text-[#1a2c4e] capitalize">
+                      {bag.condition === "excellent"
+                        ? "Excelente"
+                        : bag.condition === "very-good"
+                          ? "Muy Bueno"
+                          : "Bueno"}
+                    </p>
                   </div>
                 </div>
 
                 {bag.waitingList.length > 0 && (
-                  <div className="p-2 bg-slate-50 rounded text-xs">
-                    <p className="font-medium text-slate-900">
+                  <div className="p-2 bg-rose-50 rounded text-xs border border-rose-100">
+                    <p className="font-medium text-[#1a2c4e]">
                       <Users className="h-3 w-3 inline mr-1" />
                       {bag.waitingList.length} en espera
                     </p>
@@ -439,26 +441,34 @@ export default function InventorySystem() {
                         <Button
                           size="sm"
                           onClick={() => toggleBagStatus(bag.id, "rented")}
-                          className="flex-1 h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                          className="flex-1 h-8 text-xs bg-rose-100 text-[#1a2c4e] hover:bg-rose-200 border-0"
                         >
-                          Rentado
+                          Marcar Alquilado
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => toggleBagStatus(bag.id, "maintenance")}
-                          className="flex-1 h-8 text-xs"
+                          className="flex-1 h-8 text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
                         >
                           Manten.
                         </Button>
                       </>
+                    ) : bag.status === "rented" ? (
+                      <Button
+                        size="sm"
+                        onClick={() => toggleBagStatus(bag.id, "available")}
+                        className="flex-1 h-8 text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-0"
+                      >
+                        Marcar Disponible
+                      </Button>
                     ) : (
                       <Button
                         size="sm"
                         onClick={() => toggleBagStatus(bag.id, "available")}
-                        className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700"
+                        className="flex-1 h-8 text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-0"
                       >
-                        Disponible
+                        Fin Mantenimiento
                       </Button>
                     )}
                   </div>
@@ -471,7 +481,7 @@ export default function InventorySystem() {
                         setSelectedBag(bag)
                         setShowDetailsModal(true)
                       }}
-                      className="flex-1 h-8 text-xs"
+                      className="flex-1 h-8 text-xs border-[#1a2c4e]/20 text-[#1a2c4e] hover:bg-rose-50"
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       Ver
@@ -483,7 +493,7 @@ export default function InventorySystem() {
                         setEditingBag(bag)
                         setShowEditModal(true)
                       }}
-                      className="flex-1 h-8 text-xs"
+                      className="flex-1 h-8 text-xs border-[#1a2c4e]/20 text-[#1a2c4e] hover:bg-rose-50"
                     >
                       <Edit className="h-3 w-3 mr-1" />
                       Editar
@@ -492,7 +502,7 @@ export default function InventorySystem() {
                       size="sm"
                       variant="outline"
                       onClick={() => deleteBag(bag.id)}
-                      className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -504,10 +514,11 @@ export default function InventorySystem() {
         </div>
       )}
 
+      {/* Modal de detalles */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-rose-100">
           <DialogHeader>
-            <DialogTitle className="text-xl font-serif">
+            <DialogTitle className="text-xl font-serif text-[#1a2c4e]">
               {selectedBag?.name} - {selectedBag?.brand}
             </DialogTitle>
           </DialogHeader>
@@ -515,33 +526,41 @@ export default function InventorySystem() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-600">Estado</Label>
-                  <Badge className={getStatusColor(selectedBag.status)}>
+                  <Label className="text-slate-500 text-sm">Estado</Label>
+                  <Badge className={`${getStatusColor(selectedBag.status)} mt-1`}>
                     {getStatusIcon(selectedBag.status)}
-                    <span className="ml-1 capitalize">{selectedBag.status}</span>
+                    <span className="ml-1">{getStatusText(selectedBag.status)}</span>
                   </Badge>
                 </div>
                 <div>
-                  <Label className="text-slate-600">Condición</Label>
-                  <p className="font-medium capitalize">{selectedBag.condition}</p>
+                  <Label className="text-slate-500 text-sm">Membresía</Label>
+                  <Badge className={`${getMembershipColor(selectedBag.membership_type)} mt-1`}>
+                    {getMembershipLabel(selectedBag.membership_type)}
+                  </Badge>
                 </div>
                 <div>
-                  <Label className="text-slate-600">Total Alquileres</Label>
-                  <p className="font-medium">{selectedBag.totalRentals}</p>
+                  <Label className="text-slate-500 text-sm">Condición</Label>
+                  <p className="font-medium text-[#1a2c4e] capitalize">
+                    {selectedBag.condition === "excellent"
+                      ? "Excelente"
+                      : selectedBag.condition === "very-good"
+                        ? "Muy Bueno"
+                        : "Bueno"}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-slate-600">En Lista de Espera</Label>
-                  <p className="font-medium">{selectedBag.waitingList.length} personas</p>
+                  <Label className="text-slate-500 text-sm">Total Alquileres</Label>
+                  <p className="font-medium text-[#1a2c4e]">{selectedBag.totalRentals}</p>
                 </div>
               </div>
 
               {selectedBag.currentRenter && (
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <Label className="text-blue-900">Alquilado actualmente</Label>
-                  <p className="text-sm text-blue-700">Cliente: {selectedBag.currentRenter}</p>
+                <div className="p-4 bg-rose-50 rounded-lg border border-rose-100">
+                  <Label className="text-[#1a2c4e] font-medium">Alquilado actualmente</Label>
+                  <p className="text-sm text-slate-600 mt-1">Cliente: {selectedBag.currentRenter}</p>
                   {selectedBag.rentedUntil && (
-                    <p className="text-sm text-blue-700">
-                      Hasta: {new Date(selectedBag.rentedUntil).toLocaleDateString()}
+                    <p className="text-sm text-slate-600">
+                      Hasta: {new Date(selectedBag.rentedUntil).toLocaleDateString("es-ES")}
                     </p>
                   )}
                 </div>
@@ -549,27 +568,23 @@ export default function InventorySystem() {
 
               {selectedBag.waitingList.length > 0 && (
                 <div>
-                  <Label className="text-slate-900 mb-2 block">Lista de Espera</Label>
+                  <Label className="text-[#1a2c4e] mb-2 block font-medium">Lista de Espera</Label>
                   <div className="space-y-2">
                     {selectedBag.waitingList.map((entry, index) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded">
+                      <div
+                        key={entry.id}
+                        className="flex items-center justify-between p-3 bg-rose-50/50 rounded border border-rose-100"
+                      >
                         <div>
-                          <p className="font-medium text-sm">
+                          <p className="font-medium text-sm text-[#1a2c4e]">
                             {index + 1}. {entry.customerName}
                           </p>
-                          <p className="text-xs text-slate-600">{entry.customerEmail}</p>
+                          <p className="text-xs text-slate-500">{entry.customerEmail}</p>
                         </div>
-                        {entry.notified && <Badge className="bg-green-100 text-green-800 text-xs">Notificado</Badge>}
+                        {entry.notified && <Badge className="bg-emerald-50 text-emerald-700 text-xs">Notificado</Badge>}
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {selectedBag.lastMaintenance && (
-                <div>
-                  <Label className="text-slate-600">Último Mantenimiento</Label>
-                  <p className="text-sm">{new Date(selectedBag.lastMaintenance).toLocaleDateString()}</p>
                 </div>
               )}
             </div>
@@ -577,10 +592,11 @@ export default function InventorySystem() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de edición */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-rose-100">
           <DialogHeader>
-            <DialogTitle>{editingBag ? "Editar Bolso" : "Agregar Nuevo Bolso"}</DialogTitle>
+            <DialogTitle className="text-[#1a2c4e]">{editingBag ? "Editar Bolso" : "Agregar Nuevo Bolso"}</DialogTitle>
           </DialogHeader>
           <BagForm
             bag={editingBag}
@@ -610,13 +626,12 @@ function BagForm({
   const [formData, setFormData] = useState({
     name: bag?.name || "",
     brand: bag?.brand || "",
-    description: "",
-    price: "",
-    retail_price: "",
+    description: bag?.description || "",
+    membership_type: bag?.membership_type || "essentiel",
+    retail_price: bag?.retail_price || "",
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
-    image_url: "",
-    category: "",
+    image_url: bag?.image_url || "",
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -628,63 +643,85 @@ function BagForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="name">Nombre del Bolso *</Label>
+          <Label htmlFor="name" className="text-[#1a2c4e]">
+            Nombre del Bolso *
+          </Label>
           <Input
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
           />
         </div>
         <div>
-          <Label htmlFor="brand">Marca *</Label>
+          <Label htmlFor="brand" className="text-[#1a2c4e]">
+            Marca *
+          </Label>
           <Input
             id="brand"
             value={formData.brand}
             onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
             required
+            className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="description">Descripción</Label>
+        <Label htmlFor="description" className="text-[#1a2c4e]">
+          Descripción
+        </Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           rows={3}
+          className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="price">Precio Mensual (€)</Label>
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-          />
+          <Label htmlFor="membership_type" className="text-[#1a2c4e]">
+            Tipo de Membresía *
+          </Label>
+          <Select
+            value={formData.membership_type}
+            onValueChange={(value) => setFormData({ ...formData, membership_type: value })}
+          >
+            <SelectTrigger className="border-rose-200 focus:border-[#1a2c4e]">
+              <SelectValue placeholder="Seleccionar membresía" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="essentiel">L'Essentiel</SelectItem>
+              <SelectItem value="signature">Signature</SelectItem>
+              <SelectItem value="prive">Privé</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
-          <Label htmlFor="retail_price">Precio Retail (€)</Label>
+          <Label htmlFor="retail_price" className="text-[#1a2c4e]">
+            Precio Retail (€)
+          </Label>
           <Input
             id="retail_price"
             type="number"
             step="0.01"
             value={formData.retail_price}
             onChange={(e) => setFormData({ ...formData, retail_price: e.target.value })}
+            className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="condition">Condición</Label>
+          <Label htmlFor="condition" className="text-[#1a2c4e]">
+            Condición
+          </Label>
           <Select value={formData.condition} onValueChange={(value) => setFormData({ ...formData, condition: value })}>
-            <SelectTrigger>
+            <SelectTrigger className="border-rose-200 focus:border-[#1a2c4e]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -695,14 +732,16 @@ function BagForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="status">Estado</Label>
+          <Label htmlFor="status" className="text-[#1a2c4e]">
+            Estado
+          </Label>
           <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-            <SelectTrigger>
+            <SelectTrigger className="border-rose-200 focus:border-[#1a2c4e]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="available">Disponible</SelectItem>
-              <SelectItem value="rented">Rentado</SelectItem>
+              <SelectItem value="rented">Alquilado</SelectItem>
               <SelectItem value="maintenance">Mantenimiento</SelectItem>
               <SelectItem value="reserved">Reservado</SelectItem>
             </SelectContent>
@@ -711,30 +750,28 @@ function BagForm({
       </div>
 
       <div>
-        <Label htmlFor="image_url">URL de Imagen</Label>
+        <Label htmlFor="image_url" className="text-[#1a2c4e]">
+          URL de Imagen
+        </Label>
         <Input
           id="image_url"
           value={formData.image_url}
           onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
           placeholder="/images/bags/..."
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="category">Categoría</Label>
-        <Input
-          id="category"
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          placeholder="Shoulder Bags, Totes, etc."
+          className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
         />
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="border-rose-200 text-slate-600 bg-transparent"
+        >
           Cancelar
         </Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+        <Button type="submit" className="bg-[#1a2c4e] hover:bg-[#2a3c5e] text-white">
           {bag ? "Actualizar" : "Crear"} Bolso
         </Button>
       </DialogFooter>
@@ -761,7 +798,7 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
         setWaitlistEntries(data.waitlist)
       }
     } catch (error) {
-      console.error("[v0] Error loading waitlist:", error)
+      console.error("Error loading waitlist:", error)
     } finally {
       setLoading(false)
     }
@@ -783,7 +820,7 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
         fetchWaitlist()
       }
     } catch (error) {
-      console.error("[v0] Error notifying user:", error)
+      console.error("Error notifying user:", error)
       toast({
         title: "Error",
         description: "No se pudo enviar la notificación.",
@@ -808,7 +845,7 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
         fetchWaitlist()
       }
     } catch (error) {
-      console.error("[v0] Error removing from waitlist:", error)
+      console.error("Error removing from waitlist:", error)
       toast({
         title: "Error",
         description: "No se pudo eliminar la entrada.",
@@ -819,9 +856,9 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-lg">
+      <Card className="border border-rose-100 shadow-sm bg-white">
         <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a2c4e] mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando lista de espera...</p>
         </CardContent>
       </Card>
@@ -829,49 +866,49 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
   }
 
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="border border-rose-100 shadow-sm bg-white">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between text-[#1a2c4e]">
           <div className="flex items-center">
             <Users className="h-5 w-5 mr-2" />
-            Lista de Espera - Suscriptores
+            Lista de Espera
           </div>
-          <Badge variant="outline">{waitlistEntries.length} personas</Badge>
+          <Badge className="bg-rose-50 text-[#1a2c4e] border border-rose-200">{waitlistEntries.length} personas</Badge>
         </CardTitle>
-        <p className="text-sm text-slate-600">Usuarios que esperan ser notificados cuando un bolso esté disponible</p>
+        <p className="text-sm text-slate-500">Usuarios que esperan ser notificados cuando un bolso esté disponible</p>
       </CardHeader>
       <CardContent>
         {waitlistEntries.length === 0 ? (
           <div className="text-center py-8">
-            <Users className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-600">No hay personas en la lista de espera</p>
+            <Users className="h-12 w-12 text-rose-200 mx-auto mb-3" />
+            <p className="text-slate-500">No hay personas en la lista de espera</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-700">Bolso</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-700">Email</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-700">Fecha</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-700">Estado</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-700">Acciones</th>
+                <tr className="border-b border-rose-100">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-[#1a2c4e]">Bolso</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-[#1a2c4e]">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-[#1a2c4e]">Fecha</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-[#1a2c4e]">Estado</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-[#1a2c4e]">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {waitlistEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={entry.id} className="border-b border-rose-50 hover:bg-rose-50/50">
                     <td className="py-3 px-4">
                       <div>
-                        <p className="font-medium text-slate-900">{entry.bags?.name || "Bolso eliminado"}</p>
-                        <p className="text-sm text-slate-600">{entry.bags?.brand}</p>
+                        <p className="font-medium text-[#1a2c4e]">{entry.bags?.name || "Bolso eliminado"}</p>
+                        <p className="text-sm text-slate-500">{entry.bags?.brand}</p>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="text-sm text-slate-900">{entry.email}</p>
+                      <p className="text-sm text-slate-600">{entry.email}</p>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-500">
                         {new Date(entry.created_at).toLocaleDateString("es-ES", {
                           day: "2-digit",
                           month: "short",
@@ -881,9 +918,9 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
                     </td>
                     <td className="py-3 px-4">
                       {entry.notified ? (
-                        <Badge className="bg-green-100 text-green-800">Notificado</Badge>
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">Notificado</Badge>
                       ) : (
-                        <Badge variant="outline">Pendiente</Badge>
+                        <Badge className="bg-amber-50 text-amber-700 border border-amber-200">Pendiente</Badge>
                       )}
                     </td>
                     <td className="py-3 px-4">
@@ -893,7 +930,7 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
                             size="sm"
                             variant="outline"
                             onClick={() => notifyUser(entry.id, entry.email, entry.bags?.name || "bolso")}
-                            className="text-blue-600 hover:text-blue-700"
+                            className="text-[#1a2c4e] hover:bg-rose-50 border-rose-200"
                           >
                             <Mail className="h-4 w-4 mr-1" />
                             Notificar
@@ -903,7 +940,7 @@ function AdminWaitlistView({ inventory }: { inventory: BagInventory[] }) {
                           size="sm"
                           variant="outline"
                           onClick={() => removeFromWaitlist(entry.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

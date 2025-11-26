@@ -1,43 +1,10 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 
-// GET - Obtener todas las direcciones de envío (solo admin)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
+
 export async function GET() {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
-      },
-    )
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    console.log("[v0] Admin API - User check:", { user: user?.email, authError })
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const adminEmails = ["admin@semzoprive.com"] // Removed user email, keeping only admin emails
-
-    if (!adminEmails.includes(user.email || "")) {
-      console.log("[v0] Admin API - Access denied for:", user.email)
-      return NextResponse.json({ error: "Acceso denegado - Solo administradores" }, { status: 403 })
-    }
-
-    console.log("[v0] Admin API - Admin access granted for:", user.email)
-
     const { data: shippingData, error } = await supabase
       .from("profiles")
       .select(`
@@ -55,14 +22,8 @@ export async function GET() {
       `)
       .order("updated_at", { ascending: false })
 
-    console.log("[v0] Admin API - Query result:", {
-      error,
-      dataCount: shippingData?.length,
-      sampleData: shippingData?.[0],
-    })
-
     if (error) {
-      console.error("Error fetching shipping data:", error)
+      console.error("[v0] Error fetching shipping data:", error)
       return NextResponse.json({ error: "Error al obtener información de envío" }, { status: 500 })
     }
 
@@ -81,8 +42,6 @@ export async function GET() {
       },
     }
 
-    console.log("[v0] Admin API - Stats:", stats)
-
     return NextResponse.json({
       shipping_addresses: usersWithShipping,
       all_users: shippingData,
@@ -90,7 +49,7 @@ export async function GET() {
       total: usersWithShipping.length,
     })
   } catch (error) {
-    console.error("Error in GET /api/admin/shipping:", error)
+    console.error("[v0] Error in GET /api/admin/shipping:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

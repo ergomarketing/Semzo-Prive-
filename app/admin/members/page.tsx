@@ -4,15 +4,11 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, Mail, Phone, Calendar, MapPin, Loader2, Send } from "lucide-react"
-import Navbar from "../../components/navbar"
-import { createClient } from "@supabase/supabase-js"
+import { Users, Mail, Phone, Calendar, MapPin, Loader2, Send, RefreshCw } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 interface Member {
   id: string
@@ -22,7 +18,6 @@ interface Member {
   membership: string
   joinDate: string
   status: string
-  currentBag: string | null
   totalRentals: number
   shippingAddress?: string
   shippingCity?: string
@@ -32,28 +27,24 @@ interface Member {
 
 interface Reservation {
   id: string
-  created_at: string
   status: string
   start_date: string
   end_date: string
-  bags: {
-    name: string
-    brand: string
-  }
+  bag_name: string
+  bag_brand: string
+}
+
+const colors = {
+  primary: "#1a2c4e",
+  accent: "#d4a5a5",
+  bg: "#faf8f7",
 }
 
 export default function MembersAdminPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState({
-    total: 0,
-    signature: 0,
-    prive: 0,
-    essentiel: 0,
-    free: 0,
-    active: 0,
-  })
+  const [stats, setStats] = useState({ total: 0, signature: 0, prive: 0, essentiel: 0, free: 0, active: 0 })
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [memberHistory, setMemberHistory] = useState<Reservation[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -62,35 +53,29 @@ export default function MembersAdminPage() {
   const [emailSubject, setEmailSubject] = useState("")
   const [emailBody, setEmailBody] = useState("")
   const [sendingEmail, setSendingEmail] = useState(false)
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   useEffect(() => {
     fetchMembers()
   }, [])
+  useEffect(() => {
+    if (notification) {
+      const t = setTimeout(() => setNotification(null), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [notification])
 
   const fetchMembers = async () => {
     try {
       setLoading(true)
-      console.log("[v0] Fetching members from API...")
-
       const response = await fetch("/api/admin/members")
-
-      console.log("[v0] Response status:", response.status)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.log("[v0] Error response:", errorData)
-        throw new Error(`Error ${response.status}: ${errorData.error || response.statusText}`)
-      }
-
+      if (!response.ok) throw new Error("Error al cargar")
       const data = await response.json()
-      console.log("[v0] Received data:", data)
-
       setMembers(data.members || [])
       setStats(data.stats || stats)
       setError(null)
     } catch (err) {
-      console.error("[v0] Error fetching members:", err)
-      setError(err instanceof Error ? err.message : "Error al cargar miembros")
+      setError(err instanceof Error ? err.message : "Error")
     } finally {
       setLoading(false)
     }
@@ -99,16 +84,12 @@ export default function MembersAdminPage() {
   const fetchMemberHistory = async (memberId: string) => {
     setLoadingHistory(true)
     try {
-      const { data, error } = await supabase
-        .from("reservations")
-        .select("id, created_at, status, start_date, end_date, bags(name, brand)")
-        .eq("user_id", memberId)
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-      setMemberHistory(data || [])
+      const response = await fetch(`/api/admin/members/history?userId=${memberId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setMemberHistory(data.reservations || [])
+      }
     } catch (err) {
-      console.error("[v0] Error fetching member history:", err)
       setMemberHistory([])
     } finally {
       setLoadingHistory(false)
@@ -130,285 +111,226 @@ export default function MembersAdminPage() {
 
   const handleSendEmail = async () => {
     if (!selectedMember) return
-
-    console.log("[v0] 📧 Starting email send to:", selectedMember.email)
-
     setSendingEmail(true)
     try {
-      console.log("[v0] 📧 Sending request to API...")
-
       const response = await fetch("/api/admin/send-email", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: selectedMember.email,
-          subject: emailSubject,
-          body: emailBody,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: selectedMember.email, subject: emailSubject, body: emailBody }),
       })
-
-      console.log("[v0] 📧 Response status:", response.status)
-
       const data = await response.json()
-      console.log("[v0] 📧 Response data:", data)
-
-      if (!response.ok) {
-        throw new Error(data.details || data.error || "Error al enviar el email")
+      if (data.success) {
+        setShowEmailDialog(false)
+        setEmailSubject("")
+        setEmailBody("")
+        setNotification({ type: "success", message: "Email enviado" })
+      } else {
+        throw new Error(data.error)
       }
-
-      console.log("[v0] ✅ Email sent successfully")
-      alert("Email enviado correctamente")
-      setShowEmailDialog(false)
-      setEmailSubject("")
-      setEmailBody("")
     } catch (err) {
-      console.error("[v0] ❌ Error sending email:", err)
-      alert(`Error al enviar el email: ${err instanceof Error ? err.message : "Error desconocido"}`)
+      setNotification({ type: "error", message: "Error al enviar" })
     } finally {
       setSendingEmail(false)
     }
   }
 
-  const getMembershipColor = (membership: string) => {
-    switch (membership) {
-      case "essentiel":
-        return "bg-rose-100 text-rose-800"
-      case "signature":
-        return "bg-purple-100 text-purple-800"
-      case "prive":
-        return "bg-indigo-100 text-indigo-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Pendiente"
-      case "confirmed":
-        return "Confirmada"
-      case "active":
-        return "Activa"
-      case "completed":
-        return "Completada"
-      case "cancelled":
-        return "Cancelada"
-      default:
-        return status
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800"
-      case "waiting":
-        return "bg-yellow-100 text-yellow-800"
-      case "inactive":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
+  const statCards = [
+    { label: "Total", value: stats.total },
+    { label: "Signature", value: stats.signature },
+    { label: "Privé", value: stats.prive },
+    { label: "L'Essentiel", value: stats.essentiel },
+    { label: "Free", value: stats.free },
+    { label: "Activos", value: stats.active },
+  ]
 
   return (
-    <>
-      <Navbar />
-      <main className="pt-24 min-h-screen bg-slate-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-serif text-slate-900 mb-2">Gestión de Miembros</h1>
-            <p className="text-slate-600">Administra todas las membresías y clientes</p>
-
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-6">
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">Total</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">Signature</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.signature}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">Privé</p>
-                <p className="text-2xl font-bold text-indigo-600">{stats.prive}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">L'Essentiel</p>
-                <p className="text-2xl font-bold text-rose-600">{stats.essentiel}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">Free</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.free}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <p className="text-sm text-slate-600">Activos</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              <span className="ml-2 text-slate-600">Cargando miembros...</span>
-            </div>
-          ) : error ? (
-            <Card className="p-8 text-center">
-              <h3 className="text-lg font-semibold text-red-600 mb-2">Error</h3>
-              <p className="text-slate-600 mb-4">{error}</p>
-              <Button onClick={fetchMembers}>Reintentar</Button>
-            </Card>
-          ) : members.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-600 mb-2">No hay miembros</h3>
-              <p className="text-slate-500">Aún no hay usuarios registrados en el sistema.</p>
-            </Card>
-          ) : (
-            <div className="grid gap-6">
-              {members.map((member) => (
-                <Card key={member.id} className="border-0 shadow-lg">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-3 bg-indigo-100 rounded-full">
-                          <Users className="h-6 w-6 text-indigo-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-slate-900">{member.name}</h3>
-                          <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
-                            <div className="flex items-center">
-                              <Mail className="h-4 w-4 mr-1" />
-                              {member.email}
-                            </div>
-                            <div className="flex items-center">
-                              <Phone className="h-4 w-4 mr-1" />
-                              {member.phone}
-                            </div>
-                            <div className="flex items-center">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              Desde {new Date(member.joinDate).toLocaleDateString()}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-3 mt-3">
-                            <Badge className={getMembershipColor(member.membership)}>
-                              {member.membership.toUpperCase()}
-                            </Badge>
-                            <Badge className={getStatusColor(member.status)}>
-                              {member.status === "active"
-                                ? "Activo"
-                                : member.status === "waiting"
-                                  ? "En espera"
-                                  : "Inactivo"}
-                            </Badge>
-                          </div>
-
-                          {member.shippingAddress && (
-                            <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                              <p className="text-sm font-medium text-green-900 flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                Dirección de envío:
-                              </p>
-                              <p className="text-sm text-green-700">
-                                {member.shippingAddress}, {member.shippingCity} {member.shippingPostalCode},{" "}
-                                {member.shippingCountry}
-                              </p>
-                            </div>
-                          )}
-
-                          {member.currentBag && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                              <p className="text-sm font-medium text-blue-900">Bolso actual:</p>
-                              <p className="text-sm text-blue-700">{member.currentBag}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-sm text-slate-600">Total alquileres</p>
-                        <p className="text-2xl font-bold text-slate-900">{member.totalRentals}</p>
-                        <div className="flex space-x-2 mt-4">
-                          <Button size="sm" variant="outline" onClick={() => handleViewHistory(member)}>
-                            Ver historial
-                          </Button>
-                          <Button size="sm" onClick={() => handleContact(member)}>
-                            Contactar
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-8 text-center">
-            <Button onClick={fetchMembers} variant="outline">
-              <Loader2 className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      {notification && (
+        <div
+          className="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 text-white"
+          style={{ backgroundColor: notification.type === "success" ? colors.primary : colors.accent }}
+        >
+          {notification.message}
         </div>
-      </main>
+      )}
 
+      <div>
+        <h1 className="text-3xl font-bold" style={{ color: colors.primary }}>
+          Gestión de Miembros
+        </h1>
+        <p style={{ color: "#888" }}>Administra todas las membresías y clientes</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        {statCards.map((s, i) => (
+          <Card key={i} className="border-0 shadow-sm">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold" style={{ color: colors.primary }}>
+                {s.value}
+              </p>
+              <p className="text-xs" style={{ color: "#888" }}>
+                {s.label}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: colors.primary }} />
+          <span className="ml-2" style={{ color: "#888" }}>
+            Cargando...
+          </span>
+        </div>
+      ) : error ? (
+        <Card className="p-8 text-center border-0 shadow-sm">
+          <p style={{ color: colors.accent }}>{error}</p>
+          <Button onClick={fetchMembers} className="mt-4" style={{ backgroundColor: colors.primary, color: "white" }}>
+            Reintentar
+          </Button>
+        </Card>
+      ) : members.length === 0 ? (
+        <Card className="p-8 text-center border-0 shadow-sm">
+          <Users className="h-12 w-12 mx-auto mb-4" style={{ color: colors.accent }} />
+          <p style={{ color: "#888" }}>No hay miembros</p>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {members.map((member) => (
+            <Card key={member.id} className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-3 rounded-full" style={{ backgroundColor: colors.accent }}>
+                      <Users className="h-6 w-6" style={{ color: colors.primary }} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold" style={{ color: colors.primary }}>
+                        {member.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-4 mt-2 text-sm" style={{ color: "#888" }}>
+                        <span className="flex items-center">
+                          <Mail className="h-4 w-4 mr-1" />
+                          {member.email}
+                        </span>
+                        <span className="flex items-center">
+                          <Phone className="h-4 w-4 mr-1" />
+                          {member.phone}
+                        </span>
+                        <span className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Desde {new Date(member.joinDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Badge style={{ backgroundColor: colors.primary, color: "white" }}>
+                          {member.membership?.toUpperCase() || "FREE"}
+                        </Badge>
+                        <Badge
+                          style={{
+                            backgroundColor: member.status === "active" ? colors.primary : colors.accent,
+                            color: "white",
+                          }}
+                        >
+                          {member.status === "active" ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
+                      {member.shippingAddress && (
+                        <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: colors.bg }}>
+                          <p className="text-sm font-medium flex items-center" style={{ color: colors.primary }}>
+                            <MapPin className="h-4 w-4 mr-1" />
+                            Dirección de envío:
+                          </p>
+                          <p className="text-sm" style={{ color: "#888" }}>
+                            {member.shippingAddress}, {member.shippingCity} {member.shippingPostalCode},{" "}
+                            {member.shippingCountry}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm" style={{ color: "#888" }}>
+                      Total alquileres
+                    </p>
+                    <p className="text-2xl font-bold" style={{ color: colors.primary }}>
+                      {member.totalRentals}
+                    </p>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewHistory(member)}
+                        style={{ borderColor: colors.primary, color: colors.primary }}
+                      >
+                        Ver historial
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleContact(member)}
+                        style={{ backgroundColor: colors.primary, color: "white" }}
+                      >
+                        Contactar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="text-center">
+        <Button onClick={fetchMembers} variant="outline" style={{ borderColor: colors.primary, color: colors.primary }}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualizar
+        </Button>
+      </div>
+
+      {/* History Dialog */}
       <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Historial de Reservas</DialogTitle>
+            <DialogTitle style={{ color: colors.primary }}>Historial de Reservas</DialogTitle>
             <DialogDescription>
               {selectedMember?.name} - {selectedMember?.email}
             </DialogDescription>
           </DialogHeader>
-
           {loadingHistory ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-              <span className="ml-2 text-slate-600">Cargando historial...</span>
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
             </div>
           ) : memberHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-600">No hay reservas registradas para este miembro.</p>
-            </div>
+            <p className="text-center py-8" style={{ color: "#888" }}>
+              No hay reservas
+            </p>
           ) : (
-            <div className="space-y-4">
-              {memberHistory.map((reservation) => (
-                <Card key={reservation.id} className="border">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-slate-900">
-                          {reservation.bags?.name || "Bolso no especificado"}
-                        </h4>
-                        <p className="text-sm text-slate-600">{reservation.bags?.brand || ""}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
-                          <span>Desde: {new Date(reservation.start_date).toLocaleDateString()}</span>
-                          <span>Hasta: {new Date(reservation.end_date).toLocaleDateString()}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Creada: {new Date(reservation.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Badge
-                        className={
-                          reservation.status === "completed"
-                            ? "bg-green-100 text-green-800"
-                            : reservation.status === "active"
-                              ? "bg-blue-100 text-blue-800"
-                              : reservation.status === "cancelled"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                        }
-                      >
-                        {getStatusLabel(reservation.status)}
-                      </Badge>
+            <div className="space-y-3">
+              {memberHistory.map((res) => (
+                <Card key={res.id} className="border-0" style={{ backgroundColor: colors.bg }}>
+                  <CardContent className="p-4 flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold" style={{ color: colors.primary }}>
+                        {res.bag_name}
+                      </h4>
+                      <p className="text-sm" style={{ color: "#888" }}>
+                        {res.bag_brand}
+                      </p>
+                      <p className="text-xs" style={{ color: "#888" }}>
+                        {new Date(res.start_date).toLocaleDateString()} - {new Date(res.end_date).toLocaleDateString()}
+                      </p>
                     </div>
+                    <Badge
+                      style={{
+                        backgroundColor: res.status === "completed" ? colors.primary : colors.accent,
+                        color: "white",
+                      }}
+                    >
+                      {res.status}
+                    </Badge>
                   </CardContent>
                 </Card>
               ))}
@@ -417,43 +339,33 @@ export default function MembersAdminPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Email Dialog */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Enviar Email</DialogTitle>
+            <DialogTitle style={{ color: colors.primary }}>Enviar Email</DialogTitle>
             <DialogDescription>
-              Enviar email a {selectedMember?.name} ({selectedMember?.email})
+              Enviar a {selectedMember?.name} ({selectedMember?.email})
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             <div>
-              <Label htmlFor="subject">Asunto</Label>
-              <Input
-                id="subject"
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                placeholder="Asunto del email"
-              />
+              <Label style={{ color: colors.primary }}>Asunto</Label>
+              <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
             </div>
-
             <div>
-              <Label htmlFor="body">Mensaje</Label>
-              <Textarea
-                id="body"
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                placeholder="Escribe tu mensaje aquí..."
-                rows={10}
-                className="resize-none"
-              />
+              <Label style={{ color: colors.primary }}>Mensaje</Label>
+              <Textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={8} />
             </div>
-
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowEmailDialog(false)} disabled={sendingEmail}>
                 Cancelar
               </Button>
-              <Button onClick={handleSendEmail} disabled={sendingEmail || !emailSubject || !emailBody}>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailSubject || !emailBody}
+                style={{ backgroundColor: colors.primary, color: "white" }}
+              >
                 {sendingEmail ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -462,7 +374,7 @@ export default function MembersAdminPage() {
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Enviar Email
+                    Enviar
                   </>
                 )}
               </Button>
@@ -470,6 +382,6 @@ export default function MembersAdminPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }
