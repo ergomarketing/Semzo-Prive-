@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Bell } from "lucide-react"
+import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Bell, Check } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 
@@ -41,6 +41,19 @@ interface BagDetailProps {
   }[]
 }
 
+const PETITE_BASE_PRICE = 19.99
+const PETITE_BAG_PRICES = {
+  essentiel: 52,
+  signature: 99,
+  prive: 137,
+}
+
+const MONTHLY_MEMBERSHIP_PRICES = {
+  essentiel: { monthly: 59, quarterly: 149 },
+  signature: { monthly: 129, quarterly: 329 },
+  prive: { monthly: 189, quarterly: 479 },
+}
+
 export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [inWishlist, setInWishlist] = useState(false)
@@ -49,6 +62,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  const [selectedMembership, setSelectedMembership] = useState<"petite" | "monthly" | "quarterly">("petite")
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,17 +91,34 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     prive: "Privé",
   }
 
+  const petiteTotal = PETITE_BASE_PRICE + PETITE_BAG_PRICES[bag.membership]
+  const monthlyPrice = MONTHLY_MEMBERSHIP_PRICES[bag.membership].monthly
+  const quarterlyPrice = MONTHLY_MEMBERSHIP_PRICES[bag.membership].quarterly
+  const quarterlyMonthly = (quarterlyPrice / 3).toFixed(2)
+  const quarterlySavings = Math.round((1 - quarterlyPrice / (monthlyPrice * 3)) * 100)
+
+  const getSelectedPrice = () => {
+    switch (selectedMembership) {
+      case "petite":
+        return petiteTotal
+      case "monthly":
+        return monthlyPrice
+      case "quarterly":
+        return quarterlyPrice
+    }
+  }
+
   const availabilityStatus = {
     available: {
       label: "Disponible",
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-[#1a2c4e]",
+      bgColor: "bg-rose-50",
       message: "Este bolso está disponible para reserva inmediata",
     },
     rented: {
       label: "Fuera con Miembro",
-      color: "text-rose-600",
-      bgColor: "bg-rose-pastel/20",
+      color: "text-[#1a2c4e]",
+      bgColor: "bg-rose-50/50",
       message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
     },
   }
@@ -156,6 +188,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
       <div className="container mx-auto px-4 pb-12">
         <div className="grid lg:grid-cols-2 gap-12">
+          {/* Galería de imágenes */}
           <div className="space-y-4">
             <div className="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden group">
               {bag.availability.status === "rented" && (
@@ -215,7 +248,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             </div>
           </div>
 
-          <div className="space-y-8">
+          {/* Panel de información y membresías */}
+          <div className="space-y-6">
+            {/* Header del bolso */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <span
@@ -236,8 +271,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 </div>
               </div>
 
-              <h1 className="font-serif text-4xl text-slate-900 mb-2">{bag.name}</h1>
-              <p className="text-2xl text-slate-700 mb-4">{bag.brand}</p>
+              <p className="text-lg text-indigo-dark font-medium mb-1">{bag.brand}</p>
+              <h1 className="font-serif text-3xl text-slate-900 mb-3">{bag.name}</h1>
+
+              <p className="text-sm text-slate-500 mb-4">
+                PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>
+              </p>
 
               {bag.rating && (
                 <div className="flex items-center mb-4">
@@ -245,86 +284,227 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className={`h-5 w-5 ${
+                        className={`h-4 w-4 ${
                           i < Math.floor(bag.rating!) ? "fill-yellow-400 text-yellow-400" : "text-slate-300"
                         }`}
                       />
                     ))}
                   </div>
-                  <span className="ml-2 text-slate-600">({bag.reviews} reseñas)</span>
+                  <span className="ml-2 text-slate-600 text-sm">({bag.reviews} reseñas)</span>
                 </div>
               )}
-
-              <div className="flex items-baseline space-x-4">
-                <p className="text-3xl font-semibold text-slate-900">{bag.price}</p>
-                <p className="text-lg text-slate-500 line-through">{bag.retailPrice}</p>
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                  Ahorro del 85%
-                </span>
-              </div>
             </div>
 
-            <div className={`p-6 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
-              <div className="flex items-start">
-                <Clock className={`h-6 w-6 mr-3 mt-0.5 ${availabilityStatus[bag.availability.status].color}`} />
-                <div className="flex-1">
-                  <h4 className={`font-semibold mb-2 ${availabilityStatus[bag.availability.status].color}`}>
-                    {availabilityStatus[bag.availability.status].label}
-                  </h4>
-                  <p className="text-slate-700">{availabilityStatus[bag.availability.status].message}</p>
+            <div className="space-y-4">
+              <h3 className="font-medium text-slate-900 text-lg">Elige tu membresía</h3>
+
+              {/* Tarjeta Petite - Semanal */}
+              <div
+                onClick={() => setSelectedMembership("petite")}
+                className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "petite"
+                    ? "border-indigo-dark bg-indigo-50/50 shadow-md"
+                    : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/20"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-slate-900 uppercase tracking-wide">Membresía Petite</h4>
+                      <span className="bg-rose-50 text-rose-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                        Semanal
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-sm mb-3">
+                      Accede a este bolso por una semana. Perfecto para eventos especiales o para probar antes de
+                      comprometerte.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedMembership === "petite" ? "border-indigo-dark bg-indigo-dark" : "border-slate-300"
+                        }`}
+                      >
+                        {selectedMembership === "petite" && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="font-semibold text-slate-900">{petiteTotal.toFixed(2)}€</span>
+                      <span className="text-slate-600">/semana</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-200/50">
+                  <p className="text-xs text-slate-500">
+                    Base {PETITE_BASE_PRICE}€ + Bolso {membershipNames[bag.membership]}{" "}
+                    {PETITE_BAG_PRICES[bag.membership]}€
+                  </p>
+                </div>
+              </div>
+
+              {/* Tarjeta Mensual */}
+              <div
+                onClick={() => setSelectedMembership("monthly")}
+                className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "monthly"
+                    ? "border-indigo-dark bg-indigo-50/50 shadow-md"
+                    : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/20"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-slate-900 uppercase tracking-wide">
+                        Membresía {membershipNames[bag.membership]}
+                      </h4>
+                      <span className="bg-rose-50 text-rose-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                        Mensual
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-sm mb-3">
+                      Accede a este bolso y cámbialo por otro de la colección {membershipNames[bag.membership]} cada
+                      mes.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedMembership === "monthly" ? "border-indigo-dark bg-indigo-dark" : "border-slate-300"
+                        }`}
+                      >
+                        {selectedMembership === "monthly" && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="font-semibold text-slate-900">{monthlyPrice}€</span>
+                      <span className="text-slate-600">/mes</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tarjeta Trimestral */}
+              <div
+                onClick={() => setSelectedMembership("quarterly")}
+                className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedMembership === "quarterly"
+                    ? "border-indigo-dark bg-indigo-50/50 shadow-md"
+                    : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/20"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-slate-900 uppercase tracking-wide">
+                        Membresía {membershipNames[bag.membership]}
+                      </h4>
+                      <span className="bg-rose-50 text-rose-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                        Ahorra {quarterlySavings}%
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-sm mb-3">
+                      Accede a la colección {membershipNames[bag.membership]} completa durante 3 meses con descuento
+                      especial.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedMembership === "quarterly" ? "border-indigo-dark bg-indigo-dark" : "border-slate-300"
+                        }`}
+                      >
+                        {selectedMembership === "quarterly" && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="font-semibold text-slate-900">{quarterlyPrice}€</span>
+                      <span className="text-slate-600">/trimestre</span>
+                      <span className="text-slate-400 text-sm">({quarterlyMonthly}€/mes)</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex space-x-4">
+            {/* Botones de acción */}
+            <div className="flex flex-col space-y-3 pt-2">
               {bag.availability.status === "available" ? (
                 <>
                   <Button
-                    className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
+                    className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
                     onClick={() => {
                       if (isAuthenticated) {
-                        window.location.href = `/dashboard/reservas?bag=${bag.id}`
+                        window.location.href = `/dashboard/reservas?bag=${bag.id}&membership=${selectedMembership}&price=${getSelectedPrice()}`
                       } else {
-                        window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}`
+                        window.location.href = `/signup?plan=${bag.membership}&bag=${bag.id}&membership=${selectedMembership}`
                       }
                     }}
                   >
-                    Reservar ahora
+                    {selectedMembership === "petite"
+                      ? `Reservar por ${petiteTotal.toFixed(2)}€/semana`
+                      : selectedMembership === "monthly"
+                        ? `Suscribirse por ${monthlyPrice}€/mes`
+                        : `Suscribirse por ${quarterlyPrice}€/trimestre`}
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6 bg-transparent"
+                    className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-12 bg-transparent"
                     onClick={() => {
-                      const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name} (${bag.id}). ¿Podrían darme más información?`
-                      const whatsappUrl = `https://wa.me/34600000000?text=${encodeURIComponent(message)}`
+                      const message = `Hola, me interesa consultar sobre el bolso ${bag.brand} ${bag.name}. ¿Podrían darme más información sobre la membresía ${selectedMembership === "petite" ? "Petite (semanal)" : selectedMembership === "monthly" ? "Mensual" : "Trimestral"}?`
+                      const whatsappUrl = `https://wa.me/34624239394?text=${encodeURIComponent(message)}`
                       window.open(whatsappUrl, "_blank")
                     }}
                   >
-                    Consultar
+                    Consultar por WhatsApp
                   </Button>
                 </>
               ) : (
                 <>
                   <Button
-                    className="flex-1 bg-slate-200 text-slate-500 h-14 text-lg font-medium cursor-not-allowed"
+                    className="w-full bg-slate-200 text-slate-500 h-14 text-lg font-medium cursor-not-allowed"
                     disabled
                   >
                     Fuera con Miembro
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-8 bg-transparent"
+                    className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-12 bg-transparent"
                     onClick={addToWaitlist}
                     disabled={isAddingToWaitlist || isInWaitlist}
                   >
                     <Bell className="w-5 h-5 mr-2" />
-                    {isInWaitlist ? "En Lista de Espera" : "Notificarme"}
+                    {isInWaitlist ? "En Lista de Espera" : "Notificarme cuando esté disponible"}
                   </Button>
                 </>
               )}
             </div>
 
-            <div className="border-t pt-8">
+            {/* Disponibilidad */}
+            <div className={`p-4 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
+              <div className="flex items-start">
+                <Clock className={`h-5 w-5 mr-3 mt-0.5 ${availabilityStatus[bag.availability.status].color}`} />
+                <div className="flex-1">
+                  <h4 className={`font-semibold text-sm ${availabilityStatus[bag.availability.status].color}`}>
+                    {availabilityStatus[bag.availability.status].label}
+                  </h4>
+                  <p className="text-slate-600 text-sm">{availabilityStatus[bag.availability.status].message}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Beneficios */}
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+              <div className="flex flex-col items-center text-center">
+                <Shield className="h-6 w-6 text-indigo-dark mb-2" />
+                <p className="font-medium text-slate-900 text-sm">Autenticidad</p>
+                <p className="text-slate-500 text-xs">Verificada</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <Truck className="h-6 w-6 text-indigo-dark mb-2" />
+                <p className="font-medium text-slate-900 text-sm">Envío gratis</p>
+                <p className="text-slate-500 text-xs">24-48h</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <RotateCcw className="h-6 w-6 text-indigo-dark mb-2" />
+                <p className="font-medium text-slate-900 text-sm">Devolución</p>
+                <p className="text-slate-500 text-xs">Sin coste</p>
+              </div>
+            </div>
+
+            {/* Tabs de detalles */}
+            <div className="border-t pt-6">
               <div className="flex space-x-8 border-b">
                 {["details", "features", "care"].map((tab) => (
                   <button
@@ -346,8 +526,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               <div className="pt-6">
                 {activeTab === "details" && (
                   <div className="space-y-6">
-                    <p className="text-slate-700 leading-relaxed text-lg">{bag.description}</p>
-                    <div className="grid grid-cols-2 gap-6">
+                    <p className="text-slate-700 leading-relaxed">{bag.description}</p>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-3">
                         <div>
                           <span className="text-slate-500 text-sm">Color</span>
@@ -357,19 +537,15 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                           <span className="text-slate-500 text-sm">Material</span>
                           <p className="font-medium text-slate-900">{bag.material}</p>
                         </div>
-                        <div>
-                          <span className="text-slate-500 text-sm">Dimensiones</span>
-                          <p className="font-medium text-slate-900">{bag.dimensions}</p>
-                        </div>
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <span className="text-slate-500 text-sm">Estado</span>
-                          <p className="font-medium text-slate-900">{bag.condition}</p>
-                        </div>
-                        <div>
                           <span className="text-slate-500 text-sm">Año</span>
                           <p className="font-medium text-slate-900">{bag.year}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Dimensiones</span>
+                          <p className="font-medium text-slate-900">{bag.dimensions}</p>
                         </div>
                       </div>
                     </div>
@@ -377,60 +553,37 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 )}
 
                 {activeTab === "features" && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {bag.features.map((feature, index) => (
                       <div key={index} className="flex items-start">
-                        <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                        <p className="text-slate-700">{feature}</p>
+                        <div className="w-1.5 h-1.5 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                        <p className="text-slate-700 text-sm">{feature}</p>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {activeTab === "care" && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {bag.careInstructions.map((instruction, index) => (
                       <div key={index} className="flex items-start">
-                        <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
-                        <p className="text-slate-700">{instruction}</p>
+                        <div className="w-1.5 h-1.5 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                        <p className="text-slate-700 text-sm">{instruction}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8 border-t">
-              <div className="flex items-center space-x-3">
-                <Shield className="h-6 w-6 text-indigo-dark" />
-                <div>
-                  <p className="font-medium text-slate-900 text-sm">Autenticidad</p>
-                  <p className="text-slate-600 text-xs">Verificada</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Truck className="h-6 w-6 text-indigo-dark" />
-                <div>
-                  <p className="font-medium text-slate-900 text-sm">Envío gratis</p>
-                  <p className="text-slate-600 text-xs">24-48h</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <RotateCcw className="h-6 w-6 text-indigo-dark" />
-                <div>
-                  <p className="font-medium text-slate-900 text-sm">Devolución</p>
-                  <p className="text-slate-600 text-xs">Sin coste</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
+        {/* Bolsos relacionados */}
         <div className="mt-20">
           <h3 className="font-serif text-3xl text-slate-900 mb-8 text-center">También te puede interesar</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {bagsToShow.map((relatedBag) => (
-              <div key={relatedBag.id} className="group cursor-pointer">
+              <Link href={`/catalog/${relatedBag.id}`} key={relatedBag.id} className="group cursor-pointer">
                 <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-4 group-hover:shadow-lg transition-shadow">
                   <Image
                     src={relatedBag.image || "/placeholder.svg"}
@@ -445,12 +598,13 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   <h4 className="font-serif text-lg text-slate-900 mb-2">{relatedBag.name}</h4>
                   <p className="font-medium text-slate-900">{relatedBag.price}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </div>
 
+      {/* Modal de zoom */}
       {showZoom && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"

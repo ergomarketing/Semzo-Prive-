@@ -7,9 +7,10 @@ import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
+import { Info } from "lucide-react"
 
 export default function CartPage() {
-  const { items, removeItem, total, itemCount } = useCart()
+  const { items, removeItem, itemCount } = useCart()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [user, setUser] = useState(null)
   const [selectedMembership, setSelectedMembership] = useState<any>(null)
@@ -36,7 +37,9 @@ export default function CartPage() {
     // Si no, intentar desde items en el carrito
     else if (items.length > 0) {
       const firstItem = items[0]
-      if (firstItem.id.includes("essentiel")) {
+      if (firstItem.id.includes("petite")) {
+        planParam = "petite"
+      } else if (firstItem.id.includes("essentiel")) {
         planParam = "essentiel"
       } else if (firstItem.id.includes("prive")) {
         planParam = "prive"
@@ -58,6 +61,28 @@ export default function CartPage() {
     setShowAuthModal(true)
   }
 
+  const getBillingCycleLabel = (cycle: string) => {
+    switch (cycle) {
+      case "weekly":
+        return "/semana"
+      case "quarterly":
+        return "/trimestre"
+      default:
+        return "/mes"
+    }
+  }
+
+  const getBillingCycleName = (cycle: string) => {
+    switch (cycle) {
+      case "weekly":
+        return "Semanal"
+      case "quarterly":
+        return "Trimestral"
+      default:
+        return "Mensual"
+    }
+  }
+
   if (itemCount === 0 && !selectedMembership) {
     return (
       <div className="min-h-screen bg-slate-50 pt-32">
@@ -73,6 +98,15 @@ export default function CartPage() {
   }
 
   const displayMembership = selectedMembership || (items.length > 0 ? items[0] : null)
+
+  const getDisplayPrice = () => {
+    if (!displayMembership?.price) return "0"
+    const priceStr =
+      typeof displayMembership.price === "string"
+        ? displayMembership.price.replace("€", "").replace(",", ".")
+        : displayMembership.price
+    return Number.parseFloat(priceStr).toFixed(2).replace(".", ",")
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pt-32">
@@ -105,11 +139,23 @@ export default function CartPage() {
                       <div className="mb-4">
                         <span className="font-serif text-3xl font-light text-slate-900">{displayMembership.price}</span>
                         <span className="text-base text-slate-600 ml-2">
-                          {displayMembership.billingCycle === "monthly" ? "/mes" : "/trimestre"}
+                          {getBillingCycleLabel(displayMembership.billingCycle)}
                         </span>
                         {displayMembership.billingCycle === "quarterly" && (
-                          <div className="mt-2 text-rose-500 font-medium text-sm bg-rose-50 px-2 py-1 rounded-md inline-block">
+                          <div className="mt-2 text-[#1a2c4e] font-medium text-sm bg-rose-50 px-2 py-1 rounded-md inline-block">
                             ¡Ahorras un 20%!
+                          </div>
+                        )}
+                        {(displayMembership.id === "petite" || displayMembership.billingCycle === "weekly") && (
+                          <div className="mt-3 p-3 bg-rose-50 border border-rose-100 rounded-lg flex items-start gap-3">
+                            <Info className="h-5 w-5 text-[#1a2c4e] mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm text-[#1a2c4e] font-medium">Siguiente paso: Elige tu bolso</p>
+                              <p className="text-sm text-slate-600 mt-1">
+                                Después del pago, podrás elegir un bolso del catálogo. El Pase de Bolso se cobra aparte
+                                según categoría: L'Essenciel (52€), Signature (99€), Privé (137€).
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -153,9 +199,7 @@ export default function CartPage() {
                     <div>
                       <h3 className="font-medium text-slate-900">{item.name}</h3>
                       <p className="text-sm text-slate-600">{item.brand}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.billingCycle === "monthly" ? "Mensual" : "Trimestral"}
-                      </p>
+                      <p className="text-xs text-slate-500">{getBillingCycleName(item.billingCycle)}</p>
                     </div>
                   </div>
 
@@ -183,7 +227,7 @@ export default function CartPage() {
         </div>
 
         <div className="flex justify-between items-center mb-8">
-          <Link href="/#membresias">
+          <Link href="/catalog">
             <Button variant="outline" className="border-slate-300 text-slate-700 bg-transparent">
               SEGUIR COMPRANDO
             </Button>
@@ -205,7 +249,7 @@ export default function CartPage() {
           <div className="flex justify-between items-center text-lg font-medium text-slate-900 mb-4">
             <span>Subtotal</span>
             <span>
-              €{displayMembership ? Number.parseFloat(displayMembership.price.replace("€", "")) : total.toFixed(2)} EUR
+              {getDisplayPrice()}€{getBillingCycleLabel(displayMembership?.billingCycle || "monthly")}
             </span>
           </div>
 
