@@ -559,7 +559,7 @@ export default function InventorySystem() {
                   <Label className="text-[#1a2c4e] font-medium">Alquilado actualmente</Label>
                   <p className="text-sm text-slate-600 mt-1">Cliente: {selectedBag.currentRenter}</p>
                   {selectedBag.rentedUntil && (
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-slate-500">
                       Hasta: {new Date(selectedBag.rentedUntil).toLocaleDateString("es-ES")}
                     </p>
                   )}
@@ -623,6 +623,8 @@ function BagForm({
   onSave: (data: any) => void
   onCancel: () => void
 }) {
+  const originalImageUrl = bag?.image_url || ""
+
   const [formData, setFormData] = useState({
     name: bag?.name || "",
     brand: bag?.brand || "",
@@ -636,7 +638,11 @@ function BagForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    const dataToSave = {
+      ...formData,
+      image_url: formData.image_url.trim() || originalImageUrl,
+    }
+    onSave(dataToSave)
   }
 
   return (

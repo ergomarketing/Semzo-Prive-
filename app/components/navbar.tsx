@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag } from "lucide-react"
@@ -16,20 +17,6 @@ export default function Navbar() {
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith("/admin")
   const isDashboardRoute = pathname?.startsWith("/dashboard")
-
-  useEffect(() => {
-    console.log("[v0] Navbar - Auth state:", {
-      user: user
-        ? {
-            id: user.id,
-            email: user.email,
-            metadata: user.metadata,
-          }
-        : null,
-      loading,
-      pathname: window.location.pathname,
-    })
-  }, [user, loading])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,9 +49,7 @@ export default function Navbar() {
   }
 
   const handleLogout = async () => {
-    console.log("[v0] Navbar - Logout clicked")
     await signOut()
-    console.log("[v0] Navbar - After signOut, redirecting to /")
     window.location.href = "/"
   }
 
@@ -80,8 +65,30 @@ export default function Navbar() {
     >
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center flex-shrink-0">
-            <span className="font-serif text-lg sm:text-2xl text-slate-900">Semzo Privé</span>
+          <Link href="/" className="flex flex-col items-center flex-shrink-0">
+            <span
+              className="text-base sm:text-lg md:text-xl tracking-[0.2em] font-normal"
+              style={{
+                color: "#1a2c4e",
+                fontFamily: "var(--font-playfair), Playfair Display, Georgia, serif",
+              }}
+            >
+              SEMZO PRIVÉ
+            </span>
+            <div className="mt-2 relative">
+              <Image
+                src="/images/logo-20semzo-20prive.png"
+                alt="SP Logo"
+                width={96}
+                height={112}
+                className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 object-contain"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(14%) sepia(25%) saturate(1200%) hue-rotate(180deg) brightness(95%) contrast(95%)",
+                }}
+                priority
+              />
+            </div>
           </Link>
 
           <div className="flex-1 mx-2 sm:mx-4">

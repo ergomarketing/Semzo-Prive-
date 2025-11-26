@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -144,12 +145,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen" style={{ backgroundColor: "#faf8f7" }}>
       {/* Sidebar */}
       <aside
-        className={`${sidebarOpen ? "w-64" : "w-20"} transition-all duration-300 overflow-y-auto flex flex-col`}
+        className={`${sidebarOpen ? "w-72" : "w-20"} transition-all duration-300 overflow-y-auto flex flex-col`}
         style={{ backgroundColor: colors.primary }}
       >
         <div className="p-6 border-b" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
           <div className="flex items-center justify-between">
-            {sidebarOpen && <h1 className="text-xl font-bold text-white">Semzo Privé</h1>}
+            {sidebarOpen ? (
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/images/logo-20semzo-20prive.png"
+                  alt="Semzo Privé"
+                  width={50}
+                  height={60}
+                  className="object-contain"
+                />
+                <Image
+                  src="/images/semzo-20prive.png"
+                  alt="Semzo Privé"
+                  width={140}
+                  height={40}
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <Image
+                src="/images/logo-20semzo-20prive.png"
+                alt="SP"
+                width={40}
+                height={50}
+                className="object-contain mx-auto"
+              />
+            )}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1 rounded-lg transition-colors text-white hover:bg-white/10"
@@ -202,16 +228,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <main className="flex-1 overflow-auto">
         <div
-          className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+          className="bg-white border-b px-6 py-5 flex items-center justify-between sticky top-0 z-10"
           style={{ borderColor: "#e5e5e5" }}
         >
-          <div>
-            <h2 className="text-2xl font-bold" style={{ color: colors.primary }}>
-              Panel de Administración
-            </h2>
-            <p className="text-sm" style={{ color: "#888" }}>
-              Gestión de Semzo Privé
-            </p>
+          <div className="flex items-center gap-4">
+            <Image
+              src="/images/logo-20semzo-20prive.png"
+              alt="Semzo Privé"
+              width={45}
+              height={55}
+              className="object-contain"
+            />
+            <div>
+              <h2 className="text-2xl font-bold" style={{ color: colors.primary }}>
+                Panel de Administración
+              </h2>
+              <p className="text-sm" style={{ color: "#888" }}>
+                Gestión de Semzo Privé
+              </p>
+            </div>
           </div>
         </div>
         <div className="p-6">{children}</div>

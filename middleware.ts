@@ -90,6 +90,7 @@ export async function middleware(request: NextRequest) {
     "/legal/privacy",
     "/legal/cookies",
     "/images",
+    "/support", // Agregar /support a rutas públicas
   ]
 
   const isApiRoute = pathname.startsWith("/api")

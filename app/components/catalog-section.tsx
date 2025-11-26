@@ -13,12 +13,18 @@ interface BagItem {
   name: string
   brand: string
   description: string
-  price: number
   retail_price: number
   image_url: string
   category: string
   condition: string
   status: string
+  membership_type: string // usar membership_type de la base de datos
+}
+
+const MEMBERSHIP_PRICES: Record<string, number> = {
+  essentiel: 59,
+  signature: 129,
+  prive: 189,
 }
 
 export default function CatalogSection() {
@@ -100,15 +106,9 @@ export default function CatalogSection() {
     }
   }
 
-  const getMembershipTier = (price: number): "essentiel" | "signature" | "prive" => {
-    if (price <= 59) return "essentiel"
-    if (price <= 129) return "signature"
-    return "prive"
-  }
-
-  const essentielBags = bags.filter((bag) => getMembershipTier(bag.price) === "essentiel")
-  const signatureBags = bags.filter((bag) => getMembershipTier(bag.price) === "signature")
-  const priveBags = bags.filter((bag) => getMembershipTier(bag.price) === "prive")
+  const essentielBags = bags.filter((bag) => bag.membership_type === "essentiel")
+  const signatureBags = bags.filter((bag) => bag.membership_type === "signature")
+  const priveBags = bags.filter((bag) => bag.membership_type === "prive")
 
   if (loading) {
     return (
@@ -159,7 +159,7 @@ export default function CatalogSection() {
                   bag={bag}
                   inWishlist={wishlist.includes(bag.id)}
                   onToggleWishlist={toggleWishlist}
-                  membershipTier={getMembershipTier(bag.price)}
+                  membershipTier={(bag.membership_type || "essentiel") as "essentiel" | "signature" | "prive"}
                 />
               ))}
             </div>
@@ -265,6 +265,8 @@ function BagCard({
     prive: "Privé",
   }
 
+  const monthlyPrice = MEMBERSHIP_PRICES[membershipTier] || 59
+
   return (
     <div className="bg-white rounded-lg overflow-hidden shadow-md relative group">
       <div className="absolute top-3 left-3 z-20">
@@ -300,8 +302,10 @@ function BagCard({
         <p className="text-sm text-slate-500">{bag.brand}</p>
         <h3 className="font-serif text-xl text-indigo-dark mb-2">{bag.name}</h3>
         <div className="mb-4">
-          <p className="text-lg font-medium text-indigo-dark">{bag.price}€/mes</p>
-          <p className="text-sm text-slate-500">Valor: {bag.retail_price}€</p>
+          <p className="text-lg font-medium text-indigo-dark">{monthlyPrice}€/mes</p>
+          {bag.retail_price && bag.retail_price > 0 && (
+            <p className="text-sm text-slate-500">Valor: {bag.retail_price}€</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2">
