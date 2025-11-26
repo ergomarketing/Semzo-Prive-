@@ -6,7 +6,7 @@ interface CartItem {
   id: string
   name: string
   price: string
-  billingCycle: "weekly" | "monthly" | "quarterly"
+  billingCycle: "monthly" | "quarterly"
   description: string
   image: string
   brand: string
