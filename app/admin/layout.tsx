@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useAuth } from "../hooks/useAuth"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -32,7 +32,7 @@ interface NavItem {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut } = useAuth()
+  const loading = false // Ya no se usa useAuth, la carga es instantánea
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
