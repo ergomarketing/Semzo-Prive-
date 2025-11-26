@@ -8,63 +8,62 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          })
-        },
+  const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey =
+    process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Si no hay variables de Supabase, permitir continuar sin autenticación
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.log("[Middleware] Supabase not configured, allowing public access")
+    return response
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return request.cookies.get(name)?.value
+      },
+      set(name: string, value: string, options: any) {
+        request.cookies.set({
+          name,
+          value,
+          ...options,
+        })
+        response = NextResponse.next({
+          request: {
+            headers: request.headers,
+          },
+        })
+        response.cookies.set({
+          name,
+          value,
+          ...options,
+        })
+      },
+      remove(name: string, options: any) {
+        request.cookies.set({
+          name,
+          value: "",
+          ...options,
+        })
+        response = NextResponse.next({
+          request: {
+            headers: request.headers,
+          },
+        })
+        response.cookies.set({
+          name,
+          value: "",
+          ...options,
+        })
       },
     },
-  )
+  })
 
   // Refrescar sesión si existe
-  // Verificar la sesión de administrador en localStorage (sistema de credenciales fijas)
-  // Leer cookies de sesión de administrador (establecidas por la API de login)
-  const adminToken = request.cookies.get("admin_session_token")?.value
-  const adminEmail = request.cookies.get("admin_email")?.value
-
-  let session = null
-  // Si el token de admin existe, simular una sesión para el middleware
-  if (adminToken === "valid_admin_token" && adminEmail) {
-    session = { user: { email: adminEmail } }
-  }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
   const { pathname } = request.nextUrl
 
@@ -84,8 +83,9 @@ export async function middleware(request: NextRequest) {
     "/membership",
     "/cart", // Permitir acceso público al carrito para compras sin login
     "/admin/login", // Permitir acceso al login de admin
-    "/legal/terms", // Permitir acceso a términos y condiciones
-    "/legal/privacy", // Permitir acceso a política de privacidad
+    "/legal/terms", // Agregar rutas legales como públicas
+    "/legal/privacy",
+    "/legal/cookies",
   ]
 
   const isAdminRoute = pathname.startsWith("/admin")
@@ -96,15 +96,22 @@ export async function middleware(request: NextRequest) {
 
   // Proteger rutas de admin
   if (isAdminRoute && pathname !== "/admin/login") {
-    if (!adminToken) {
+    if (!session) {
       console.log("[Middleware] No session found for admin route, redirecting to /admin/login")
-      // Eliminar cualquier cookie de admin por si acaso
-      const response = NextResponse.redirect(new URL("/admin/login", request.url))
-      response.cookies.delete("admin_session_token")
-      response.cookies.delete("admin_email")
-      return response
+      return NextResponse.redirect(new URL("/admin/login", request.url))
     }
-    // Si el token existe, asumimos que es un admin válido.
+
+    // Verificar si el usuario es administrador
+    const userEmail = session.user.email
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) => email.trim()) || [
+      "admin@semzoprive.com",
+    ]
+    const isAdmin = adminEmails.includes(userEmail || "")
+
+    if (!isAdmin) {
+      console.log(`[Middleware] User ${userEmail} is not an admin, redirecting to /dashboard`)
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
   }
 
   if (isApiRoute) {
@@ -118,18 +125,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Si hay sesión de admin y está en ruta de auth, redirigir a /admin
-  if (adminToken === "valid_admin_token" && isAuthRoute && pathname !== "/auth/callback") {
-    return NextResponse.redirect(new URL("/admin", request.url))
-  }
-
-  // Si hay sesión de usuario regular y está en ruta de auth, redirigir a /dashboard
-  // Esto mantiene la lógica original de Supabase para usuarios regulares
-  const {
-    data: { session: supabaseSession },
-  } = await supabase.auth.getSession()
-
-  if (supabaseSession && isAuthRoute && pathname !== "/auth/callback") {
+  // Si hay sesión y está en ruta de auth, redirigir a dashboard
+  if (session && isAuthRoute && pathname !== "/auth/callback") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

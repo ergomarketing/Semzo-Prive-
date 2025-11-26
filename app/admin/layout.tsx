@@ -32,8 +32,9 @@ interface NavItem {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const loading = false // Ya no se usa useAuth, la carga es instantánea
+  // Eliminamos la dependencia de useAuth y usamos la lógica de sesión de administrador
   const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true) // Añadimos loading para evitar flash de contenido
 
   useEffect(() => {
     const token = localStorage.getItem("admin_session_token")
@@ -43,6 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } else {
       setIsAdmin(false)
     }
+    setLoading(false)
   }, [])
 
   const pathname = usePathname()
@@ -56,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     localStorage.removeItem("admin_session_token")
     localStorage.removeItem("admin_email")
     setIsAdmin(false)
-    router.push("/")
+    router.push("/admin/login") // Redirigir al login del admin
   }
 
   const navItems: NavItem[] = [
@@ -147,11 +149,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-20"
         } bg-slate-900 text-white transition-all duration-300 overflow-y-auto flex flex-col`}
       >
+        {/* Logo / Header */}
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center justify-between">
             {sidebarOpen && <h1 className="text-xl font-bold">Semzo Admin</h1>}
@@ -164,6 +168,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 px-3 py-6 space-y-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -193,6 +198,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
+        {/* User Section */}
         <div className="border-t border-slate-700 p-3 space-y-2">
           {sidebarOpen && (
             <div className="px-4 py-2 text-sm">
@@ -210,7 +216,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className="flex-1 overflow-auto">
+        {/* Top Bar */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Panel de Administración</h2>
@@ -224,9 +232,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
+        {/* Page Content */}
         <div className="p-6">{children}</div>
       </main>
     </div>
   )
 }
-

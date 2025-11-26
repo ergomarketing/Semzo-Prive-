@@ -1,22 +1,14 @@
-'''import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 export async function POST() {
-  const response = NextResponse.json({ message: "Logout exitoso" }, { status: 200 })
+  try {
+    const cookieStore = await cookies()
+    cookieStore.delete("admin_session")
 
-  // Limpiar cookies de sesión
-  response.cookies.set("admin_session_token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 0, // Expirar inmediatamente
-    path: "/admin",
-  })
-
-  response.cookies.set("admin_email", "", {
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 0, // Expirar inmediatamente
-    path: "/admin",
-  })
-
-  return response
+    return NextResponse.json({ success: true, message: "Logout exitoso" })
+  } catch (error) {
+    console.error("Error en logout:", error)
+    return NextResponse.json({ success: false, message: "Error en el servidor" }, { status: 500 })
+  }
 }
-'''
