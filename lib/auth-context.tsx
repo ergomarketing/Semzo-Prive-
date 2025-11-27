@@ -9,6 +9,11 @@ export interface AuthUser {
   email: string
   phone?: string
   metadata?: any
+  profile?: {
+    full_name?: string
+    first_name?: string
+    last_name?: string
+  }
 }
 
 export interface AuthContextType {
@@ -27,6 +32,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const supabaseRef = useRef(getSupabaseBrowser())
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const supabase = supabaseRef.current
+      if (!supabase) return null
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, first_name, last_name")
+        .eq("id", userId)
+        .single()
+
+      return profile
+    } catch (error) {
+      console.error("Error loading profile:", error)
+      return null
+    }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined" || !supabaseRef.current) {
@@ -50,11 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUser(null)
         } else if (session?.user) {
+          const profile = await loadUserProfile(session.user.id)
+
           setUser({
             id: session.user.id,
             email: session.user.email || "",
             phone: session.user.phone,
             metadata: session.user.user_metadata,
+            profile: profile || undefined,
           })
         } else {
           setUser(null)
@@ -74,11 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        const profile = await loadUserProfile(session.user.id)
+
         setUser({
           id: session.user.id,
           email: session.user.email || "",
           phone: session.user.phone,
           metadata: session.user.user_metadata,
+          profile: profile || undefined,
         })
       } else {
         setUser(null)

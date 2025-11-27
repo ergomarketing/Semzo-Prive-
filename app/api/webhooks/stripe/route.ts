@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
     }
 
-    // Verificar el webhook
     let event: Stripe.Event
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
@@ -42,10 +41,169 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
-    // Manejar el evento
     console.log("🔄 Procesando evento:", event.type)
 
     switch (event.type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription
+        console.log("📦 Suscripción creada/actualizada:", {
+          id: subscription.id,
+          status: subscription.status,
+          customerId: subscription.customer,
+        })
+
+        const subUserId = subscription.metadata.user_id
+        if (subUserId) {
+          // Guardar en tabla subscriptions
+          const { error: subError } = await supabaseAdmin.from("subscriptions").upsert(
+            {
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: subscription.customer as string,
+              user_id: subUserId,
+              membership_type: subscription.metadata.plan_id || "signature",
+              status: subscription.status,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "stripe_subscription_id" },
+          )
+
+          if (subError) {
+            console.error("❌ Error guardando suscripción:", subError)
+          }
+
+          // Actualizar perfil con estado activo si la suscripción está activa
+          if (subscription.status === "active" || subscription.status === "trialing") {
+            await supabaseAdmin
+              .from("profiles")
+              .update({
+                membership_status: "active",
+                membership_type: subscription.metadata.plan_id || "signature",
+                stripe_customer_id: subscription.customer as string,
+                stripe_subscription_id: subscription.id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", subUserId)
+            console.log(`✅ Membresía activada para usuario ${subUserId}`)
+          }
+        }
+        break
+      }
+
+      case "customer.subscription.deleted": {
+        const canceledSub = event.data.object as Stripe.Subscription
+        console.log("🚫 Suscripción cancelada:", canceledSub.id)
+
+        const cancelUserId = canceledSub.metadata.user_id
+
+        // Actualizar tabla subscriptions
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            status: "canceled",
+            canceled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("stripe_subscription_id", canceledSub.id)
+
+        if (cancelUserId) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              membership_status: "inactive",
+              membership_type: null,
+              stripe_subscription_id: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", cancelUserId)
+          console.log(`✅ Membresía desactivada para usuario ${cancelUserId}`)
+        }
+        break
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice
+        console.log("💰 Pago de factura exitoso:", invoice.id)
+
+        const invoiceUserId = invoice.metadata?.user_id || invoice.subscription_details?.metadata?.user_id
+
+        // Registrar en historial de pagos
+        if (invoiceUserId) {
+          // Buscar subscription_id en nuestra base de datos
+          const { data: subData } = await supabaseAdmin
+            .from("subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", invoice.subscription)
+            .single()
+
+          await supabaseAdmin.from("payment_history").insert({
+            user_id: invoiceUserId,
+            subscription_id: subData?.id || null,
+            stripe_invoice_id: invoice.id,
+            stripe_payment_intent_id: invoice.payment_intent as string,
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            status: "succeeded",
+            description: `Pago mensual - ${invoice.lines.data[0]?.description || "Membresía"}`,
+            payment_date: new Date(invoice.created * 1000).toISOString(),
+          })
+          console.log(`✅ Pago registrado para usuario ${invoiceUserId}`)
+        }
+        break
+      }
+
+      case "invoice.payment_failed": {
+        const failedInvoice = event.data.object as Stripe.Invoice
+        console.log("❌ Pago de factura fallido:", failedInvoice.id)
+
+        const failedUserId = failedInvoice.metadata?.user_id
+
+        // Actualizar suscripción a past_due
+        if (failedInvoice.subscription) {
+          await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "past_due",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("stripe_subscription_id", failedInvoice.subscription)
+        }
+
+        // Registrar pago fallido
+        if (failedUserId) {
+          const { data: subData } = await supabaseAdmin
+            .from("subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", failedInvoice.subscription)
+            .single()
+
+          await supabaseAdmin.from("payment_history").insert({
+            user_id: failedUserId,
+            subscription_id: subData?.id || null,
+            stripe_invoice_id: failedInvoice.id,
+            amount: failedInvoice.amount_due,
+            currency: failedInvoice.currency,
+            status: "failed",
+            description: "Pago fallido - Renovación de membresía",
+            payment_date: new Date().toISOString(),
+          })
+
+          // Marcar perfil como past_due
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              membership_status: "past_due",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", failedUserId)
+        }
+        break
+      }
+
       case "payment_intent.succeeded":
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log("💰 Pago exitoso:", {
@@ -75,10 +233,7 @@ export async function POST(request: NextRequest) {
           } else {
             console.log(`✅ Membresía activada para el usuario ${paymentUserId}`)
           }
-        } else {
-          console.warn("⚠️ No se encontró userId o planId en los metadatos para activar la membresía.")
         }
-
         break
 
       case "payment_intent.payment_failed":
@@ -99,7 +254,16 @@ export async function POST(request: NextRequest) {
 
         const refundUserId = refundedCharge.metadata.user_id
         if (refundUserId) {
-          console.log(`Attempting to deactivate membership for user ${refundUserId} due to refund.`)
+          await supabaseAdmin.from("payment_history").insert({
+            user_id: refundUserId,
+            stripe_payment_intent_id: refundedCharge.payment_intent as string,
+            amount: refundedCharge.amount_refunded,
+            currency: refundedCharge.currency,
+            status: "refunded",
+            description: "Reembolso procesado",
+            payment_date: new Date().toISOString(),
+          })
+
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -114,11 +278,7 @@ export async function POST(request: NextRequest) {
           } else {
             console.log(`✅ Membresía desactivada para el usuario ${refundUserId} por reembolso.`)
           }
-        } else {
-          console.warn("⚠️ No se encontró userId en los metadatos para desactivar la membresía por reembolso.")
         }
-        console.log("🚨 ACCIÓN REQUERIDA: Desactivar membresía asociada al pago:", refundedCharge.id)
-
         break
 
       case "charge.dispute.created":
@@ -130,7 +290,6 @@ export async function POST(request: NextRequest) {
 
         const disputeUserId = dispute.metadata.user_id
         if (disputeUserId) {
-          console.log(`Attempting to deactivate membership for user ${disputeUserId} due to dispute.`)
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -144,11 +303,7 @@ export async function POST(request: NextRequest) {
           } else {
             console.log(`✅ Membresía marcada como 'disputed' para el usuario ${disputeUserId}.`)
           }
-        } else {
-          console.warn("⚠️ No se encontró userId en los metadatos para desactivar la membresía por disputa.")
         }
-        console.log("🚨 ACCIÓN CRÍTICA: Desactivar membresía inmediatamente debido a disputa:", dispute.charge)
-
         break
 
       case "payment_intent.created":

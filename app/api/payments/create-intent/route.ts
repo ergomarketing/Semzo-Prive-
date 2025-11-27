@@ -28,33 +28,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, membershipType, userEmail } = await request.json()
+    const { amount, membershipType, userEmail, couponCode } = await request.json()
 
     console.log("📊 Datos recibidos:", {
       amount,
       membershipType,
       userEmail,
+      couponCode,
       timestamp: new Date().toISOString(),
     })
 
     // Validar datos
-    if (!amount || !membershipType || !userEmail) {
+    if (!membershipType || !userEmail) {
       console.error("❌ Datos faltantes:", { amount, membershipType, userEmail })
       return NextResponse.json(
         {
           error: "Datos incompletos",
-          details: "Se requieren amount, membershipType y userEmail",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (typeof amount !== "number" || amount <= 0) {
-      console.error("❌ Monto inválido:", amount)
-      return NextResponse.json(
-        {
-          error: "Monto inválido",
-          details: "El monto debe ser un número positivo",
+          details: "Se requieren membershipType y userEmail",
         },
         { status: 400 },
       )
@@ -66,6 +56,32 @@ export async function POST(request: NextRequest) {
         {
           error: "Dirección de correo electrónico no válida",
           details: "Se requiere un email válido para procesar el pago",
+        },
+        { status: 400 },
+      )
+    }
+
+    if (amount === 0 || amount === null || amount === undefined) {
+      console.log("🎁 Membresía gratuita con cupón:", couponCode)
+
+      const freePaymentId = `FREE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      return NextResponse.json({
+        clientSecret: null,
+        paymentIntentId: freePaymentId,
+        amount: 0,
+        currency: "eur",
+        isFree: true,
+        couponApplied: couponCode,
+      })
+    }
+
+    if (typeof amount !== "number" || amount <= 0) {
+      console.error("❌ Monto inválido:", amount)
+      return NextResponse.json(
+        {
+          error: "Monto inválido",
+          details: "El monto debe ser un número positivo",
         },
         { status: 400 },
       )
@@ -83,6 +99,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         membershipType,
         userEmail,
+        couponCode: couponCode || "", // Guardar cupón en metadata
         createdAt: new Date().toISOString(),
       },
     })
@@ -93,6 +110,7 @@ export async function POST(request: NextRequest) {
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
       status: paymentIntent.status,
+      couponCode,
       processingTime: `${processingTime}ms`,
     })
 
@@ -101,6 +119,7 @@ export async function POST(request: NextRequest) {
       paymentIntentId: paymentIntent.id,
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
+      couponApplied: couponCode || null,
     })
   } catch (error) {
     const processingTime = Date.now() - startTime

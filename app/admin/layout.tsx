@@ -22,6 +22,8 @@ import {
   X,
   Truck,
   AlertCircle,
+  RefreshCw,
+  Gift,
 } from "lucide-react"
 
 interface NavItem {
@@ -90,6 +92,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Reservas", href: "/admin/reservations", icon: <Calendar className="h-5 w-5" /> },
     { label: "Miembros", href: "/admin/members", icon: <Users className="h-5 w-5" /> },
     { label: "Pagos", href: "/admin/payments", icon: <CreditCard className="h-5 w-5" /> },
+    { label: "Suscripciones", href: "/admin/subscriptions", icon: <RefreshCw className="h-5 w-5" /> },
+    { label: "Gift Cards", href: "/admin/gift-cards", icon: <Gift className="h-5 w-5" /> },
     { label: "Envíos", href: "/admin/shipping", icon: <MapPin className="h-5 w-5" /> },
     { label: "Logística", href: "/admin/logistics", icon: <Truck className="h-5 w-5" /> },
     { label: "Análisis", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
