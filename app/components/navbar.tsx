@@ -60,61 +60,68 @@ export default function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white/95 backdrop-blur-sm border-b border-slate-200" : "bg-transparent"
+        isScrolled ? "bg-white/95 backdrop-blur-sm shadow-sm" : "bg-white/80 backdrop-blur-sm"
       }`}
     >
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex flex-col items-center flex-shrink-0">
+          <Link href="/" className="flex items-center flex-shrink-0">
             <span
-              className="text-base sm:text-lg md:text-xl tracking-[0.2em] font-normal"
+              className="text-lg sm:text-xl tracking-[0.15em] font-light"
               style={{
                 color: "#1a2c4e",
                 fontFamily: "var(--font-playfair), Playfair Display, Georgia, serif",
               }}
             >
-              SEMZO PRIVÉ
+              SEMZO
             </span>
-            <div className="mt-2 relative">
-              <Image
-                src="/images/logo-20semzo-20prive.png"
-                alt="SP Logo"
-                width={96}
-                height={112}
-                className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 object-contain"
-                style={{
-                  filter:
-                    "brightness(0) saturate(100%) invert(14%) sepia(25%) saturate(1200%) hue-rotate(180deg) brightness(95%) contrast(95%)",
-                }}
-                priority
-              />
-            </div>
+            <Image
+              src="/images/sp-monogram-v2.png"
+              alt="SP Monogram"
+              width={40}
+              height={50}
+              className="w-8 h-10 sm:w-10 sm:h-12 mx-1 sm:mx-2 object-contain"
+              style={{
+                filter:
+                  "brightness(0) saturate(100%) invert(12%) sepia(25%) saturate(1500%) hue-rotate(185deg) brightness(95%)",
+              }}
+              priority
+            />
+            <span
+              className="text-lg sm:text-xl tracking-[0.15em] font-light"
+              style={{
+                color: "#1a2c4e",
+                fontFamily: "var(--font-playfair), Playfair Display, Georgia, serif",
+              }}
+            >
+              PRIVÉ
+            </span>
           </Link>
 
-          <div className="flex-1 mx-2 sm:mx-4">
-            <nav className="flex items-center justify-center overflow-x-auto scrollbar-hide space-x-2 sm:space-x-6 lg:space-x-12 pb-1">
+          <div className="flex-1 mx-4 sm:mx-8">
+            <nav className="hidden md:flex items-center justify-center space-x-6 lg:space-x-10">
               <NavLink href="/catalog">Colección</NavLink>
               <button
                 onClick={() => scrollToSection("membresias")}
-                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap flex-shrink-0"
+                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
                 Membresías
               </button>
               <button
                 onClick={() => scrollToSection("como-funciona")}
-                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap flex-shrink-0"
+                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
                 Proceso
               </button>
               <button
                 onClick={() => scrollToSection("magazine")}
-                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap flex-shrink-0"
+                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
                 Magazine
               </button>
               <button
                 onClick={() => scrollToSection("testimonios")}
-                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap flex-shrink-0"
+                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
                 Testimonios
               </button>
@@ -176,16 +183,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-      .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-      }
-    `}</style>
     </header>
   )
 }
@@ -194,7 +191,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap flex-shrink-0"
+      className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
     >
       {children}
     </Link>
