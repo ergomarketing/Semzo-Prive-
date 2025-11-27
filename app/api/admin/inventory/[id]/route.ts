@@ -14,35 +14,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const bagId = params.id
     const body = await request.json()
 
-    console.log("[v0] Updating bag with data:", body)
-
     const updateData: Record<string, any> = {
       name: body.name,
       brand: body.brand,
       description: body.description,
-      membership_type: body.membership_type, // Agregar membership_type
+      membership_type: body.membership_type,
       retail_price: body.retail_price ? Number.parseFloat(body.retail_price) : null,
       condition: body.condition,
       status: body.status,
       updated_at: new Date().toISOString(),
     }
 
-    // Solo actualizar image_url si se proporciona, sino mantener la existente
+    // Solo actualizar image_url si se proporciona
     if (body.image_url !== undefined && body.image_url !== "") {
       updateData.image_url = body.image_url
     }
 
-    // Si price está presente, también actualizarlo
+    if (body.images !== undefined) {
+      updateData.images = body.images
+    }
+
     if (body.price !== undefined) {
       updateData.price = body.price ? Number.parseFloat(body.price) : null
     }
 
-    // Si category está presente, también actualizarlo
     if (body.category !== undefined) {
       updateData.category = body.category
     }
-
-    console.log("[v0] Final update data:", updateData)
 
     const { data, error } = await supabase.from("bags").update(updateData).eq("id", bagId).select().single()
 
@@ -50,8 +48,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       console.error("[v0] Error updating bag:", error)
       return NextResponse.json({ error: "Error al actualizar el bolso" }, { status: 500 })
     }
-
-    console.log("[v0] Bag updated successfully:", data)
 
     return NextResponse.json({ success: true, bag: data })
   } catch (error) {
@@ -65,7 +61,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const bagId = params.id
 
-    // Verificar si hay reservas activas
     const { data: activeReservations } = await supabase
       .from("reservations")
       .select("id")

@@ -75,6 +75,7 @@ export async function middleware(request: NextRequest) {
     "/",
     "/auth/login",
     "/auth/register",
+    "/auth/admin", // Agregar ruta de login admin
     "/signup",
     "/auth/forgot-password",
     "/auth/reset-password",
@@ -90,7 +91,7 @@ export async function middleware(request: NextRequest) {
     "/legal/privacy",
     "/legal/cookies",
     "/images",
-    "/support", // Agregar /support a rutas públicas
+    "/support",
   ]
 
   const isApiRoute = pathname.startsWith("/api")

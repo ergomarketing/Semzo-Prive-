@@ -26,42 +26,7 @@ export async function GET(request: NextRequest) {
 
     if (bagsError) {
       console.log("[v0] Error fetching bags:", bagsError)
-      const mockInventory = [
-        {
-          id: "chanel-classic-flap",
-          name: "Classic Flap Medium",
-          brand: "Chanel",
-          status: "available",
-          condition: "excellent",
-          total_rentals: 0,
-          current_renter: null,
-          rented_until: null,
-          waiting_list: [],
-          last_maintenance: new Date().toISOString(),
-        },
-        {
-          id: "lv-speedy-30",
-          name: "Speedy 30",
-          brand: "Louis Vuitton",
-          status: "available",
-          condition: "very-good",
-          total_rentals: 0,
-          current_renter: null,
-          rented_until: null,
-          waiting_list: [],
-          last_maintenance: new Date().toISOString(),
-        },
-      ]
-
-      return NextResponse.json({
-        inventory: mockInventory,
-        stats: {
-          total: mockInventory.length,
-          available: mockInventory.filter((b) => b.status === "available").length,
-          rented: mockInventory.filter((b) => b.status === "rented").length,
-          maintenance: mockInventory.filter((b) => b.status === "maintenance").length,
-        },
-      })
+      return NextResponse.json({ error: "Error al cargar inventario" }, { status: 500 })
     }
 
     const { data: waitlist, error: waitlistError } = await supabase.from("waitlist").select("*").order("created_at")
@@ -92,6 +57,15 @@ export async function GET(request: NextRequest) {
           })),
           last_maintenance: bag.last_maintenance,
           reservations: bag.reservations || [],
+          membership_type: bag.membership_type,
+          retail_price: bag.retail_price,
+          daily_price: bag.daily_price,
+          weekly_price: bag.weekly_price,
+          monthly_price: bag.monthly_price,
+          image_url: bag.image_url,
+          images: bag.images,
+          category: bag.category,
+          description: bag.description,
         }
       }) || []
 
@@ -199,11 +173,13 @@ export async function POST(request: NextRequest) {
         name: body.name,
         brand: body.brand,
         description: body.description,
+        membership_type: body.membership_type || "essentiel",
         price: body.price ? Number.parseFloat(body.price) : null,
         retail_price: body.retail_price ? Number.parseFloat(body.retail_price) : null,
         condition: body.condition || "excellent",
         status: body.status || "available",
         image_url: body.image_url,
+        images: body.images || [],
         category: body.category,
         total_rentals: 0,
         created_at: new Date().toISOString(),

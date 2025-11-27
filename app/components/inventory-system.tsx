@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type React from "react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -11,7 +11,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Users, AlertCircle, CheckCircle2, Package, Mail, Trash2, Plus, Edit, Eye } from "lucide-react"
+import {
+  Clock,
+  Users,
+  AlertCircle,
+  CheckCircle2,
+  Package,
+  Mail,
+  Trash2,
+  Plus,
+  Edit,
+  Eye,
+  Upload,
+  Loader2,
+} from "lucide-react"
 
 const INDIGO = "#1a2c4e"
 
@@ -32,6 +45,7 @@ interface BagInventory {
   retail_price?: string
   image_url?: string
   category?: string
+  images: string[]
 }
 
 interface WaitingListEntry {
@@ -98,6 +112,7 @@ export default function InventorySystem() {
             retail_price: bag.retail_price,
             image_url: bag.image_url,
             category: bag.category,
+            images: bag.images || [],
           }))
 
           setInventory(processedInventory)
@@ -201,7 +216,7 @@ export default function InventorySystem() {
 
   const notifyWaitingList = async (bagId: string) => {
     const bag = inventory.find((b) => b.id === bagId)
-    if (!bag || bag.waitingList.length === 0) return
+    if (!bag || !bag.waitingList || bag.waitingList.length === 0) return
 
     const firstInLine = bag.waitingList[0]
 
@@ -425,7 +440,7 @@ export default function InventorySystem() {
                   </div>
                 </div>
 
-                {bag.waitingList.length > 0 && (
+                {bag.waitingList && bag.waitingList.length > 0 && (
                   <div className="p-2 bg-rose-50 rounded text-xs border border-rose-100">
                     <p className="font-medium text-[#1a2c4e]">
                       <Users className="h-3 w-3 inline mr-1" />
@@ -566,7 +581,7 @@ export default function InventorySystem() {
                 </div>
               )}
 
-              {selectedBag.waitingList.length > 0 && (
+              {selectedBag.waitingList && selectedBag.waitingList.length > 0 && (
                 <div>
                   <Label className="text-[#1a2c4e] mb-2 block font-medium">Lista de Espera</Label>
                   <div className="space-y-2">
@@ -624,6 +639,8 @@ function BagForm({
   onCancel: () => void
 }) {
   const originalImageUrl = bag?.image_url || ""
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     name: bag?.name || "",
@@ -634,7 +651,49 @@ function BagForm({
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
     image_url: bag?.image_url || "",
+    images: bag?.images || ([] as string[]),
   })
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+    try {
+      const uploadedUrls: string[] = []
+
+      for (const file of Array.from(files)) {
+        const formDataUpload = new FormData()
+        formDataUpload.append("file", file)
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formDataUpload,
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Error al subir imagen")
+        }
+
+        const { url } = await response.json()
+        uploadedUrls.push(url)
+      }
+
+      // Si es la primera imagen, también la ponemos como image_url principal
+      const newImages = [...formData.images, ...uploadedUrls]
+      setFormData({
+        ...formData,
+        images: newImages,
+        image_url: formData.image_url || uploadedUrls[0],
+      })
+    } catch (error) {
+      console.error("Error uploading:", error)
+      alert(error instanceof Error ? error.message : "Error al subir imagen")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -643,6 +702,20 @@ function BagForm({
       image_url: formData.image_url.trim() || originalImageUrl,
     }
     onSave(dataToSave)
+  }
+
+  const removeImage = (indexToRemove: number) => {
+    const newImages = formData.images.filter((_, index) => index !== indexToRemove)
+    setFormData({
+      ...formData,
+      images: newImages,
+      // Si eliminamos la imagen principal, usar la siguiente disponible
+      image_url: formData.image_url === formData.images[indexToRemove] ? newImages[0] || "" : formData.image_url,
+    })
+  }
+
+  const setMainImage = (url: string) => {
+    setFormData({ ...formData, image_url: url })
   }
 
   return (
@@ -755,17 +828,74 @@ function BagForm({
         </div>
       </div>
 
-      <div>
-        <Label htmlFor="image_url" className="text-[#1a2c4e]">
-          URL de Imagen
-        </Label>
-        <Input
-          id="image_url"
-          value={formData.image_url}
-          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-          placeholder="/images/bags/..."
-          className="border-rose-200 focus:border-[#1a2c4e] focus:ring-[#1a2c4e]"
-        />
+      <div className="space-y-2">
+        <Label>Imágenes del Bolso</Label>
+        <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="w-full border-[#1a2c4e] text-[#1a2c4e] hover:bg-[#1a2c4e] hover:text-white"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Subiendo...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Subir Imágenes
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Galería de imágenes */}
+        {formData.images.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mt-3">
+            {formData.images.map((url, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={url || "/placeholder.svg"}
+                  alt={`Imagen ${index + 1}`}
+                  className={`h-20 w-20 object-cover rounded border-2 cursor-pointer ${
+                    formData.image_url === url ? "border-[#1a2c4e]" : "border-gray-200"
+                  }`}
+                  onClick={() => setMainImage(url)}
+                  title="Clic para establecer como principal"
+                />
+                {formData.image_url === url && (
+                  <span className="absolute -top-1 -left-1 bg-[#1a2c4e] text-white text-xs px-1 rounded">
+                    Principal
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {formData.images.length === 0 && (
+          <p className="text-sm text-gray-500 text-center py-4 border border-dashed rounded">
+            No hay imágenes. Sube al menos una imagen del bolso.
+          </p>
+        )}
       </div>
 
       <DialogFooter>

@@ -20,11 +20,22 @@ interface UserProfile {
   membership_status: string
 }
 
+interface DashboardCounters {
+  reservations: number
+  waitlist: number
+  wishlist: number
+}
+
 export default function DashboardHome() {
   const router = useRouter()
   const { user } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [counters, setCounters] = useState<DashboardCounters>({
+    reservations: 0,
+    waitlist: 0,
+    wishlist: 0,
+  })
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,14 +59,51 @@ export default function DashboardHome() {
     fetchProfile()
   }, [user])
 
+  useEffect(() => {
+    const fetchCounters = async () => {
+      if (!user) return
+
+      try {
+        // Fetch waitlist count
+        const { count: waitlistCount } = await supabase
+          .from("waitlist")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+
+        // Fetch wishlist count
+        const { count: wishlistCount } = await supabase
+          .from("wishlists")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+
+        // Fetch reservations count
+        const { count: reservationsCount } = await supabase
+          .from("reservations")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .in("status", ["pending", "confirmed", "active"])
+
+        setCounters({
+          waitlist: waitlistCount || 0,
+          wishlist: wishlistCount || 0,
+          reservations: reservationsCount || 0,
+        })
+      } catch (error) {
+        console.error("Error fetching counters:", error)
+      }
+    }
+
+    fetchCounters()
+  }, [user])
+
   const membershipStatus = profile?.membership_status || "free"
   const isPremium = membershipStatus === "active"
 
   const userName =
-    user?.user_metadata?.first_name && user?.user_metadata?.last_name
-      ? `${user.user_metadata.first_name.charAt(0).toUpperCase() + user.user_metadata.first_name.slice(1)} ${user.user_metadata.last_name.charAt(0).toUpperCase() + user.user_metadata.last_name.slice(1)}`
-      : user?.user_metadata?.first_name
-        ? user.user_metadata.first_name.charAt(0).toUpperCase() + user.user_metadata.first_name.slice(1)
+    profile?.first_name && profile?.last_name
+      ? `${profile.first_name.charAt(0).toUpperCase() + profile.first_name.slice(1)} ${profile.last_name.charAt(0).toUpperCase() + profile.last_name.slice(1)}`
+      : profile?.first_name
+        ? profile.first_name.charAt(0).toUpperCase() + profile.first_name.slice(1)
         : "Usuario"
 
   if (loading) {
@@ -69,7 +117,7 @@ export default function DashboardHome() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-4xl font-serif text-slate-900 mb-2">Bienvenida</h2>
+        <h2 className="text-4xl font-serif text-slate-900 mb-2">Bienvenida, {userName}</h2>
         <p className="text-lg text-slate-600">Accede a tu colección de bolsos de lujo</p>
       </div>
 
@@ -83,7 +131,7 @@ export default function DashboardHome() {
             <User className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{profile?.first_name || "Sin nombre"}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{userName}</div>
             <p className="text-xs text-slate-600 mt-1">{user?.email}</p>
           </CardContent>
         </Card>
@@ -127,7 +175,7 @@ export default function DashboardHome() {
             <ShoppingBag className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">0</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{counters.reservations}</div>
             <p className="text-xs text-slate-600 mt-1">Reservas activas</p>
           </CardContent>
         </Card>
@@ -141,7 +189,7 @@ export default function DashboardHome() {
             <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">0</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{counters.waitlist}</div>
             <p className="text-xs text-slate-600 mt-1">Bolsos en espera</p>
           </CardContent>
         </Card>
@@ -152,7 +200,7 @@ export default function DashboardHome() {
             <Heart className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">0</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{counters.wishlist}</div>
             <p className="text-xs text-slate-600 mt-1">Favoritos guardados</p>
           </CardContent>
         </Card>

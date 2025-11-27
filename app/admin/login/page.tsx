@@ -15,37 +15,63 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_session_token")
-    if (token === "valid_admin_token") {
-      window.location.replace("/admin")
-    }
+    setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("admin_session_token") : null
+      if (token === "valid_admin_token") {
+        window.location.replace("/admin")
+      }
+    } catch (err) {
+      console.error("Error checking admin session:", err)
+    }
+  }, [mounted])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    const inputEmail = email.trim().toLowerCase()
-    const inputPassword = password.trim()
+    try {
+      const inputEmail = email.trim().toLowerCase()
+      const inputPassword = password.trim()
 
-    const expectedEmail = ADMIN_EMAIL.toLowerCase()
-    const expectedPassword = ADMIN_PASSWORD
+      const expectedEmail = ADMIN_EMAIL.toLowerCase()
+      const expectedPassword = ADMIN_PASSWORD
 
-    if (inputEmail === expectedEmail && inputPassword === expectedPassword) {
-      localStorage.setItem("admin_session_token", "valid_admin_token")
-      localStorage.setItem("admin_login_time", Date.now().toString())
-      localStorage.setItem("admin_email", ADMIN_EMAIL)
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      window.location.replace("/admin")
-      return
-    } else {
-      setError("Usuario o contraseña incorrectos")
+      if (inputEmail === expectedEmail && inputPassword === expectedPassword) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("admin_session_token", "valid_admin_token")
+          localStorage.setItem("admin_login_time", Date.now().toString())
+          localStorage.setItem("admin_email", ADMIN_EMAIL)
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        window.location.replace("/admin")
+        return
+      } else {
+        setError("Usuario o contraseña incorrectos")
+      }
+    } catch (err) {
+      console.error("Error during login:", err)
+      setError("Error al procesar el login")
     }
 
     setLoading(false)
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#faf8f7" }}>
+        <div className="animate-pulse">Cargando...</div>
+      </div>
+    )
   }
 
   return (

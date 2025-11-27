@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
@@ -12,11 +12,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status")
     const carrier = searchParams.get("carrier")
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
+    const page = Number.parseInt(searchParams.get("page") || "1")
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
     const offset = (page - 1) * limit
 
-    // Construir query base
     let query = supabase.from("shipments").select(
       `
       id,
@@ -29,21 +28,21 @@ export async function GET(request: NextRequest) {
       cost,
       created_at,
       updated_at,
-      reservations (
+      reservations!reservation_id (
         id,
         start_date,
         end_date,
-        profiles (
+        profiles!user_id (
           full_name,
           email
         ),
-        bags (
+        bags!bag_id (
           name,
           brand
         )
       )
     `,
-      { count: "exact" }
+      { count: "exact" },
     )
 
     // Aplicar filtros
@@ -86,21 +85,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const {
-      reservation_id,
-      carrier,
-      tracking_number,
-      estimated_delivery,
-      cost,
-      notes,
-    } = body
+    const { reservation_id, carrier, tracking_number, estimated_delivery, cost, notes } = body
 
     // Validar campos requeridos
     if (!reservation_id) {
-      return NextResponse.json(
-        { error: "reservation_id is required" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "reservation_id is required" }, { status: 400 })
     }
 
     // Verificar que la reserva existe
@@ -111,10 +100,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (reservationError || !reservation) {
-      return NextResponse.json(
-        { error: "Reservation not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Reservation not found" }, { status: 404 })
     }
 
     // Crear el envío
@@ -166,11 +152,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Obtener el envío actual para auditoría
-    const { data: oldData } = await supabase
-      .from("shipments")
-      .select()
-      .eq("id", id)
-      .single()
+    const { data: oldData } = await supabase.from("shipments").select().eq("id", id).single()
 
     // Actualizar el envío
     const { data, error } = await supabase

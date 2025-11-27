@@ -18,7 +18,7 @@ interface BagItem {
   category: string
   condition: string
   status: string
-  membership_type: string // usar membership_type de la base de datos
+  membership_type: string
 }
 
 const MEMBERSHIP_PRICES: Record<string, number> = {
@@ -36,11 +36,7 @@ export default function CatalogSection() {
   useEffect(() => {
     const loadBags = async () => {
       try {
-        const { data, error } = await supabase
-          .from("bags")
-          .select("*")
-          .eq("status", "available")
-          .order("brand", { ascending: true })
+        const { data, error } = await supabase.from("bags").select("*").order("brand", { ascending: true })
 
         if (error) throw error
 
@@ -160,6 +156,7 @@ export default function CatalogSection() {
                   inWishlist={wishlist.includes(bag.id)}
                   onToggleWishlist={toggleWishlist}
                   membershipTier={(bag.membership_type || "essentiel") as "essentiel" | "signature" | "prive"}
+                  user={user}
                 />
               ))}
             </div>
@@ -174,6 +171,7 @@ export default function CatalogSection() {
                   inWishlist={wishlist.includes(bag.id)}
                   onToggleWishlist={toggleWishlist}
                   membershipTier="essentiel"
+                  user={user}
                 />
               ))}
             </div>
@@ -198,6 +196,7 @@ export default function CatalogSection() {
                   inWishlist={wishlist.includes(bag.id)}
                   onToggleWishlist={toggleWishlist}
                   membershipTier="signature"
+                  user={user}
                 />
               ))}
             </div>
@@ -222,6 +221,7 @@ export default function CatalogSection() {
                   inWishlist={wishlist.includes(bag.id)}
                   onToggleWishlist={toggleWishlist}
                   membershipTier="prive"
+                  user={user}
                 />
               ))}
             </div>
@@ -247,12 +247,66 @@ function BagCard({
   inWishlist,
   onToggleWishlist,
   membershipTier,
+  user,
 }: {
   bag: BagItem
   inWishlist: boolean
   onToggleWishlist: (id: string) => void
   membershipTier: "essentiel" | "signature" | "prive"
+  user: any
 }) {
+  const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
+  const [isInWaitlist, setIsInWaitlist] = useState(false)
+
+  const isAvailable = bag.status === "available"
+
+  useEffect(() => {
+    const checkWaitlist = async () => {
+      if (!user || isAvailable) return
+
+      try {
+        const { data } = await supabase
+          .from("waitlist")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("bag_id", bag.id)
+          .maybeSingle()
+
+        setIsInWaitlist(!!data)
+      } catch {
+        // No está en la lista
+      }
+    }
+    checkWaitlist()
+  }, [user, bag.id, isAvailable])
+
+  const addToWaitlist = async () => {
+    if (!user) {
+      window.location.href = "/auth/login"
+      return
+    }
+
+    setIsAddingToWaitlist(true)
+    try {
+      const { error } = await supabase.from("waitlist").insert({
+        user_id: user.id,
+        bag_id: bag.id,
+        email: user.email || "",
+        notified: false,
+      })
+
+      if (!error) {
+        setIsInWaitlist(true)
+      } else {
+        console.error("Error adding to waitlist:", error)
+      }
+    } catch (error) {
+      console.error("Error adding to waitlist:", error)
+    } finally {
+      setIsAddingToWaitlist(false)
+    }
+  }
+
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
     signature: "bg-rose-pastel/50 text-slate-900",
@@ -298,6 +352,12 @@ function BagCard({
         />
       </div>
 
+      {!isAvailable && (
+        <div className="text-center py-2 border-b border-slate-200">
+          <p className="text-sm font-medium tracking-widest text-slate-400">FUERA CON MIEMBRO</p>
+        </div>
+      )}
+
       <div className="p-4">
         <p className="text-sm text-slate-500">{bag.brand}</p>
         <h3 className="font-serif text-xl text-indigo-dark mb-2">{bag.name}</h3>
@@ -308,23 +368,47 @@ function BagCard({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Link href={`/catalog/${bag.id}`} className="block">
+        {isAvailable ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Link href={`/catalog/${bag.id}`} className="block">
+              <Button
+                variant="outline"
+                className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
+              >
+                <Info className="h-4 w-4 mr-2" />
+                Detalles
+              </Button>
+            </Link>
+            <Link href={`/signup?plan=${membershipTier}&bag=${bag.id}`} className="block">
+              <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                Reservar
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
             <Button
-              variant="outline"
-              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
+              disabled
+              className="w-full bg-indigo-200 text-indigo-dark/70 cursor-not-allowed hover:bg-indigo-200"
             >
-              <Info className="h-4 w-4 mr-2" />
-              Detalles
+              FUERA CON MIEMBRO
             </Button>
-          </Link>
-          <Link href={`/signup?plan=${membershipTier}&bag=${bag.id}`} className="block">
-            <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Reservar
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                addToWaitlist()
+              }}
+              disabled={isAddingToWaitlist || isInWaitlist}
+              variant="outline"
+              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark/5 transition-colors"
+            >
+              <Heart className={`h-4 w-4 mr-2 ${isInWaitlist ? "fill-rose-500 text-rose-500" : ""}`} />
+              {isInWaitlist ? "En Lista de Espera" : "NOTIFICARME"}
             </Button>
-          </Link>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
