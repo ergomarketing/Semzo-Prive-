@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, membershipType, userEmail, couponCode } = await request.json()
+    const { amount, membershipType, userEmail, couponCode, giftCardUsed } = await request.json()
 
     console.log("📊 Datos recibidos:", {
       amount,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (amount === 0 || amount === null || amount === undefined) {
-      console.log("🎁 Membresía gratuita con cupón:", couponCode)
+      console.log("🎁 Membresía gratuita con cupón/gift card:", { couponCode, giftCardUsed })
 
       const freePaymentId = `FREE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         currency: "eur",
         isFree: true,
         couponApplied: couponCode,
+        giftCardUsed,
       })
     }
 
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
         membershipType,
         userEmail,
         couponCode: couponCode || "", // Guardar cupón en metadata
+        giftCardUsed: giftCardUsed ? JSON.stringify(giftCardUsed) : "",
         createdAt: new Date().toISOString(),
       },
     })

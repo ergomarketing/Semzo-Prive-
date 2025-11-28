@@ -126,7 +126,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
       }
 
       // Calculate how much to use (max = remaining amount to pay)
-      const remainingToPay = amountAfterCoupon * 100 // Convert to cents
+      const remainingToPay = Math.round(amountAfterCoupon * 100) // Convert to cents and round to avoid float issues
       const amountToUse = Math.min(data.giftCard.amount, remainingToPay)
 
       setAppliedGiftCard({
@@ -183,7 +183,8 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
       }
 
       // If fully covered by gift card (and/or coupon), no payment needed
-      if (finalAmount === 0) {
+      // Check if finalAmount is close to zero (due to floating point arithmetic)
+      if (finalAmount <= 0.01) {
         onSuccess(`FREE_${Date.now()}`)
         return
       }
