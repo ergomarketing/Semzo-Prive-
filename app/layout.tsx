@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from 'next/font/google'
 import Script from "next/script"
+import { Analytics } from "@vercel/analytics/next"
 import TikTokPixel from "@/components/TikTokPixel"
 import "./globals.css"
 import Navbar from "./components/navbar"
@@ -57,6 +58,7 @@ export default function RootLayout({
             <CookieConsent />
           </CartProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   )
