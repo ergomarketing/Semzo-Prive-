@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,10 +56,12 @@ export default function MembresiaPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [canceling, setCanceling] = useState(false)
   const [showPayments, setShowPayments] = useState(false)
+  const hasFetched = useRef(false)
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return
+      if (!user || hasFetched.current) return
+      hasFetched.current = true
 
       try {
         // Fetch membership data
@@ -72,12 +74,14 @@ export default function MembresiaPage() {
         if (error) throw error
         if (data) setMembershipData(data)
 
-        // Fetch subscription and payment history
         const response = await fetch("/api/user/subscription")
         if (response.ok) {
           const subData = await response.json()
           setSubscription(subData.subscription)
           setPayments(subData.payments || [])
+        } else if (response.status === 429) {
+          // Rate limited - just use profile data
+          console.warn("Rate limited, using profile data only")
         }
       } catch (error) {
         console.error("Error fetching membership:", error)

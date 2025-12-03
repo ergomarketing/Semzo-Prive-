@@ -139,7 +139,7 @@ export default function Navbar() {
                   <ShoppingBag className="w-4 h-4" />
                   {itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-rose-nude text-slate-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                      {itemCount}
+                      {itemCount > 0 ? 1 : 0}
                     </span>
                   )}
                 </Button>

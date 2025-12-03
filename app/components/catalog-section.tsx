@@ -41,6 +41,13 @@ export default function CatalogSection() {
         if (error) throw error
 
         if (data) {
+          console.log(
+            "[v0] Bolsos cargados:",
+            data.map((b) => ({
+              name: b.name,
+              membership_type: b.membership_type,
+            })),
+          )
           setBags(data)
         }
       } catch (error) {
@@ -55,18 +62,26 @@ export default function CatalogSection() {
 
   useEffect(() => {
     const loadWishlist = async () => {
-      if (!user) return
+      if (!user?.id) {
+        setWishlist([])
+        return
+      }
 
       try {
         const { data, error } = await supabase.from("wishlists").select("bag_id").eq("user_id", user.id)
 
-        if (error) throw error
+        if (error) {
+          console.warn("Could not load wishlist:", error.message)
+          setWishlist([])
+          return
+        }
 
         if (data) {
           setWishlist(data.map((item) => item.bag_id))
         }
       } catch (error) {
-        console.error("Error loading wishlist:", error)
+        console.warn("Error loading wishlist:", error)
+        setWishlist([])
       }
     }
 
@@ -255,6 +270,15 @@ function BagCard({
   membershipTier: "essentiel" | "signature" | "prive"
   user: any
 }) {
+  console.log(
+    "[v0] BagCard:",
+    bag.name,
+    "- membership_type:",
+    bag.membership_type,
+    "- membershipTier prop:",
+    membershipTier,
+  )
+
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
 

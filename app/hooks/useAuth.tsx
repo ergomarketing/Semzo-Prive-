@@ -1,8 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { createBrowserClient } from "@supabase/ssr"
 import type { User, Session } from "@supabase/supabase-js"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 
 interface AuthContextType {
   user: User | null
@@ -11,30 +11,33 @@ interface AuthContextType {
   signOut: () => Promise<void>
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-// Singleton pattern for Supabase client
-let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
-
-function getSupabaseClient() {
-  if (!supabaseClient) {
-    supabaseClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
-  }
-  return supabaseClient
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const refreshSession = async () => {
+    const supabase = getSupabaseBrowser()
+    if (!supabase) return
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    setSession(session)
+    setUser(session?.user ?? null)
+  }
+
   useEffect(() => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseBrowser()
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
 
     // Get initial session
     const getSession = async () => {
@@ -68,20 +71,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseBrowser()
+    if (!supabase) return
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
   }
 
   const signIn = async (email: string, password: string) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseBrowser()
+    if (!supabase) return { error: new Error("Supabase not configured") }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error: error as Error | null }
   }
 
   const signUp = async (email: string, password: string) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseBrowser()
+    if (!supabase) return { error: new Error("Supabase not configured") }
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -93,7 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut, signIn, signUp }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, session, loading, signOut, signIn, signUp, refreshSession }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

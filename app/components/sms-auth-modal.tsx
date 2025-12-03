@@ -24,38 +24,51 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
   const [canResend, setCanResend] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resendAttempts, setResendAttempts] = useState(0)
+  const [codeSentAt, setCodeSentAt] = useState<number | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState(60)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
-    if (resendCooldown > 0) {
+    if (codeSentAt && step === "code") {
       interval = setInterval(() => {
-        setResendCooldown((prev) => {
-          if (prev <= 1) {
-            setCanResend(true)
-            return 0
-          }
-          return prev - 1
-        })
+        const elapsed = Math.floor((Date.now() - codeSentAt) / 1000)
+        const remaining = Math.max(0, 60 - elapsed)
+        setTimeRemaining(remaining)
+        if (remaining <= 0) {
+          setCanResend(true)
+        }
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [resendCooldown])
+  }, [codeSentAt, step])
 
   useEffect(() => {
     if (!isOpen || step !== "code") {
       setCanResend(false)
       setResendCooldown(0)
       setResendAttempts(0)
+      setCodeSentAt(null)
+      setTimeRemaining(60)
     }
   }, [isOpen, step])
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep("phone")
+      setPhone("")
+      setCode("")
+      setName("")
+      setError("")
+      setCodeSentAt(null)
+      setTimeRemaining(60)
+    }
+  }, [isOpen])
 
   const handleSendCode = async (isResend = false) => {
     setLoading(true)
     setError("")
 
     try {
-      console.log("[v0] Sending SMS code to:", phone)
-
       const supabase = getSupabaseBrowser()
 
       if (!supabase) {
@@ -72,8 +85,6 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
       })
 
       if (error) {
-        console.error("[v0] SMS send error:", error)
-
         if (error.message.includes("unverified") && error.message.includes("Trial accounts")) {
           setError(
             `⚠️ Cuenta Twilio en modo prueba: El número ${phone} debe ser verificado primero. 
@@ -87,18 +98,18 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
           setError(`Error enviando SMS: ${error.message}`)
         }
       } else {
-        console.log("[v0] SMS sent successfully")
         if (!isResend) {
           setStep("code")
         }
+        setCodeSentAt(Date.now())
+        setTimeRemaining(60)
         setCanResend(false)
-        setResendCooldown(60) // 60 seconds cooldown
+        setResendCooldown(60)
         if (isResend) {
           setResendAttempts((prev) => prev + 1)
         }
       }
     } catch (err) {
-      console.error("[v0] SMS send exception:", err)
       setError("Error enviando código SMS")
     } finally {
       setLoading(false)
@@ -117,10 +128,14 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
     setLoading(true)
     setError("")
 
-    try {
-      const verifyTimestamp = new Date().toISOString()
-      console.log("[v0] Verifying SMS code:", code, "at", verifyTimestamp)
+    if (codeSentAt && Date.now() - codeSentAt > 60000) {
+      setError("El código ha expirado. Solicita uno nuevo haciendo clic en 'Reenviar código'.")
+      setCanResend(true)
+      setLoading(false)
+      return
+    }
 
+    try {
       const supabase = getSupabaseBrowser()
 
       if (!supabase) {
@@ -136,90 +151,31 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess }: SMSAuthModalProps) 
       })
 
       if (error) {
-        console.error("[v0] SMS verify error:", error.message)
-        console.error("[v0] SMS verify error full:", JSON.stringify(error))
-
         if (error.message.includes("expired") || error.message.includes("Token has expired")) {
-          setError(
-            "Código expirado. Los códigos SMS de Supabase expiran en 60 segundos. Solicita un nuevo código haciendo clic en 'Reenviar código'.",
-          )
+          setError("Código expirado. Solicita un nuevo código haciendo clic en 'Reenviar código'.")
           setCanResend(true)
-          setResendCooldown(0)
         } else if (
           error.message.includes("invalid") ||
           error.message.includes("Token") ||
           error.message.includes("OTP")
         ) {
-          setError(
-            `Código incorrecto o expirado. 
-
-Posibles causas:
-- El código ingresado no coincide con el enviado por SMS
-- Han pasado más de 60 segundos desde que recibiste el código
-- Ya usaste este código anteriormente
-
-Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
-          )
-          setCanResend(true)
-          setResendCooldown(0)
+          setError("Código incorrecto. Verifica el código e intenta de nuevo.")
         } else {
           setError(`Error: ${error.message}`)
         }
       } else if (data.user) {
-        console.log("[v0] SMS verification successful:", data.user)
-
-        // Si el usuario ya tiene nombre, completar directamente
-        if (data.user.user_metadata?.full_name) {
-          onSuccess(data.user)
-          onClose()
-        } else {
-          setStep("profile")
-        }
+        onSuccess(data.user)
+        onClose()
       }
     } catch (err) {
-      console.error("[v0] SMS verify exception:", err)
       setError("Error verificando código")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCompleteProfile = async () => {
-    setLoading(true)
-    setError("")
-
-    try {
-      const supabase = getSupabaseBrowser()
-
-      if (!supabase) {
-        setError("Error de configuración. Contacta al administrador.")
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          full_name: name,
-          first_name: name.split(" ")[0],
-          last_name: name.split(" ").slice(1).join(" "),
-        },
-      })
-
-      if (error) {
-        console.error("[v0] Profile update error:", error)
-        setError(`Error actualizando perfil: ${error.message}`)
-        return
-      }
-
-      console.log("[v0] Profile updated successfully:", data.user)
-      onSuccess(data.user)
-      onClose()
-    } catch (err) {
-      console.error("[v0] Profile update exception:", err)
-      setError("Error completando registro")
-    } finally {
-      setLoading(false)
-    }
+  const handleEmailSignup = () => {
+    window.location.href = "/signup?returnTo=cart"
   }
 
   return (
@@ -253,7 +209,7 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
             </Button>
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">¿Problemas con SMS?</p>
-              <Button variant="outline" onClick={() => (window.location.href = "/signup")} className="w-full">
+              <Button variant="outline" onClick={handleEmailSignup} className="w-full bg-transparent">
                 Registrarse gratis con email
               </Button>
             </div>
@@ -273,25 +229,26 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
                 maxLength={6}
               />
               <p className="text-sm text-gray-600 mt-1">Enviado a {phone}</p>
-              <p className="text-xs text-amber-600 mt-1">⏱️ El código expira en 60 segundos</p>
+              <p className={`text-xs mt-1 ${timeRemaining <= 10 ? "text-red-600 font-semibold" : "text-amber-600"}`}>
+                ⏱️{" "}
+                {timeRemaining > 0
+                  ? `El código expira en ${timeRemaining} segundos`
+                  : "Código expirado - solicita uno nuevo"}
+              </p>
             </div>
             {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md whitespace-pre-line">{error}</div>}
 
             <div className="text-center space-y-2">
               <p className="text-sm text-gray-600">¿No recibiste el código?</p>
-              {resendCooldown > 0 ? (
-                <p className="text-sm text-gray-500">Reenviar en {resendCooldown}s</p>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendCode}
-                  disabled={!canResend || loading || resendAttempts >= 3}
-                  className="text-sm"
-                >
-                  {resendAttempts >= 3 ? "Máximo alcanzado" : "Reenviar código"}
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendCode}
+                disabled={!canResend || loading || resendAttempts >= 3}
+                className="text-sm"
+              >
+                {resendAttempts >= 3 ? "Máximo alcanzado" : "Reenviar código"}
+              </Button>
               {resendAttempts > 0 && resendAttempts < 3 && (
                 <p className="text-xs text-gray-500">Reenvíos: {resendAttempts}/3</p>
               )}
@@ -301,7 +258,7 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
               <Button variant="outline" onClick={() => setStep("phone")} className="flex-1">
                 Cambiar número
               </Button>
-              <Button onClick={handleVerifyCode} disabled={!code || loading} className="flex-1">
+              <Button onClick={handleVerifyCode} disabled={!code || loading || timeRemaining <= 0} className="flex-1">
                 {loading ? "Verificando..." : "Verificar"}
               </Button>
             </div>
@@ -321,7 +278,7 @@ Solución: Haz clic en "Reenviar código" para recibir uno nuevo.`,
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button onClick={handleCompleteProfile} disabled={!name || loading} className="w-full">
+            <Button onClick={() => onSuccess({ phone })} disabled={!name || loading} className="w-full">
               {loading ? "Completando..." : "Completar registro"}
             </Button>
           </div>

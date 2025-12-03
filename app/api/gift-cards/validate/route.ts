@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       valid: true,
+      balance: giftCard.amount || giftCard.balance || giftCard.original_amount,
       giftCard: {
         id: giftCard.id,
         code: giftCard.code,

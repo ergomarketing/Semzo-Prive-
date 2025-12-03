@@ -3,11 +3,31 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw, Check } from "lucide-react"
+import {
+  Clock,
+  Shield,
+  Heart,
+  ArrowLeft,
+  ZoomIn,
+  Star,
+  Share2,
+  Truck,
+  RotateCcw,
+  Check,
+  AlertTriangle,
+} from "lucide-react"
 import Link from "next/link"
-import { createBrowserClient } from "@supabase/ssr"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface BagDetailProps {
   bag: {
@@ -51,16 +71,18 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const { addItem } = useCart()
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false)
+  const [pendingItems, setPendingItems] = useState<any[]>([])
+
+  const { addItem, addItems, hasMembership, replaceMembership } = useCart()
   const router = useRouter()
   const [selectedMembership, setSelectedMembership] = useState<"petite" | "essentiel" | "essentiel-quarterly">("petite")
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      const supabase = getSupabaseBrowser()
+      if (!supabase) return
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -81,6 +103,31 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     prive: "Privé",
   }
 
+  const membershipConfig: Record<string, { name: string; price: number; quarterlyPrice: number; description: string }> =
+    {
+      essentiel: {
+        name: "MEMBRESÍA L'ESSENTIEL",
+        price: 59,
+        quarterlyPrice: 149,
+        description: "Accede a este bolso y cámbialo por otro de la colección L'Essentiel cada mes.",
+      },
+      signature: {
+        name: "MEMBRESÍA SIGNATURE",
+        price: 129,
+        quarterlyPrice: 329,
+        description: "Accede a este bolso y cámbialo por otro de la colección Signature cada mes.",
+      },
+      prive: {
+        name: "MEMBRESÍA PRIVÉ",
+        price: 189,
+        quarterlyPrice: 479,
+        description: "Accede a este bolso y cámbialo por otro de la colección Privé cada mes.",
+      },
+    }
+
+  // Obtener la configuración correcta según el tier del bolso
+  const currentMembershipConfig = membershipConfig[bag.membership] || membershipConfig.essentiel
+
   const membershipOptions = {
     petite: {
       name: "MEMBRESÍA PETITE",
@@ -94,24 +141,31 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       billingCycle: "weekly" as const,
     },
     essentiel: {
-      name: "MEMBRESÍA L'ESSENTIEL",
+      name: currentMembershipConfig.name,
       badge: "Mensual",
       badgeColor: "bg-rose-50 text-rose-500",
-      description: `Accede a este bolso y cámbialo por otro de la colección L'Essentiel cada mes.`,
-      price: 59,
+      description: currentMembershipConfig.description,
+      price: currentMembershipConfig.price,
       period: "/mes",
       billingCycle: "monthly" as const,
     },
     "essentiel-quarterly": {
-      name: "MEMBRESÍA L'ESSENTIEL",
+      name: currentMembershipConfig.name,
       badge: "Ahorra 16%",
       badgeColor: "bg-rose-50 text-rose-500",
-      description: "Accede a la colección L'Essentiel completa durante 3 meses con descuento especial.",
-      price: 149,
-      monthlyEquivalent: "49.67€/mes",
+      description: `Accede a la colección ${membershipNames[bag.membership]} completa durante 3 meses con descuento especial.`,
+      price: currentMembershipConfig.quarterlyPrice,
+      monthlyEquivalent: `${(currentMembershipConfig.quarterlyPrice / 3).toFixed(2)}€/mes`,
       period: "/trimestre",
       billingCycle: "quarterly" as const,
     },
+  }
+
+  const membershipImages: Record<string, string> = {
+    petite: "/images/jacquemus-le-chiquito.jpg",
+    essentiel: "/images/louis-vuitton-essentiel-new.jpg",
+    signature: "/images/dior-lady-bag.jpg",
+    prive: "/images/chanel-prive-pink.jpg",
   }
 
   const availabilityStatus = {
@@ -134,10 +188,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const addToWaitlist = async () => {
     setIsAddingToWaitlist(true)
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        alert("Error de configuración. Contacta al administrador.")
+        return
+      }
 
       const {
         data: { user },
@@ -182,25 +238,95 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const handleReserve = () => {
     const option = membershipOptions[selectedMembership]
-    const price =
-      selectedMembership === "petite" ? `${(option.basePrice + option.bagPass).toFixed(2)}€` : `${option.price}€`
+    let itemsToAdd: any[] = []
 
-    const cartItem = {
-      id: `${selectedMembership}-${bag.id}`,
-      name: option.name.replace("MEMBRESÍA ", ""),
-      price,
-      billingCycle: option.billingCycle,
-      description: `${bag.brand} ${bag.name}`,
-      image: bag.images[0],
-      brand: bag.brand,
+    if (selectedMembership === "petite") {
+      // Para Petite: agregar DOS items separados
+      const membershipItem = {
+        id: `petite-membership-${Date.now()}`,
+        name: "Membresía Petite",
+        price: `${option.basePrice.toFixed(2)}€`,
+        billingCycle: option.billingCycle,
+        description: "Membresía base semanal",
+        image: membershipImages.petite,
+        brand: "Semzo Privé",
+        itemType: "membership" as const,
+      }
+
+      const bagPassItem = {
+        id: `bag-pass-${bag.id}-${Date.now()}`,
+        name: `Pase Bolso ${membershipNames[bag.membership]}`,
+        price: `${option.bagPass.toFixed(2)}€`,
+        billingCycle: option.billingCycle,
+        description: `${bag.brand} ${bag.name}`,
+        image: bag.images[0],
+        brand: bag.brand,
+        itemType: "bag-pass" as const,
+      }
+
+      itemsToAdd = [membershipItem, bagPassItem]
+    } else {
+      // Para L'Essentiel: un solo item con imagen de L'Essentiel
+      const price = `${option.price}€`
+      const cartItem = {
+        id: `${selectedMembership}-${bag.id}`,
+        name: option.name.replace("MEMBRESÍA ", ""),
+        price,
+        billingCycle: option.billingCycle,
+        description: `${bag.brand} ${bag.name}`,
+        image: membershipImages.essentiel,
+        brand: bag.brand,
+        itemType: "membership" as const,
+      }
+      itemsToAdd = [cartItem]
     }
 
-    addItem(cartItem)
+    if (hasMembership()) {
+      setPendingItems(itemsToAdd)
+      setShowReplaceDialog(true)
+    } else {
+      // No hay membresía, agregar directamente
+      if (itemsToAdd.length > 1) {
+        addItems(itemsToAdd)
+      } else {
+        addItem(itemsToAdd[0])
+      }
+      router.push("/cart")
+    }
+  }
+
+  const handleConfirmReplace = () => {
+    replaceMembership(pendingItems)
+    setShowReplaceDialog(false)
+    setPendingItems([])
     router.push("/cart")
   }
 
   return (
     <div className="min-h-screen bg-white">
+      <Dialog open={showReplaceDialog} onOpenChange={setShowReplaceDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Ya tienes una membresía en el carrito
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Solo puedes tener una membresía activa a la vez. ¿Deseas reemplazar la membresía actual por la nueva
+              selección?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowReplaceDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmReplace} className="bg-slate-900 hover:bg-slate-800">
+              Reemplazar membresía
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="container mx-auto px-4 py-6">
         <Link
           href="/catalog"
@@ -571,7 +697,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
           <h3 className="font-serif text-3xl text-slate-900 mb-8 text-center">También te puede interesar</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {bagsToShow.map((relatedBag) => (
-              <div key={relatedBag.id} className="group cursor-pointer">
+              <Link key={relatedBag.id} href={`/catalog/${relatedBag.id}`} className="group cursor-pointer">
                 <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-4 group-hover:shadow-lg transition-shadow">
                   <Image
                     src={relatedBag.image || "/placeholder.svg"}
@@ -586,7 +712,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   <h4 className="font-serif text-lg text-slate-900 mb-2">{relatedBag.name}</h4>
                   <p className="font-medium text-slate-900">{relatedBag.price}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

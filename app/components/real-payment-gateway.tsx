@@ -11,7 +11,9 @@ import { CreditCard, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 
 const stripePublishableKey =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-  "pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB"
+  process.env.STRIPE_STRIPE_PUBLISHABLE_KEY ||
+  process.env.STRIPE_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  ""
 
 // Debug log para verificar la clave
 console.log("🔑 Stripe Key Status:", {

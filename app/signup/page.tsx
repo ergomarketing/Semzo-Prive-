@@ -10,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react"
-import { createBrowserClient } from "@supabase/ssr"
+import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
+
+const CART_BACKUP_KEY = "semzo_cart_backup"
 
 export default function SignupPage() {
   const searchParams = useSearchParams()
@@ -27,11 +29,17 @@ export default function SignupPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [requiresConfirmation, setRequiresConfirmation] = useState(false)
+  const [returnToCart, setReturnToCart] = useState(false)
 
   useEffect(() => {
     const plan = searchParams.get("plan")
+    const returnTo = searchParams.get("returnTo")
+
     if (plan) {
       setSelectedPlan(plan)
+    }
+    if (returnTo === "cart") {
+      setReturnToCart(true)
     }
   }, [searchParams])
 
@@ -70,16 +78,23 @@ export default function SignupPage() {
     }
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      const supabase = getSupabaseBrowser()
+
+      if (!supabase) {
+        setMessage({ type: "error", text: "Error de configuración. Contacta al administrador." })
+        setLoading(false)
+        return
+      }
+
+      const redirectUrl = returnToCart
+        ? `${window.location.origin}/cart`
+        : `${window.location.origin}/auth/login?confirmed=true`
 
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/login?confirmed=true`,
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || redirectUrl,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
@@ -107,7 +122,9 @@ export default function SignupPage() {
       if (needsConfirmation) {
         setMessage({
           type: "success",
-          text: "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
+          text: returnToCart
+            ? "Cuenta creada. Revisa tu email para confirmar y luego vuelve al carrito para completar tu compra."
+            : "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
         })
       } else {
         setMessage({
@@ -116,10 +133,14 @@ export default function SignupPage() {
         })
 
         setTimeout(() => {
-          const loginUrl = selectedPlan
-            ? `/auth/login?plan=${selectedPlan}&registered=true`
-            : "/auth/login?registered=true"
-          router.push(loginUrl)
+          if (returnToCart) {
+            router.push("/cart")
+          } else {
+            const loginUrl = selectedPlan
+              ? `/auth/login?plan=${selectedPlan}&registered=true`
+              : "/auth/login?registered=true"
+            router.push(loginUrl)
+          }
         }, 2000)
       }
 
@@ -144,7 +165,9 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
           <CardDescription className="text-gray-600">
-            {selectedPlan ? (
+            {returnToCart ? (
+              "Crea tu cuenta para completar tu compra"
+            ) : selectedPlan ? (
               <>
                 Únete a Semzo Privé con el plan <span className="font-semibold capitalize">{selectedPlan}</span>
               </>
@@ -154,7 +177,15 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {selectedPlan && (
+          {returnToCart && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 text-center">
+                Tu carrito está guardado. Completa el registro para continuar con tu compra.
+              </p>
+            </div>
+          )}
+
+          {selectedPlan && !returnToCart && (
             <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
               <p className="text-sm text-rose-800 text-center">
                 Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
@@ -277,7 +308,11 @@ export default function SignupPage() {
                       </div>
                     )}
                     {message.type === "success" && !requiresConfirmation && (
-                      <div className="mt-2 text-sm text-indigo-dark">Serás redirigido al login en 2 segundos...</div>
+                      <div className="mt-2 text-sm text-indigo-dark">
+                        {returnToCart
+                          ? "Serás redirigido al carrito en 2 segundos..."
+                          : "Serás redirigido al login en 2 segundos..."}
+                      </div>
                     )}
                   </AlertDescription>
                 </div>
@@ -293,7 +328,13 @@ export default function SignupPage() {
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{" "}
               <Link
-                href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
+                href={
+                  returnToCart
+                    ? "/auth/login?returnTo=cart"
+                    : selectedPlan
+                      ? `/auth/login?plan=${selectedPlan}`
+                      : "/auth/login"
+                }
                 className="text-pink-600 hover:text-pink-700 font-medium"
               >
                 Inicia sesión

@@ -18,18 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Package,
-  CreditCard,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Info,
-} from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Package, CreditCard, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
 import { supabase } from "../../../lib/supabaseClient"
 
 interface ReservationDetails {
@@ -41,16 +30,15 @@ interface ReservationDetails {
   total_amount: number
   created_at: string
   updated_at: string
-  cancellation_reason?: string
-  cancelled_at?: string
   bags: {
     id: string
     name: string
     brand: string
     image_url: string
-    daily_price: number
+    retail_price: number
     description?: string
     status: string
+    membership_type?: string
   } | null
   profiles: {
     id: string
@@ -94,9 +82,10 @@ export default function ReservationDetailsPage() {
               name,
               brand,
               image_url,
-              daily_price,
+              retail_price,
               description,
-              status
+              status,
+              membership_type
             )
           `)
           .eq("id", reservationId)
@@ -106,7 +95,7 @@ export default function ReservationDetailsPage() {
         if (error) {
           console.error("[ReservationDetails] Error fetching reservation:", error)
           console.error("[ReservationDetails] Error details:", JSON.stringify(error, null, 2))
-          setError(`No se pudo cargar la reserva: ${error.message || 'Error desconocido'}`)
+          setError(`No se pudo cargar la reserva: ${error.message || "Error desconocido"}`)
           setLoading(false)
           return
         }
@@ -128,7 +117,7 @@ export default function ReservationDetailsPage() {
         // Combinar datos
         const enrichedData = {
           ...data,
-          profiles: profileData || null
+          profiles: profileData || null,
         }
 
         console.log("[ReservationDetails] Reservation loaded successfully")
@@ -153,8 +142,6 @@ export default function ReservationDetailsPage() {
         .from("reservations")
         .update({
           status: "cancelled",
-          cancellation_reason: cancellationReason || "Cancelada por el usuario",
-          cancelled_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", reservationId)
@@ -233,11 +220,7 @@ export default function ReservationDetailsPage() {
   if (error || !reservation) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Button
-          onClick={() => router.push("/dashboard/reservas")}
-          variant="ghost"
-          className="mb-4"
-        >
+        <Button onClick={() => router.push("/dashboard/reservas")} variant="ghost" className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Reservas
         </Button>
@@ -272,11 +255,7 @@ export default function ReservationDetailsPage() {
     <div className="max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Button
-          onClick={() => router.push("/dashboard/reservas")}
-          variant="ghost"
-          className="mb-4"
-        >
+        <Button onClick={() => router.push("/dashboard/reservas")} variant="ghost" className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Reservas
         </Button>
@@ -311,18 +290,7 @@ export default function ReservationDetailsPage() {
       {reservation.status === "cancelled" && (
         <Alert className="mb-6 border-red-200 bg-red-50">
           <XCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-900">
-            Esta reserva fue cancelada
-            {reservation.cancelled_at && (
-              <> el {new Date(reservation.cancelled_at).toLocaleDateString("es-ES")}</>
-            )}
-            {reservation.cancellation_reason && (
-              <>
-                <br />
-                <span className="text-sm">Motivo: {reservation.cancellation_reason}</span>
-              </>
-            )}
-          </AlertDescription>
+          <AlertDescription className="text-red-900">Esta reserva fue cancelada</AlertDescription>
         </Alert>
       )}
 
@@ -342,7 +310,7 @@ export default function ReservationDetailsPage() {
                 <div className="w-32 h-32 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                   {reservation.bags?.image_url ? (
                     <img
-                      src={reservation.bags.image_url}
+                      src={reservation.bags.image_url || "/placeholder.svg"}
                       alt={reservation.bags.name}
                       className="w-full h-full object-cover"
                     />
@@ -360,7 +328,7 @@ export default function ReservationDetailsPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      ${reservation.bags?.daily_price || 0}/día
+                      Valor: {reservation.bags?.retail_price || 0}€
                     </Badge>
                     <Badge
                       variant="outline"
@@ -443,17 +411,17 @@ export default function ReservationDetailsPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Precio por día:</span>
-                  <span className="font-medium">${reservation.bags?.daily_price || 0}</span>
+                  <span className="text-slate-600">Valor del bolso:</span>
+                  <span className="font-medium">{reservation.bags?.retail_price || 0}€</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Número de días:</span>
+                  <span className="text-slate-600">Días de reserva:</span>
                   <span className="font-medium">{daysTotal}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-200">
-                  <span className="text-lg font-medium text-slate-900">Total:</span>
+                  <span className="text-lg font-medium text-slate-900">Total pagado:</span>
                   <span className="text-lg font-bold text-slate-900">
-                    ${reservation.total_amount?.toFixed(2) || "0.00"}
+                    {reservation.total_amount?.toFixed(2) || "0.00"}€
                   </span>
                 </div>
               </div>
@@ -481,9 +449,7 @@ export default function ReservationDetailsPage() {
                   />
                   <div className="flex-1">
                     <p className="font-medium text-sm">Creada</p>
-                    <p className="text-xs text-slate-600">
-                      {new Date(reservation.created_at).toLocaleString("es-ES")}
-                    </p>
+                    <p className="text-xs text-slate-600">{new Date(reservation.created_at).toLocaleString("es-ES")}</p>
                   </div>
                 </div>
 
@@ -525,8 +491,8 @@ export default function ReservationDetailsPage() {
                     <div className="flex-1">
                       <p className="font-medium text-sm">Cancelada</p>
                       <p className="text-xs text-slate-600">
-                        {reservation.cancelled_at
-                          ? new Date(reservation.cancelled_at).toLocaleString("es-ES")
+                        {reservation.updated_at
+                          ? new Date(reservation.updated_at).toLocaleString("es-ES")
                           : "Fecha desconocida"}
                       </p>
                     </div>
@@ -543,27 +509,15 @@ export default function ReservationDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {canCancel && (
-                <Button
-                  onClick={() => setShowCancelDialog(true)}
-                  variant="destructive"
-                  className="w-full"
-                >
+                <Button onClick={() => setShowCancelDialog(true)} variant="destructive" className="w-full">
                   <XCircle className="h-4 w-4 mr-2" />
                   Cancelar Reserva
                 </Button>
               )}
-              <Button
-                onClick={() => router.push("/dashboard/reservas")}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={() => router.push("/dashboard/reservas")} variant="outline" className="w-full">
                 Volver a Mis Reservas
               </Button>
-              <Button
-                onClick={() => router.push("/catalog")}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={() => router.push("/catalog")} variant="outline" className="w-full">
                 Explorar Catálogo
               </Button>
             </CardContent>
@@ -598,14 +552,12 @@ export default function ReservationDetailsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Cancelar esta reserva?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para
-              otros usuarios.
+              Esta acción no se puede deshacer. La reserva será cancelada y el bolso quedará disponible para otros
+              usuarios.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-4">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">
-              Motivo de cancelación (opcional)
-            </label>
+            <label className="text-sm font-medium text-slate-700 mb-2 block">Motivo de cancelación (opcional)</label>
             <Textarea
               value={cancellationReason}
               onChange={(e) => setCancellationReason(e.target.value)}

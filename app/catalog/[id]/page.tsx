@@ -1,16 +1,9 @@
 import Navbar from "../../components/navbar"
 import Footer from "../../components/footer"
 import BagDetail from "../../components/bag-detail"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServiceRole } from "@/app/lib/supabaseClient"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_SUPABASE_URL || ""
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  ""
 
 export default async function BagDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
@@ -19,9 +12,9 @@ export default async function BagDetailPage({ params }: { params: { id: string }
   let relatedBags: any[] = []
   let error = null
 
-  if (supabaseUrl && supabaseKey) {
-    const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabase = getSupabaseServiceRole()
 
+  if (supabase) {
     const { data, error: fetchError } = await supabase.from("bags").select("*").eq("id", id).single()
 
     if (fetchError) {
@@ -38,7 +31,7 @@ export default async function BagDetailPage({ params }: { params: { id: string }
         price: `${data.price}€/mes`,
         retailPrice: `${data.retail_price}€`,
         images: data.images || [data.image_url, data.image_url, data.image_url],
-        membership: getMembershipTier(data.price),
+        membership: data.membership_type || "essentiel",
         color: data.color || "Clásico",
         material: data.material || "Cuero premium",
         dimensions: data.dimensions || "Medidas estándar",
@@ -66,9 +59,9 @@ export default async function BagDetailPage({ params }: { params: { id: string }
 
       const { data: relatedData, error: relatedError } = await supabase
         .from("bags")
-        .select("id, name, brand, price, image_url, images")
-        .neq("id", id) // Excluir el bolso actual
-        .eq("status", "available") // Solo bolsos disponibles
+        .select("id, name, brand, price, image_url, images, membership_type")
+        .neq("id", id)
+        .eq("status", "available")
         .limit(3)
 
       if (!relatedError && relatedData) {
@@ -76,18 +69,18 @@ export default async function BagDetailPage({ params }: { params: { id: string }
           id: item.id,
           name: item.name,
           brand: item.brand,
-          price: `${item.price}€/mes`,
+          price: item.price
+            ? `${item.price}€/mes`
+            : item.membership_type === "prive"
+              ? "189€/mes"
+              : item.membership_type === "signature"
+                ? "129€/mes"
+                : "59€/mes",
           image: item.images?.[0] || item.image_url || "/placeholder.svg",
-          membership: getMembershipTier(item.price),
+          membership: item.membership_type || "essentiel",
         }))
       }
     }
-  }
-
-  function getMembershipTier(price: number): "essentiel" | "signature" | "prive" {
-    if (price <= 59) return "essentiel"
-    if (price <= 129) return "signature"
-    return "prive"
   }
 
   if (!bag) {

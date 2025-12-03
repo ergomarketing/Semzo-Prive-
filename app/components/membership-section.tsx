@@ -91,13 +91,24 @@ export default function MembershipSection() {
   const { addItem } = useCart()
   const router = useRouter()
 
-  const handleSelectPlan = (plan: any) => {
-    const price =
-      billingCycle === "weekly"
-        ? plan.priceWeekly
-        : billingCycle === "monthly"
-          ? plan.priceMonthly
-          : plan.priceQuarterly
+  const handleSelectPlan = (plan: (typeof plans)[0]) => {
+    let price: string
+    let periodLabel: string
+    let period: "weekly" | "monthly" | "quarterly"
+
+    if (billingCycle === "weekly") {
+      price = plan.priceWeekly || "19.99€"
+      periodLabel = "/semana"
+      period = "weekly"
+    } else if (billingCycle === "monthly") {
+      price = plan.priceMonthly || "59€"
+      periodLabel = "/mes"
+      period = "monthly"
+    } else {
+      price = plan.priceQuarterly || "149€"
+      periodLabel = "/trimestre"
+      period = "quarterly"
+    }
 
     const selectedMembership = {
       id: plan.id,
@@ -114,15 +125,18 @@ export default function MembershipSection() {
     localStorage.setItem("selectedMembership", JSON.stringify(selectedMembership))
 
     const cartItem = {
-      id: `${plan.id}-${billingCycle}`,
-      name: plan.name,
-      price,
-      billingCycle,
+      id: `${plan.id}-membership-${billingCycle}`,
+      name: plan.name.toUpperCase(),
+      price: price,
+      billingCycle: period,
       description: plan.description,
       image: plan.image,
-      brand: plan.brand,
+      brand: plan.brand || "",
+      itemType: "membership" as const,
+      period: period,
     }
 
+    console.log("[v0] Adding membership to cart:", cartItem)
     addItem(cartItem)
     router.push("/cart")
   }
