@@ -5,8 +5,8 @@ import { getSupabaseServiceRole } from "@/app/lib/supabaseClient"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
-export default async function BagDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function BagDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
 
   let bag = null
   let relatedBags: any[] = []
