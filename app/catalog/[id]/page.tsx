@@ -1,20 +1,27 @@
 import Navbar from "../../components/navbar"
 import Footer from "../../components/footer"
 import BagDetail from "../../components/bag-detail"
-import { getSupabaseServiceRole } from "@/app/lib/supabaseClient"
+import { createClient } from "@supabase/supabase-js"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
-export default async function BagDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_SUPABASE_URL || ""
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  ""
+
+export default async function BagDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
 
   let bag = null
   let relatedBags: any[] = []
   let error = null
 
-  const supabase = getSupabaseServiceRole()
+  if (supabaseUrl && supabaseKey) {
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-  if (supabase) {
     const { data, error: fetchError } = await supabase.from("bags").select("*").eq("id", id).single()
 
     if (fetchError) {

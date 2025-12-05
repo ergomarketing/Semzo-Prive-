@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, membershipType, paymentId, bagId } = await request.json()
+    const { userId, membershipType, paymentId } = await request.json()
 
     if (!userId || !membershipType || !paymentId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -19,16 +19,7 @@ export async function POST(request: NextRequest) {
       cleanMembershipType = "prive"
     }
 
-    console.log(
-      "[v0] Updating membership - User:",
-      userId,
-      "Type:",
-      cleanMembershipType,
-      "Payment:",
-      paymentId,
-      "BagId:",
-      bagId,
-    )
+    console.log("[v0] Updating membership - User:", userId, "Type:", cleanMembershipType, "Payment:", paymentId)
 
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey =
@@ -74,35 +65,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] Membership updated successfully for user:", userId)
-
-    if (bagId) {
-      const startDate = new Date()
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 30) // Default 30 days rental
-
-      const { error: reservationError } = await supabase.from("reservations").insert({
-        user_id: userId,
-        bag_id: bagId,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        status: "confirmed",
-        payment_id: paymentId,
-        created_at: new Date().toISOString(),
-      })
-
-      if (reservationError) {
-        console.error("[v0] Error creating reservation:", reservationError)
-        // Don't fail the whole request if reservation fails
-        return NextResponse.json({
-          success: true,
-          warning: "Membership activated but reservation failed. Please contact support.",
-          reservationError: reservationError.message,
-        })
-      }
-
-      console.log("[v0] Reservation created successfully for bag:", bagId)
-    }
-
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0] Error in update-membership API:", error)

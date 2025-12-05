@@ -20,8 +20,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   })
 }
 
-let browserClientInstance: ReturnType<typeof createBrowserClient> | null = null
-
 export function getSupabaseBrowser() {
   if (typeof window === "undefined") {
     return null
@@ -31,13 +29,7 @@ export function getSupabaseBrowser() {
     return null
   }
 
-  // Return existing instance if already created
-  if (browserClientInstance) {
-    return browserClientInstance
-  }
-
-  browserClientInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
-  return browserClientInstance
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
 export function getSupabaseServiceRole() {

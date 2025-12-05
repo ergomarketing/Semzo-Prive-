@@ -12,7 +12,6 @@ interface CartItem {
   brand: string
   itemType?: "membership" | "bag-pass"
   period?: "weekly" | "monthly" | "quarterly"
-  bagId?: string
 }
 
 interface CartContextType {
@@ -51,46 +50,71 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, isHydrated])
 
-  const hasMembership = () => {
-    return items.some(
-      (item) =>
-        item.itemType === "membership" ||
-        item.id.includes("membership") ||
-        item.id.includes("essentiel") ||
-        item.id.includes("signature") ||
-        item.id.includes("prive") ||
-        item.id.includes("petite"),
+  const isMembershipItem = (item: CartItem) => {
+    return (
+      item.itemType === "membership" ||
+      item.itemType === "bag-pass" ||
+      item.id.includes("membership") ||
+      item.id.includes("bag-pass") ||
+      item.id.includes("essentiel") ||
+      item.id.includes("signature") ||
+      item.id.includes("prive") ||
+      item.id.includes("petite") ||
+      item.name.toLowerCase().includes("membresía") ||
+      item.name.toLowerCase().includes("pase bolso")
     )
+  }
+
+  const hasMembership = () => {
+    return items.some(isMembershipItem)
   }
 
   const replaceMembership = (newItems: CartItem[]) => {
     setItems((prevItems) => {
       // Filtrar items que NO son membresías ni bag-pass
-      const nonMembershipItems = prevItems.filter(
-        (item) =>
-          item.itemType !== "membership" &&
-          item.itemType !== "bag-pass" &&
-          !item.id.includes("membership") &&
-          !item.id.includes("bag-pass") &&
-          !item.id.includes("essentiel") &&
-          !item.id.includes("signature") &&
-          !item.id.includes("prive") &&
-          !item.id.includes("petite"),
-      )
+      const nonMembershipItems = prevItems.filter((item) => !isMembershipItem(item))
       return [...nonMembershipItems, ...newItems]
     })
   }
 
   const addItem = (item: CartItem) => {
-    setItems((prevItems) => [...prevItems, item])
+    setItems((prevItems) => {
+      if (isMembershipItem(item)) {
+        // Si es una membresía, eliminar todas las membresías anteriores
+        const nonMembershipItems = prevItems.filter((i) => !isMembershipItem(i))
+        return [...nonMembershipItems, item]
+      }
+      return [...prevItems, item]
+    })
   }
 
   const addItems = (newItems: CartItem[]) => {
-    setItems((prevItems) => [...prevItems, ...newItems])
+    setItems((prevItems) => {
+      const hasNewMembership = newItems.some(isMembershipItem)
+      if (hasNewMembership) {
+        // Si hay membresías nuevas, eliminar todas las membresías anteriores
+        const nonMembershipItems = prevItems.filter((i) => !isMembershipItem(i))
+        return [...nonMembershipItems, ...newItems]
+      }
+      return [...prevItems, ...newItems]
+    })
   }
 
   const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+    setItems((prev) => {
+      const itemToRemove = prev.find((item) => item.id === id)
+      if (itemToRemove) {
+        if (itemToRemove.id.includes("petite-membership")) {
+          // Eliminar membresía y bag-pass
+          return prev.filter((item) => !item.id.includes("petite-membership") && !item.id.includes("bag-pass"))
+        }
+        if (itemToRemove.id.includes("bag-pass")) {
+          // Eliminar bag-pass y membresía petite
+          return prev.filter((item) => !item.id.includes("petite-membership") && !item.id.includes("bag-pass"))
+        }
+      }
+      return prev.filter((item) => item.id !== id)
+    })
   }
 
   const clearCart = () => {

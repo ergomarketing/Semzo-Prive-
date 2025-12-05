@@ -12,8 +12,6 @@ import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 import { useAuth } from "../../hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
-const CART_BACKUP_KEY = "semzo_cart_backup"
-
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -22,7 +20,6 @@ export default function LoginPage() {
   const [message, setMessage] = useState("")
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [showSMSModal, setShowSMSModal] = useState(false)
-  const [returnToCart, setReturnToCart] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
@@ -31,14 +28,9 @@ export default function LoginPage() {
     const plan = searchParams.get("plan")
     const registered = searchParams.get("registered")
     const confirmed = searchParams.get("confirmed")
-    const returnTo = searchParams.get("returnTo")
 
     if (plan) {
       setSelectedPlan(plan)
-    }
-
-    if (returnTo === "cart") {
-      setReturnToCart(true)
     }
 
     if (registered === "true") {
@@ -52,11 +44,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (returnToCart) {
-        router.push("/cart")
-        return
-      }
-
       const plan = searchParams.get("plan")
       const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
 
@@ -64,7 +51,30 @@ export default function LoginPage() {
         router.push(redirectUrl)
       }, 500)
     }
-  }, [user, loading, router, searchParams, returnToCart])
+  }, [user, loading, router, searchParams])
+
+  useEffect(() => {
+    const urlMessage = searchParams.get("message")
+    const urlError = searchParams.get("error")
+
+    if (urlMessage === "email_confirmed") {
+      setMessage("¡Email confirmado exitosamente! Ya puedes iniciar sesión.")
+    } else if (urlMessage === "password_updated") {
+      setMessage("¡Contraseña actualizada! Ya puedes iniciar sesión con tu nueva contraseña.")
+    } else if (urlMessage === "already_confirmed") {
+      setMessage("Tu email ya está confirmado. Puedes iniciar sesión.")
+    } else if (urlError === "confirmation_failed") {
+      setMessage("Error al confirmar el email. Intenta nuevamente.")
+    } else if (urlError === "invalid_link") {
+      setMessage("Enlace de confirmación inválido o expirado.")
+    } else if (urlError === "invalid_token") {
+      setMessage("Token de confirmación inválido. Solicita un nuevo enlace.")
+    } else if (urlError === "config_error") {
+      setMessage("Error de configuración del servidor.")
+    } else if (urlError === "unexpected_error") {
+      setMessage("Error inesperado. Intenta más tarde.")
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -121,14 +131,6 @@ export default function LoginPage() {
 
       if (data.user) {
         setMessage("¡Login exitoso! Redirigiendo...")
-
-        if (returnToCart) {
-          setTimeout(() => {
-            router.push("/cart")
-          }, 1000)
-          return
-        }
-
         const plan = searchParams.get("plan")
         const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
 
@@ -145,14 +147,6 @@ export default function LoginPage() {
 
   const handleSMSSuccess = (user: any) => {
     setMessage("¡Login exitoso! Redirigiendo...")
-
-    if (returnToCart) {
-      setTimeout(() => {
-        router.push("/cart")
-      }, 1000)
-      return
-    }
-
     const plan = searchParams.get("plan")
     const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
 
@@ -178,9 +172,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="font-serif text-3xl text-slate-900">Bienvenida de vuelta</CardTitle>
           <CardDescription className="text-slate-600">
-            {returnToCart ? (
-              "Inicia sesión para completar tu compra"
-            ) : selectedPlan ? (
+            {selectedPlan ? (
               <>
                 Continúa con tu plan <span className="font-semibold capitalize">{selectedPlan}</span>
               </>
@@ -190,15 +182,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">
-          {returnToCart && (
-            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 text-center">
-                Tu carrito está guardado. Inicia sesión para continuar.
-              </p>
-            </div>
-          )}
-
-          {selectedPlan && !returnToCart && (
+          {selectedPlan && (
             <div className="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg">
               <p className="text-sm text-rose-800 text-center">
                 Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
@@ -314,9 +298,7 @@ export default function LoginPage() {
             <p className="text-slate-600">
               ¿No tienes cuenta?{" "}
               <a
-                href={
-                  returnToCart ? "/signup?returnTo=cart" : selectedPlan ? `/signup?plan=${selectedPlan}` : "/signup"
-                }
+                href={selectedPlan ? `/signup?plan=${selectedPlan}` : "/signup"}
                 className="text-indigo-dark hover:underline font-medium"
               >
                 Únete a Semzo Privé

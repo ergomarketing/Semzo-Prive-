@@ -10,7 +10,7 @@ import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 export default function AuthCallback() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "needs_password">("loading")
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("")
 
   useEffect(() => {
@@ -28,8 +28,6 @@ export default function AuthCallback() {
 
         const type = allParams.get("type") || hashParams.get("type")
         const isPasswordRecovery = type === "recovery"
-        const isEmailChange = type === "email_change"
-        const isSignup = type === "signup"
 
         if (isPasswordRecovery) {
           const fullHash = window.location.hash
@@ -40,20 +38,6 @@ export default function AuthCallback() {
         const {
           data: { user },
         } = await supabase.auth.getUser()
-
-        if (user && (isEmailChange || isSignup)) {
-          // Verificar si el usuario se registró con teléfono (no tiene contraseña)
-          const hasPhoneOnly = user.phone && !user.app_metadata?.provider?.includes("email")
-          const identities = user.identities || []
-          const hasPasswordIdentity = identities.some((id: any) => id.provider === "email")
-
-          // Si se registró con teléfono y no tiene identidad de email con contraseña
-          if (hasPhoneOnly || !hasPasswordIdentity) {
-            setStatus("needs_password")
-            setMessage("Email confirmado. Ahora crea una contraseña para acceder con email.")
-            return
-          }
-        }
 
         if (user && user.email_confirmed_at) {
           setStatus("success")
@@ -86,15 +70,6 @@ export default function AuthCallback() {
           } = await supabase.auth.getSession()
 
           if (session?.user) {
-            const identities = session.user.identities || []
-            const hasPasswordIdentity = identities.some((id: any) => id.provider === "email")
-
-            if (!hasPasswordIdentity && session.user.phone) {
-              setStatus("needs_password")
-              setMessage("Email confirmado. Ahora crea una contraseña para acceder con email.")
-              return
-            }
-
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -119,15 +94,6 @@ export default function AuthCallback() {
           }
 
           if (data.user) {
-            const identities = data.user.identities || []
-            const hasPasswordIdentity = identities.some((id: any) => id.provider === "email")
-
-            if (!hasPasswordIdentity && data.user.phone) {
-              setStatus("needs_password")
-              setMessage("Email confirmado. Ahora crea una contraseña para acceder con email.")
-              return
-            }
-
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -151,15 +117,6 @@ export default function AuthCallback() {
           }
 
           if (data.user) {
-            const identities = data.user.identities || []
-            const hasPasswordIdentity = identities.some((id: any) => id.provider === "email")
-
-            if (!hasPasswordIdentity && data.user.phone) {
-              setStatus("needs_password")
-              setMessage("Email confirmado. Ahora crea una contraseña para acceder con email.")
-              return
-            }
-
             setStatus("success")
             setMessage("Tu email ha sido confirmado correctamente")
 
@@ -198,33 +155,28 @@ export default function AuthCallback() {
   const handleContinue = () => {
     if (status === "success") {
       router.push("/auth/login?message=email_confirmed")
-    } else if (status === "needs_password") {
-      const hash = window.location.hash
-      router.push(`/auth/set-password${hash}`)
     } else {
       router.push("/auth/login")
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50/30 to-white p-4">
-      <Card className="w-full max-w-md border-0 shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            {status === "loading" && <Loader2 className="h-12 w-12 text-[#1a2c4e] animate-spin" />}
-            {status === "success" && <CheckCircle className="h-12 w-12 text-[#1a2c4e]" />}
-            {status === "needs_password" && <CheckCircle className="h-12 w-12 text-[#1a2c4e]" />}
-            {status === "error" && <XCircle className="h-12 w-12 text-slate-500" />}
+            {status === "loading" && <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />}
+            {status === "success" && <CheckCircle className="h-12 w-12 text-green-600" />}
+            {status === "error" && <XCircle className="h-12 w-12 text-red-600" />}
           </div>
 
-          <CardTitle className="text-2xl font-serif">
+          <CardTitle className="text-2xl">
             {status === "loading" && "Confirmando email..."}
             {status === "success" && "¡Confirmación exitosa!"}
-            {status === "needs_password" && "¡Email confirmado!"}
             {status === "error" && "Error de confirmación"}
           </CardTitle>
 
-          <CardDescription className="text-slate-600">
+          <CardDescription>
             {status === "loading" && "Por favor espera mientras procesamos tu confirmación"}
             {message}
           </CardDescription>
@@ -232,25 +184,9 @@ export default function AuthCallback() {
 
         <CardContent className="space-y-4">
           {status === "loading" && (
-            <div className="flex items-center justify-center space-x-2 text-sm text-slate-500">
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Procesando confirmación...</span>
-            </div>
-          )}
-
-          {status === "needs_password" && (
-            <div className="space-y-3">
-              <div className="text-center">
-                <p className="text-sm text-slate-600 mb-4">
-                  Tu email ha sido verificado. Como te registraste con teléfono, necesitas crear una contraseña para
-                  poder iniciar sesión con email.
-                </p>
-              </div>
-
-              <Button onClick={handleContinue} className="w-full bg-[#1a2c4e] hover:bg-[#1a2c4e]/90" size="lg">
-                Crear contraseña
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
             </div>
           )}
 
@@ -258,28 +194,28 @@ export default function AuthCallback() {
             <div className="space-y-3">
               <div className="text-center">
                 {status === "success" && (
-                  <p className="text-sm text-slate-600 mb-4">¡Bienvenido! Ya puedes iniciar sesión con tu cuenta.</p>
+                  <p className="text-sm text-gray-600 mb-4">¡Bienvenido! Ya puedes iniciar sesión con tu cuenta.</p>
                 )}
                 {status === "error" && (
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-sm text-gray-600 mb-4">
                     Puedes intentar registrarte nuevamente o contactar soporte.
                   </p>
                 )}
               </div>
 
-              <Button onClick={handleContinue} className="w-full bg-[#1a2c4e] hover:bg-[#1a2c4e]/90" size="lg">
+              <Button onClick={handleContinue} className="w-full" size="lg">
                 {status === "success" ? "Ir al Login" : "Volver al Login"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
 
               {status === "success" && (
-                <p className="text-xs text-center text-slate-500">Serás redirigido automáticamente...</p>
+                <p className="text-xs text-center text-gray-500">Serás redirigido automáticamente...</p>
               )}
             </div>
           )}
 
           <div className="border-t pt-4 mt-6">
-            <div className="text-xs text-slate-500 space-y-1">
+            <div className="text-xs text-gray-500 space-y-1">
               <p>
                 <strong>Soporte:</strong> contacto@semzoprive.com
               </p>

@@ -38,19 +38,28 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
 
-    if (!membershipType) {
+    // Validar datos
+    if (!membershipType || !userEmail) {
       console.error("❌ Datos faltantes:", { amount, membershipType, userEmail })
       return NextResponse.json(
         {
           error: "Datos incompletos",
-          details: "Se requiere membershipType",
+          details: "Se requieren membershipType y userEmail",
         },
         { status: 400 },
       )
     }
 
-    const userIdentifier = userEmail || `anonymous_${Date.now()}`
-    const isValidEmail = typeof userEmail === "string" && userEmail.includes("@")
+    if (typeof userEmail !== "string" || userEmail.trim() === "" || !userEmail.includes("@")) {
+      console.error("❌ Email vacío o inválido:", userEmail)
+      return NextResponse.json(
+        {
+          error: "Dirección de correo electrónico no válida",
+          details: "Se requiere un email válido para procesar el pago",
+        },
+        { status: 400 },
+      )
+    }
 
     if (amount === 0 || amount === null || amount === undefined) {
       console.log("🎁 Membresía gratuita con cupón/gift card:", { couponCode, giftCardUsed })
@@ -82,27 +91,20 @@ export async function POST(request: NextRequest) {
     // Crear payment intent
     console.log("💳 Creando payment intent con Stripe...")
 
-    const paymentIntentData: Stripe.PaymentIntentCreateParams = {
-      amount: Math.round(amount * 100),
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Stripe usa centavos
       currency: "eur",
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         membershipType,
-        userIdentifier,
-        couponCode: couponCode || "",
+        userEmail,
+        couponCode: couponCode || "", // Guardar cupón en metadata
         giftCardUsed: giftCardUsed ? JSON.stringify(giftCardUsed) : "",
         createdAt: new Date().toISOString(),
       },
-    }
-
-    // Solo agregar receipt_email si es un email válido
-    if (isValidEmail) {
-      paymentIntentData.receipt_email = userEmail
-    }
-
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentData)
+    })
 
     const processingTime = Date.now() - startTime
     console.log("✅ Payment intent creado exitosamente:", {

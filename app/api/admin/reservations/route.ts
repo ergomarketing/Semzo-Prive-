@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
           total: 0,
           active: 0,
           pending: 0,
-          confirmed: 0,
           completed: 0,
           cancelled: 0,
         },
@@ -51,7 +50,6 @@ export async function GET(request: NextRequest) {
       total: processedReservations.length,
       active: processedReservations.filter((r) => r.status === "active").length,
       pending: processedReservations.filter((r) => r.status === "pending").length,
-      confirmed: processedReservations.filter((r) => r.status === "confirmed").length,
       completed: processedReservations.filter((r) => r.status === "completed").length,
       cancelled: processedReservations.filter((r) => r.status === "cancelled").length,
     }

@@ -53,17 +53,6 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
   const [appliedGiftCard, setAppliedGiftCard] = useState<AppliedGiftCard | null>(null)
   const [giftCardError, setGiftCardError] = useState("")
 
-  const isTemporaryEmail = (email: string) => {
-    if (!email) return true
-    return (
-      email.includes("@phone.semzoprive.com") ||
-      email.includes("@temp.semzoprive.com") ||
-      email.includes("@sms.semzoprive.com") ||
-      !email.includes("@") ||
-      email.startsWith("+")
-    )
-  }
-
   const isStripeConfigured = !!(
     stripePublishableKey &&
     (stripePublishableKey.startsWith("pk_live_") || stripePublishableKey.startsWith("pk_test_"))
@@ -231,15 +220,12 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
         throw new Error("No se pudo crear el pago - respuesta inválida del servidor")
       }
 
-      const billingDetails: { email?: string } = {}
-      if (!isTemporaryEmail(userEmail)) {
-        billingDetails.email = userEmail
-      }
-
       const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
         payment_method: {
           card: cardElement!,
-          billing_details: billingDetails,
+          billing_details: {
+            email: userEmail,
+          },
         },
       })
 
