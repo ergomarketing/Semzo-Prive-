@@ -144,8 +144,14 @@ export default function CartPage() {
 
       if (data.valid) {
         let balanceInEuros = data.balance
+        // Convertir centavos a euros si es necesario
         if (balanceInEuros > 1000) {
           balanceInEuros = balanceInEuros / 100
+        }
+
+        if (balanceInEuros <= 0) {
+          setGiftCardError("Esta gift card no tiene saldo disponible")
+          return
         }
 
         setAppliedGiftCard({
@@ -201,11 +207,13 @@ export default function CartPage() {
     setActivatingMembership(true)
 
     try {
-      // Get the membership type from the cart item
       const cartItem = items[0]
       const membershipType = cartItem?.name || "essentiel"
+      const bagId = cartItem?.bagId || null
+      const bagDescription = cartItem?.description || ""
 
-      // Call the API to update the user's membership
+      console.log("[v0] Processing payment success - Membership:", membershipType, "BagId:", bagId)
+
       const response = await fetch("/api/user/update-membership", {
         method: "POST",
         headers: {
@@ -215,6 +223,7 @@ export default function CartPage() {
           userId: user.id,
           membershipType: membershipType,
           paymentId: paymentId,
+          bagId: bagId, // Pass bagId to create reservation
         }),
       })
 
@@ -223,6 +232,9 @@ export default function CartPage() {
         throw new Error(errorData.error || "Error activando membresía")
       }
 
+      const result = await response.json()
+      console.log("[v0] Membership activated successfully:", result)
+
       // Success - clear cart and show success message
       setPaymentSuccess(true)
       clearCart()
@@ -230,6 +242,12 @@ export default function CartPage() {
       // Clear applied discounts from localStorage
       localStorage.removeItem("appliedCoupon")
       localStorage.removeItem("appliedGiftCard")
+
+      if (bagId) {
+        setTimeout(() => {
+          window.location.href = "/dashboard/reservas"
+        }, 2000)
+      }
     } catch (error) {
       console.error("[Cart] Error activating membership:", error)
       setPaymentError(error instanceof Error ? error.message : "Error activando membresía")

@@ -18,6 +18,7 @@ interface UserProfile {
   shipping_city: string
   shipping_postal_code: string
   membership_status: string
+  membership_type: string | null
 }
 
 interface DashboardCounters {
@@ -64,19 +65,16 @@ export default function DashboardHome() {
       if (!user) return
 
       try {
-        // Fetch waitlist count
         const { count: waitlistCount } = await supabase
           .from("waitlist")
           .select("*", { count: "exact", head: true })
           .eq("user_id", user.id)
 
-        // Fetch wishlist count
         const { count: wishlistCount } = await supabase
           .from("wishlists")
           .select("*", { count: "exact", head: true })
           .eq("user_id", user.id)
 
-        // Fetch reservations count
         const { count: reservationsCount } = await supabase
           .from("reservations")
           .select("*", { count: "exact", head: true })
@@ -97,7 +95,19 @@ export default function DashboardHome() {
   }, [user])
 
   const membershipStatus = profile?.membership_status || "free"
-  const isPremium = membershipStatus === "active"
+  const membershipType = profile?.membership_type || "free"
+  const isPremium = membershipStatus === "active" && membershipType !== "free"
+
+  const getMembershipName = () => {
+    if (!isPremium) return "Free"
+    const names: Record<string, string> = {
+      petite: "Petite",
+      essentiel: "L'Essentiel",
+      signature: "Signature",
+      prive: "Privé",
+    }
+    return names[membershipType] || membershipType.charAt(0).toUpperCase() + membershipType.slice(1)
+  }
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -161,8 +171,8 @@ export default function DashboardHome() {
             <Crown className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{isPremium ? "Privé" : "Free"}</div>
-            <p className="text-xs text-slate-600 mt-1">{isPremium ? "Acceso completo" : "Acceso básico"}</p>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{getMembershipName()}</div>
+            <p className="text-xs text-slate-600 mt-1">{isPremium ? "Acceso completo" : "Obtén una membresía"}</p>
           </CardContent>
         </Card>
 
@@ -218,7 +228,7 @@ export default function DashboardHome() {
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
-              Explorar Catálogo
+              {isPremium ? "Explorar y Reservar" : "Explorar Catálogo"}
             </Button>
             {!isPremium && (
               <Button
@@ -226,7 +236,7 @@ export default function DashboardHome() {
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
               >
                 <Crown className="h-4 w-4 mr-2" />
-                Upgrade a Privé
+                Obtener Membresía
               </Button>
             )}
           </CardContent>
@@ -247,7 +257,7 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600">Membresía</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {isPremium ? "Privé" : "Free"}
+                {getMembershipName()}
               </Badge>
             </div>
             <div className="flex items-center justify-between">

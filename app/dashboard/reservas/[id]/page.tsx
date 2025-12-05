@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, Clock, Package, CreditCard, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Package, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
 import { supabase } from "../../../lib/supabaseClient"
 
 interface ReservationDetails {
@@ -145,9 +145,7 @@ export default function ReservationDetailsPage() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", reservationId)
-        .eq("user_id", user.id)
         .select()
-        .single()
 
       if (error) {
         console.error("[ReservationDetails] Error cancelling reservation:", error)
@@ -155,8 +153,14 @@ export default function ReservationDetailsPage() {
         return
       }
 
+      if (!data || data.length === 0) {
+        console.error("[ReservationDetails] No reservation found to cancel")
+        alert("No se encontró la reserva para cancelar.")
+        return
+      }
+
       console.log("[ReservationDetails] Reservation cancelled successfully")
-      setReservation(data)
+      setReservation(data[0])
       setShowCancelDialog(false)
       setCancellationReason("")
     } catch (error) {
@@ -399,39 +403,11 @@ export default function ReservationDetailsPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Información de pago */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="h-5 w-5 mr-2" />
-                Información de Pago
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Valor del bolso:</span>
-                  <span className="font-medium">{reservation.bags?.retail_price || 0}€</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Días de reserva:</span>
-                  <span className="font-medium">{daysTotal}</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-slate-200">
-                  <span className="text-lg font-medium text-slate-900">Total pagado:</span>
-                  <span className="text-lg font-bold text-slate-900">
-                    {reservation.total_amount?.toFixed(2) || "0.00"}€
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Columna lateral */}
-        <div className="space-y-6">
-          {/* Timeline de estado */}
+        {/* Right column - Estado y acciones */}
+        <div className="space-y-4">
+          {/* Estado de la reserva */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">

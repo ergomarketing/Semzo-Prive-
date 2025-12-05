@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Package, User, CreditCard, Loader2, RefreshCw } from "lucide-react"
+import { Calendar, Package, User, CreditCard, Loader2, RefreshCw, CheckCircle } from "lucide-react"
 
 interface Reservation {
   id: string
@@ -23,6 +23,7 @@ interface Reservation {
 interface Stats {
   total: number
   pending: number
+  confirmed: number
   active: number
   completed: number
   cancelled: number
@@ -36,7 +37,14 @@ const colors = {
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
-  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, active: 0, completed: 0, cancelled: 0 })
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    active: 0,
+    completed: 0,
+    cancelled: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [updating, setUpdating] = useState<string | null>(null)
@@ -51,7 +59,7 @@ export default function ReservationsPage() {
       const response = await fetch("/api/admin/reservations")
       const data = await response.json()
       setReservations(data.reservations || [])
-      setStats(data.stats || { total: 0, pending: 0, active: 0, completed: 0, cancelled: 0 })
+      setStats(data.stats || { total: 0, pending: 0, confirmed: 0, active: 0, completed: 0, cancelled: 0 })
     } catch (error) {
       console.error("Error fetching reservations:", error)
     } finally {
@@ -60,7 +68,6 @@ export default function ReservationsPage() {
   }
 
   const updateReservationStatus = async (id: string, newStatus: string) => {
-    console.log("[v0] Updating reservation", id, "to status", newStatus)
     setUpdating(id)
     try {
       const response = await fetch("/api/admin/reservations", {
@@ -71,29 +78,14 @@ export default function ReservationsPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error("[v0] Error response:", errorData)
         alert("Error al actualizar: " + (errorData.error || "Error desconocido"))
         return
       }
 
-      const data = await response.json()
-      console.log("[v0] Update successful:", data)
-
-      // Actualizar localmente sin necesidad de refetch
       setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)))
-
-      // Actualizar stats
-      setStats((prev) => {
-        const oldStatus = reservations.find((r) => r.id === id)?.status
-        if (!oldStatus) return prev
-        return {
-          ...prev,
-          [oldStatus]: Math.max(0, (prev[oldStatus as keyof Stats] as number) - 1),
-          [newStatus]: ((prev[newStatus as keyof Stats] as number) || 0) + 1,
-        }
-      })
+      fetchReservations() // Refetch para actualizar stats correctamente
     } catch (error) {
-      console.error("[v0] Error updating reservation:", error)
+      console.error("Error updating reservation:", error)
       alert("Error de conexión al actualizar la reserva")
     } finally {
       setUpdating(null)
@@ -143,11 +135,11 @@ export default function ReservationsPage() {
         <p style={{ color: "#888" }}>Administra todas las reservas de bolsos</p>
       </div>
 
-      {/* Stats Cards - colores minimalistas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {[
           { label: "Total", value: stats.total, icon: Package },
           { label: "Pendientes", value: stats.pending, icon: Calendar },
+          { label: "Confirmadas", value: stats.confirmed, icon: CheckCircle },
           { label: "Activas", value: stats.active, icon: CreditCard },
           { label: "Completadas", value: stats.completed, icon: User },
           { label: "Canceladas", value: stats.cancelled, icon: Package },
@@ -213,7 +205,6 @@ export default function ReservationsPage() {
                   <TableHead style={{ color: colors.primary }}>Cliente</TableHead>
                   <TableHead style={{ color: colors.primary }}>Bolso</TableHead>
                   <TableHead style={{ color: colors.primary }}>Fechas</TableHead>
-                  <TableHead style={{ color: colors.primary }}>Precio</TableHead>
                   <TableHead style={{ color: colors.primary }}>Estado</TableHead>
                   <TableHead style={{ color: colors.primary }}>Cambiar Estado</TableHead>
                 </TableRow>
@@ -244,9 +235,6 @@ export default function ReservationsPage() {
                       <div className="text-sm" style={{ color: "#888" }}>
                         {new Date(r.end_date).toLocaleDateString("es-ES")}
                       </div>
-                    </TableCell>
-                    <TableCell style={{ color: colors.primary, fontWeight: 500 }}>
-                      {r.total_amount ? `€${r.total_amount}` : "-"}
                     </TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
                     <TableCell>

@@ -12,6 +12,7 @@ interface CartItem {
   brand: string
   itemType?: "membership" | "bag-pass"
   period?: "weekly" | "monthly" | "quarterly"
+  bagId?: string
 }
 
 interface CartContextType {

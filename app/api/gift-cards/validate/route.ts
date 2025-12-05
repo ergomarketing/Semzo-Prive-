@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const { code } = await request.json()
 
     if (!code) {
-      return NextResponse.json({ error: "Código requerido" }, { status: 400 })
+      return NextResponse.json({ valid: false, error: "Código requerido" }, { status: 400 })
     }
 
     const { data: giftCard, error } = await supabase
@@ -17,13 +17,18 @@ export async function POST(request: Request) {
       .single()
 
     if (error || !giftCard) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: "Código de gift card no válido",
-        },
-        { status: 404 },
-      )
+      return NextResponse.json({
+        valid: false,
+        error: "Código de gift card no válido",
+      })
+    }
+
+    const currentBalance = giftCard.amount ?? giftCard.balance ?? 0
+    if (currentBalance <= 0) {
+      return NextResponse.json({
+        valid: false,
+        error: "Esta gift card ya ha sido utilizada y no tiene saldo disponible",
+      })
     }
 
     // Verificar estado
@@ -57,11 +62,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       valid: true,
-      balance: giftCard.amount || giftCard.balance || giftCard.original_amount,
+      balance: currentBalance,
       giftCard: {
         id: giftCard.id,
         code: giftCard.code,
-        amount: giftCard.amount,
+        amount: currentBalance,
         originalAmount: giftCard.original_amount,
         currency: giftCard.currency,
         expiresAt: giftCard.expires_at,
@@ -69,6 +74,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Error validating gift card:", error)
-    return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
+    return NextResponse.json({ valid: false, error: "Error del servidor" }, { status: 500 })
   }
 }

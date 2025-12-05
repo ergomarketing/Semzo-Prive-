@@ -1,5 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
+import type React from "react"
+
 import Image from "next/image"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -281,6 +283,8 @@ function BagCard({
 
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
+  const [userMembership, setUserMembership] = useState<string | null>(null)
+  const [checkingMembership, setCheckingMembership] = useState(false)
 
   const isAvailable = bag.status === "available"
 
@@ -303,6 +307,37 @@ function BagCard({
     }
     checkWaitlist()
   }, [user, bag.id, isAvailable])
+
+  useEffect(() => {
+    const checkMembership = async () => {
+      if (!user?.id) {
+        setUserMembership(null)
+        return
+      }
+
+      setCheckingMembership(true)
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("membership_type, membership_status")
+          .eq("id", user.id)
+          .single()
+
+        if (!error && data && data.membership_status === "active") {
+          setUserMembership(data.membership_type)
+        } else {
+          setUserMembership(null)
+        }
+      } catch (error) {
+        console.error("Error checking membership:", error)
+        setUserMembership(null)
+      } finally {
+        setCheckingMembership(false)
+      }
+    }
+
+    checkMembership()
+  }, [user])
 
   const addToWaitlist = async () => {
     if (!user) {
@@ -328,6 +363,27 @@ function BagCard({
       console.error("Error adding to waitlist:", error)
     } finally {
       setIsAddingToWaitlist(false)
+    }
+  }
+
+  const handleReserveOrDetail = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      // Not logged in → Send to details page which will handle the flow
+      window.location.href = `/catalog/${bag.id}`
+      return
+    }
+
+    const hasActiveMembership = userMembership && userMembership !== null
+
+    if (hasActiveMembership) {
+      // Has membership → Go directly to reservation form
+      window.location.href = `/catalog/${bag.id}?action=reserve`
+    } else {
+      // No membership → Go to details to add to cart
+      window.location.href = `/catalog/${bag.id}`
     }
   }
 
@@ -394,21 +450,23 @@ function BagCard({
 
         {isAvailable ? (
           <div className="grid grid-cols-2 gap-2">
-            <Link href={`/catalog/${bag.id}`} className="block">
-              <Button
-                variant="outline"
-                className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
-              >
-                <Info className="h-4 w-4 mr-2" />
-                Detalles
-              </Button>
-            </Link>
-            <Link href={`/signup?plan=${membershipTier}&bag=${bag.id}`} className="block">
-              <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
-                <ShoppingBag className="h-4 w-4 mr-2" />
-                Reservar
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
+              onClick={handleReserveOrDetail}
+              disabled={checkingMembership}
+            >
+              <Info className="h-4 w-4 mr-2" />
+              Detalles
+            </Button>
+            <Button
+              className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors"
+              onClick={handleReserveOrDetail}
+              disabled={checkingMembership}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Reservar
+            </Button>
           </div>
         ) : (
           <div className="space-y-2">
