@@ -35,15 +35,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface BagInfo {
+interface Bag {
   id: string
   name: string
   brand: string
   image_url: string
-  price?: number
-  weekly_price?: number
+  price: number
   monthly_price?: number
-  description: string
+  description?: string
   status: string
 }
 
@@ -61,7 +60,7 @@ interface ReservationDetails {
   shipping_city?: string
   shipping_postal_code?: string
   shipping_phone?: string
-  bags: BagInfo
+  bags: Bag
   profiles?: {
     id: string
     full_name: string
@@ -119,7 +118,6 @@ export default function ReservationDetailsPage() {
               brand,
               image_url,
               price,
-              weekly_price,
               monthly_price,
               description,
               status
@@ -253,7 +251,7 @@ export default function ReservationDetailsPage() {
   const status = statusConfig[reservation.status] || statusConfig.pending
   const days = calculateDays(reservation.start_date, reservation.end_date)
   const canCancel = ["pending", "confirmed"].includes(reservation.status)
-  const bagPrice = reservation.bags?.weekly_price || reservation.bags?.price || 0
+  const bagPrice = reservation.bags?.price || 0
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -295,7 +293,7 @@ export default function ReservationDetailsPage() {
                 <div>
                   <h3 className="font-semibold text-lg text-slate-900">{reservation.bags?.name || "Bolso"}</h3>
                   <p className="text-slate-600">{reservation.bags?.brand || "Marca"}</p>
-                  <p className="text-sm text-slate-500 mt-1">€{bagPrice}/semana</p>
+                  <p className="text-sm text-slate-500 mt-1">€{bagPrice}/mes</p>
                 </div>
               </div>
 
@@ -397,14 +395,14 @@ export default function ReservationDetailsPage() {
                 <span className="font-medium">{days} días</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Precio/semana</span>
+                <span className="text-slate-600">Precio/mes</span>
                 <span className="font-medium">€{bagPrice}</span>
               </div>
               <div className="border-t pt-4">
                 <div className="flex justify-between">
                   <span className="font-medium text-slate-900">Total</span>
                   <span className="font-bold text-lg text-slate-900">
-                    €{reservation.total_amount || Math.ceil(days / 7) * bagPrice}
+                    €{reservation.total_amount || Math.ceil(days / 30) * bagPrice}
                   </span>
                 </div>
               </div>

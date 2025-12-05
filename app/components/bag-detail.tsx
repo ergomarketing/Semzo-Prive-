@@ -15,6 +15,8 @@ import {
   RotateCcw,
   Check,
   AlertTriangle,
+  Calendar,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
@@ -74,12 +76,20 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [showReplaceDialog, setShowReplaceDialog] = useState(false)
   const [pendingItems, setPendingItems] = useState<any[]>([])
 
+  const [userMembership, setUserMembership] = useState<{
+    tier: string | null
+    isActive: boolean
+  }>({ tier: null, isActive: false })
+  const [isReserving, setIsReserving] = useState(false)
+  const [showReservationSuccess, setShowReservationSuccess] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
   const { addItem, addItems, hasMembership, replaceMembership } = useCart()
   const router = useRouter()
   const [selectedMembership, setSelectedMembership] = useState<"petite" | "essentiel" | "essentiel-quarterly">("petite")
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndMembership = async () => {
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -88,8 +98,28 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         data: { user },
       } = await supabase.auth.getUser()
       setIsAuthenticated(!!user)
+
+      if (user) {
+        setUserId(user.id)
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("membership_type, membership_status")
+          .eq("id", user.id)
+          .single()
+
+        if (profile) {
+          const isActive =
+            profile.membership_status === "active" ||
+            profile.membership_status === "confirmed" ||
+            (profile.membership_type && profile.membership_type !== "none")
+          setUserMembership({
+            tier: profile.membership_type,
+            isActive: isActive,
+          })
+        }
+      }
     }
-    checkAuth()
+    checkAuthAndMembership()
   }, [])
 
   const membershipColors = {
@@ -297,8 +327,108 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     router.push("/cart")
   }
 
+  const handleDirectReservation = async () => {
+    console.log("[v0] handleDirectReservation called")
+    console.log("[v0] userId:", userId)
+    console.log("[v0] userMembership:", userMembership)
+
+    if (!userId || !userMembership.isActive) {
+      console.log("[v0] Redirecting to login - no userId or membership inactive")
+      router.push("/auth/login?redirect=" + encodeURIComponent(`/catalog/${bag.id}`))
+      return
+    }
+
+    setIsReserving(true)
+    try {
+      console.log("[v0] Creating reservation...")
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+
+      // Calculate dates based on membership type
+      const startDate = new Date()
+      const endDate = new Date()
+
+      if (userMembership.tier === "petite") {
+        endDate.setDate(endDate.getDate() + 7) // 1 week
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1) // 1 month
+      }
+
+      // Create reservation
+      const { data: reservation, error } = await supabase
+        .from("reservations")
+        .insert({
+          user_id: userId,
+          bag_id: bag.id,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          status: "confirmed",
+          total_amount: 0, // Already paid through membership
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
+
+      console.log("[v0] Reservation result:", reservation)
+      console.log("[v0] Reservation error:", error)
+
+      if (error) {
+        console.error("[v0] Error creating reservation:", error)
+        alert("Error al crear la reserva: " + error.message)
+        return
+      }
+
+      // Update bag status
+      await supabase.from("bags").update({ status: "rented" }).eq("id", bag.id)
+
+      setShowReservationSuccess(true)
+
+      setTimeout(() => {
+        window.location.href = "/dashboard/reservas"
+      }, 2000)
+    } catch (error) {
+      console.error("[v0] Reservation error:", error)
+      alert("Error al procesar la reserva.")
+    } finally {
+      setIsReserving(false)
+    }
+  }
+
+  const canReserveWithMembership = () => {
+    if (!userMembership.isActive || !userMembership.tier) return false
+
+    const tierHierarchy: Record<string, number> = {
+      petite: 1,
+      essentiel: 2,
+      signature: 3,
+      prive: 4,
+    }
+
+    const userTierLevel = tierHierarchy[userMembership.tier] || 0
+    const bagTierLevel = tierHierarchy[bag.membership] || 0
+
+    return userTierLevel >= bagTierLevel
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      <Dialog open={showReservationSuccess} onOpenChange={setShowReservationSuccess}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Check className="h-5 w-5" />
+              ¡Reserva Confirmada!
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Tu reserva del {bag.brand} {bag.name} ha sido confirmada. Te redirigiremos a tus reservas...
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showReplaceDialog} onOpenChange={setShowReplaceDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -436,159 +566,184 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               )}
             </div>
 
-            <div className="space-y-4">
-              <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
-
-              <div
-                onClick={() => setSelectedMembership("petite")}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedMembership === "petite"
-                    ? "border-[#1a2c4e] bg-white"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                      {membershipOptions.petite.name}
-                    </span>
-                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                      {membershipOptions.petite.badge}
+            {userMembership.isActive ? (
+              // User has active membership - show direct reservation
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-green-800">
+                      Membresía {userMembership.tier?.charAt(0).toUpperCase()}
+                      {userMembership.tier?.slice(1)} Activa
                     </span>
                   </div>
+                  {canReserveWithMembership() ? (
+                    <p className="text-sm text-green-700">Puedes reservar este bolso directamente con tu membresía.</p>
+                  ) : (
+                    <p className="text-sm text-amber-700">
+                      Este bolso requiere membresía {bag.membership}. Tu membresía actual es {userMembership.tier}.
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-slate-600 mb-3">{membershipOptions.petite.description}</p>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      selectedMembership === "petite" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
-                    }`}
+
+                {canReserveWithMembership() && bag.availability.status === "available" && (
+                  <Button
+                    onClick={handleDirectReservation}
+                    disabled={isReserving}
+                    className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                   >
-                    {selectedMembership === "petite" && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <span className="font-semibold text-slate-900">
-                    {(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€
-                  </span>
-                  <span className="text-slate-500">{membershipOptions.petite.period}</span>
-                </div>
-                <p className="text-xs text-[#1a2c4e] mt-1 ml-7">
-                  Base {membershipOptions.petite.basePrice}€ + Bolso {membershipNames[bag.membership]}{" "}
-                  {membershipOptions.petite.bagPass}€
-                </p>
-              </div>
+                    {isReserving ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-5 w-5 mr-2" />
+                        Reservar Ahora
+                      </>
+                    )}
+                  </Button>
+                )}
 
-              <div
-                onClick={() => setSelectedMembership("essentiel")}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedMembership === "essentiel"
-                    ? "border-[#1a2c4e] bg-white"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                      {membershipOptions.essentiel.name}
-                    </span>
-                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                      {membershipOptions.essentiel.badge}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-600 mb-3">{membershipOptions.essentiel.description}</p>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      selectedMembership === "essentiel" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
-                    }`}
+                {!canReserveWithMembership() && (
+                  <Button
+                    onClick={() => router.push("/dashboard/membresia")}
+                    className="w-full py-6 text-lg bg-rose-pastel hover:bg-rose-pastel/90 text-indigo-dark"
                   >
-                    {selectedMembership === "essentiel" && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <span className="font-semibold text-slate-900">{membershipOptions.essentiel.price}€</span>
-                  <span className="text-slate-500">{membershipOptions.essentiel.period}</span>
-                </div>
+                    Mejorar Membresía
+                  </Button>
+                )}
               </div>
+            ) : (
+              // User doesn't have membership - show membership options
+              <div className="space-y-4">
+                <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
 
-              <div
-                onClick={() => setSelectedMembership("essentiel-quarterly")}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedMembership === "essentiel-quarterly"
-                    ? "border-[#1a2c4e] bg-white"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                      {membershipOptions["essentiel-quarterly"].name}
-                    </span>
-                    <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                      {membershipOptions["essentiel-quarterly"].badge}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-600 mb-3">{membershipOptions["essentiel-quarterly"].description}</p>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      selectedMembership === "essentiel-quarterly"
-                        ? "border-[#1a2c4e] bg-[#1a2c4e]"
-                        : "border-slate-300"
-                    }`}
-                  >
-                    {selectedMembership === "essentiel-quarterly" && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <span className="font-semibold text-slate-900">
-                    {membershipOptions["essentiel-quarterly"].price}€
-                  </span>
-                  <span className="text-slate-500">{membershipOptions["essentiel-quarterly"].period}</span>
-                  <span className="text-sm text-slate-400">
-                    ({membershipOptions["essentiel-quarterly"].monthlyEquivalent})
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {bag.availability.status === "available" ? (
-                <Button
-                  onClick={handleReserve}
-                  className="w-full py-6 text-lg bg-[#1a2c4e] hover:bg-[#0f1a2e] text-white"
+                <div
+                  onClick={() => setSelectedMembership("petite")}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedMembership === "petite"
+                      ? "border-[#1a2c4e] bg-white"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
                 >
-                  Reservar por{" "}
-                  {selectedMembership === "petite"
-                    ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€/semana`
-                    : selectedMembership === "essentiel"
-                      ? `${membershipOptions.essentiel.price}€/mes`
-                      : `${membershipOptions["essentiel-quarterly"].price}€/trimestre`}
-                </Button>
-              ) : (
-                <Button
-                  onClick={addToWaitlist}
-                  disabled={isAddingToWaitlist || isInWaitlist}
-                  className="w-full py-6 text-lg bg-rose-50 text-[#1a2c4e] hover:bg-rose-100"
-                >
-                  {isInWaitlist
-                    ? "Ya estás en la lista"
-                    : isAddingToWaitlist
-                      ? "Añadiendo..."
-                      : "Unirme a lista de espera"}
-                </Button>
-              )}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                        {membershipOptions.petite.name}
+                      </span>
+                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                        {membershipOptions.petite.badge}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-3">{membershipOptions.petite.description}</p>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedMembership === "petite" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
+                      }`}
+                    >
+                      {selectedMembership === "petite" && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="font-semibold text-slate-900">
+                      {(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€
+                    </span>
+                    <span className="text-slate-500">{membershipOptions.petite.period}</span>
+                  </div>
+                  <p className="text-xs text-[#1a2c4e] mt-1 ml-7">
+                    Base {membershipOptions.petite.basePrice}€ + Bolso {membershipNames[bag.membership]}{" "}
+                    {membershipOptions.petite.bagPass}€
+                  </p>
+                </div>
 
+                <div
+                  onClick={() => setSelectedMembership("essentiel")}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedMembership === "essentiel"
+                      ? "border-[#1a2c4e] bg-white"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                        {membershipOptions.essentiel.name}
+                      </span>
+                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                        {membershipOptions.essentiel.badge}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-3">{membershipOptions.essentiel.description}</p>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedMembership === "essentiel" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
+                      }`}
+                    >
+                      {selectedMembership === "essentiel" && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="font-semibold text-slate-900">{membershipOptions.essentiel.price}€</span>
+                    <span className="text-slate-500">{membershipOptions.essentiel.period}</span>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setSelectedMembership("essentiel-quarterly")}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedMembership === "essentiel-quarterly"
+                      ? "border-[#1a2c4e] bg-white"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
+                        {membershipOptions["essentiel-quarterly"].name}
+                      </span>
+                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
+                        {membershipOptions["essentiel-quarterly"].badge}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-3">{membershipOptions["essentiel-quarterly"].description}</p>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedMembership === "essentiel-quarterly"
+                          ? "border-[#1a2c4e] bg-[#1a2c4e]"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {selectedMembership === "essentiel-quarterly" && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="font-semibold text-slate-900">
+                      {membershipOptions["essentiel-quarterly"].price}€
+                    </span>
+                    <span className="text-slate-500">{membershipOptions["essentiel-quarterly"].period}</span>
+                    <span className="text-sm text-slate-400">
+                      ({membershipOptions["essentiel-quarterly"].monthlyEquivalent})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!userMembership.isActive && bag.availability.status === "available" && (
               <Button
-                variant="outline"
-                className="w-full py-6 text-lg border-slate-200 hover:bg-slate-50 bg-transparent"
-                onClick={() =>
-                  window.open(
-                    `https://wa.me/34600000000?text=Hola, me interesa el bolso ${bag.brand} ${bag.name}`,
-                    "_blank",
-                  )
-                }
+                onClick={handleReserve}
+                className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
               >
-                Consultar por WhatsApp
+                Reservar por{" "}
+                {selectedMembership === "petite"
+                  ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€/semana`
+                  : selectedMembership === "essentiel"
+                    ? `${membershipOptions.essentiel.price}€/mes`
+                    : `${membershipOptions["essentiel-quarterly"].price}€/trimestre`}
               </Button>
-            </div>
+            )}
 
             <div className={`p-4 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
               <div className="flex items-center gap-2">
@@ -708,3 +863,5 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     </div>
   )
 }
+
+export { BagDetail }

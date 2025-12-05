@@ -1,8 +1,6 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "../hooks/useAuth"
@@ -26,16 +24,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, signOut } = useAuth()
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
-
-  useEffect(() => {
-    if (!loading) {
-      setHasCheckedAuth(true)
-      if (!user) {
-        router.push("/auth/login")
-      }
-    }
-  }, [user, loading, router])
 
   const handleLogout = async () => {
     await signOut()
@@ -75,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
   ]
 
-  if (loading || !hasCheckedAuth) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
@@ -84,7 +72,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
   }
 
   const userName =
