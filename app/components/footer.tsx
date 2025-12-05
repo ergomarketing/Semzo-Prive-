@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+export { Footer }
+
 export default function Footer() {
   return (
     <footer

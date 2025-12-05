@@ -24,6 +24,7 @@ import {
   AlertCircle,
   RefreshCw,
   Gift,
+  FileText,
 } from "lucide-react"
 
 interface NavItem {
@@ -97,6 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Envíos", href: "/admin/shipping", icon: <MapPin className="h-5 w-5" /> },
     { label: "Logística", href: "/admin/logistics", icon: <Truck className="h-5 w-5" /> },
     { label: "Análisis", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
+    { label: "Blog", href: "/admin/blog", icon: <FileText className="h-5 w-5" /> },
     { label: "Newsletter", href: "/admin/newsletter", icon: <Mail className="h-5 w-5" /> },
     { label: "Email Logs", href: "/admin/email-logs", icon: <Mail className="h-5 w-5" /> },
     { label: "Chat", href: "/admin/chat", icon: <MessageSquare className="h-5 w-5" /> },

@@ -92,6 +92,8 @@ export async function middleware(request: NextRequest) {
     "/legal/cookies",
     "/images",
     "/support",
+    "/blog",
+    "/magazine",
   ]
 
   const isApiRoute = pathname.startsWith("/api")
