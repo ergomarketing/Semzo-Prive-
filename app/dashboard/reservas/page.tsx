@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ShoppingBag, Loader2, Package, Calendar, Filter, X } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
@@ -52,14 +51,16 @@ export default function ReservasPage() {
   const [activeFilter, setActiveFilter] = useState<string>("all")
 
   useEffect(() => {
+    console.log("[v0] Reservas page mounted, user:", user?.id)
     const fetchReservations = async () => {
       if (!user) {
+        console.log("[v0] No user in reservas page, loading set to false")
         setLoading(false)
         return
       }
 
       try {
-        console.log("[Reservas] Fetching reservations for user:", user.id)
+        console.log("[v0] Fetching reservations for user:", user.id)
         const { data, error } = await supabase
           .from("reservations")
           .select(`
@@ -80,12 +81,12 @@ export default function ReservasPage() {
           .order("created_at", { ascending: false })
 
         if (error) {
-          console.error("[Reservas] Error fetching reservations:", error)
+          console.error("[v0] Error fetching reservations:", error)
           setError("No se pudieron cargar tus reservas. Por favor, intenta de nuevo.")
           throw error
         }
 
-        console.log("[Reservas] Reservations fetched:", data?.length || 0)
+        console.log("[v0] Reservations fetched successfully:", data?.length || 0)
         const reservationsData = data || []
         setReservations(reservationsData)
         setFilteredReservations(reservationsData)
@@ -101,7 +102,7 @@ export default function ReservasPage() {
         }
         setStats(newStats)
       } catch (error) {
-        console.error("[Reservas] Error in fetchReservations:", error)
+        console.error("[v0] Error in fetchReservations:", error)
         setError(error instanceof Error ? error.message : "Error desconocido")
       } finally {
         setLoading(false)
@@ -196,7 +197,10 @@ export default function ReservasPage() {
               <div className="text-sm text-slate-600">Activas</div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("confirmed")}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setActiveFilter("confirmed")}
+          >
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
               <div className="text-sm text-slate-600">Confirmadas</div>
@@ -208,13 +212,19 @@ export default function ReservasPage() {
               <div className="text-sm text-slate-600">Pendientes</div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("completed")}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setActiveFilter("completed")}
+          >
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
               <div className="text-sm text-slate-600">Completadas</div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setActiveFilter("cancelled")}
+          >
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
               <div className="text-sm text-slate-600">Canceladas</div>
@@ -254,7 +264,7 @@ export default function ReservasPage() {
                 <Button
                   onClick={clearFilter}
                   variant="outline"
-                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif"
+                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
                 >
                   Ver Todas
                 </Button>

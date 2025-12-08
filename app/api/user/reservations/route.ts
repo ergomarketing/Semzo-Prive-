@@ -122,48 +122,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Usuario no autenticado" }, { status: 401 })
     }
 
-    // 1. Obtener el perfil del usuario para verificar la membresía
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("membership_type")
-      .eq("id", userId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("[API] Error fetching user profile:", profileError)
-      return NextResponse.json({ error: "No se pudo obtener el perfil del usuario" }, { status: 500 })
-    }
-
-    const membershipType = profile.membership_type || "none"
-
-    // 2. Definir límites de reserva (asumiendo 1 bolso activo a la vez para todas las membresías de alquiler)
-    const MAX_ACTIVE_RESERVATIONS = 1
-
-    // 3. Contar reservas activas del usuario
-    const { data: activeReservations, error: activeReservationsError } = await supabase
-      .from("reservations")
-      .select("id")
-      .eq("user_id", userId)
-      .in("status", ["active", "confirmed", "pending"]) // Contar estados que ocupan el slot
-
-    if (activeReservationsError) {
-      console.error("[API] Error fetching active reservations:", activeReservationsError)
-      return NextResponse.json({ error: "Error al verificar reservas activas" }, { status: 500 })
-    }
-
-    const activeCount = activeReservations.length
-
-    // 4. Aplicar límite de membresía
-    if (activeCount >= MAX_ACTIVE_RESERVATIONS) {
-      return NextResponse.json(
-        {
-          error: `Ya tienes ${activeCount} reserva(s) activa(s) o pendiente(s). Tu membresía (${membershipType}) solo permite ${MAX_ACTIVE_RESERVATIONS} reserva activa a la vez.`,
-          details: "El usuario ha alcanzado el límite de reservas activas según su membresía.",
-        },
-        { status: 403 }
-      )
-    }
-
     const body = await request.json()
     const { bag_id, start_date, end_date } = body
 
@@ -216,7 +174,7 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("bag_id", bag_id)
       .in("status", ["active", "confirmed", "pending"])
-      .or(`and(start_date.lte.${end_date},end_date.gte.${start_date})`)
+      .or(`start_date.lte.${end_date},end_date.gte.${start_date}`)
 
     if (conflictingReservations && conflictingReservations.length > 0) {
       return NextResponse.json(

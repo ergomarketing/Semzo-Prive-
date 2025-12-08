@@ -328,71 +328,42 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   }
 
   const handleDirectReservation = async () => {
-    console.log("[v0] handleDirectReservation called")
-    console.log("[v0] userId:", userId)
-    console.log("[v0] userMembership:", userMembership)
-
-    if (!userId || !userMembership.isActive) {
-      console.log("[v0] Redirecting to login - no userId or membership inactive")
-      router.push("/auth/login?redirect=" + encodeURIComponent(`/catalog/${bag.id}`))
-      return
-    }
+    if (!userId || !userMembership.tier) return
 
     setIsReserving(true)
+
     try {
-      console.log("[v0] Creating reservation...")
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
-
-      // Calculate dates based on membership type
-      const startDate = new Date()
-      const endDate = new Date()
-
-      if (userMembership.tier === "petite") {
-        endDate.setDate(endDate.getDate() + 7) // 1 week
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1) // 1 month
-      }
-
-      // Create reservation
-      const { data: reservation, error } = await supabase
-        .from("reservations")
-        .insert({
-          user_id: userId,
+      const response = await fetch("/api/user/reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({
           bag_id: bag.id,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: "confirmed",
-          total_amount: 0, // Already paid through membership
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        }),
+      })
 
-      console.log("[v0] Reservation result:", reservation)
-      console.log("[v0] Reservation error:", error)
+      const data = await response.json()
 
-      if (error) {
-        console.error("[v0] Error creating reservation:", error)
-        alert("Error al crear la reserva: " + error.message)
-        return
+      if (!response.ok) {
+        throw new Error(data.error || "Error al crear la reserva")
       }
 
       // Update bag status
-      await supabase.from("bags").update({ status: "rented" }).eq("id", bag.id)
+      await fetch(`/api/bags/${bag.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rented" }),
+      })
 
-      setShowReservationSuccess(true)
-
-      setTimeout(() => {
-        window.location.href = "/dashboard/reservas"
-      }, 2000)
-    } catch (error) {
-      console.error("[v0] Reservation error:", error)
-      alert("Error al procesar la reserva.")
-    } finally {
+      // Success - redirect to reservations
+      router.push("/dashboard/reservas")
+    } catch (error: any) {
+      console.error("Error creating reservation:", error)
+      alert(error.message || "Hubo un error al crear la reserva")
       setIsReserving(false)
     }
   }
