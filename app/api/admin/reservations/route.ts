@@ -11,50 +11,48 @@ export async function GET(request: NextRequest) {
       .from("reservations")
       .select(`
         *,
-        profiles(full_name, email),
-        bags(name, brand)
+        profiles:user_id(full_name, email),
+        bags:bag_id(name, brand, image_url)
       `)
       .order("created_at", { ascending: false })
 
+    console.log("[v0] Raw reservations from DB:", reservations?.length, "Error:", reservationsError)
+
     if (reservationsError) {
-      console.log("[v0] Error fetching reservations:", reservationsError)
+      console.error("[v0] Error fetching reservations:", reservationsError)
       return NextResponse.json({
         reservations: [],
-        stats: {
-          total: 0,
-          active: 0,
-          pending: 0,
-          completed: 0,
-          cancelled: 0,
-        },
+        stats: { total: 0, active: 0, pending: 0, completed: 0, cancelled: 0 },
       })
     }
 
-    const processedReservations =
-      reservations?.map((reservation) => ({
-        id: reservation.id,
-        bag_id: reservation.bag_id,
-        bag_name: reservation.bags?.name || "Bolso desconocido",
-        bag_brand: reservation.bags?.brand || "Marca desconocida",
-        customer_name: reservation.profiles?.full_name || "Cliente desconocido",
-        customer_email: reservation.profiles?.email || "Email desconocido",
-        start_date: reservation.start_date,
-        end_date: reservation.end_date,
-        status: reservation.status,
-        total_amount: reservation.total_amount,
-        created_at: reservation.created_at,
-        updated_at: reservation.updated_at,
-      })) || []
+    const processedReservations = (reservations || []).map((reservation) => ({
+      id: reservation.id,
+      user_id: reservation.user_id,
+      bag_id: reservation.bag_id,
+      bag_name: reservation.bags?.name || "Bolso desconocido",
+      bag_brand: reservation.bags?.brand || "Marca desconocida",
+      bag_image: reservation.bags?.image_url || null,
+      customer_name: reservation.profiles?.full_name || "Cliente desconocido",
+      customer_email: reservation.profiles?.email || "Email desconocido",
+      start_date: reservation.start_date,
+      end_date: reservation.end_date,
+      status: reservation.status,
+      total_amount: reservation.total_amount,
+      created_at: reservation.created_at,
+      updated_at: reservation.updated_at,
+    }))
 
     const stats = {
       total: processedReservations.length,
       active: processedReservations.filter((r) => r.status === "active").length,
       pending: processedReservations.filter((r) => r.status === "pending").length,
+      confirmed: processedReservations.filter((r) => r.status === "confirmed").length,
       completed: processedReservations.filter((r) => r.status === "completed").length,
       cancelled: processedReservations.filter((r) => r.status === "cancelled").length,
     }
 
-    console.log("[v0] Reservations data processed:", { count: processedReservations.length, stats })
+    console.log("[v0] Processed reservations:", processedReservations.length, "Stats:", stats)
 
     return NextResponse.json({
       reservations: processedReservations,
@@ -69,6 +67,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: Request) {
   try {
     const { id, status } = await request.json()
+    console.log("[v0] Updating reservation:", id, "to status:", status)
 
     const { data, error } = await supabase
       .from("reservations")
@@ -77,11 +76,15 @@ export async function PATCH(request: Request) {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error("[v0] Error updating reservation:", error)
+      throw error
+    }
 
+    console.log("[v0] Reservation updated:", data)
     return NextResponse.json(data)
   } catch (error) {
-    console.error("Error updating reservation:", error)
+    console.error("[v0] Error updating reservation:", error)
     return NextResponse.json({ error: "Error updating reservation" }, { status: 500 })
   }
 }

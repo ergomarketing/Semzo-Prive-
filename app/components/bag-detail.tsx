@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useAuth } from "@/app/hooks/useAuth"
 
 interface BagDetailProps {
   bag: {
@@ -82,45 +83,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   }>({ tier: null, isActive: false })
   const [isReserving, setIsReserving] = useState(false)
   const [showReservationSuccess, setShowReservationSuccess] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
+  const { user: authUser } = useAuth()
+  const userId = authUser?.id || null
 
   const { addItem, addItems, hasMembership, replaceMembership } = useCart()
   const router = useRouter()
-  const [selectedMembership, setSelectedMembership] = useState<"petite" | "essentiel" | "essentiel-quarterly">("petite")
-
-  useEffect(() => {
-    const checkAuthAndMembership = async () => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setIsAuthenticated(!!user)
-
-      if (user) {
-        setUserId(user.id)
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("membership_type, membership_status")
-          .eq("id", user.id)
-          .single()
-
-        if (profile) {
-          const isActive =
-            profile.membership_status === "active" ||
-            profile.membership_status === "confirmed" ||
-            (profile.membership_type && profile.membership_type !== "none")
-          setUserMembership({
-            tier: profile.membership_type,
-            isActive: isActive,
-          })
-        }
-      }
-    }
-    checkAuthAndMembership()
-  }, [])
+  const [selectedMembership, setSelectedMembership] = useState<string>("petite")
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -128,7 +96,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     prive: "bg-indigo-dark text-white",
   }
 
-  const membershipNames = {
+  const membershipNames: Record<string, string> = {
+    petite: "Petite",
     essentiel: "L'Essentiel",
     signature: "Signature",
     prive: "Privé",
@@ -159,9 +128,21 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   // Obtener la configuración correcta según el tier del bolso
   const currentMembershipConfig = membershipConfig[bag.membership] || membershipConfig.essentiel
 
-  const membershipOptions = {
+  const membershipOptions: Record<
+    string,
+    {
+      name: string
+      badge: string
+      badgeColor: string
+      description: string
+      price?: number
+      monthlyEquivalent?: string
+      period: string
+      billingCycle: string
+    }
+  > = {
     petite: {
-      name: "MEMBRESÍA PETITE",
+      name: membershipNames.petite,
       badge: "Semanal",
       badgeColor: "bg-rose-50 text-rose-500",
       description:
@@ -169,7 +150,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       basePrice: 19.99,
       bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137,
       period: "/semana",
-      billingCycle: "weekly" as const,
+      billingCycle: "weekly",
     },
     essentiel: {
       name: currentMembershipConfig.name,
@@ -178,7 +159,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       description: currentMembershipConfig.description,
       price: currentMembershipConfig.price,
       period: "/mes",
-      billingCycle: "monthly" as const,
+      billingCycle: "monthly",
     },
     "essentiel-quarterly": {
       name: currentMembershipConfig.name,
@@ -188,7 +169,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       price: currentMembershipConfig.quarterlyPrice,
       monthlyEquivalent: `${(currentMembershipConfig.quarterlyPrice / 3).toFixed(2)}€/mes`,
       period: "/trimestre",
-      billingCycle: "quarterly" as const,
+      billingCycle: "quarterly",
     },
   }
 
@@ -279,7 +260,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         description: "Membresía base semanal",
         image: membershipImages.petite,
         brand: "Semzo Privé",
-        itemType: "membership" as const,
+        itemType: "membership",
       }
 
       const bagPassItem = {
@@ -290,7 +271,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         description: `${bag.brand} ${bag.name}`,
         image: bag.images[0],
         brand: bag.brand,
-        itemType: "bag-pass" as const,
+        itemType: "bag-pass",
       }
 
       itemsToAdd = [membershipItem, bagPassItem]
@@ -306,7 +287,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         description: `${bag.brand} ${bag.name}`,
         image: membershipImage,
         brand: bag.brand,
-        itemType: "membership" as const,
+        itemType: "membership",
       }
       itemsToAdd = [cartItem]
     }
@@ -333,6 +314,11 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     setIsReserving(true)
 
     try {
+      console.log("[v0] Creating reservation for user:", userId, "bag:", bag.id)
+
+      const startDate = new Date()
+      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week
+
       const response = await fetch("/api/user/reservations", {
         method: "POST",
         headers: {
@@ -341,12 +327,13 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         },
         body: JSON.stringify({
           bag_id: bag.id,
-          start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
         }),
       })
 
       const data = await response.json()
+      console.log("[v0] Reservation response:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Error al crear la reserva")
@@ -360,13 +347,16 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       })
 
       setShowReservationSuccess(true)
+      setIsReserving(false)
+
       setTimeout(() => {
         window.location.href = "/dashboard/reservas"
       }, 1500)
     } catch (error: any) {
-      console.error("Error creating reservation:", error)
-      alert(error.message || "Hubo un error al crear la reserva")
+      console.error("[v0] Error creating reservation:", error)
       setIsReserving(false)
+      // Show error in dialog instead of alert
+      setShowReservationSuccess(false)
     }
   }
 
@@ -543,12 +533,14 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               // User has active membership - show direct reservation
               <div className="space-y-4">
                 <div
-                  className={`p-4 rounded-xl border-2 ${canReserveWithMembership() ? "border-green-500 bg-green-50" : "border-amber-400 bg-amber-50"}`}
+                  className={`p-4 rounded-xl border-2 ${canReserveWithMembership() ? "border-indigo-dark/30 bg-rose-nude" : "border-rose-pastel bg-rose-nude"}`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <Check className={`h-5 w-5 ${canReserveWithMembership() ? "text-green-600" : "text-amber-600"}`} />
+                    <Check
+                      className={`h-5 w-5 ${canReserveWithMembership() ? "text-indigo-dark" : "text-indigo-dark/70"}`}
+                    />
                     <span
-                      className={`font-semibold ${canReserveWithMembership() ? "text-green-800" : "text-amber-800"}`}
+                      className={`font-semibold ${canReserveWithMembership() ? "text-indigo-dark" : "text-indigo-dark/70"}`}
                     >
                       Membresía {userMembership.tier?.charAt(0).toUpperCase()}
                       {userMembership.tier?.slice(1)} Activa
@@ -557,26 +549,28 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
                   {userMembership.tier === "petite" && !canReserveWithMembership() ? (
                     <div className="space-y-3">
-                      <p className="text-sm text-amber-700">
+                      <p className="text-sm text-indigo-dark/70">
                         Este bolso es de la colección {membershipNames[bag.membership]}. Necesitas un Pase de Bolso para
                         acceder.
                       </p>
-                      <div className="bg-white p-3 rounded-lg border border-amber-200">
+                      <div className="bg-white p-3 rounded-lg border border-rose-pastel">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-slate-900">Pase Bolso {membershipNames[bag.membership]}</p>
-                            <p className="text-sm text-slate-600">Acceso único a este bolso por una semana</p>
+                            <p className="font-medium text-indigo-dark">Pase Bolso {membershipNames[bag.membership]}</p>
+                            <p className="text-sm text-indigo-dark/60">Acceso único a este bolso por una semana</p>
                           </div>
-                          <p className="font-bold text-lg text-slate-900">
+                          <p className="font-bold text-lg text-indigo-dark">
                             {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€
                           </p>
                         </div>
                       </div>
                     </div>
                   ) : canReserveWithMembership() ? (
-                    <p className="text-sm text-green-700">Puedes reservar este bolso directamente con tu membresía.</p>
+                    <p className="text-sm text-indigo-dark/70">
+                      Puedes reservar este bolso directamente con tu membresía.
+                    </p>
                   ) : (
-                    <p className="text-sm text-amber-700">
+                    <p className="text-sm text-indigo-dark/70">
                       Este bolso requiere membresía {membershipNames[bag.membership]}. Tu membresía actual es{" "}
                       {userMembership.tier}.
                     </p>
@@ -601,7 +595,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                         addItem(bagPassItem)
                         router.push("/cart")
                       }}
-                      className="w-full py-6 text-lg bg-amber-500 hover:bg-amber-600 text-white"
+                      className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                     >
                       Comprar Pase de Bolso -{" "}
                       {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€

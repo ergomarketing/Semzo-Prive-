@@ -216,6 +216,66 @@ export async function POST(request: NextRequest) {
         const paymentUserId = paymentIntent.metadata.user_id
         const planId = paymentIntent.metadata.plan_id
 
+        if (paymentIntent.metadata.type === "gift_card") {
+          console.log("🎁 Procesando gift card...")
+          const recipientEmail = paymentIntent.metadata.recipient_email
+
+          // Activate gift card
+          const { data: giftCard, error: gcError } = await supabaseAdmin
+            .from("gift_cards")
+            .update({
+              status: "active",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("purchased_by", paymentIntent.metadata.user_id)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .select()
+            .single()
+
+          if (gcError) {
+            console.error("❌ Error activating gift card:", gcError)
+          } else if (giftCard && recipientEmail) {
+            // Send gift card email to recipient
+            console.log(`📧 Enviando gift card a: ${recipientEmail}`)
+            try {
+              await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: recipientEmail,
+                  subject: "🎁 Has recibido una Gift Card de Semzo Privé",
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                      <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #1a1a4b;">Semzo Privé</h1>
+                      </div>
+                      <h2 style="color: #1a1a4b;">¡Has recibido una Gift Card!</h2>
+                      ${giftCard.recipient_name ? `<p>Hola ${giftCard.recipient_name},</p>` : "<p>Hola,</p>"}
+                      <p>Alguien especial te ha enviado una gift card de Semzo Privé.</p>
+                      ${giftCard.personal_message ? `<p style="background: #fff0f3; padding: 15px; border-radius: 8px; font-style: italic;">"${giftCard.personal_message}"</p>` : ""}
+                      <div style="background: #1a1a4b; color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px;">Tu código de Gift Card:</p>
+                        <p style="margin: 10px 0; font-size: 28px; font-weight: bold; letter-spacing: 2px;">${giftCard.code}</p>
+                        <p style="margin: 0; font-size: 24px;">${(giftCard.amount / 100).toFixed(0)}€</p>
+                      </div>
+                      <p>Puedes usar este código en el checkout para pagar tu membresía o cualquier servicio.</p>
+                      <p style="color: #666; font-size: 12px;">Válido hasta: ${new Date(giftCard.expires_at).toLocaleDateString("es-ES")}</p>
+                      <div style="text-align: center; margin-top: 30px;">
+                        <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}" style="background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px;">Visitar Semzo Privé</a>
+                      </div>
+                    </div>
+                  `,
+                }),
+              })
+              console.log("✅ Gift card email enviado")
+            } catch (emailError) {
+              console.error("❌ Error enviando email de gift card:", emailError)
+            }
+          }
+        }
+
         if (paymentUserId && planId) {
           console.log(`Attempting to activate membership for user ${paymentUserId} with plan ${planId}`)
           const { error } = await supabaseAdmin
