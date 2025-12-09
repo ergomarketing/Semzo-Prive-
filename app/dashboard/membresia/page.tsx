@@ -17,6 +17,7 @@ interface MembershipData {
   stripe_subscription_id?: string | null
   active_bag_pass?: string | null
   bag_pass_expires?: string | null
+  subscription_end_date?: string | null
 }
 
 interface Subscription {
@@ -60,7 +61,7 @@ export default function MembresiaPage() {
         const { data, error } = await supabase
           .from("profiles")
           .select(
-            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires",
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires, subscription_end_date",
           )
           .eq("id", user.id)
           .maybeSingle()
@@ -75,11 +76,25 @@ export default function MembresiaPage() {
           const response = await fetch("/api/user/subscription")
           if (response.ok) {
             const subData = await response.json()
-            setSubscription(subData.subscription)
+            if (subData.subscription) {
+              setSubscription(subData.subscription)
+            } else if (data?.subscription_end_date) {
+              // Create a subscription object from profile data if no subscription record exists
+              setSubscription({
+                current_period_end: data.subscription_end_date,
+                status: data.membership_status,
+              })
+            }
             setPayments(subData.payments || [])
           }
         } catch (subError) {
           console.log("No subscription data available")
+          if (data?.subscription_end_date) {
+            setSubscription({
+              current_period_end: data.subscription_end_date,
+              status: data.membership_status,
+            })
+          }
         }
       } catch (error) {
         console.error("Error fetching membership:", error)
@@ -102,7 +117,7 @@ export default function MembresiaPage() {
         const { data } = await supabase
           .from("profiles")
           .select(
-            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires",
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires, subscription_end_date",
           )
           .eq("id", user?.id)
           .maybeSingle()
@@ -156,10 +171,13 @@ export default function MembresiaPage() {
   }
 
   const membershipType = membershipData?.membership_type || "free"
-  const isActive = membershipData?.membership_status === "active" && membershipType !== "free"
+  const hasValidEndDate = membershipData?.subscription_end_date
+    ? new Date(membershipData.subscription_end_date) > new Date()
+    : false
+  const isActive = (membershipData?.membership_status === "active" && membershipType !== "free") || hasValidEndDate
   const isPastDue = membershipData?.membership_status === "past_due"
 
-  console.log("[v0] Rendering membership page:", { membershipType, isActive, membershipData })
+  console.log("[v0] Rendering membership page:", { membershipType, isActive, hasValidEndDate, membershipData })
 
   const membershipInfo = {
     petite: { name: "Petite", price: "19,99", period: "semana" },
@@ -243,7 +261,14 @@ export default function MembresiaPage() {
               {isActive && <Crown className="h-6 w-6 text-indigo-dark" />}
               {currentMembership.name}
             </CardTitle>
-            <Badge variant="secondary" className="bg-rose-50 text-indigo-dark border-rose-200">
+            <Badge
+              variant="secondary"
+              className={
+                isActive
+                  ? "bg-green-100 text-green-800 border-green-200"
+                  : "bg-rose-50 text-indigo-dark border-rose-200"
+              }
+            >
               {isActive ? "Activa" : "Inactiva"}
             </Badge>
           </div>
@@ -261,11 +286,13 @@ export default function MembresiaPage() {
             ))}
           </ul>
 
-          {isActive && subscription?.current_period_end && (
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 mb-4">
+          {isActive && (subscription?.current_period_end || membershipData?.subscription_end_date) && (
+            <div className="p-4 rounded-xl bg-green-50 border border-green-200 mb-4">
               <p className="text-sm text-slate-600">
                 <strong>Válida hasta:</strong>{" "}
-                {new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
+                {new Date(
+                  subscription?.current_period_end || membershipData?.subscription_end_date!,
+                ).toLocaleDateString("es-ES", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",

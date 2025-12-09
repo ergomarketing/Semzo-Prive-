@@ -107,6 +107,26 @@ export default function CheckoutPage() {
 
   const handleZeroAmountCheckout = async () => {
     try {
+      if (appliedGiftCard) {
+        const amountToRedeem = Math.min(appliedGiftCard.balance * 100, selectedPlan.price * 100)
+        const redeemResponse = await fetch("/api/gift-cards/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: appliedGiftCard.code,
+            amountToUse: amountToRedeem,
+            orderReference: `membership_${selectedPlan.name.toLowerCase()}_${Date.now()}`,
+          }),
+        })
+
+        if (!redeemResponse.ok) {
+          const error = await redeemResponse.json()
+          setErrorMessage(error.error || "Error al usar gift card")
+          setCheckoutState("error")
+          return
+        }
+      }
+
       const response = await fetch("/api/user/update-membership", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,16 +140,6 @@ export default function CheckoutPage() {
       })
 
       if (response.ok) {
-        if (appliedGiftCard) {
-          await fetch("/api/gift-cards/redeem", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              code: appliedGiftCard.code,
-              amount: Math.min(appliedGiftCard.balance, selectedPlan.price),
-            }),
-          })
-        }
         setPaymentId(`gift_${Date.now()}`)
         setCheckoutState("success")
       } else {
@@ -146,6 +156,19 @@ export default function CheckoutPage() {
     setPaymentId(id)
 
     try {
+      if (appliedGiftCard && finalAmount > 0) {
+        const amountToRedeem = Math.min(appliedGiftCard.balance * 100, selectedPlan.price * 100 - finalAmount * 100)
+        await fetch("/api/gift-cards/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: appliedGiftCard.code,
+            amountToUse: amountToRedeem,
+            orderReference: `membership_${selectedPlan.name.toLowerCase()}_${id}`,
+          }),
+        })
+      }
+
       const response = await fetch("/api/user/update-membership", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -158,17 +181,8 @@ export default function CheckoutPage() {
         }),
       })
 
-      if (response.ok) {
-        if (appliedGiftCard && finalAmount > 0) {
-          await fetch("/api/gift-cards/redeem", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              code: appliedGiftCard.code,
-              amount: appliedGiftCard.balance,
-            }),
-          })
-        }
+      if (!response.ok) {
+        console.error("Error updating membership status")
       }
     } catch (error) {
       console.error("Error updating membership status:", error)
