@@ -26,56 +26,29 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value
+      getAll() {
+        return request.cookies.getAll()
       },
-      set(name: string, value: string, options: any) {
-        request.cookies.set({
-          name,
-          value,
-          ...options,
-        })
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
         response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
+          request,
         })
-        response.cookies.set({
-          name,
-          value,
-          ...options,
-        })
-      },
-      remove(name: string, options: any) {
-        request.cookies.set({
-          name,
-          value: "",
-          ...options,
-        })
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        })
-        response.cookies.set({
-          name,
-          value: "",
-          ...options,
-        })
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
       },
     },
   })
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Rutas públicas que no requieren autenticación
   const publicRoutes = [
     "/",
     "/auth/login",
     "/auth/register",
-    "/auth/admin", // Agregar ruta de login admin
+    "/auth/admin",
     "/signup",
     "/auth/forgot-password",
     "/auth/reset-password",
@@ -104,13 +77,13 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  if (!session && !isPublicRoute) {
+  if (!user && !isPublicRoute) {
     const redirectUrl = new URL("/auth/login", request.url)
     redirectUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (session && isAuthRoute && pathname !== "/auth/callback") {
+  if (user && isAuthRoute && pathname !== "/auth/callback") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

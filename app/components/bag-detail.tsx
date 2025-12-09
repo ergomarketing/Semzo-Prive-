@@ -359,8 +359,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         body: JSON.stringify({ status: "rented" }),
       })
 
-      // Success - redirect to reservations
-      router.push("/dashboard/reservas")
+      setShowReservationSuccess(true)
+      setTimeout(() => {
+        window.location.href = "/dashboard/reservas"
+      }, 1500)
     } catch (error: any) {
       console.error("Error creating reservation:", error)
       alert(error.message || "Hubo un error al crear la reserva")

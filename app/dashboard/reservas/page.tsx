@@ -34,7 +34,7 @@ interface Stats {
 }
 
 export default function ReservasPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([])
@@ -51,16 +51,15 @@ export default function ReservasPage() {
   const [activeFilter, setActiveFilter] = useState<string>("all")
 
   useEffect(() => {
-    console.log("[v0] Reservas page mounted, user:", user?.id)
     const fetchReservations = async () => {
+      if (authLoading) return
+
       if (!user) {
-        console.log("[v0] No user in reservas page, loading set to false")
         setLoading(false)
         return
       }
 
       try {
-        console.log("[v0] Fetching reservations for user:", user.id)
         const { data, error } = await supabase
           .from("reservations")
           .select(`
@@ -81,17 +80,14 @@ export default function ReservasPage() {
           .order("created_at", { ascending: false })
 
         if (error) {
-          console.error("[v0] Error fetching reservations:", error)
           setError("No se pudieron cargar tus reservas. Por favor, intenta de nuevo.")
           throw error
         }
 
-        console.log("[v0] Reservations fetched successfully:", data?.length || 0)
         const reservationsData = data || []
         setReservations(reservationsData)
         setFilteredReservations(reservationsData)
 
-        // Calcular estadísticas
         const newStats = {
           total: reservationsData.length,
           active: reservationsData.filter((r) => r.status === "active").length,
@@ -102,7 +98,7 @@ export default function ReservasPage() {
         }
         setStats(newStats)
       } catch (error) {
-        console.error("[v0] Error in fetchReservations:", error)
+        console.error("Error fetching reservations:", error)
         setError(error instanceof Error ? error.message : "Error desconocido")
       } finally {
         setLoading(false)
@@ -110,7 +106,7 @@ export default function ReservasPage() {
     }
 
     fetchReservations()
-  }, [user])
+  }, [user, authLoading])
 
   useEffect(() => {
     // Aplicar filtro

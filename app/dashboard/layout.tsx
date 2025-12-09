@@ -19,11 +19,18 @@ import {
 import { User, MapPin, Crown, ShoppingBag, Clock, Heart, LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { useEffect } from "react"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, signOut } = useAuth()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login?redirect=" + encodeURIComponent(pathname))
+    }
+  }, [loading, user, router, pathname])
 
   const handleLogout = async () => {
     await signOut()
@@ -63,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
   ]
 
-  if (loading) {
+  if (loading || (!loading && !user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
