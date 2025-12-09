@@ -7,6 +7,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"
+
+async function notifyAdmin(subject: string, htmlContent: string) {
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: ADMIN_EMAIL,
+        subject: `[Admin] ${subject}`,
+        body: htmlContent,
+        html: htmlContent,
+      }),
+    })
+    console.log(`✅ Admin notificado: ${subject}`)
+  } catch (error) {
+    console.error("❌ Error notificando admin:", error)
+  }
+}
 
 export async function POST(request: NextRequest) {
   console.log("🎣 Webhook recibido:", new Date().toISOString())
@@ -55,7 +74,6 @@ export async function POST(request: NextRequest) {
 
         const subUserId = subscription.metadata.user_id
         if (subUserId) {
-          // Guardar en tabla subscriptions
           const { error: subError } = await supabaseAdmin.from("subscriptions").upsert(
             {
               stripe_subscription_id: subscription.id,
@@ -76,7 +94,6 @@ export async function POST(request: NextRequest) {
             console.error("❌ Error guardando suscripción:", subError)
           }
 
-          // Actualizar perfil con estado activo si la suscripción está activa
           if (subscription.status === "active" || subscription.status === "trialing") {
             await supabaseAdmin
               .from("profiles")
@@ -89,6 +106,31 @@ export async function POST(request: NextRequest) {
               })
               .eq("id", subUserId)
             console.log(`✅ Membresía activada para usuario ${subUserId}`)
+
+            if (event.type === "customer.subscription.created") {
+              const { data: userProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("full_name, email")
+                .eq("id", subUserId)
+                .single()
+
+              await notifyAdmin(
+                `Nueva Suscripción - ${subscription.metadata.plan_id || "signature"}`,
+                `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #1a1a4b;">🎉 Nueva Suscripción</h2>
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
+                    <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
+                    <p><strong>Plan:</strong> ${subscription.metadata.plan_id || "signature"}</p>
+                    <p><strong>Estado:</strong> ${subscription.status}</p>
+                    <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+                  </div>
+                  <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/subscriptions" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
+                </div>
+                `,
+              )
+            }
           }
         }
         break
@@ -100,7 +142,6 @@ export async function POST(request: NextRequest) {
 
         const cancelUserId = canceledSub.metadata.user_id
 
-        // Actualizar tabla subscriptions
         await supabaseAdmin
           .from("subscriptions")
           .update({
@@ -131,9 +172,7 @@ export async function POST(request: NextRequest) {
 
         const invoiceUserId = invoice.metadata?.user_id || invoice.subscription_details?.metadata?.user_id
 
-        // Registrar en historial de pagos
         if (invoiceUserId) {
-          // Buscar subscription_id en nuestra base de datos
           const { data: subData } = await supabaseAdmin
             .from("subscriptions")
             .select("id")
@@ -162,7 +201,6 @@ export async function POST(request: NextRequest) {
 
         const failedUserId = failedInvoice.metadata?.user_id
 
-        // Actualizar suscripción a past_due
         if (failedInvoice.subscription) {
           await supabaseAdmin
             .from("subscriptions")
@@ -173,7 +211,6 @@ export async function POST(request: NextRequest) {
             .eq("stripe_subscription_id", failedInvoice.subscription)
         }
 
-        // Registrar pago fallido
         if (failedUserId) {
           const { data: subData } = await supabaseAdmin
             .from("subscriptions")
@@ -192,7 +229,6 @@ export async function POST(request: NextRequest) {
             payment_date: new Date().toISOString(),
           })
 
-          // Marcar perfil como past_due
           await supabaseAdmin
             .from("profiles")
             .update({
@@ -220,7 +256,6 @@ export async function POST(request: NextRequest) {
           console.log("🎁 Procesando gift card...")
           const recipientEmail = paymentIntent.metadata.recipient_email
 
-          // Activate gift card
           const { data: giftCard, error: gcError } = await supabaseAdmin
             .from("gift_cards")
             .update({
@@ -237,7 +272,6 @@ export async function POST(request: NextRequest) {
           if (gcError) {
             console.error("❌ Error activating gift card:", gcError)
           } else if (giftCard && recipientEmail) {
-            // Send gift card email to recipient
             console.log(`📧 Enviando gift card a: ${recipientEmail}`)
             try {
               await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
@@ -246,6 +280,7 @@ export async function POST(request: NextRequest) {
                 body: JSON.stringify({
                   to: recipientEmail,
                   subject: "🎁 Has recibido una Gift Card de Semzo Privé",
+                  body: `Has recibido una gift card de ${(giftCard.amount / 100).toFixed(0)}€. Código: ${giftCard.code}`,
                   html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                       <div style="text-align: center; margin-bottom: 30px;">
@@ -270,6 +305,21 @@ export async function POST(request: NextRequest) {
                 }),
               })
               console.log("✅ Gift card email enviado")
+
+              await notifyAdmin(
+                `Nueva Gift Card Comprada - ${(giftCard.amount / 100).toFixed(0)}€`,
+                `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #1a1a4b;">🎁 Nueva Gift Card</h2>
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Monto:</strong> ${(giftCard.amount / 100).toFixed(0)}€</p>
+                    <p><strong>Código:</strong> ${giftCard.code}</p>
+                    <p><strong>Destinatario:</strong> ${recipientEmail}</p>
+                    <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+                  </div>
+                </div>
+                `,
+              )
             } catch (emailError) {
               console.error("❌ Error enviando email de gift card:", emailError)
             }
@@ -278,6 +328,13 @@ export async function POST(request: NextRequest) {
 
         if (paymentUserId && planId) {
           console.log(`Attempting to activate membership for user ${paymentUserId} with plan ${planId}`)
+
+          const { data: userProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", paymentUserId)
+            .single()
+
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -292,6 +349,23 @@ export async function POST(request: NextRequest) {
             console.error("❌ Error al activar membresía:", error)
           } else {
             console.log(`✅ Membresía activada para el usuario ${paymentUserId}`)
+
+            await notifyAdmin(
+              `Nueva Membresía - ${planId.toUpperCase()}`,
+              `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1a1a4b;">🎉 Nueva Membresía Activada</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
+                  <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
+                  <p><strong>Plan:</strong> ${planId.toUpperCase()}</p>
+                  <p><strong>Monto:</strong> ${(paymentIntent.amount / 100).toFixed(2)}€</p>
+                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+                </div>
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/subscriptions" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
+              </div>
+              `,
+            )
           }
         }
         break

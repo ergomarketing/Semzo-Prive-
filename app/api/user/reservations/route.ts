@@ -2,6 +2,25 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"
+
+async function notifyAdmin(subject: string, htmlContent: string) {
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: ADMIN_EMAIL,
+        subject: `[Admin] ${subject}`,
+        body: htmlContent,
+        html: htmlContent,
+      }),
+    })
+    console.log(`✅ Admin notificado: ${subject}`)
+  } catch (error) {
+    console.error("❌ Error notificando admin:", error)
+  }
+}
 
 /**
  * GET - Obtener todas las reservas del usuario autenticado
@@ -121,7 +140,7 @@ export async function POST(request: NextRequest) {
     // Verificar disponibilidad del bolso
     const { data: bag, error: bagError } = await supabase
       .from("bags")
-      .select("id, name, status, daily_price, price")
+      .select("id, name, brand, image_url, status, daily_price, price")
       .eq("id", bag_id)
       .single()
 
@@ -131,21 +150,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bolso no encontrado" }, { status: 404 })
     }
 
-    // This handles cases where status might be "Available" or similar
     const normalizedStatus = bag.status?.toLowerCase()
     if (normalizedStatus !== "available" && normalizedStatus !== "disponible") {
       console.log("[v0] Bag not available, status:", bag.status)
       return NextResponse.json({ error: "El bolso no está disponible" }, { status: 400 })
     }
 
-    // Calcular el monto total
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const dailyPrice = bag.daily_price || bag.price || 0
     const totalAmount = days * dailyPrice
 
     console.log("[v0] Creating reservation:", { userId, bag_id, days, totalAmount })
 
-    // Crear la reserva
+    const { data: userProfile } = await supabase.from("profiles").select("full_name, email").eq("id", userId).single()
+
     const { data: reservation, error: createError } = await supabase
       .from("reservations")
       .insert({
@@ -177,6 +195,28 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Reservation created successfully:", reservation.id)
 
     await supabase.from("bags").update({ status: "rented", updated_at: new Date().toISOString() }).eq("id", bag_id)
+
+    await notifyAdmin(
+      `Nueva Reserva - ${bag.brand} ${bag.name}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1a1a4b;">📦 Nueva Reserva</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
+          <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
+          <p><strong>Bolso:</strong> ${bag.brand} - ${bag.name}</p>
+          <p><strong>Fechas:</strong> ${startDate.toLocaleDateString("es-ES")} - ${endDate.toLocaleDateString("es-ES")}</p>
+          <p><strong>Duración:</strong> ${days} días</p>
+          <p><strong>Monto:</strong> ${totalAmount}€</p>
+          <p><strong>Estado:</strong> Pendiente</p>
+        </div>
+        ${bag.image_url ? `<img src="${bag.image_url}" alt="${bag.name}" style="max-width: 200px; border-radius: 8px;" />` : ""}
+        <div style="margin-top: 20px;">
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
+        </div>
+      </div>
+      `,
+    )
 
     return NextResponse.json({
       success: true,

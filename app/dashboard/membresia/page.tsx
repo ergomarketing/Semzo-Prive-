@@ -6,19 +6,8 @@ import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Crown, Check, Loader2, Calendar, CreditCard, AlertCircle, XCircle, Receipt, Pause } from "lucide-react"
+import { Crown, Check, Loader2, Calendar, CreditCard, AlertCircle, Receipt } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 interface MembershipData {
   membership_status: string
@@ -55,8 +44,8 @@ export default function MembresiaPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [membershipData, setMembershipData] = useState<MembershipData | null>(null)
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [subscription, setSubscription] = useState<any>(null)
+  const [payments, setPayments] = useState<any[]>([])
   const [canceling, setCanceling] = useState(false)
   const [pausing, setPausing] = useState(false)
   const [showPayments, setShowPayments] = useState(false)
@@ -68,7 +57,6 @@ export default function MembresiaPage() {
       hasFetchedRef.current = true
 
       try {
-        // Fetch membership data
         const { data, error } = await supabase
           .from("profiles")
           .select(
@@ -76,6 +64,8 @@ export default function MembresiaPage() {
           )
           .eq("id", user.id)
           .maybeSingle()
+
+        console.log("[v0] Membership data fetched:", data)
 
         if (error) throw error
         if (data) setMembershipData(data)
@@ -89,7 +79,6 @@ export default function MembresiaPage() {
             setPayments(subData.payments || [])
           }
         } catch (subError) {
-          // Silently handle subscription fetch errors - user may not have stripe subscription
           console.log("No subscription data available")
         }
       } catch (error) {
@@ -110,7 +99,6 @@ export default function MembresiaPage() {
       })
 
       if (response.ok) {
-        // Refresh data
         const { data } = await supabase
           .from("profiles")
           .select(
@@ -168,8 +156,10 @@ export default function MembresiaPage() {
   }
 
   const membershipType = membershipData?.membership_type || "free"
-  const isActive = membershipData?.membership_status === "active"
+  const isActive = membershipData?.membership_status === "active" && membershipType !== "free"
   const isPastDue = membershipData?.membership_status === "past_due"
+
+  console.log("[v0] Rendering membership page:", { membershipType, isActive, membershipData })
 
   const membershipInfo = {
     petite: { name: "Petite", price: "19,99", period: "semana" },
@@ -233,12 +223,12 @@ export default function MembresiaPage() {
       </div>
 
       {isPastDue && (
-        <Card className="border-red-300 bg-red-50 mb-6">
+        <Card className="border-rose-300 bg-rose-50 mb-6">
           <CardContent className="flex items-center gap-3 py-4">
-            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertCircle className="h-5 w-5 text-rose-600" />
             <div>
-              <p className="font-medium text-red-800">Pago pendiente</p>
-              <p className="text-sm text-red-600">
+              <p className="font-medium text-rose-800">Pago pendiente</p>
+              <p className="text-sm text-rose-600">
                 Tu último pago no se pudo procesar. Por favor actualiza tu método de pago.
               </p>
             </div>
@@ -246,18 +236,18 @@ export default function MembresiaPage() {
         </Card>
       )}
 
-      <Card className="border-2 border-slate-900 mb-6">
+      <Card className="border-2 border-indigo-dark mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="font-serif text-2xl flex items-center gap-2">
-              {isActive && <Crown className="h-6 w-6 text-slate-900" />}
+              {isActive && <Crown className="h-6 w-6 text-indigo-dark" />}
               {currentMembership.name}
             </CardTitle>
-            <Badge variant="secondary" className="bg-rose-50 text-[#1a2c4e] border-rose-200">
-              {subscription?.cancel_at_period_end ? "Se cancela pronto" : "Actual"}
+            <Badge variant="secondary" className="bg-rose-50 text-indigo-dark border-rose-200">
+              {isActive ? "Activa" : "Inactiva"}
             </Badge>
           </div>
-          <CardDescription className="text-3xl font-bold text-slate-900 mt-2">
+          <CardDescription className="text-3xl font-bold text-indigo-dark mt-2">
             €{currentMembership.price}/{currentMembership.period}
           </CardDescription>
         </CardHeader>
@@ -265,58 +255,64 @@ export default function MembresiaPage() {
           <ul className="space-y-3 mb-6">
             {getFeatures().map((feature, index) => (
               <li key={index} className="flex items-start gap-2">
-                <Check className="h-5 w-5 text-slate-600 mt-0.5 flex-shrink-0" />
+                <Check className="h-5 w-5 text-indigo-dark mt-0.5 flex-shrink-0" />
                 <span className="text-slate-700">{feature}</span>
               </li>
             ))}
           </ul>
 
-          {isPetite && (
+          {isActive && subscription?.current_period_end && (
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 mb-4">
+              <p className="text-sm text-slate-600">
+                <strong>Válida hasta:</strong>{" "}
+                {new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+          )}
+
+          {isPetite && isActive && (
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 mb-4">
-                <h4 className="font-medium text-slate-900 mb-2">Pases de Bolso Disponibles</h4>
+                <h4 className="font-medium text-indigo-dark mb-2">Pases de Bolso Disponibles</h4>
                 <p className="text-sm text-slate-600 mb-3">
                   Con tu membresía Petite, puedes acceder a bolsos de colecciones premium comprando un Pase de Bolso:
                 </p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="p-2 bg-white rounded-lg">
                     <p className="text-xs text-slate-500">L'Essentiel</p>
-                    <p className="font-bold text-slate-900">52€</p>
+                    <p className="font-bold text-indigo-dark">52€</p>
                   </div>
                   <div className="p-2 bg-white rounded-lg">
                     <p className="text-xs text-slate-500">Signature</p>
-                    <p className="font-bold text-slate-900">99€</p>
+                    <p className="font-bold text-indigo-dark">99€</p>
                   </div>
                   <div className="p-2 bg-white rounded-lg">
                     <p className="text-xs text-slate-500">Privé</p>
-                    <p className="font-bold text-slate-900">137€</p>
+                    <p className="font-bold text-indigo-dark">137€</p>
                   </div>
                 </div>
               </div>
 
               <Button
                 onClick={() => router.push("/catalog")}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
+                className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white font-serif"
               >
                 Explorar Catálogo y Reservar
-              </Button>
-              <Button
-                onClick={() => router.push("/catalog")}
-                variant="outline"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif border-slate-900"
-              >
-                Elegir mi bolso de la semana
               </Button>
             </div>
           )}
 
-          {!isActive && !isPetite && (
+          {!isActive && (
             <Button
               onClick={() => router.push("/membership/upgrade")}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
+              className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white font-serif"
             >
               <Crown className="h-4 w-4 mr-2" />
-              Upgrade a Privé
+              Activar Membresía
             </Button>
           )}
         </CardContent>
@@ -334,13 +330,8 @@ export default function MembresiaPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-slate-200">
               <span className="text-slate-600 font-medium">Estado</span>
-              <Badge
-                variant="secondary"
-                className={
-                  subscription?.cancel_at_period_end ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"
-                }
-              >
-                {subscription?.cancel_at_period_end ? "Se cancela al final del período" : "Activa"}
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                Activa
               </Badge>
             </div>
 
@@ -351,15 +342,13 @@ export default function MembresiaPage() {
 
             {subscription?.current_period_end && (
               <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                <span className="text-slate-600 font-medium">Próximo cobro</span>
+                <span className="text-slate-600 font-medium">Válido hasta</span>
                 <span className="font-medium text-slate-900">
-                  {subscription.cancel_at_period_end
-                    ? "No se renovará"
-                    : new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
+                  {new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </span>
               </div>
             )}
@@ -389,71 +378,6 @@ export default function MembresiaPage() {
                 <Receipt className="h-4 w-4 mr-2" />
                 {showPayments ? "Ocultar historial" : "Ver historial de pagos"}
               </Button>
-
-              {!subscription?.cancel_at_period_end && (
-                <>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full text-amber-600 border-amber-200 hover:bg-amber-50 bg-transparent"
-                        disabled={pausing}
-                      >
-                        <Pause className="h-4 w-4 mr-2" />
-                        {pausing ? "Pausando..." : "Pausar membresía"}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Pausar tu membresía?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tu membresía será pausada temporalmente. Podrás reactivarla en cualquier momento.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handlePauseSubscription}
-                          className="bg-amber-600 hover:bg-amber-700"
-                        >
-                          Sí, pausar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar membresía
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Cancelar tu membresía?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tu membresía será cancelada. Perderás acceso a los beneficios de tu plan{" "}
-                          {currentMembership.name}.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Mantener membresía</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleCancelSubscription}
-                          className="bg-red-600 hover:bg-red-700"
-                          disabled={canceling}
-                        >
-                          {canceling ? "Cancelando..." : "Sí, cancelar"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -479,7 +403,7 @@ export default function MembresiaPage() {
                           payment.status === "succeeded"
                             ? "bg-green-500"
                             : payment.status === "failed"
-                              ? "bg-red-500"
+                              ? "bg-rose-500"
                               : "bg-yellow-500"
                         }`}
                       />
