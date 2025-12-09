@@ -30,6 +30,8 @@ export default function CheckoutPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search)
       const planFromUrl = params.get("plan")
+      const bagPassTier = params.get("bagPass")
+      const bagPassPrice = params.get("bagPassPrice")
 
       let price = 129
       let name = "Signature"
@@ -47,6 +49,12 @@ export default function CheckoutPage() {
         price = 19.99
         name = "Petite"
         description = "Membresía semanal Petite"
+
+        if (bagPassTier && bagPassPrice) {
+          const passPrice = Number.parseFloat(bagPassPrice)
+          price = price + passPrice
+          description = `Membresía semanal Petite + Pase Bolso ${bagPassTier}`
+        }
       }
 
       setSelectedPlan({ name, price, description })
@@ -99,7 +107,6 @@ export default function CheckoutPage() {
 
   const handleZeroAmountCheckout = async () => {
     try {
-      // Update membership directly without payment
       const response = await fetch("/api/user/update-membership", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +120,6 @@ export default function CheckoutPage() {
       })
 
       if (response.ok) {
-        // If gift card was used, mark it as redeemed
         if (appliedGiftCard) {
           await fetch("/api/gift-cards/redeem", {
             method: "POST",
@@ -153,7 +159,6 @@ export default function CheckoutPage() {
       })
 
       if (response.ok) {
-        // If gift card was partially used, update its balance
         if (appliedGiftCard && finalAmount > 0) {
           await fetch("/api/gift-cards/redeem", {
             method: "POST",

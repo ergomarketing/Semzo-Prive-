@@ -542,22 +542,71 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             {userMembership.isActive ? (
               // User has active membership - show direct reservation
               <div className="space-y-4">
-                <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50">
+                <div
+                  className={`p-4 rounded-xl border-2 ${canReserveWithMembership() ? "border-green-500 bg-green-50" : "border-amber-400 bg-amber-50"}`}
+                >
                   <div className="flex items-center gap-2 mb-2">
-                    <Check className="h-5 w-5 text-green-600" />
-                    <span className="font-semibold text-green-800">
+                    <Check className={`h-5 w-5 ${canReserveWithMembership() ? "text-green-600" : "text-amber-600"}`} />
+                    <span
+                      className={`font-semibold ${canReserveWithMembership() ? "text-green-800" : "text-amber-800"}`}
+                    >
                       Membresía {userMembership.tier?.charAt(0).toUpperCase()}
                       {userMembership.tier?.slice(1)} Activa
                     </span>
                   </div>
-                  {canReserveWithMembership() ? (
+
+                  {userMembership.tier === "petite" && !canReserveWithMembership() ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-amber-700">
+                        Este bolso es de la colección {membershipNames[bag.membership]}. Necesitas un Pase de Bolso para
+                        acceder.
+                      </p>
+                      <div className="bg-white p-3 rounded-lg border border-amber-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-slate-900">Pase Bolso {membershipNames[bag.membership]}</p>
+                            <p className="text-sm text-slate-600">Acceso único a este bolso por una semana</p>
+                          </div>
+                          <p className="font-bold text-lg text-slate-900">
+                            {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : canReserveWithMembership() ? (
                     <p className="text-sm text-green-700">Puedes reservar este bolso directamente con tu membresía.</p>
                   ) : (
                     <p className="text-sm text-amber-700">
-                      Este bolso requiere membresía {bag.membership}. Tu membresía actual es {userMembership.tier}.
+                      Este bolso requiere membresía {membershipNames[bag.membership]}. Tu membresía actual es{" "}
+                      {userMembership.tier}.
                     </p>
                   )}
                 </div>
+
+                {userMembership.tier === "petite" &&
+                  !canReserveWithMembership() &&
+                  bag.availability.status === "available" && (
+                    <Button
+                      onClick={() => {
+                        const bagPassItem = {
+                          id: `bag-pass-${bag.id}-${Date.now()}`,
+                          name: `Pase Bolso ${membershipNames[bag.membership]}`,
+                          price: `${bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€`,
+                          billingCycle: "weekly" as const,
+                          description: `${bag.brand} ${bag.name}`,
+                          image: bag.images[0],
+                          brand: bag.brand,
+                          itemType: "bag-pass" as const,
+                        }
+                        addItem(bagPassItem)
+                        router.push("/cart")
+                      }}
+                      className="w-full py-6 text-lg bg-amber-500 hover:bg-amber-600 text-white"
+                    >
+                      Comprar Pase de Bolso -{" "}
+                      {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€
+                    </Button>
+                  )}
 
                 {canReserveWithMembership() && bag.availability.status === "available" && (
                   <Button
@@ -579,7 +628,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   </Button>
                 )}
 
-                {!canReserveWithMembership() && (
+                {userMembership.tier !== "petite" && !canReserveWithMembership() && (
                   <Button
                     onClick={() => router.push("/dashboard/membresia")}
                     className="w-full py-6 text-lg bg-rose-pastel hover:bg-rose-pastel/90 text-indigo-dark"

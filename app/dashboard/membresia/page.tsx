@@ -26,6 +26,8 @@ interface MembershipData {
   created_at: string | null
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
+  active_bag_pass?: string | null
+  bag_pass_expires?: string | null
 }
 
 interface Subscription {
@@ -69,7 +71,9 @@ export default function MembresiaPage() {
         // Fetch membership data
         const { data, error } = await supabase
           .from("profiles")
-          .select("membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id")
+          .select(
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires",
+          )
           .eq("id", user.id)
           .maybeSingle()
 
@@ -109,7 +113,9 @@ export default function MembresiaPage() {
         // Refresh data
         const { data } = await supabase
           .from("profiles")
-          .select("membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id")
+          .select(
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires",
+          )
           .eq("id", user?.id)
           .maybeSingle()
 
@@ -182,6 +188,7 @@ export default function MembresiaPage() {
     "Ampliable hasta 3 meses",
     "Envío gratuito",
     "Seguro incluido",
+    "Pases de Bolso disponibles para colecciones premium",
   ]
 
   const priveFeatures = [
@@ -266,6 +273,27 @@ export default function MembresiaPage() {
 
           {isPetite && (
             <div className="space-y-3">
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 mb-4">
+                <h4 className="font-medium text-slate-900 mb-2">Pases de Bolso Disponibles</h4>
+                <p className="text-sm text-slate-600 mb-3">
+                  Con tu membresía Petite, puedes acceder a bolsos de colecciones premium comprando un Pase de Bolso:
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 bg-white rounded-lg">
+                    <p className="text-xs text-slate-500">L'Essentiel</p>
+                    <p className="font-bold text-slate-900">52€</p>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg">
+                    <p className="text-xs text-slate-500">Signature</p>
+                    <p className="font-bold text-slate-900">99€</p>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg">
+                    <p className="text-xs text-slate-500">Privé</p>
+                    <p className="font-bold text-slate-900">137€</p>
+                  </div>
+                </div>
+              </div>
+
               <Button
                 onClick={() => router.push("/catalog")}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
