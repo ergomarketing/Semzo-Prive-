@@ -3,15 +3,16 @@ import { createBrowserClient } from "@supabase/ssr"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase environment variables not found")
 }
 
-// Cliente para el navegador (cliente)
+// Singleton para el cliente del navegador
+let browserClient: ReturnType<typeof createBrowserClient> | null = null
+
+// Cliente para el navegador (cliente) - singleton para evitar múltiples instancias
 export function getSupabaseBrowser() {
-  // Retorna null en SSR/prerender para evitar errores
   if (typeof window === "undefined") {
     return null
   }
@@ -20,11 +21,26 @@ export function getSupabaseBrowser() {
     return null
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  if (!browserClient) {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  }
+
+  return browserClient
 }
 
-// Cliente con rol de servicio (admin)
 export function getSupabaseServiceRole() {
+  // Solo ejecutar en el servidor
+  if (typeof window !== "undefined") {
+    console.warn("getSupabaseServiceRole should only be called on the server")
+    return null
+  }
+
+  // Obtener la key solo en el servidor
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+
   if (!supabaseUrl || !supabaseServiceKey) {
     return null
   }
@@ -38,16 +54,15 @@ export function getSupabaseServiceRole() {
 }
 
 // Cliente principal para compatibilidad con código existente
-export const supabase = getSupabaseBrowser()
+export const supabase = typeof window !== "undefined" ? getSupabaseBrowser() : null
 
-// Cliente admin para compatibilidad
-export const supabaseAdmin = getSupabaseServiceRole()
+export const supabaseAdmin = null
 
 // Configuración
 export const supabaseConfig = {
   url: supabaseUrl,
   anonKey: supabaseAnonKey,
-  hasServiceKey: !!supabaseServiceKey,
+  hasServiceKey: typeof window === "undefined" ? !!process.env.SUPABASE_SERVICE_KEY : false,
 }
 
 // Verificar configuración

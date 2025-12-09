@@ -36,7 +36,8 @@ export default function ResetPage() {
         return
       }
 
-      if (type !== "recovery") {
+      // Allow recovery, email_change, or missing type (for compatibility)
+      if (type && type !== "recovery" && type !== "email_change") {
         setError("Enlace inválido. Este no es un enlace de recuperación de contraseña.")
         return
       }

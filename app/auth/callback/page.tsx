@@ -27,11 +27,24 @@ export default function AuthCallback() {
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
         const type = allParams.get("type") || hashParams.get("type")
-        const isPasswordRecovery = type === "recovery"
+        const fullHash = window.location.hash
 
-        if (isPasswordRecovery) {
-          const fullHash = window.location.hash
-          router.push(`/auth/reset${fullHash}`)
+        if (type === "recovery") {
+          router.replace(`/auth/reset${fullHash}`)
+          return
+        }
+
+        if (type === "email_change") {
+          router.replace(`/auth/reset${fullHash}`)
+          return
+        }
+
+        const accessToken = hashParams.get("access_token")
+        const refreshToken = hashParams.get("refresh_token")
+
+        if (accessToken && refreshToken && !type) {
+          // Could be a recovery link, redirect to reset page
+          router.replace(`/auth/reset${fullHash}`)
           return
         }
 
@@ -165,19 +178,19 @@ export default function AuthCallback() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            {status === "loading" && <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />}
+            {status === "loading" && <Loader2 className="h-12 w-12 text-indigo-dark animate-spin" />}
             {status === "success" && <CheckCircle className="h-12 w-12 text-green-600" />}
             {status === "error" && <XCircle className="h-12 w-12 text-red-600" />}
           </div>
 
           <CardTitle className="text-2xl">
-            {status === "loading" && "Confirmando email..."}
+            {status === "loading" && "Procesando..."}
             {status === "success" && "¡Confirmación exitosa!"}
             {status === "error" && "Error de confirmación"}
           </CardTitle>
 
           <CardDescription>
-            {status === "loading" && "Por favor espera mientras procesamos tu confirmación"}
+            {status === "loading" && "Por favor espera mientras procesamos tu solicitud"}
             {message}
           </CardDescription>
         </CardHeader>
@@ -186,7 +199,7 @@ export default function AuthCallback() {
           {status === "loading" && (
             <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Procesando confirmación...</span>
+              <span>Procesando...</span>
             </div>
           )}
 
@@ -203,7 +216,11 @@ export default function AuthCallback() {
                 )}
               </div>
 
-              <Button onClick={handleContinue} className="w-full" size="lg">
+              <Button
+                onClick={handleContinue}
+                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90"
+                size="lg"
+              >
                 {status === "success" ? "Ir al Login" : "Volver al Login"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

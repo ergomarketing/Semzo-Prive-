@@ -52,6 +52,7 @@ export async function middleware(request: NextRequest) {
     "/signup",
     "/auth/forgot-password",
     "/auth/reset-password",
+    "/auth/reset", // Añadida ruta de reset
     "/auth/callback",
     "/api/auth/callback",
     "/catalog",
@@ -73,6 +74,8 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const isAuthRoute = pathname.startsWith("/auth/") || pathname === "/signup"
 
+  const isResetRoute = pathname === "/auth/reset" || pathname === "/auth/reset-password"
+
   if (isApiRoute) {
     return response
   }
@@ -83,7 +86,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (user && isAuthRoute && pathname !== "/auth/callback") {
+  if (user && isAuthRoute && pathname !== "/auth/callback" && !isResetRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

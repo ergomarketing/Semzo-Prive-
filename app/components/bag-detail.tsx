@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import {
@@ -73,9 +73,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [activeTab, setActiveTab] = useState("details")
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showReplaceDialog, setShowReplaceDialog] = useState(false)
   const [pendingItems, setPendingItems] = useState<any[]>([])
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false)
 
   const [userMembership, setUserMembership] = useState<{
     tier: string | null
@@ -83,7 +82,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   }>({ tier: null, isActive: false })
   const [isReserving, setIsReserving] = useState(false)
   const [showReservationSuccess, setShowReservationSuccess] = useState(false)
-  const { user: authUser } = useAuth()
+  const { user: authUser, loading: authLoading } = useAuth()
   const userId = authUser?.id || null
 
   const { addItem, addItems, hasMembership, replaceMembership } = useCart()
@@ -309,7 +308,16 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   }
 
   const handleDirectReservation = async () => {
-    if (!userId || !userMembership.tier) return
+    if (!userId) {
+      console.log("[v0] No userId, redirecting to login")
+      window.location.href = "/auth/login?redirect=/catalog/" + bag.id
+      return
+    }
+
+    if (!userMembership.tier || !userMembership.isActive) {
+      console.log("[v0] No active membership, showing upgrade option")
+      return
+    }
 
     setIsReserving(true)
 
@@ -339,13 +347,6 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         throw new Error(data.error || "Error al crear la reserva")
       }
 
-      // Update bag status
-      await fetch(`/api/bags/${bag.id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rented" }),
-      })
-
       setShowReservationSuccess(true)
       setIsReserving(false)
 
@@ -355,8 +356,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     } catch (error: any) {
       console.error("[v0] Error creating reservation:", error)
       setIsReserving(false)
-      // Show error in dialog instead of alert
-      setShowReservationSuccess(false)
+      alert(error.message || "Error al crear la reserva")
     }
   }
 
@@ -375,6 +375,46 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
     return userTierLevel >= bagTierLevel
   }
+
+  useEffect(() => {
+    const fetchUserMembership = async () => {
+      if (!userId || authLoading) return
+
+      try {
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        )
+
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("membership_type, membership_status, subscription_end_date")
+          .eq("id", userId)
+          .single()
+
+        if (error) {
+          console.error("[v0] Error fetching membership:", error)
+          return
+        }
+
+        if (profile) {
+          const isActive =
+            profile.membership_status === "active" ||
+            (profile.subscription_end_date && new Date(profile.subscription_end_date) > new Date())
+
+          setUserMembership({
+            tier: profile.membership_type || null,
+            isActive: !!isActive,
+          })
+          console.log("[v0] User membership loaded:", { tier: profile.membership_type, isActive })
+        }
+      } catch (error) {
+        console.error("[v0] Error in fetchUserMembership:", error)
+      }
+    }
+
+    fetchUserMembership()
+  }, [userId, authLoading])
 
   return (
     <div className="min-h-screen bg-white">

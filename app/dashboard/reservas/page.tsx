@@ -5,8 +5,7 @@ import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingBag, Loader2, Package, Calendar, Filter, X } from "lucide-react"
-import { supabase } from "../../lib/supabaseClient"
+import { ShoppingBag, Loader2, Package, Calendar, Filter, X, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface Reservation {
@@ -50,66 +49,61 @@ export default function ReservasPage() {
   })
   const [activeFilter, setActiveFilter] = useState<string>("all")
 
-  useEffect(() => {
-    const fetchReservations = async () => {
-      if (authLoading) return
-
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("reservations")
-          .select(`
-            id,
-            bag_id,
-            status,
-            start_date,
-            end_date,
-            total_amount,
-            created_at,
-            bags (
-              name,
-              brand,
-              image_url
-            )
-          `)
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-
-        if (error) {
-          setError("No se pudieron cargar tus reservas. Por favor, intenta de nuevo.")
-          throw error
-        }
-
-        const reservationsData = data || []
-        setReservations(reservationsData)
-        setFilteredReservations(reservationsData)
-
-        const newStats = {
-          total: reservationsData.length,
-          active: reservationsData.filter((r) => r.status === "active").length,
-          pending: reservationsData.filter((r) => r.status === "pending").length,
-          confirmed: reservationsData.filter((r) => r.status === "confirmed").length,
-          completed: reservationsData.filter((r) => r.status === "completed").length,
-          cancelled: reservationsData.filter((r) => r.status === "cancelled").length,
-        }
-        setStats(newStats)
-      } catch (error) {
-        console.error("Error fetching reservations:", error)
-        setError(error instanceof Error ? error.message : "Error desconocido")
-      } finally {
-        setLoading(false)
-      }
+  const fetchReservations = async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
 
-    fetchReservations()
+    setLoading(true)
+    setError(null)
+
+    try {
+      console.log("[v0] Fetching reservations for user:", user.id)
+
+      const response = await fetch(`/api/user/reservations?user_id=${user.id}`, {
+        headers: {
+          "x-user-id": user.id,
+        },
+      })
+
+      const data = await response.json()
+      console.log("[v0] Reservations response:", data)
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al cargar reservas")
+      }
+
+      const reservationsData = data.reservations || []
+      setReservations(reservationsData)
+      setFilteredReservations(reservationsData)
+      setStats(
+        data.stats || {
+          total: reservationsData.length,
+          active: reservationsData.filter((r: Reservation) => r.status === "active").length,
+          pending: reservationsData.filter((r: Reservation) => r.status === "pending").length,
+          confirmed: reservationsData.filter((r: Reservation) => r.status === "confirmed").length,
+          completed: reservationsData.filter((r: Reservation) => r.status === "completed").length,
+          cancelled: reservationsData.filter((r: Reservation) => r.status === "cancelled").length,
+        },
+      )
+    } catch (error) {
+      console.error("[v0] Error fetching reservations:", error)
+      setError(error instanceof Error ? error.message : "Error desconocido")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchReservations()
+    } else if (!authLoading && !user) {
+      setLoading(false)
+    }
   }, [user, authLoading])
 
   useEffect(() => {
-    // Aplicar filtro
     if (activeFilter === "all") {
       setFilteredReservations(reservations)
     } else {
@@ -143,10 +137,25 @@ export default function ReservasPage() {
     setActiveFilter("all")
   }
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <h3 className="text-lg font-serif mb-2">Inicia sesión para ver tus reservas</h3>
+            <Button onClick={() => router.push("/auth/login")} className="bg-slate-900 hover:bg-slate-800 text-white">
+              Iniciar Sesión
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -159,10 +168,11 @@ export default function ReservasPage() {
             <h3 className="text-red-900 font-serif text-lg mb-2">Error al cargar reservas</h3>
             <p className="text-red-700 text-sm mb-4">{error}</p>
             <Button
-              onClick={() => window.location.reload()}
+              onClick={fetchReservations}
               variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-100"
+              className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
             >
+              <RefreshCw className="h-4 w-4 mr-2" />
               Reintentar
             </Button>
           </CardContent>
@@ -173,61 +183,56 @@ export default function ReservasPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
-        <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
+          <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
+        </div>
+        <Button onClick={fetchReservations} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualizar
+        </Button>
       </div>
 
       {/* Estadísticas */}
-      {reservations.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("all")}>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-              <div className="text-sm text-slate-600">Total</div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("active")}>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-              <div className="text-sm text-slate-600">Activas</div>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("confirmed")}
-          >
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
-              <div className="text-sm text-slate-600">Confirmadas</div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("pending")}>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-              <div className="text-sm text-slate-600">Pendientes</div>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("completed")}
-          >
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
-              <div className="text-sm text-slate-600">Completadas</div>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setActiveFilter("cancelled")}
-          >
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
-              <div className="text-sm text-slate-600">Canceladas</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("all")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+            <div className="text-sm text-slate-600">Total</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("active")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <div className="text-sm text-slate-600">Activas</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("confirmed")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
+            <div className="text-sm text-slate-600">Confirmadas</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("pending")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <div className="text-sm text-slate-600">Pendientes</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("completed")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
+            <div className="text-sm text-slate-600">Completadas</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
+            <div className="text-sm text-slate-600">Canceladas</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filtro activo */}
       {activeFilter !== "all" && (
@@ -283,7 +288,6 @@ export default function ReservasPage() {
             const now = new Date()
             const isUpcoming = startDate > now
             const isActive = reservation.status === "active"
-            const isPast = endDate < now
 
             return (
               <Card key={reservation.id} className="hover:shadow-md transition-shadow">
@@ -325,7 +329,7 @@ export default function ReservasPage() {
                     </div>
                     {reservation.total_amount && (
                       <p className="text-sm text-slate-700 mt-2 font-medium">
-                        Total: ${reservation.total_amount.toFixed(2)}
+                        Total: {reservation.total_amount.toFixed(2)}€
                       </p>
                     )}
                   </div>

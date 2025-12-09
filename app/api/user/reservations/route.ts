@@ -1,7 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    throw new Error("Missing Supabase configuration")
+  }
+
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"
 
 async function notifyAdmin(subject: string, htmlContent: string) {
@@ -27,6 +42,7 @@ async function notifyAdmin(subject: string, htmlContent: string) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase()
     const userId = request.headers.get("x-user-id") || request.nextUrl.searchParams.get("user_id")
 
     if (!userId) {
@@ -55,7 +71,7 @@ export async function GET(request: NextRequest) {
           name,
           brand,
           image_url,
-          daily_price,
+          price,
           status
         )
       `)
@@ -114,6 +130,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase()
     const userId = request.headers.get("x-user-id")
     console.log("[v0] POST /api/user/reservations - userId:", userId)
 
@@ -137,10 +154,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
     }
 
-    // Verificar disponibilidad del bolso
     const { data: bag, error: bagError } = await supabase
       .from("bags")
-      .select("id, name, brand, image_url, status, daily_price, price")
+      .select("id, name, brand, image_url, status, price")
       .eq("id", bag_id)
       .single()
 
@@ -157,7 +173,7 @@ export async function POST(request: NextRequest) {
     }
 
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const dailyPrice = bag.daily_price || bag.price || 0
+    const dailyPrice = bag.price || 0
     const totalAmount = days * dailyPrice
 
     console.log("[v0] Creating reservation:", { userId, bag_id, days, totalAmount })

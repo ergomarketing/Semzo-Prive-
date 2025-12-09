@@ -15,8 +15,6 @@ interface MembershipData {
   created_at: string | null
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
-  active_bag_pass?: string | null
-  bag_pass_expires?: string | null
   subscription_end_date?: string | null
 }
 
@@ -61,7 +59,7 @@ export default function MembresiaPage() {
         const { data, error } = await supabase
           .from("profiles")
           .select(
-            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires, subscription_end_date",
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, subscription_end_date",
           )
           .eq("id", user.id)
           .maybeSingle()
@@ -117,7 +115,7 @@ export default function MembresiaPage() {
         const { data } = await supabase
           .from("profiles")
           .select(
-            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, active_bag_pass, bag_pass_expires, subscription_end_date",
+            "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, subscription_end_date",
           )
           .eq("id", user?.id)
           .maybeSingle()

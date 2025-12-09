@@ -19,12 +19,12 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [isEmailChange, setIsEmailChange] = useState(false)
 
   const router = useRouter()
 
   useEffect(() => {
     const checkRecoveryLink = async () => {
-      // Leer tokens del hash (formato de Supabase)
       const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
       const accessToken = hashParams.get("access_token")
@@ -44,14 +44,17 @@ export default function ResetPasswordPage() {
         return
       }
 
-      if (type !== "recovery") {
+      if (type !== "recovery" && type !== "email_change") {
         console.error("[ResetPassword] Invalid type:", type)
-        setError("Enlace inválido. Este no es un enlace de recuperación de contraseña.")
+        setError("Enlace inválido. Este no es un enlace válido.")
         setIsReady(false)
         return
       }
 
-      // Establecer la sesión con los tokens
+      if (type === "email_change") {
+        setIsEmailChange(true)
+      }
+
       const supabase = getSupabaseBrowser()
       if (supabase) {
         try {
@@ -128,10 +131,18 @@ export default function ResetPasswordPage() {
         return
       }
 
+      if (isEmailChange) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user?.email) {
+          await supabase.from("profiles").update({ email: user.email }).eq("id", user.id)
+        }
+      }
+
       console.log("[ResetPassword] Password updated successfully")
       setIsSuccess(true)
 
-      // Redirigir al login después de 3 segundos
       setTimeout(() => {
         router.push("/auth/login")
       }, 3000)
@@ -152,9 +163,13 @@ export default function ResetPasswordPage() {
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="font-serif text-2xl text-slate-900 mb-4">¡Contraseña actualizada!</h2>
+              <h2 className="font-serif text-2xl text-slate-900 mb-4">
+                {isEmailChange ? "¡Email y contraseña actualizados!" : "¡Contraseña actualizada!"}
+              </h2>
               <p className="text-slate-600 mb-6">
-                Tu contraseña ha sido actualizada exitosamente. Serás redirigido al login en unos segundos.
+                {isEmailChange
+                  ? "Tu email ha sido cambiado y tu nueva contraseña ha sido configurada. Serás redirigido al login."
+                  : "Tu contraseña ha sido actualizada exitosamente. Serás redirigido al login en unos segundos."}
               </p>
               <Button
                 onClick={() => router.push("/auth/login")}
@@ -219,8 +234,14 @@ export default function ResetPasswordPage() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
               <span className="text-2xl text-indigo-dark font-serif">SP</span>
             </div>
-            <CardTitle className="font-serif text-3xl text-slate-900">Nueva contraseña</CardTitle>
-            <p className="text-slate-600">Ingresa tu nueva contraseña</p>
+            <CardTitle className="font-serif text-3xl text-slate-900">
+              {isEmailChange ? "Configura tu contraseña" : "Nueva contraseña"}
+            </CardTitle>
+            <p className="text-slate-600">
+              {isEmailChange
+                ? "Tu email ha sido actualizado. Configura una contraseña para acceder."
+                : "Ingresa tu nueva contraseña"}
+            </p>
           </CardHeader>
 
           <CardContent className="px-8 pb-8">
@@ -234,7 +255,7 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
-                  Nueva contraseña
+                  {isEmailChange ? "Contraseña" : "Nueva contraseña"}
                 </Label>
                 <div className="relative">
                   <Input
@@ -286,8 +307,10 @@ export default function ResetPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Actualizando...
+                    {isEmailChange ? "Configurando..." : "Actualizando..."}
                   </>
+                ) : isEmailChange ? (
+                  "Configurar contraseña"
                 ) : (
                   "Actualizar contraseña"
                 )}
