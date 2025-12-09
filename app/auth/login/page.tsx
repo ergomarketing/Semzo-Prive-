@@ -167,8 +167,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardHeader className="text-center pb-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
-            <span className="text-2xl text-indigo-dark font-serif">SP</span>
+          <div className="mx-auto mb-4">
+            <img src="/images/logo-20semzo-20prive.png" alt="Semzo Privé" className="h-12 w-auto mx-auto" />
           </div>
           <CardTitle className="font-serif text-3xl text-slate-900">Bienvenida de vuelta</CardTitle>
           <CardDescription className="text-slate-600">

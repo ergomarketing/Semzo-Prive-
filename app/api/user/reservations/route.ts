@@ -21,20 +21,43 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.c
 
 async function notifyAdmin(subject: string, htmlContent: string) {
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: ADMIN_EMAIL,
-        subject: `[Admin] ${subject}`,
-        body: htmlContent,
-        html: htmlContent,
-      }),
-    })
-    console.log(`✅ Admin notificado: ${subject}`)
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/admin/send-email`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: ADMIN_EMAIL,
+          subject: `[Admin] ${subject}`,
+          body: htmlContent,
+          html: htmlContent,
+        }),
+      },
+    )
+    console.log(`[v0] Admin notification sent:`, subject, response.ok)
   } catch (error) {
-    console.error("❌ Error notificando admin:", error)
+    console.error("[v0] Error notifying admin:", error)
   }
+}
+
+function getPriceForMembership(bag: any, membershipType: string | null): number {
+  const membership = membershipType?.toLowerCase() || "free"
+
+  // Precios de membresía mensual (el usuario ya paga esto)
+  // Si tiene membresía activa, el precio de la reserva es 0
+  const membershipPrices: Record<string, number> = {
+    signature: 129,
+    prive: 189,
+    essentiel: 59,
+  }
+
+  // Si el usuario tiene membresía activa, no paga extra por la reserva
+  if (membership === "signature" || membership === "prive" || membership === "essentiel") {
+    return 0 // Ya paga con su membresía
+  }
+
+  // Si es free/petite, cobra el precio del bolso
+  return bag.price || 0
 }
 
 /**
@@ -64,6 +87,7 @@ export async function GET(request: NextRequest) {
         start_date,
         end_date,
         total_amount,
+        membership_type,
         created_at,
         updated_at,
         bags (
@@ -72,6 +96,9 @@ export async function GET(request: NextRequest) {
           brand,
           image_url,
           price,
+          price_essentiel,
+          price_signature,
+          price_prive,
           status
         )
       `)
@@ -154,9 +181,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
     }
 
+    const { data: userProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, email, membership_type, membership_status")
+      .eq("id", userId)
+      .single()
+
+    if (profileError) {
+      console.error("[v0] Error fetching user profile:", profileError)
+    }
+
+    const userMembershipType = userProfile?.membership_type || "free"
+    const userMembershipStatus = userProfile?.membership_status
+
+    console.log("[v0] User membership:", { type: userMembershipType, status: userMembershipStatus })
+
     const { data: bag, error: bagError } = await supabase
       .from("bags")
-      .select("id, name, brand, image_url, status, price")
+      .select("id, name, brand, image_url, status, price, price_essentiel, price_signature, price_prive")
       .eq("id", bag_id)
       .single()
 
@@ -173,12 +215,10 @@ export async function POST(request: NextRequest) {
     }
 
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const dailyPrice = bag.price || 0
-    const totalAmount = days * dailyPrice
 
-    console.log("[v0] Creating reservation:", { userId, bag_id, days, totalAmount })
+    const totalAmount = getPriceForMembership(bag, userMembershipType)
 
-    const { data: userProfile } = await supabase.from("profiles").select("full_name, email").eq("id", userId).single()
+    console.log("[v0] Creating reservation:", { userId, bag_id, days, totalAmount, membershipType: userMembershipType })
 
     const { data: reservation, error: createError } = await supabase
       .from("reservations")
@@ -187,8 +227,9 @@ export async function POST(request: NextRequest) {
         bag_id,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
-        status: "pending",
+        status: "confirmed", // Confirmada automáticamente para miembros activos
         total_amount: totalAmount,
+        membership_type: userMembershipType, // Guardar tipo de membresía
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -216,19 +257,20 @@ export async function POST(request: NextRequest) {
       `Nueva Reserva - ${bag.brand} ${bag.name}`,
       `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">📦 Nueva Reserva</h2>
+        <h2 style="color: #1a1a4b;">Nueva Reserva</h2>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
           <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
+          <p><strong>Membresía:</strong> <span style="background: #1a1a4b; color: white; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">${userMembershipType}</span></p>
           <p><strong>Bolso:</strong> ${bag.brand} - ${bag.name}</p>
           <p><strong>Fechas:</strong> ${startDate.toLocaleDateString("es-ES")} - ${endDate.toLocaleDateString("es-ES")}</p>
           <p><strong>Duración:</strong> ${days} días</p>
-          <p><strong>Monto:</strong> ${totalAmount}€</p>
-          <p><strong>Estado:</strong> Pendiente</p>
+          <p><strong>Monto adicional:</strong> ${totalAmount}€ ${totalAmount === 0 ? "(incluido en membresía)" : ""}</p>
+          <p><strong>Estado:</strong> Confirmada</p>
         </div>
         ${bag.image_url ? `<img src="${bag.image_url}" alt="${bag.name}" style="max-width: 200px; border-radius: 8px;" />` : ""}
         <div style="margin-top: 20px;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
         </div>
       </div>
       `,

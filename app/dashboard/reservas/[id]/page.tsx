@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
+  Crown,
 } from "lucide-react"
 import Image from "next/image"
 import {
@@ -42,6 +43,9 @@ interface Bag {
   image_url: string
   price: number
   monthly_price?: number
+  price_essentiel?: number
+  price_signature?: number
+  price_prive?: number
   description?: string
   status: string
 }
@@ -55,6 +59,7 @@ interface ReservationDetails {
   status: string
   created_at: string
   total_amount?: number
+  membership_type?: string
   notes?: string
   shipping_address?: string
   shipping_city?: string
@@ -84,6 +89,14 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
   },
   completed: { label: "Completada", color: "bg-slate-100 text-slate-800", icon: <CheckCircle2 className="h-4 w-4" /> },
   cancelled: { label: "Cancelada", color: "bg-red-100 text-red-800", icon: <XCircle className="h-4 w-4" /> },
+}
+
+const membershipLabels: Record<string, { label: string; color: string }> = {
+  signature: { label: "Signature", color: "bg-indigo-100 text-indigo-800" },
+  prive: { label: "Privé", color: "bg-purple-100 text-purple-800" },
+  essentiel: { label: "L'Essentiel", color: "bg-rose-100 text-rose-800" },
+  free: { label: "Free", color: "bg-gray-100 text-gray-800" },
+  petite: { label: "Petite", color: "bg-pink-100 text-pink-800" },
 }
 
 export default function ReservationDetailsPage() {
@@ -119,6 +132,9 @@ export default function ReservationDetailsPage() {
               image_url,
               price,
               monthly_price,
+              price_essentiel,
+              price_signature,
+              price_prive,
               description,
               status
             )
@@ -129,7 +145,6 @@ export default function ReservationDetailsPage() {
 
         if (error) {
           console.error("[ReservationDetails] Error fetching reservation:", error)
-          console.error("[ReservationDetails] Error details:", JSON.stringify(error, null, 2))
           setError(`No se pudo cargar la reserva: ${error.message || "Error desconocido"}`)
           setLoading(false)
           return
@@ -205,6 +220,17 @@ export default function ReservationDetailsPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
+  const getMembershipPrice = () => {
+    const membershipType = reservation?.membership_type || reservation?.profiles?.membership_type || "free"
+
+    // Si tiene membresía activa, está incluido
+    if (membershipType === "signature" || membershipType === "prive" || membershipType === "essentiel") {
+      return { price: 0, included: true }
+    }
+
+    return { price: reservation?.total_amount || 0, included: false }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -251,7 +277,10 @@ export default function ReservationDetailsPage() {
   const status = statusConfig[reservation.status] || statusConfig.pending
   const days = calculateDays(reservation.start_date, reservation.end_date)
   const canCancel = ["pending", "confirmed"].includes(reservation.status)
-  const bagPrice = reservation.bags?.price || 0
+  const priceInfo = getMembershipPrice()
+
+  const membershipType = reservation.membership_type || reservation.profiles?.membership_type || "free"
+  const membershipInfo = membershipLabels[membershipType.toLowerCase()] || membershipLabels.free
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -293,7 +322,15 @@ export default function ReservationDetailsPage() {
                 <div>
                   <h3 className="font-semibold text-lg text-slate-900">{reservation.bags?.name || "Bolso"}</h3>
                   <p className="text-slate-600">{reservation.bags?.brand || "Marca"}</p>
-                  <p className="text-sm text-slate-500 mt-1">€{bagPrice}/mes</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge className={membershipInfo.color}>
+                      <Crown className="h-3 w-3 mr-1" />
+                      {membershipInfo.label}
+                    </Badge>
+                    {priceInfo.included && (
+                      <span className="text-xs text-green-600 font-medium">Incluido en tu membresía</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -395,15 +432,24 @@ export default function ReservationDetailsPage() {
                 <span className="font-medium">{days} días</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Precio/mes</span>
-                <span className="font-medium">€{bagPrice}</span>
+                <span className="text-slate-600">Membresía</span>
+                <Badge className={membershipInfo.color} variant="outline">
+                  {membershipInfo.label}
+                </Badge>
               </div>
               <div className="border-t pt-4">
                 <div className="flex justify-between">
                   <span className="font-medium text-slate-900">Total</span>
-                  <span className="font-bold text-lg text-slate-900">
-                    €{reservation.total_amount || Math.ceil(days / 30) * bagPrice}
-                  </span>
+                  <div className="text-right">
+                    {priceInfo.included ? (
+                      <div>
+                        <span className="font-bold text-lg text-green-600">€0</span>
+                        <p className="text-xs text-green-600">Incluido en membresía</p>
+                      </div>
+                    ) : (
+                      <span className="font-bold text-lg text-slate-900">€{priceInfo.price}</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="pt-4 border-t">

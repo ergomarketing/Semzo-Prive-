@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -48,6 +48,7 @@ export default function ReservasPage() {
     cancelled: 0,
   })
   const [activeFilter, setActiveFilter] = useState<string>("all")
+  const hasFetched = useRef(false)
 
   const fetchReservations = async () => {
     if (!user) {
@@ -59,16 +60,19 @@ export default function ReservasPage() {
     setError(null)
 
     try {
-      console.log("[v0] Fetching reservations for user:", user.id)
-
       const response = await fetch(`/api/user/reservations?user_id=${user.id}`, {
         headers: {
           "x-user-id": user.id,
         },
       })
 
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text()
+        throw new Error(response.status === 429 ? "Demasiadas solicitudes. Espera un momento." : text)
+      }
+
       const data = await response.json()
-      console.log("[v0] Reservations response:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Error al cargar reservas")
@@ -88,7 +92,7 @@ export default function ReservasPage() {
         },
       )
     } catch (error) {
-      console.error("[v0] Error fetching reservations:", error)
+      console.error("Error fetching reservations:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
       setLoading(false)
@@ -96,12 +100,18 @@ export default function ReservasPage() {
   }
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !hasFetched.current) {
+      hasFetched.current = true
       fetchReservations()
     } else if (!authLoading && !user) {
       setLoading(false)
     }
   }, [user, authLoading])
+
+  const handleManualRefresh = () => {
+    hasFetched.current = false
+    fetchReservations()
+  }
 
   useEffect(() => {
     if (activeFilter === "all") {
@@ -168,7 +178,7 @@ export default function ReservasPage() {
             <h3 className="text-red-900 font-serif text-lg mb-2">Error al cargar reservas</h3>
             <p className="text-red-700 text-sm mb-4">{error}</p>
             <Button
-              onClick={fetchReservations}
+              onClick={handleManualRefresh}
               variant="outline"
               className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
             >
@@ -188,7 +198,7 @@ export default function ReservasPage() {
           <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
           <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
         </div>
-        <Button onClick={fetchReservations} variant="outline" size="sm">
+        <Button onClick={handleManualRefresh} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualizar
         </Button>
