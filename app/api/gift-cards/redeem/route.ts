@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const currentBalance = giftCard.amount
-    const amountInCents = amountToUse || currentBalance // If no amount specified, use full balance
+    const amountInCents = amountToUse || currentBalance
 
     // Verificar que hay saldo suficiente
     if (currentBalance < amountInCents) {
@@ -61,6 +61,19 @@ export async function POST(request: Request) {
     if (updateError) {
       console.error("Error updating gift card:", updateError)
       return NextResponse.json({ error: "Error al usar gift card" }, { status: 500 })
+    }
+
+    if (newAmount > 0) {
+      // Obtener balance actual del usuario
+      const { data: profile } = await supabase.from("profiles").select("gift_card_balance").eq("id", user.id).single()
+
+      const currentUserBalance = profile?.gift_card_balance || 0
+      const newUserBalance = currentUserBalance + newAmount
+
+      // Actualizar balance del usuario
+      await supabase.from("profiles").update({ gift_card_balance: newUserBalance }).eq("id", user.id)
+
+      console.log(`[v0] User ${user.id} gift card balance updated: ${newUserBalance / 100}€`)
     }
 
     // Registrar transacción

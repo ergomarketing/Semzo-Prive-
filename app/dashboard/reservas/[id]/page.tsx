@@ -182,12 +182,20 @@ export default function ReservationDetailsPage() {
   }, [user, reservationId, supabase])
 
   const handleCancelReservation = async () => {
-    if (!reservation) return
+    if (!reservation || !user) return
 
     setCancelling(true)
     try {
       const response = await fetch(`/api/user/reservations/${reservation.id}`, {
-        method: "DELETE",
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          status: "cancelled",
+          cancellation_reason: "Cancelado por el usuario",
+        }),
       })
 
       if (response.ok) {

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { createBrowserClient } from "@supabase/ssr"
 
 const supabaseUrl =
@@ -20,6 +20,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   })
 }
 
+let browserClient: ReturnType<typeof createBrowserClient> | null = null
+let serviceRoleClient: SupabaseClient | null = null
+
 export function getSupabaseBrowser() {
   if (typeof window === "undefined") {
     return null
@@ -29,7 +32,13 @@ export function getSupabaseBrowser() {
     return null
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  // Return existing instance if available
+  if (browserClient) {
+    return browserClient
+  }
+
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return browserClient
 }
 
 export function getSupabaseServiceRole() {
@@ -37,13 +46,19 @@ export function getSupabaseServiceRole() {
     return null
   }
 
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  // Return existing instance if available
+  if (serviceRoleClient) {
+    return serviceRoleClient
+  }
+
+  serviceRoleClient = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false,
     },
   })
+  return serviceRoleClient
 }
 
 // Cliente principal para compatibilidad con código existente

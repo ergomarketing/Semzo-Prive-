@@ -1,11 +1,11 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Heart, ShoppingBag, Info } from "lucide-react"
-import { supabase } from "../lib/supabaseClient"
+import { getSupabaseBrowser } from "../lib/supabaseClient"
 import { useAuth } from "../hooks/useAuth"
 
 interface BagItem {
@@ -33,8 +33,15 @@ export default function CatalogSection() {
   const [bags, setBags] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(true)
 
+  const supabase = useMemo(() => getSupabaseBrowser(), [])
+
   useEffect(() => {
     const loadBags = async () => {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
+
       try {
         const { data, error } = await supabase.from("bags").select("*").order("brand", { ascending: true })
 
@@ -58,11 +65,11 @@ export default function CatalogSection() {
     }
 
     loadBags()
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     const loadWishlist = async () => {
-      if (!user?.id) {
+      if (!user?.id || !supabase) {
         setWishlist([])
         return
       }
@@ -86,10 +93,10 @@ export default function CatalogSection() {
     }
 
     loadWishlist()
-  }, [user])
+  }, [user, supabase])
 
   const toggleWishlist = async (id: string) => {
-    if (!user) {
+    if (!user || !supabase) {
       window.location.href = "/auth/login"
       return
     }
@@ -270,23 +277,16 @@ function BagCard({
   membershipTier: "essentiel" | "signature" | "prive"
   user: any
 }) {
-  console.log(
-    "[v0] BagCard:",
-    bag.name,
-    "- membership_type:",
-    bag.membership_type,
-    "- membershipTier prop:",
-    membershipTier,
-  )
-
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
+
+  const supabase = useMemo(() => getSupabaseBrowser(), [])
 
   const isAvailable = bag.status === "available"
 
   useEffect(() => {
     const checkWaitlist = async () => {
-      if (!user || isAvailable) return
+      if (!user || isAvailable || !supabase) return
 
       try {
         const { data } = await supabase
@@ -302,10 +302,10 @@ function BagCard({
       }
     }
     checkWaitlist()
-  }, [user, bag.id, isAvailable])
+  }, [user, bag.id, isAvailable, supabase])
 
   const addToWaitlist = async () => {
-    if (!user) {
+    if (!user || !supabase) {
       window.location.href = "/auth/login"
       return
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import type { User, Session } from "@supabase/supabase-js"
 
@@ -19,10 +19,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
 
 function getSupabaseClient() {
+  if (typeof window === "undefined") return null
   if (!supabaseClient) {
     supabaseClient = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: true,
+          detectSessionInUrl: false,
+        },
+      },
     )
   }
   return supabaseClient
@@ -32,20 +40,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const initialized = useRef(false)
 
   useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+
     const supabase = getSupabaseClient()
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
 
     // Get initial session
     const getSession = async () => {
       try {
         const {
           data: { session },
+          error,
         } = await supabase.auth.getSession()
+
+        if (error) {
+          setSession(null)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
         setSession(session)
         setUser(session?.user ?? null)
-      } catch (error) {
-        console.error("Error getting session:", error)
+      } catch {
+        setSession(null)
+        setUser(null)
       } finally {
         setLoading(false)
       }
@@ -56,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -69,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const supabase = getSupabaseClient()
+    if (!supabase) return
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
@@ -76,12 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const supabase = getSupabaseClient()
+    if (!supabase) return { error: null }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error: error as Error | null }
   }
 
   const signUp = async (email: string, password: string) => {
     const supabase = getSupabaseClient()
+    if (!supabase) return { error: null }
     const { error } = await supabase.auth.signUp({
       email,
       password,
