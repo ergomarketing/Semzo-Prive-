@@ -1,13 +1,25 @@
 "use client"
 
+import { AlertDialogTitle } from "@/components/ui/alert-dialog"
+
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../../hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Crown, Check, Loader2, Calendar, CreditCard, AlertCircle, Receipt } from "lucide-react"
+import { Crown, Check, Loader2, Calendar, CreditCard, AlertCircle, Receipt, Clock, XCircle } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface MembershipData {
   membership_status: string
@@ -403,6 +415,66 @@ export default function MembresiaPage() {
                 <Receipt className="h-4 w-4 mr-2" />
                 {showPayments ? "Ocultar historial" : "Ver historial de pagos"}
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full text-orange-600 border-orange-200 hover:bg-orange-50 bg-transparent"
+                    disabled={pausing}
+                  >
+                    {pausing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Clock className="h-4 w-4 mr-2" />}
+                    Pausar membresía
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Pausar tu membresía?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tu membresía será pausada por 1 mes. No se te cobrará durante este período y se reactivará
+                      automáticamente después.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handlePauseSubscription} className="bg-orange-600 hover:bg-orange-700">
+                      Pausar 1 mes
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
+                    disabled={canceling}
+                  >
+                    {canceling ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Cancelar membresía
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Cancelar tu membresía?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tu membresía será cancelada al final del período de facturación actual. Seguirás teniendo acceso
+                      hasta entonces.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>No, mantener membresía</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancelSubscription} className="bg-red-600 hover:bg-red-700">
+                      Sí, cancelar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
@@ -114,10 +115,19 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { status } = body
 
-    // Obtener la reserva actual
+    // Obtener la reserva actual con información completa
     const { data: currentReservation, error: fetchError } = await supabase
       .from("reservations")
-      .select("id, status, user_id, bag_id, start_date, end_date")
+      .select(`
+        id,
+        status,
+        user_id,
+        bag_id,
+        start_date,
+        end_date,
+        bags (id, name, brand, image_url),
+        profiles (id, full_name, email, phone)
+      `)
       .eq("id", reservationId)
       .eq("user_id", userId)
       .single()
@@ -173,6 +183,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (status === "cancelled" && currentReservation.bag_id) {
       await supabase.from("bags").update({ status: "available" }).eq("id", currentReservation.bag_id)
+
+      try {
+        console.log("[API] Sending cancellation email notification...")
+        const emailService = EmailServiceProduction.getInstance()
+
+        await emailService.sendCancellationNotification({
+          userEmail: currentReservation.profiles?.email || "",
+          userName: currentReservation.profiles?.full_name || "Usuario",
+          bagName: currentReservation.bags?.name || "Bolso",
+          reservationId: reservationId,
+          cancellationDate: new Date().toISOString(),
+        })
+        console.log("[API] Cancellation email sent successfully")
+      } catch (emailError) {
+        console.error("[API] Error sending cancellation email:", emailError)
+        // No fallar la request por error de email
+      }
     }
 
     console.log("[API] Reservation updated successfully:", {

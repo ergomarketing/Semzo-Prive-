@@ -202,6 +202,50 @@ export class EmailServiceProduction {
     return bothSent
   }
 
+  async sendCancellationNotification(data: {
+    userEmail: string
+    userName: string
+    bagName: string
+    reservationId: string
+    cancellationDate: string
+  }): Promise<boolean> {
+    console.log("[v0] EmailServiceProduction.sendCancellationNotification called with:", {
+      userEmail: data.userEmail,
+      userName: data.userName,
+      bagName: data.bagName,
+      adminEmail: "mailbox@semzoprive.com",
+    })
+
+    // Send notification to admin
+    const adminEmailData: EmailData = {
+      to: "mailbox@semzoprive.com",
+      subject: `Reserva cancelada: ${data.bagName}`,
+      html: this.generateCancellationAdminHTML(data),
+      text: `${data.userName} ha cancelado su reserva de ${data.bagName}`,
+    }
+
+    // Send confirmation to user
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: `Reserva cancelada: ${data.bagName} - Semzo Privé`,
+      html: this.generateCancellationUserHTML(data),
+      text: `Tu reserva para ${data.bagName} ha sido cancelada.`,
+    }
+
+    console.log("[v0] Sending admin cancellation email to mailbox@semzoprive.com...")
+    const adminSent = await this.sendWithResend(adminEmailData)
+    console.log("[v0] Admin cancellation email result:", adminSent ? "SUCCESS" : "FAILED")
+
+    console.log("[v0] Sending user cancellation email to", data.userEmail, "...")
+    const userSent = await this.sendWithResend(userEmailData)
+    console.log("[v0] User cancellation email result:", userSent ? "SUCCESS" : "FAILED")
+
+    const bothSent = adminSent && userSent
+    console.log("[v0] Overall cancellation email result:", bothSent ? "SUCCESS" : "PARTIAL/FAILED")
+
+    return bothSent
+  }
+
   async sendPaymentConfirmation(data: {
     userEmail: string
     userName: string
@@ -815,6 +859,97 @@ export class EmailServiceProduction {
               <div class="footer">
                   <p><strong>SEMZO PRIVÉ</strong></p>
                   <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateCancellationAdminHTML(data: {
+    userName: string
+    bagName: string
+    reservationId: string
+    cancellationDate: string
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #1e293b; color: white; padding: 20px; text-align: center; }
+              .content { background: #fff; padding: 30px; border: 1px solid #e2e8f0; }
+              .alert { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; }
+              .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Semzo Privé</h1>
+              </div>
+              <div class="content">
+                  <div class="alert">
+                      <h2 style="margin-top: 0; color: #ef4444;">⚠️ Reserva Cancelada</h2>
+                  </div>
+                  <p><strong>${data.userName}</strong> ha cancelado su reserva.</p>
+                  <ul>
+                      <li><strong>Bolso:</strong> ${data.bagName}</li>
+                      <li><strong>ID de reserva:</strong> ${data.reservationId}</li>
+                      <li><strong>Fecha de cancelación:</strong> ${new Date(data.cancellationDate).toLocaleString("es-ES")}</li>
+                  </ul>
+                  <p>El bolso ahora está disponible nuevamente en el catálogo.</p>
+              </div>
+              <div class="footer">
+                  <p>Este es un correo automático del sistema de Semzo Privé</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateCancellationUserHTML(data: {
+    userName: string
+    bagName: string
+    reservationId: string
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #1e293b; color: white; padding: 20px; text-align: center; }
+              .content { background: #fff; padding: 30px; border: 1px solid #e2e8f0; }
+              .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; margin: 20px 0; border-radius: 8px; }
+              .button { display: inline-block; background: #1e293b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+              .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Semzo Privé</h1>
+              </div>
+              <div class="content">
+                  <h2>Hola ${data.userName},</h2>
+                  <p>Tu reserva ha sido cancelada exitosamente.</p>
+                  <div class="info-box">
+                      <p><strong>Bolso cancelado:</strong> ${data.bagName}</p>
+                      <p><strong>ID de reserva:</strong> ${data.reservationId}</p>
+                  </div>
+                  <p>Esperamos verte pronto nuevamente en nuestra plataforma. Nuestro catálogo exclusivo sigue disponible para ti.</p>
+                  <a href="https://semzoprive.com/catalog" class="button">Explorar Catálogo</a>
+                  <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+              </div>
+              <div class="footer">
+                  <p>© 2025 Semzo Privé - Luxury Bag Rental</p>
               </div>
           </div>
       </body>

@@ -145,7 +145,11 @@ export default function ReservationDetailsPage() {
 
         if (error) {
           console.error("[ReservationDetails] Error fetching reservation:", error)
-          setError(`No se pudo cargar la reserva: ${error.message || "Error desconocido"}`)
+          if (error.code === "PGRST116") {
+            setError("Reserva no encontrada. Es posible que haya sido eliminada.")
+          } else {
+            setError(`No se pudo cargar la reserva: ${error.message || "Error desconocido"}`)
+          }
           setLoading(false)
           return
         }
@@ -153,6 +157,13 @@ export default function ReservationDetailsPage() {
         if (!data) {
           console.error("[ReservationDetails] No data returned")
           setError("Reserva no encontrada")
+          setLoading(false)
+          return
+        }
+
+        if (!data.bags) {
+          console.error("[ReservationDetails] Bag data missing")
+          setError("Información del bolso no disponible")
           setLoading(false)
           return
         }
