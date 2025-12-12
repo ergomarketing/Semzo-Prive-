@@ -21,22 +21,24 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.c
 
 async function notifyAdmin(subject: string, htmlContent: string) {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/admin/send-email`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: ADMIN_EMAIL,
-          subject: `[Admin] ${subject}`,
-          body: htmlContent,
-          html: htmlContent,
-        }),
-      },
-    )
-    console.log(`[v0] Admin notification sent:`, subject, response.ok)
+    console.log("[v0] Attempting to send admin notification to:", ADMIN_EMAIL)
+    console.log("[v0] Subject:", subject)
+
+    const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
+    const emailService = EmailServiceProduction.getInstance()
+
+    const result = await emailService.sendWithResend({
+      to: ADMIN_EMAIL,
+      subject: `[Admin] ${subject}`,
+      html: htmlContent,
+      text: subject,
+    })
+
+    console.log(`[v0] Admin notification sent successfully to ${ADMIN_EMAIL}:`, subject, "Result:", result)
+    return result
   } catch (error) {
     console.error("[v0] Error notifying admin:", error)
+    throw error
   }
 }
 
@@ -253,28 +255,55 @@ export async function POST(request: NextRequest) {
 
     await supabase.from("bags").update({ status: "rented", updated_at: new Date().toISOString() }).eq("id", bag_id)
 
-    await notifyAdmin(
-      `Nueva Reserva - ${bag.brand} ${bag.name}`,
-      `
+    try {
+      await notifyAdmin(
+        `Nueva Reserva - ${bag.brand} ${bag.name}`,
+        `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">Nueva Reserva</h2>
+        <h2 style="color: #1a1a4b;">Nueva Reserva Creada</h2>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
+          <h3 style="color: #1a1a4b; margin-top: 0;">Información del Cliente</h3>
+          <p><strong>Nombre:</strong> ${userProfile?.full_name || "N/A"}</p>
           <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
           <p><strong>Membresía:</strong> <span style="background: #1a1a4b; color: white; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">${userMembershipType}</span></p>
+          
+          <h3 style="color: #1a1a4b;">Detalles de la Reserva</h3>
+          <p><strong>ID Reserva:</strong> ${reservation.id}</p>
           <p><strong>Bolso:</strong> ${bag.brand} - ${bag.name}</p>
           <p><strong>Fechas:</strong> ${startDate.toLocaleDateString("es-ES")} - ${endDate.toLocaleDateString("es-ES")}</p>
           <p><strong>Duración:</strong> ${days} días</p>
           <p><strong>Monto adicional:</strong> ${totalAmount}€ ${totalAmount === 0 ? "(incluido en membresía)" : ""}</p>
-          <p><strong>Estado:</strong> Confirmada</p>
+          <p><strong>Estado:</strong> <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px;">Confirmada</span></p>
+          <p><strong>Fecha de creación:</strong> ${new Date().toLocaleString("es-ES")}</p>
         </div>
-        ${bag.image_url ? `<img src="${bag.image_url}" alt="${bag.name}" style="max-width: 200px; border-radius: 8px;" />` : ""}
-        <div style="margin-top: 20px;">
+        ${bag.image_url ? `<img src="${bag.image_url}" alt="${bag.name}" style="max-width: 200px; border-radius: 8px; margin: 20px 0;" />` : ""}
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
         </div>
       </div>
       `,
-    )
+      )
+      console.log("[v0] Admin notification sent successfully for reservation:", reservation.id)
+    } catch (adminEmailError) {
+      console.error("[v0] FAILED to send admin notification:", adminEmailError)
+    }
+
+    try {
+      const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
+      const emailService = EmailServiceProduction.getInstance()
+
+      console.log("[v0] Sending user confirmation email to:", userProfile?.email)
+      await emailService.sendReservationNotification({
+        userEmail: userProfile?.email || "",
+        userName: userProfile?.full_name || "Cliente",
+        bagName: `${bag.brand} ${bag.name}`,
+        reservationDate: startDate.toLocaleDateString("es-ES"),
+        reservationId: reservation.id,
+      })
+      console.log("[v0] User confirmation email sent successfully")
+    } catch (emailError) {
+      console.error("[v0] FAILED to send user confirmation email:", emailError)
+    }
 
     return NextResponse.json({
       success: true,

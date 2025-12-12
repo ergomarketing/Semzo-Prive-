@@ -46,7 +46,7 @@ export class EmailServiceProduction {
     return EmailServiceProduction.instance
   }
 
-  private async sendWithResend(data: EmailData): Promise<boolean> {
+  async sendWithResend(data: EmailData): Promise<boolean> {
     try {
       console.log("[v0] 📧 Enviando email con API key:", this.config.apiKey.substring(0, 10) + "...")
 
@@ -71,7 +71,8 @@ export class EmailServiceProduction {
         return false
       }
 
-      console.log("✅ Email enviado exitosamente")
+      const result = await response.json()
+      console.log("✅ Email enviado exitosamente, ID:", result.id)
       return true
     } catch (error) {
       console.error("❌ Error enviando email:", error)
@@ -164,6 +165,13 @@ export class EmailServiceProduction {
     reservationDate: string
     reservationId?: string
   }): Promise<boolean> {
+    console.log("[v0] EmailServiceProduction.sendReservationNotification called with:", {
+      userEmail: data.userEmail,
+      userName: data.userName,
+      bagName: data.bagName,
+      adminEmail: "mailbox@semzoprive.com",
+    })
+
     // Send notification to admin
     const adminEmailData: EmailData = {
       to: "mailbox@semzoprive.com",
@@ -180,10 +188,18 @@ export class EmailServiceProduction {
       text: `Tu reserva para ${data.bagName} ha sido confirmada.`,
     }
 
+    console.log("[v0] Sending admin email to mailbox@semzoprive.com...")
     const adminSent = await this.sendWithResend(adminEmailData)
-    const userSent = await this.sendWithResend(userEmailData)
+    console.log("[v0] Admin email result:", adminSent ? "SUCCESS" : "FAILED")
 
-    return adminSent && userSent
+    console.log("[v0] Sending user confirmation email to", data.userEmail, "...")
+    const userSent = await this.sendWithResend(userEmailData)
+    console.log("[v0] User email result:", userSent ? "SUCCESS" : "FAILED")
+
+    const bothSent = adminSent && userSent
+    console.log("[v0] Overall email notification result:", bothSent ? "SUCCESS" : "PARTIAL/FAILED")
+
+    return bothSent
   }
 
   async sendPaymentConfirmation(data: {

@@ -279,6 +279,8 @@ function BagCard({
 }) {
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
+  const [isReserving, setIsReserving] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const supabase = useMemo(() => getSupabaseBrowser(), [])
 
@@ -328,6 +330,53 @@ function BagCard({
       console.error("Error adding to waitlist:", error)
     } finally {
       setIsAddingToWaitlist(false)
+    }
+  }
+
+  const handleQuickReserve = async () => {
+    if (!user) {
+      window.location.href = "/auth/login"
+      return
+    }
+
+    setIsReserving(true)
+
+    try {
+      console.log("[v0] Creating reservation from catalog for user:", user.id, "bag:", bag.id)
+
+      const startDate = new Date()
+      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week
+
+      const response = await fetch("/api/user/reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          bag_id: bag.id,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        }),
+      })
+
+      const data = await response.json()
+      console.log("[v0] Reservation response from catalog:", data)
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al crear la reserva")
+      }
+
+      setShowSuccess(true)
+      setIsReserving(false)
+
+      setTimeout(() => {
+        window.location.href = "/dashboard/reservas"
+      }, 1500)
+    } catch (error: any) {
+      console.error("[v0] Error creating reservation from catalog:", error)
+      setIsReserving(false)
+      alert(error.message || "Error al crear la reserva. Por favor intenta de nuevo.")
     }
   }
 
@@ -392,6 +441,13 @@ function BagCard({
           )}
         </div>
 
+        {showSuccess && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+            <p className="text-sm text-green-800 font-medium">¡Reserva creada exitosamente!</p>
+            <p className="text-xs text-green-600 mt-1">Redirigiendo a tus reservas...</p>
+          </div>
+        )}
+
         {isAvailable ? (
           <div className="grid grid-cols-2 gap-2">
             <Link href={`/catalog/${bag.id}`} className="block">
@@ -403,12 +459,27 @@ function BagCard({
                 Detalles
               </Button>
             </Link>
-            <Link href={`/signup?plan=${membershipTier}&bag=${bag.id}`} className="block">
-              <Button className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors">
-                <ShoppingBag className="h-4 w-4 mr-2" />
-                Reservar
-              </Button>
-            </Link>
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleQuickReserve()
+              }}
+              disabled={isReserving}
+              className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-colors disabled:opacity-50"
+            >
+              {isReserving ? (
+                <>
+                  <span className="inline-block animate-spin mr-2">⏳</span>
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Reservar
+                </>
+              )}
+            </Button>
           </div>
         ) : (
           <div className="space-y-2">
