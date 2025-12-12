@@ -210,7 +210,11 @@ export default function ReservationDetailsPage() {
       })
 
       if (response.ok) {
-        router.push("/dashboard/reservas")
+        setReservation((prev) => (prev ? { ...prev, status: "cancelled" } : null))
+        // Wait a moment before redirect to ensure state is updated
+        setTimeout(() => {
+          router.push("/dashboard/reservas")
+        }, 500)
       } else {
         const data = await response.json()
         setError(data.error || "No se pudo cancelar la reserva")
