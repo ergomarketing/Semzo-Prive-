@@ -10,8 +10,8 @@ export async function GET() {
       .select(
         `
         *,
-        profiles!payments_user_id_fkey(full_name, email),
-        reservations!payments_reservation_id_fkey(
+        profiles(full_name, email),
+        reservations(
           id,
           start_date,
           end_date,

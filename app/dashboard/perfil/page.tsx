@@ -83,13 +83,13 @@ export default function PerfilPage() {
   // Detectar si el usuario necesita agregar email
   const needsEmail = () => {
     if (!user) return false
-    
+
     // Si no tiene email en absoluto (login por SMS)
     if (!user.email || user.email.trim() === "") {
       console.log("[Profile] User has no email (SMS login)")
       return true
     }
-    
+
     // Si tiene email temporal
     const isTemp = isTemporaryEmail(user.email)
     console.log("[Profile] Email check:", { email: user.email, isTemp })
@@ -137,7 +137,8 @@ export default function PerfilPage() {
     try {
       const userCurrentEmail = user.email || ""
       const isAddingEmail = !userCurrentEmail || userCurrentEmail.trim() === ""
-      const isChangingFromTempEmail = !isAddingEmail && isTemporaryEmail(userCurrentEmail) && !isTemporaryEmail(profile.email)
+      const isChangingFromTempEmail =
+        !isAddingEmail && isTemporaryEmail(userCurrentEmail) && !isTemporaryEmail(profile.email)
       const full_name = `${profile.first_name} ${profile.last_name}`.trim()
 
       console.log("[Profile] Save operation:", {
@@ -150,7 +151,7 @@ export default function PerfilPage() {
       // 1. Actualizar email en Supabase Auth si está agregando o cambiando de temporal
       if (isAddingEmail || isChangingFromTempEmail) {
         console.log("[Profile] Updating email in Supabase Auth")
-        
+
         const { error: authError } = await supabase.auth.updateUser({
           email: profile.email,
           data: {
@@ -163,12 +164,12 @@ export default function PerfilPage() {
 
         if (authError) {
           console.error("[Profile] Error updating auth email:", authError)
-          
+
           // Manejar errores específicos
           if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
             throw new Error("Este email ya está registrado en otra cuenta")
           }
-          
+
           throw new Error(`Error al actualizar el email: ${authError.message}`)
         }
 
@@ -197,15 +198,13 @@ export default function PerfilPage() {
       console.log("[Profile] Profile updated successfully")
 
       setIsEditing(false)
-      
+
       if (isAddingEmail) {
         setSuccessMessage(
-          "¡Perfil actualizado! Se ha enviado un email de confirmación a tu dirección. Por favor, verifica tu bandeja de entrada para confirmar tu email."
+          "¡Perfil actualizado! Se ha enviado un email de confirmación a tu dirección. Por favor, verifica tu bandeja de entrada para confirmar tu email.",
         )
       } else if (isChangingFromTempEmail) {
-        setSuccessMessage(
-          "Perfil actualizado. Se ha enviado un email de confirmación a tu nueva dirección."
-        )
+        setSuccessMessage("Perfil actualizado. Se ha enviado un email de confirmación a tu nueva dirección.")
       } else {
         setSuccessMessage("Perfil actualizado correctamente")
       }
@@ -348,9 +347,7 @@ export default function PerfilPage() {
                   </p>
                 )}
                 {!canEditEmail && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    El email no se puede cambiar una vez establecido
-                  </p>
+                  <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar una vez establecido</p>
                 )}
               </div>
               <div>
@@ -364,9 +361,7 @@ export default function PerfilPage() {
                   className={user?.phone ? "bg-slate-50" : ""}
                 />
                 {user?.phone && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    El teléfono no se puede cambiar (registrado con SMS)
-                  </p>
+                  <p className="text-xs text-slate-500 mt-1">El teléfono no se puede cambiar (registrado con SMS)</p>
                 )}
               </div>
               <div className="flex space-x-2 pt-2">

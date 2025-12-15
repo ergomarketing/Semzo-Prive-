@@ -1,0 +1,41 @@
+# Robots.txt para Semzo Privé
+# Optimizado para SEO y seguridad
+
+User-agent: *
+Allow: /
+Allow: /catalog
+Allow: /catalog/*
+Allow: /proceso
+Allow: /membership/
+Allow: /gift-cards
+Allow: /blog
+Allow: /blog/*
+Allow: /support
+Allow: /signup
+Allow: /legal/
+
+# Bloquear páginas privadas y admin
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /dashboard/
+Disallow: /dashboard/*
+Disallow: /my-account/
+Disallow: /my-account/*
+Disallow: /auth/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /reservations
+Disallow: /wishlist
+Disallow: /test-*
+Disallow: /api/
+
+# Bloquear recursos innecesarios
+Disallow: /*.json$
+Disallow: /*?*utm_*
+Disallow: /*?*sessionid*
+
+# Sitemap
+Sitemap: https://semzoprive.com/sitemap.xml
+
+# Crawl-delay para evitar sobrecarga
+Crawl-delay: 1

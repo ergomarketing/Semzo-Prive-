@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, MapPin, Crown, ShoppingBag, Clock, Heart, Loader2 } from "lucide-react"
+import { User, MapPin, Crown, ShoppingBag, Clock, Heart, Loader2, Gift } from "lucide-react"
 import { supabase } from "../lib/supabaseClient"
 
 interface UserProfile {
@@ -18,6 +18,7 @@ interface UserProfile {
   shipping_city: string
   shipping_postal_code: string
   membership_status: string
+  gift_card_balance: number
 }
 
 interface DashboardCounters {
@@ -36,6 +37,7 @@ export default function DashboardHome() {
     waitlist: 0,
     wishlist: 0,
   })
+  const [giftCardBalance, setGiftCardBalance] = useState(0)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,6 +50,7 @@ export default function DashboardHome() {
 
         if (data) {
           setProfile(data)
+          setGiftCardBalance(data.gift_card_balance || 0)
         }
       } catch (error) {
         console.error("Error fetching profile:", error)
@@ -202,6 +205,20 @@ export default function DashboardHome() {
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">{counters.wishlist}</div>
             <p className="text-xs text-slate-600 mt-1">Favoritos guardados</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => router.push("/dashboard/gift-cards")}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-serif">Saldo Gift Card</CardTitle>
+            <Gift className="h-4 w-4 text-slate-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{(giftCardBalance / 100).toFixed(2)}€</div>
+            <p className="text-xs text-slate-600 mt-1">Disponible para usar</p>
           </CardContent>
         </Card>
       </div>

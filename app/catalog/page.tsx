@@ -1,6 +1,32 @@
+import type { Metadata } from "next"
 import CatalogSection from "../components/catalog-section"
 import Navbar from "../components/navbar"
 import Footer from "../components/footer"
+
+export const metadata: Metadata = {
+  title: "Catálogo de Bolsos de Lujo - Chanel, Dior, Louis Vuitton",
+  description:
+    "Explora nuestra colección exclusiva de bolsos de lujo disponibles para alquiler. Chanel, Dior, Louis Vuitton, Fendi y más marcas premium desde 59€/mes.",
+  keywords: [
+    "catálogo bolsos lujo",
+    "chanel",
+    "dior",
+    "louis vuitton",
+    "fendi",
+    "prada",
+    "gucci",
+    "alquiler bolsos diseñador",
+  ],
+  openGraph: {
+    title: "Catálogo de Bolsos de Lujo | Semzo Privé",
+    description: "Descubre nuestra selección de bolsos de las mejores marcas. Alquiler desde 59€/mes con envío gratis.",
+    images: ["/images/hero-luxury-bags.jpeg"],
+    url: "https://semzoprive.com/catalog",
+  },
+  alternates: {
+    canonical: "https://semzoprive.com/catalog",
+  },
+}
 
 export default function CatalogPage() {
   return (

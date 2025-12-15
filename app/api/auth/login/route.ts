@@ -1,13 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseBrowser } from "@/lib/supabaseClient"
+import { loginLimiter } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
 
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
+    const { success, remaining } = loginLimiter.check(ip, 5, 15 * 60 * 1000) // 5 intentos en 15 minutos
+
+    if (!success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos.",
+        },
+        { status: 429 },
+      )
+    }
+
     console.log("[LOGIN] === INICIO LOGIN ===")
     console.log("[LOGIN] Email:", email)
+    console.log("[LOGIN] Intentos restantes:", remaining)
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
@@ -78,6 +93,8 @@ export async function POST(request: NextRequest) {
     } else {
       console.log("[LOGIN] ✅ Perfil encontrado:", profile.email)
     }
+
+    loginLimiter.reset(ip)
 
     return NextResponse.json({
       success: true,

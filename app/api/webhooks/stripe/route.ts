@@ -201,46 +201,107 @@ export async function POST(request: NextRequest) {
 
         const failedUserId = failedInvoice.metadata?.user_id
 
-        if (failedInvoice.subscription) {
-          await supabaseAdmin
-            .from("subscriptions")
-            .update({
-              status: "past_due",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("stripe_subscription_id", failedInvoice.subscription)
-        }
-
         if (failedUserId) {
-          const { data: subData } = await supabaseAdmin
-            .from("subscriptions")
-            .select("id")
-            .eq("stripe_subscription_id", failedInvoice.subscription)
+          const { data: membership } = await supabaseAdmin
+            .from("user_memberships")
+            .select("failed_payment_count")
+            .eq("user_id", failedUserId)
+            .eq("status", "active")
             .single()
 
-          await supabaseAdmin.from("payment_history").insert({
-            user_id: failedUserId,
-            subscription_id: subData?.id || null,
-            stripe_invoice_id: failedInvoice.id,
-            amount: failedInvoice.amount_due,
-            currency: failedInvoice.currency,
-            status: "failed",
-            description: "Pago fallido - Renovación de membresía",
-            payment_date: new Date().toISOString(),
-          })
+          const failedCount = (membership?.failed_payment_count || 0) + 1
+
+          let newStatus = "active"
+          let dunningStatus = "grace_period"
+
+          if (failedCount >= 3) {
+            newStatus = "suspended"
+            dunningStatus = "suspended"
+          } else if (failedCount === 2) {
+            dunningStatus = "warning_sent"
+          }
 
           await supabaseAdmin
-            .from("profiles")
+            .from("user_memberships")
             .update({
-              membership_status: "past_due",
+              status: newStatus,
+              failed_payment_count: failedCount,
+              last_payment_attempt: new Date().toISOString(),
+              dunning_status: dunningStatus,
               updated_at: new Date().toISOString(),
             })
+            .eq("user_id", failedUserId)
+            .eq("status", "active")
+
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("email, full_name")
             .eq("id", failedUserId)
+            .single()
+
+          if (profile?.email) {
+            let subject = "Problema con tu pago - Semzo Privé"
+            let message = "Tu pago no pudo procesarse. Por favor actualiza tu método de pago."
+
+            if (failedCount >= 3) {
+              subject = "Membresía suspendida - Acción requerida"
+              message =
+                "Tu membresía ha sido suspendida después de 3 intentos fallidos. Actualiza tu método de pago para reactivarla."
+            } else if (failedCount === 2) {
+              subject = "Último aviso - Actualiza tu método de pago"
+              message = "Este es tu último aviso. Si el próximo pago falla, tu membresía será suspendida."
+            }
+
+            // Send email
+            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/send-email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: profile.email,
+                subject,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #dc2626;">⚠️ ${subject}</h2>
+                    <p>Hola ${profile.full_name || ""},</p>
+                    <p>${message}</p>
+                    <p><strong>Intento ${failedCount} de 3</strong></p>
+                    <div style="margin: 30px 0;">
+                      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/membresia" 
+                         style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Actualizar Método de Pago
+                      </a>
+                    </div>
+                    <p style="color: #666; font-size: 12px;">
+                      Si tienes alguna pregunta, contáctanos en ${process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"}
+                    </p>
+                  </div>
+                `,
+              }),
+            })
+          }
+
+          await notifyAdmin(
+            `Pago Fallido ${failedCount}/3 - ${profile?.full_name || failedUserId}`,
+            `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #dc2626;">❌ Pago Fallido</h2>
+                <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>Cliente:</strong> ${profile?.full_name || "N/A"}</p>
+                  <p><strong>Email:</strong> ${profile?.email || "N/A"}</p>
+                  <p><strong>Intentos fallidos:</strong> ${failedCount}/3</p>
+                  <p><strong>Estado:</strong> ${newStatus}</p>
+                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+                </div>
+                ${failedCount >= 3 ? '<p style="color: #dc2626; font-weight: bold;">⚠️ MEMBRESÍA SUSPENDIDA</p>' : ""}
+              </div>
+            `,
+          )
         }
+
         break
       }
 
-      case "payment_intent.succeeded":
+      case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log("💰 Pago exitoso:", {
           id: paymentIntent.id,
@@ -369,6 +430,7 @@ export async function POST(request: NextRequest) {
           }
         }
         break
+      }
 
       case "payment_intent.payment_failed":
         const failedPayment = event.data.object as Stripe.PaymentIntent
@@ -443,6 +505,35 @@ export async function POST(request: NextRequest) {
       case "payment_intent.created":
         console.log("📝 Payment intent creado:", event.data.object.id)
         break
+
+      case "setup_intent.succeeded": {
+        const setupIntent = event.data.object as Stripe.SetupIntent
+        console.log("✅ Setup Intent succeeded:", setupIntent.id)
+
+        const userId = setupIntent.metadata.user_id
+        const paymentMethodId = setupIntent.payment_method as string
+
+        if (userId && paymentMethodId) {
+          const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
+
+          await supabaseAdmin
+            .from("user_memberships")
+            .update({
+              stripe_payment_method_id: paymentMethodId,
+              payment_method_verified: true,
+              payment_method_last4: paymentMethod.card?.last4,
+              payment_method_brand: paymentMethod.card?.brand,
+              failed_payment_count: 0,
+              dunning_status: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", userId)
+            .eq("status", "active")
+
+          console.log(`✅ Payment method ${paymentMethodId} guardado para usuario ${userId}`)
+        }
+        break
+      }
 
       default:
         console.log(`ℹ️ Evento no manejado: ${event.type}`)

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     // Obtener suscriptores activos
     const { data: subscribers, error } = await supabase
-      .from("newsletter_subscribers")
+      .from("newsletter_subscriptions") // Changed from newsletter_subscribers to newsletter_subscriptions
       .select("email, name")
       .eq("status", "active")
 

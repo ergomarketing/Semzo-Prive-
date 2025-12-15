@@ -14,21 +14,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: true, message: "Email inválido" }, { status: 400 })
     }
 
-    // Crear cliente de Supabase con service role key para bypasear RLS
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-          },
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
         },
-      }
-    )
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        },
+      },
+    })
 
     // Verificar si el email ya está suscrito
     const { data: existingSubscription } = await supabase
@@ -54,10 +49,7 @@ export async function POST(request: Request) {
 
         if (updateError) {
           console.error("Error reactivating subscription:", updateError)
-          return NextResponse.json(
-            { error: true, message: "Error al reactivar suscripción" },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: true, message: "Error al reactivar suscripción" }, { status: 500 })
         }
 
         return NextResponse.json({
@@ -66,10 +58,7 @@ export async function POST(request: Request) {
         })
       }
 
-      return NextResponse.json(
-        { error: true, message: "Este email ya está suscrito" },
-        { status: 409 }
-      )
+      return NextResponse.json({ error: true, message: "Este email ya está suscrito" }, { status: 409 })
     }
 
     // Crear nueva suscripción
@@ -94,10 +83,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Error creating newsletter subscription:", error)
-      return NextResponse.json(
-        { error: true, message: "Error al crear suscripción" },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: true, message: "Error al crear suscripción" }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -107,9 +93,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Unexpected error in newsletter subscription:", error)
-    return NextResponse.json(
-      { error: true, message: "Error inesperado al procesar suscripción" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: true, message: "Error inesperado al procesar suscripción" }, { status: 500 })
   }
 }

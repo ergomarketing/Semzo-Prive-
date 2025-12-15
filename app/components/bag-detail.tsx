@@ -14,7 +14,6 @@ import {
   Truck,
   RotateCcw,
   Check,
-  AlertTriangle,
   Calendar,
   Loader2,
 } from "lucide-react"
@@ -22,14 +21,7 @@ import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
 
 interface BagDetailProps {
@@ -75,13 +67,13 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [isInWaitlist, setIsInWaitlist] = useState(false)
   const [pendingItems, setPendingItems] = useState<any[]>([])
   const [showReplaceDialog, setShowReplaceDialog] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   const [userMembership, setUserMembership] = useState<{
     tier: string | null
     isActive: boolean
   }>({ tier: null, isActive: false })
   const [isReserving, setIsReserving] = useState(false)
-  const [showReservationSuccess, setShowReservationSuccess] = useState(false)
   const { user: authUser, loading: authLoading } = useAuth()
   const userId = authUser?.id || null
 
@@ -347,16 +339,81 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         throw new Error(data.error || "Error al crear la reserva")
       }
 
-      setShowReservationSuccess(true)
-      setIsReserving(false)
+      toast({
+        title: "¡Reserva exitosa!",
+        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
+      })
 
-      setTimeout(() => {
-        window.location.href = "/dashboard/reservas"
-      }, 1500)
+      router.push("/dashboard/reservas")
     } catch (error: any) {
       console.error("[v0] Error creating reservation:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
+        variant: "destructive",
+      })
+    } finally {
       setIsReserving(false)
-      alert(error.message || "Error al crear la reserva")
+    }
+  }
+
+  const handleQuickReserve = async () => {
+    if (!authUser) {
+      setShowAuthModal(true)
+      return
+    }
+
+    if (!canReserveWithMembership()) {
+      toast({
+        title: "Membresía insuficiente",
+        description: `Este bolso requiere membresía ${bag.membership.toUpperCase()}. Tu membresía actual: ${userMembership.tier || "Free"}`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsReserving(true)
+
+    try {
+      const startDate = new Date()
+      startDate.setHours(0, 0, 0, 0)
+      const endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 7)
+
+      const response = await fetch("/api/user/reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": authUser.id,
+        },
+        body: JSON.stringify({
+          bag_id: bag.id,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al crear la reserva")
+      }
+
+      toast({
+        title: "¡Reserva exitosa!",
+        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
+      })
+
+      router.push("/dashboard/reservas")
+    } catch (error) {
+      console.error("[v0] Error creating quick reservation:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
+        variant: "destructive",
+      })
+    } finally {
+      setIsReserving(false)
     }
   }
 
@@ -364,6 +421,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     if (!userMembership.isActive || !userMembership.tier) return false
 
     const tierHierarchy: Record<string, number> = {
+      free: 0,
       petite: 1,
       essentiel: 2,
       signature: 3,
@@ -418,43 +476,6 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <Dialog open={showReservationSuccess} onOpenChange={setShowReservationSuccess}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <Check className="h-5 w-5" />
-              ¡Reserva Confirmada!
-            </DialogTitle>
-            <DialogDescription className="pt-2">
-              Tu reserva del {bag.brand} {bag.name} ha sido confirmada. Te redirigiremos a tus reservas...
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showReplaceDialog} onOpenChange={setShowReplaceDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Ya tienes una membresía en el carrito
-            </DialogTitle>
-            <DialogDescription className="pt-2">
-              Solo puedes tener una membresía activa a la vez. ¿Deseas reemplazar la membresía actual por la nueva
-              selección?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowReplaceDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmReplace} className="bg-slate-900 hover:bg-slate-800">
-              Reemplazar membresía
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <div className="container mx-auto px-4 py-6">
         <Link
           href="/catalog"
@@ -569,8 +590,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               )}
             </div>
 
-            {userMembership.isActive ? (
-              // User has active membership - show direct reservation
+            {authUser ? (
+              // User is logged in - show reservation options
               <div className="space-y-4">
                 <div
                   className={`p-4 rounded-xl border-2 ${canReserveWithMembership() ? "border-indigo-dark/30 bg-rose-nude" : "border-rose-pastel bg-rose-nude"}`}
@@ -672,7 +693,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 )}
               </div>
             ) : (
-              // User doesn't have membership - show membership options
+              // User is not logged in - show membership options
               <div className="space-y-4">
                 <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
 
@@ -787,9 +808,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               </div>
             )}
 
-            {!userMembership.isActive && bag.availability.status === "available" && (
+            {!authUser && bag.availability.status === "available" && (
               <Button
-                onClick={handleReserve}
+                onClick={handleQuickReserve}
                 className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
               >
                 Reservar por{" "}

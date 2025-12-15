@@ -181,6 +181,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       )
     }
 
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      action: `reservation_${status}`,
+      entity_type: "reservation",
+      entity_id: reservationId,
+      old_data: { status: currentReservation.status },
+      new_data: { status },
+      created_at: new Date().toISOString(),
+    })
+
     if (status === "cancelled" && currentReservation.bag_id) {
       await supabase.from("bags").update({ status: "available" }).eq("id", currentReservation.bag_id)
 

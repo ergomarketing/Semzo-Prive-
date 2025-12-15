@@ -173,6 +173,7 @@ function PaymentForm({ amount, membershipType, userEmail, onSuccess, onError }: 
             code: appliedGiftCard.code,
             amountToUse: appliedGiftCard.amountToUse,
             orderReference: `${membershipType}-${Date.now()}`,
+            membershipType: membershipType, // This triggers membership activation
           }),
         })
 

@@ -15,9 +15,8 @@ async function notifyAdmin(subject: string, htmlContent: string) {
         html: htmlContent,
       }),
     })
-    console.log(`✅ Admin notified: ${subject}`)
   } catch (error) {
-    console.error("❌ Error notifying admin:", error)
+    console.error("Error notifying admin:", error)
   }
 }
 
@@ -49,10 +48,29 @@ async function notifyUser(email: string, name: string, membershipType: string) {
         `,
       }),
     })
-    console.log(`✅ User notified: ${email}`)
   } catch (error) {
-    console.error("❌ Error notifying user:", error)
+    console.error("Error notifying user:", error)
   }
+}
+
+async function logAudit(
+  supabase: any,
+  userId: string,
+  action: string,
+  entityType: string,
+  entityId: string,
+  oldData: any,
+  newData: any,
+) {
+  await supabase.from("audit_logs").insert({
+    user_id: userId,
+    action,
+    entity_type: entityType,
+    entity_id: entityId,
+    old_data: oldData,
+    new_data: newData,
+    created_at: new Date().toISOString(),
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -75,8 +93,6 @@ export async function POST(request: NextRequest) {
       cleanMembershipType = "petite"
     }
 
-    console.log("[v0] Updating membership - User:", userId, "Type:", cleanMembershipType, "Payment:", paymentId)
-
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey =
       process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
@@ -84,7 +100,7 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("[v0] Missing Supabase credentials")
+      console.error("Missing Supabase credentials")
       return NextResponse.json({ error: "Supabase configuration missing" }, { status: 500 })
     }
 
@@ -94,9 +110,53 @@ export async function POST(request: NextRequest) {
 
     const { data: existingProfile } = await supabase
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, membership_status, membership_type, subscription_end_date")
       .eq("id", userId)
       .single()
+
+    if (
+      existingProfile?.membership_status === "active" &&
+      existingProfile?.membership_type &&
+      existingProfile?.membership_type !== "free"
+    ) {
+      const endDate = existingProfile.subscription_end_date
+        ? new Date(existingProfile.subscription_end_date)
+        : new Date()
+
+      if (endDate > new Date()) {
+        await logAudit(
+          supabase,
+          userId,
+          "membership_purchase_blocked",
+          "membership",
+          userId,
+          { existing_membership: existingProfile.membership_type },
+          { attempted_membership: cleanMembershipType },
+        )
+
+        await supabase.from("admin_notifications").insert({
+          type: "membership_duplicate_attempt",
+          priority: "high",
+          title: "Intento de Compra Duplicada",
+          message: `Usuario ${existingProfile.email} intentó comprar membresía ${cleanMembershipType} teniendo activa ${existingProfile.membership_type}`,
+          metadata: {
+            user_id: userId,
+            existing_membership: existingProfile.membership_type,
+            attempted_membership: cleanMembershipType,
+            end_date: existingProfile.subscription_end_date,
+          },
+        })
+
+        return NextResponse.json(
+          {
+            error: "Ya tienes una membresía activa",
+            existingMembership: existingProfile.membership_type,
+            endDate: existingProfile.subscription_end_date,
+          },
+          { status: 400 },
+        )
+      }
+    }
 
     const subscriptionEndDate = new Date()
     if (cleanMembershipType === "petite") {
@@ -105,11 +165,19 @@ export async function POST(request: NextRequest) {
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
     }
 
+    if (existingProfile?.membership_type && existingProfile.membership_type !== "free") {
+      await supabase
+        .from("membership_history")
+        .update({ ended_at: new Date().toISOString(), reason: "upgraded" })
+        .eq("user_id", userId)
+        .is("ended_at", null)
+    }
+
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: userId,
-        membership_status: "active",
-        membership_type: cleanMembershipType,
+        membership_status: "active", // Siempre "active"
+        membership_type: cleanMembershipType, // El tipo específico
         subscription_end_date: subscriptionEndDate.toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -117,28 +185,8 @@ export async function POST(request: NextRequest) {
     )
 
     if (profileError) {
-      console.error("[v0] Error updating profile:", profileError)
+      console.error("Error updating profile:", profileError)
       return NextResponse.json({ error: "Failed to update membership" }, { status: 500 })
-    }
-
-    const { error: subError } = await supabase.from("subscriptions").insert({
-      user_id: userId,
-      membership_type: cleanMembershipType,
-      status: "active",
-      current_period_start: new Date().toISOString(),
-      current_period_end: subscriptionEndDate.toISOString(),
-      stripe_subscription_id: paymentId?.startsWith("gift_") ? null : paymentId,
-      payment_method: giftCardCode ? "gift_card" : "stripe",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-
-    if (subError) {
-      console.error("[v0] Error creating subscription record:", subError)
-    }
-
-    if (existingProfile?.email) {
-      await notifyUser(existingProfile.email, existingProfile.full_name || "", cleanMembershipType.toUpperCase())
     }
 
     const membershipPrices: Record<string, number> = {
@@ -147,6 +195,60 @@ export async function POST(request: NextRequest) {
       signature: 129,
       prive: 189,
     }
+
+    const { error: userMembershipError } = await supabase.from("user_memberships").upsert(
+      {
+        user_id: userId,
+        membership_type: cleanMembershipType,
+        status: "active",
+        start_date: new Date().toISOString(),
+        end_date: subscriptionEndDate.toISOString(),
+        can_make_reservations: true,
+        stripe_subscription_id: paymentId?.startsWith("gift_") ? null : paymentId,
+        payment_method_verified: true,
+        failed_payment_count: 0,
+      },
+      { onConflict: "user_id" },
+    )
+
+    if (userMembershipError) {
+      console.error("Error creating user_membership:", userMembershipError)
+      return NextResponse.json({ error: "Failed to create membership record" }, { status: 500 })
+    }
+
+    await supabase.from("membership_history").insert({
+      user_id: userId,
+      membership_type: cleanMembershipType,
+      status: "active",
+      started_at: new Date().toISOString(),
+      payment_method: giftCardCode ? "gift_card" : "stripe",
+      payment_reference: paymentId,
+      amount: membershipPrices[cleanMembershipType] || 0,
+    })
+
+    await logAudit(supabase, userId, "membership_activated", "membership", userId, existingProfile, {
+      membership_type: cleanMembershipType,
+      status: "active",
+      end_date: subscriptionEndDate.toISOString(),
+    })
+
+    if (existingProfile?.email) {
+      await notifyUser(existingProfile.email, existingProfile.full_name || "", cleanMembershipType.toUpperCase())
+    }
+
+    await supabase.from("admin_notifications").insert({
+      type: "new_membership",
+      priority: "normal",
+      title: `Nueva Membresía - ${cleanMembershipType.toUpperCase()}`,
+      message: `${existingProfile?.full_name || "Usuario"} activó membresía ${cleanMembershipType}`,
+      metadata: {
+        user_id: userId,
+        email: existingProfile?.email,
+        membership_type: cleanMembershipType,
+        amount: membershipPrices[cleanMembershipType],
+        payment_method: giftCardCode ? "gift_card" : "stripe",
+      },
+    })
 
     await notifyAdmin(
       `Nueva Membresía - ${cleanMembershipType.toUpperCase()}`,
@@ -167,10 +269,9 @@ export async function POST(request: NextRequest) {
       `,
     )
 
-    console.log("[v0] Membership updated successfully for user:", userId)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error in update-membership API:", error)
+    console.error("Error in update-membership API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

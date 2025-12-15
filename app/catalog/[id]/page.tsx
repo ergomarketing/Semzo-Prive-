@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Navbar from "../../components/navbar"
 import Footer from "../../components/footer"
 import BagDetail from "../../components/bag-detail"
@@ -12,6 +13,53 @@ const supabaseKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   ""
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      const { data } = await supabase.from("bags").select("*").eq("id", id).single()
+
+      if (data) {
+        const bagName = `${data.brand} ${data.name}`
+        const price =
+          data.price || (data.membership_type === "prive" ? 189 : data.membership_type === "signature" ? 129 : 59)
+
+        return {
+          title: `${bagName} - Alquiler desde ${price}€/mes`,
+          description:
+            data.description ||
+            `Alquila el bolso ${bagName} por solo ${price}€/mes. Incluye envío gratis, seguro y cambios ilimitados. Disponible en Semzo Privé.`,
+          keywords: [data.brand, data.name, "alquiler", "bolso lujo", data.membership_type],
+          openGraph: {
+            title: `${bagName} | Semzo Privé`,
+            description: `Alquila este elegante ${bagName} desde ${price}€/mes con envío gratis y seguro incluido.`,
+            images: [data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"],
+            url: `https://semzoprive.com/catalog/${id}`,
+          },
+          twitter: {
+            card: "summary_large_image",
+            title: `${bagName} - Alquiler ${price}€/mes`,
+            description: `Alquila este ${bagName} con Semzo Privé. Envío gratis y seguro incluido.`,
+            images: [data.images?.[0] || data.image_url],
+          },
+          alternates: {
+            canonical: `https://semzoprive.com/catalog/${id}`,
+          },
+        }
+      }
+    } catch (error) {
+      console.error("Error generating metadata:", error)
+    }
+  }
+
+  return {
+    title: "Bolso de Lujo",
+    description: "Descubre este elegante bolso de lujo disponible para alquiler en Semzo Privé.",
+  }
+}
 
 export default async function BagDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -114,10 +162,37 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
     )
   }
 
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${bag.brand} ${bag.name}`,
+    brand: {
+      "@type": "Brand",
+      name: bag.brand,
+    },
+    description: bag.description,
+    image: bag.images,
+    offers: {
+      "@type": "Offer",
+      price: bag.price.replace("€/mes", ""),
+      priceCurrency: "EUR",
+      availability:
+        bag.availability.status === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url: `https://semzoprive.com/catalog/${bag.id}`,
+      priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: bag.rating,
+      reviewCount: bag.reviews,
+    },
+  }
+
   return (
     <>
       <Navbar />
       <main>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
         <BagDetail bag={bag} relatedBags={relatedBags} />
       </main>
       <Footer />

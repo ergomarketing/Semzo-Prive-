@@ -1,14 +1,12 @@
 "use client"
 
 import { AlertDialogTitle } from "@/components/ui/alert-dialog"
-
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Crown, Check, Loader2, Calendar, CreditCard, AlertCircle, Receipt, Clock, XCircle } from "lucide-react"
+import { Crown, Check, Loader2, Calendar, Receipt, Clock, XCircle, Info } from "lucide-react"
 import { supabase } from "../../lib/supabaseClient"
 import {
   AlertDialog,
@@ -28,6 +26,7 @@ interface MembershipData {
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
   subscription_end_date?: string | null
+  can_make_reservations?: boolean
 }
 
 interface Subscription {
@@ -68,7 +67,14 @@ export default function MembresiaPage() {
       hasFetchedRef.current = true
 
       try {
-        const { data, error } = await supabase
+        const { data: userMembership, error: membershipError } = await supabase
+          .from("user_memberships")
+          .select("membership_type, status, start_date, end_date, can_make_reservations")
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        // Luego leer de profiles como fallback/complemento
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
             "membership_status, membership_type, created_at, stripe_customer_id, stripe_subscription_id, subscription_end_date",
@@ -76,10 +82,22 @@ export default function MembresiaPage() {
           .eq("id", user.id)
           .maybeSingle()
 
-        console.log("[v0] Membership data fetched:", data)
+        const combinedData = {
+          membership_status: userMembership?.status || profileData?.membership_status || "inactive",
+          membership_type: userMembership?.membership_type || profileData?.membership_type || "free",
+          created_at: profileData?.created_at || null,
+          stripe_customer_id: profileData?.stripe_customer_id || null,
+          stripe_subscription_id: profileData?.stripe_subscription_id || null,
+          subscription_end_date: userMembership?.end_date || profileData?.subscription_end_date || null,
+          can_make_reservations: userMembership?.can_make_reservations || false,
+        }
 
-        if (error) throw error
-        if (data) setMembershipData(data)
+        console.log("[v0] Membership data fetched:", combinedData)
+        console.log("[v0] User membership record:", userMembership)
+        console.log("[v0] Profile data:", profileData)
+
+        if (profileError && membershipError) throw profileError || membershipError
+        if (combinedData) setMembershipData(combinedData)
 
         // Fetch subscription and payment history
         try {
@@ -88,21 +106,21 @@ export default function MembresiaPage() {
             const subData = await response.json()
             if (subData.subscription) {
               setSubscription(subData.subscription)
-            } else if (data?.subscription_end_date) {
+            } else if (combinedData?.subscription_end_date) {
               // Create a subscription object from profile data if no subscription record exists
               setSubscription({
-                current_period_end: data.subscription_end_date,
-                status: data.membership_status,
+                current_period_end: combinedData.subscription_end_date,
+                status: combinedData.membership_status,
               })
             }
             setPayments(subData.payments || [])
           }
         } catch (subError) {
           console.log("No subscription data available")
-          if (data?.subscription_end_date) {
+          if (combinedData?.subscription_end_date) {
             setSubscription({
-              current_period_end: data.subscription_end_date,
-              status: data.membership_status,
+              current_period_end: combinedData.subscription_end_date,
+              status: combinedData.membership_status,
             })
           }
         }
@@ -240,273 +258,272 @@ export default function MembresiaPage() {
       refunded: { label: "Reembolsado", className: "bg-gray-100 text-gray-800" },
     }
     const c = config[status] || { label: status, className: "bg-gray-100" }
-    return <Badge className={c.className}>{c.label}</Badge>
+    return <span className={c.className}>{c.label}</span>
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">Mi Membresía</h2>
-        <p className="text-slate-600">Gestiona tu membresía y accede a beneficios exclusivos</p>
-      </div>
+    <div className="min-h-screen bg-white pt-32">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">MI MEMBRESÍA</h1>
 
-      {isPastDue && (
-        <Card className="border-rose-300 bg-rose-50 mb-6">
-          <CardContent className="flex items-center gap-3 py-4">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
-            <div>
-              <p className="font-medium text-rose-800">Pago pendiente</p>
-              <p className="text-sm text-rose-600">
-                Tu último pago no se pudo procesar. Por favor actualiza tu método de pago.
-              </p>
+        {isPastDue && (
+          <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3 bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg">
+                <Info className="w-5 h-5 text-indigo-dark flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-indigo-dark">
+                  <p className="font-medium">Pago pendiente</p>
+                  <p className="mt-1 text-indigo-dark/70">
+                    Tu último pago no se pudo procesar. Por favor actualiza tu método de pago.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-6 mb-6">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    {isActive && <Crown className="w-6 h-6 text-indigo-dark" />}
+                    <h2 className="font-serif text-2xl text-indigo-dark">{currentMembership.name}</h2>
+                  </div>
+                  <span
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      isActive
+                        ? "bg-rose-nude border border-rose-pastel/30 text-indigo-dark"
+                        : "bg-indigo-dark/5 text-indigo-dark/60"
+                    }`}
+                  >
+                    {isActive ? "Activa" : "Inactiva"}
+                  </span>
+                </div>
+                <p className="font-serif text-3xl text-indigo-dark mb-6">
+                  €{currentMembership.price}
+                  <span className="text-lg text-indigo-dark/60">/{currentMembership.period}</span>
+                </p>
+
+                <ul className="space-y-3 mb-6">
+                  {getFeatures().map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-indigo-dark mt-0.5 flex-shrink-0" />
+                      <span className="text-indigo-dark/70">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {isActive && (subscription?.current_period_end || membershipData?.subscription_end_date) && (
+                  <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-indigo-dark">
+                      <strong>Válida hasta:</strong>{" "}
+                      {new Date(
+                        subscription?.current_period_end || membershipData?.subscription_end_date!,
+                      ).toLocaleDateString("es-ES", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                {isPetite && isActive && (
+                  <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-indigo-dark flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-indigo-dark mb-2">Pases de Bolso Disponibles</h4>
+                        <p className="text-sm text-indigo-dark/70 mb-3">
+                          Con tu membresía Petite, puedes acceder a bolsos de colecciones premium:
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-white p-2 rounded-lg text-center">
+                            <p className="text-xs text-indigo-dark/60">L'Essentiel</p>
+                            <p className="font-medium text-indigo-dark">52€</p>
+                          </div>
+                          <div className="bg-white p-2 rounded-lg text-center">
+                            <p className="text-xs text-indigo-dark/60">Signature</p>
+                            <p className="font-medium text-indigo-dark">99€</p>
+                          </div>
+                          <div className="bg-white p-2 rounded-lg text-center">
+                            <p className="text-xs text-indigo-dark/60">Privé</p>
+                            <p className="font-medium text-indigo-dark">137€</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isPetite && isActive && (
+                  <Button
+                    onClick={() => router.push("/catalog")}
+                    className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                  >
+                    Explorar Catálogo y Reservar
+                  </Button>
+                )}
+
+                {!isActive && (
+                  <Button
+                    onClick={() => router.push("/membership/upgrade")}
+                    className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Activar Membresía
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      <Card className="border-2 border-indigo-dark mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="font-serif text-2xl flex items-center gap-2">
-              {isActive && <Crown className="h-6 w-6 text-indigo-dark" />}
-              {currentMembership.name}
-            </CardTitle>
-            <Badge
-              variant="secondary"
-              className={
-                isActive
-                  ? "bg-green-100 text-green-800 border-green-200"
-                  : "bg-rose-50 text-indigo-dark border-rose-200"
-              }
-            >
-              {isActive ? "Activa" : "Inactiva"}
-            </Badge>
-          </div>
-          <CardDescription className="text-3xl font-bold text-indigo-dark mt-2">
-            €{currentMembership.price}/{currentMembership.period}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3 mb-6">
-            {getFeatures().map((feature, index) => (
-              <li key={index} className="flex items-start gap-2">
-                <Check className="h-5 w-5 text-indigo-dark mt-0.5 flex-shrink-0" />
-                <span className="text-slate-700">{feature}</span>
-              </li>
-            ))}
-          </ul>
+        {isActive && (
+          <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+            <CardContent className="p-6">
+              <h3 className="font-serif text-lg text-indigo-dark mb-4">Información de Suscripción</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm pb-3 border-b border-indigo-dark/10">
+                  <span className="text-indigo-dark/70">Estado</span>
+                  <span className="px-3 py-1 text-xs rounded-full bg-rose-nude border border-rose-pastel/30 text-indigo-dark">
+                    Activa
+                  </span>
+                </div>
 
-          {isActive && (subscription?.current_period_end || membershipData?.subscription_end_date) && (
-            <div className="p-4 rounded-xl bg-green-50 border border-green-200 mb-4">
-              <p className="text-sm text-slate-600">
-                <strong>Válida hasta:</strong>{" "}
-                {new Date(
-                  subscription?.current_period_end || membershipData?.subscription_end_date!,
-                ).toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-          )}
+                <div className="flex justify-between text-sm pb-3 border-b border-indigo-dark/10">
+                  <span className="text-indigo-dark/70">Plan</span>
+                  <span className="text-indigo-dark font-medium">{currentMembership.name}</span>
+                </div>
 
-          {isPetite && isActive && (
-            <div className="space-y-3">
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 mb-4">
-                <h4 className="font-medium text-indigo-dark mb-2">Pases de Bolso Disponibles</h4>
-                <p className="text-sm text-slate-600 mb-3">
-                  Con tu membresía Petite, puedes acceder a bolsos de colecciones premium comprando un Pase de Bolso:
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 bg-white rounded-lg">
-                    <p className="text-xs text-slate-500">L'Essentiel</p>
-                    <p className="font-bold text-indigo-dark">52€</p>
+                {subscription?.current_period_end && (
+                  <div className="flex justify-between text-sm pb-3 border-b border-indigo-dark/10">
+                    <span className="text-indigo-dark/70">Válido hasta</span>
+                    <span className="text-indigo-dark font-medium">
+                      {new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
                   </div>
-                  <div className="p-2 bg-white rounded-lg">
-                    <p className="text-xs text-slate-500">Signature</p>
-                    <p className="font-bold text-indigo-dark">99€</p>
+                )}
+
+                <div className="flex justify-between text-sm pb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-indigo-dark/60" />
+                    <span className="text-indigo-dark/70">Miembro desde</span>
                   </div>
-                  <div className="p-2 bg-white rounded-lg">
-                    <p className="text-xs text-slate-500">Privé</p>
-                    <p className="font-bold text-indigo-dark">137€</p>
-                  </div>
+                  <span className="text-indigo-dark font-medium">
+                    {membershipData?.created_at
+                      ? new Date(membershipData.created_at).toLocaleDateString("es-ES", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "No disponible"}
+                  </span>
                 </div>
               </div>
 
-              <Button
-                onClick={() => router.push("/catalog")}
-                className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white font-serif"
-              >
-                Explorar Catálogo y Reservar
-              </Button>
-            </div>
-          )}
+              <div className="flex flex-col gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude bg-transparent"
+                  onClick={() => setShowPayments(!showPayments)}
+                >
+                  <Receipt className="h-4 w-4 mr-2" />
+                  {showPayments ? "Ocultar historial" : "Ver historial de pagos"}
+                </Button>
 
-          {!isActive && (
-            <Button
-              onClick={() => router.push("/membership/upgrade")}
-              className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white font-serif"
-            >
-              <Crown className="h-4 w-4 mr-2" />
-              Activar Membresía
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude bg-transparent"
+                      disabled={pausing}
+                    >
+                      {pausing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Clock className="h-4 w-4 mr-2" />}
+                      Pausar membresía
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Pausar tu membresía?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tu membresía será pausada por 1 mes. No se te cobrará durante este período y se reactivará
+                        automáticamente después.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handlePauseSubscription}
+                        className="bg-indigo-dark hover:bg-indigo-dark/90"
+                      >
+                        Pausar 1 mes
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
-      {isActive && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Información de Suscripción
-            </CardTitle>
-            <CardDescription>Detalles de tu membresía {currentMembership.name}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-slate-200">
-              <span className="text-slate-600 font-medium">Estado</span>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Activa
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between py-3 border-b border-slate-200">
-              <span className="text-slate-600 font-medium">Plan</span>
-              <span className="font-medium text-slate-900">{currentMembership.name}</span>
-            </div>
-
-            {subscription?.current_period_end && (
-              <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                <span className="text-slate-600 font-medium">Válido hasta</span>
-                <span className="font-medium text-slate-900">
-                  {new Date(subscription.current_period_end).toLocaleDateString("es-ES", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude bg-transparent"
+                      disabled={canceling}
+                    >
+                      {canceling ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <XCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Cancelar membresía
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Cancelar tu membresía?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tu membresía será cancelada al final del período de facturación actual. Seguirás teniendo acceso
+                        hasta entonces.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>No, mantener membresía</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCancelSubscription}
+                        className="bg-indigo-dark hover:bg-indigo-dark/90"
+                      >
+                        Sí, cancelar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="flex items-center justify-between py-3 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-slate-600" />
-                <span className="text-slate-600 font-medium">Miembro desde</span>
-              </div>
-              <span className="font-medium text-slate-900">
-                {membershipData?.created_at
-                  ? new Date(membershipData.created_at).toLocaleDateString("es-ES", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "No disponible"}
-              </span>
-            </div>
-
-            <div className="pt-4 space-y-3">
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={() => setShowPayments(!showPayments)}
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                {showPayments ? "Ocultar historial" : "Ver historial de pagos"}
-              </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full text-orange-600 border-orange-200 hover:bg-orange-50 bg-transparent"
-                    disabled={pausing}
-                  >
-                    {pausing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Clock className="h-4 w-4 mr-2" />}
-                    Pausar membresía
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Pausar tu membresía?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tu membresía será pausada por 1 mes. No se te cobrará durante este período y se reactivará
-                      automáticamente después.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handlePauseSubscription} className="bg-orange-600 hover:bg-orange-700">
-                      Pausar 1 mes
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-                    disabled={canceling}
-                  >
-                    {canceling ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <XCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Cancelar membresía
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Cancelar tu membresía?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tu membresía será cancelada al final del período de facturación actual. Seguirás teniendo acceso
-                      hasta entonces.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>No, mantener membresía</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleCancelSubscription} className="bg-red-600 hover:bg-red-700">
-                      Sí, cancelar
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {showPayments && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="font-serif">Historial de Pagos</CardTitle>
-            <CardDescription>Tus últimos pagos y transacciones</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {payments.length > 0 ? (
-              <div className="space-y-3">
-                {payments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          payment.status === "succeeded"
-                            ? "bg-green-500"
-                            : payment.status === "failed"
-                              ? "bg-rose-500"
-                              : "bg-yellow-500"
-                        }`}
-                      />
+        {showPayments && (
+          <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+            <CardContent className="p-6">
+              <h3 className="font-serif text-lg text-indigo-dark mb-4">Historial de Pagos</h3>
+              {payments.length > 0 ? (
+                <div className="space-y-3">
+                  {payments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex justify-between items-center py-3 border-b border-indigo-dark/10 last:border-0"
+                    >
                       <div>
-                        <p className="font-medium text-slate-900">{payment.description || "Pago de membresía"}</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-indigo-dark font-medium">
+                          {payment.description || "Pago de membresía"}
+                        </p>
+                        <p className="text-xs text-indigo-dark/60">
                           {new Date(payment.payment_date).toLocaleDateString("es-ES", {
                             day: "numeric",
                             month: "long",
@@ -514,20 +531,22 @@ export default function MembresiaPage() {
                           })}
                         </p>
                       </div>
+                      <div className="text-right">
+                        <p className="text-sm text-indigo-dark font-medium">{payment.amount.toFixed(2)}€</p>
+                        {getStatusBadge(payment.status)}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">€{(payment.amount / 100).toFixed(2)}</p>
-                      {getStatusBadge(payment.status)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-slate-500 py-4">No hay pagos registrados</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg">
+                  <p className="text-sm text-indigo-dark/70 text-center">No hay pagos registrados</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

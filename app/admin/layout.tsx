@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Gift,
   FileText,
+  Bell,
 } from "lucide-react"
 
 interface NavItem {
@@ -95,6 +96,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Pagos", href: "/admin/payments", icon: <CreditCard className="h-5 w-5" /> },
     { label: "Suscripciones", href: "/admin/subscriptions", icon: <RefreshCw className="h-5 w-5" /> },
     { label: "Gift Cards", href: "/admin/gift-cards", icon: <Gift className="h-5 w-5" /> },
+    { label: "Reportes", href: "/admin/reports", icon: <BarChart3 className="h-5 w-5" /> },
+    { label: "Alertas", href: "/admin/alerts", icon: <Bell className="h-5 w-5" /> },
+    { label: "Auditoría", href: "/admin/audit-logs", icon: <FileText className="h-5 w-5" /> },
     { label: "Envíos", href: "/admin/shipping", icon: <MapPin className="h-5 w-5" /> },
     { label: "Logística", href: "/admin/logistics", icon: <Truck className="h-5 w-5" /> },
     { label: "Análisis", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },

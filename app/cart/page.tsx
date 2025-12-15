@@ -152,6 +152,18 @@ export default function CartPage() {
       params.set("giftCardBalance", appliedGiftCard.balance.toString())
     }
 
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "pendingCheckout",
+        JSON.stringify({
+          plan: planParam,
+          coupon: appliedCoupon,
+          giftCard: appliedGiftCard,
+          timestamp: Date.now(),
+        }),
+      )
+    }
+
     window.location.href = `/checkout?${params.toString()}`
   }
 

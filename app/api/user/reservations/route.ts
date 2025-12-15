@@ -53,12 +53,27 @@ function getPriceForMembership(bag: any, membershipType: string | null): number 
     essentiel: 59,
   }
 
-  // Si el usuario tiene membresía activa, no paga extra por la reserva
-  if (membership === "signature" || membership === "prive" || membership === "essentiel") {
+  // Si es Privé, SOLO Privé puede acceder
+  if (bag.membership?.toLowerCase() === "prive" && membership !== "prive") {
+    throw new Error("Tu membresía no permite acceder a la colección Privé")
+  }
+
+  // Si es Signature, necesita Signature o Privé
+  if (bag.membership?.toLowerCase() === "signature" && !["signature", "prive"].includes(membership)) {
+    throw new Error("Tu membresía no permite acceder a la colección Signature")
+  }
+
+  // Si es L'Essentiel, necesita Essentiel, Signature o Privé
+  if (bag.membership?.toLowerCase() === "essentiel" && !["essentiel", "signature", "prive"].includes(membership)) {
+    throw new Error("Tu membresía no permite acceder a la colección L'Essentiel")
+  }
+
+  // Si tiene membresía activa del nivel correcto, no paga extra
+  if (["signature", "prive", "essentiel"].includes(membership)) {
     return 0 // Ya paga con su membresía
   }
 
-  // Si es free/petite, cobra el precio del bolso
+  // Free/Petite paga el precio del bolso (pero nunca llegará aquí para Privé)
   return bag.price || 0
 }
 
@@ -185,22 +200,52 @@ export async function POST(request: NextRequest) {
 
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("full_name, email, membership_type, membership_status")
+      .select("full_name, email, membership_type, membership_status, can_make_reservations")
       .eq("id", userId)
       .single()
 
     if (profileError) {
       console.error("[v0] Error fetching user profile:", profileError)
+      return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
     }
 
     const userMembershipType = userProfile?.membership_type || "free"
     const userMembershipStatus = userProfile?.membership_status
+    const canMakeReservations = userProfile?.can_make_reservations
 
-    console.log("[v0] User membership:", { type: userMembershipType, status: userMembershipStatus })
+    console.log("[v0] User membership:", {
+      type: userMembershipType,
+      status: userMembershipStatus,
+      canMakeReservations,
+    })
+
+    if (canMakeReservations === false) {
+      return NextResponse.json(
+        {
+          error: "Tu cuenta no tiene permisos para hacer reservas. Contacta con soporte si crees que esto es un error.",
+        },
+        { status: 403 },
+      )
+    }
+
+    const hasActiveMembership = ["active", "trialing"].includes(userMembershipStatus || "")
+    const isFreeOrPetite = ["free", "petite"].includes(userMembershipType.toLowerCase())
+
+    // Solo validar membresía activa si NO es Free/Petite
+    if (!isFreeOrPetite && !hasActiveMembership) {
+      return NextResponse.json(
+        {
+          error: "Necesitas una membresía activa para realizar reservas",
+        },
+        { status: 403 },
+      )
+    }
 
     const { data: bag, error: bagError } = await supabase
       .from("bags")
-      .select("id, name, brand, image_url, status, price, price_essentiel, price_signature, price_prive")
+      .select(
+        "id, name, brand, image_url, status, price, price_essentiel, price_signature, price_prive, membership_type",
+      )
       .eq("id", bag_id)
       .single()
 
@@ -213,14 +258,90 @@ export async function POST(request: NextRequest) {
     const normalizedStatus = bag.status?.toLowerCase()
     if (normalizedStatus !== "available" && normalizedStatus !== "disponible") {
       console.log("[v0] Bag not available, status:", bag.status)
-      return NextResponse.json({ error: "El bolso no está disponible" }, { status: 400 })
+      return NextResponse.json({ error: "El bolso no está disponible en este momento" }, { status: 400 })
+    }
+
+    const bagTier = (bag.membership_type || "essentiel").toLowerCase()
+    const userTier = userMembershipType.toLowerCase()
+
+    console.log("[v0] Membership tier validation:", { bagTier, userTier })
+
+    if (["free", "petite"].includes(userTier)) {
+      if (bagTier === "prive") {
+        return NextResponse.json(
+          {
+            error:
+              "Este bolso de la colección Privé requiere una membresía Privé (189€/mes). Actualiza tu membresía para acceder a esta colección exclusiva.",
+          },
+          { status: 403 },
+        )
+      }
+
+      if (bagTier === "signature") {
+        return NextResponse.json(
+          {
+            error:
+              "Este bolso de la colección Signature requiere una membresía Signature (129€/mes) o superior. Actualiza tu membresía para acceder.",
+          },
+          { status: 403 },
+        )
+      }
+
+      if (bagTier === "essentiel") {
+        return NextResponse.json(
+          {
+            error:
+              "Este bolso de la colección L'Essentiel requiere una membresía L'Essentiel (59€/mes) o superior. Actualiza tu membresía para acceder.",
+          },
+          { status: 403 },
+        )
+      }
+    } else {
+      if (bagTier === "prive" && userTier !== "prive") {
+        return NextResponse.json(
+          {
+            error: "Este bolso requiere membresía Privé. Actualiza tu membresía para acceder a esta colección.",
+          },
+          { status: 403 },
+        )
+      }
+
+      if (bagTier === "signature" && !["signature", "prive"].includes(userTier)) {
+        return NextResponse.json(
+          {
+            error: "Este bolso requiere membresía Signature o superior. Actualiza tu membresía para acceder.",
+          },
+          { status: 403 },
+        )
+      }
+
+      if (bagTier === "essentiel" && !["essentiel", "signature", "prive"].includes(userTier)) {
+        return NextResponse.json(
+          {
+            error: "Este bolso requiere membresía L'Essentiel o superior para reservar.",
+          },
+          { status: 403 },
+        )
+      }
     }
 
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
-    const totalAmount = getPriceForMembership(bag, userMembershipType)
+    let totalAmount = 0
+    if (["essentiel", "signature", "prive"].includes(userTier)) {
+      totalAmount = 0 // Membresías de pago: reservas incluidas
+    } else {
+      totalAmount = bag.price || 59 // Free/Petite: pagan precio por reserva
+    }
 
-    console.log("[v0] Creating reservation:", { userId, bag_id, days, totalAmount, membershipType: userMembershipType })
+    console.log("[v0] Creating reservation:", {
+      userId,
+      bag_id,
+      days,
+      totalAmount,
+      membershipType: userMembershipType,
+      bagTier,
+    })
 
     const { data: reservation, error: createError } = await supabase
       .from("reservations")
@@ -229,9 +350,9 @@ export async function POST(request: NextRequest) {
         bag_id,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
-        status: "confirmed", // Confirmada automáticamente para miembros activos
+        status: "confirmed",
         total_amount: totalAmount,
-        membership_type: userMembershipType, // Guardar tipo de membresía
+        membership_type: userMembershipType,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -252,6 +373,22 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] Reservation created successfully:", reservation.id)
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      action: "reservation_created",
+      entity_type: "reservation",
+      entity_id: reservation.id,
+      old_data: null,
+      new_data: {
+        bag_id,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        status: "confirmed",
+        total_amount: totalAmount,
+      },
+      created_at: new Date().toISOString(),
+    })
 
     await supabase.from("bags").update({ status: "rented", updated_at: new Date().toISOString() }).eq("id", bag_id)
 

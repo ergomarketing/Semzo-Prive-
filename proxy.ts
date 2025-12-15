@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -39,9 +39,16 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    // If refresh token is invalid, clear cookies and continue
+    console.log("[v0] Auth error in middleware, clearing cookies:", error)
+    response.cookies.delete("sb-access-token")
+    response.cookies.delete("sb-refresh-token")
+  }
 
   // Rutas públicas que no requieren autenticación
   const publicRoutes = [

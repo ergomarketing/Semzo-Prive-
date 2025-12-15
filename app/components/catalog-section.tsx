@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Heart, ShoppingBag, Info } from "lucide-react"
 import { getSupabaseBrowser } from "../lib/supabaseClient"
 import { useAuth } from "../hooks/useAuth"
+import { useToast } from "@/hooks/use-toast"
 
 interface BagItem {
   id: string
@@ -282,6 +283,8 @@ function BagCard({
   const [isReserving, setIsReserving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
+  const { toast } = useToast()
+
   const supabase = useMemo(() => getSupabaseBrowser(), [])
 
   const isAvailable = bag.status === "available"
@@ -361,22 +364,52 @@ function BagCard({
       })
 
       const data = await response.json()
-      console.log("[v0] Reservation response from catalog:", data)
 
       if (!response.ok) {
+        if (data.error?.includes("requiere una membresía") || data.error?.includes("Actualiza tu membresía")) {
+          setIsReserving(false)
+          toast({
+            title: "🌟 Actualiza tu membresía",
+            description: data.error,
+            action: (
+              <Button
+                size="sm"
+                onClick={() => {
+                  window.location.href = "/membresias"
+                }}
+                className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
+              >
+                Ver Membresías
+              </Button>
+            ),
+            duration: 8000,
+          })
+          return
+        }
         throw new Error(data.error || "Error al crear la reserva")
       }
 
       setShowSuccess(true)
       setIsReserving(false)
 
+      toast({
+        title: "¡Reserva creada!",
+        description: "Tu reserva ha sido creada exitosamente. Redirigiendo...",
+        duration: 2000,
+      })
+
       setTimeout(() => {
         window.location.href = "/dashboard/reservas"
       }, 1500)
     } catch (error: any) {
-      console.error("[v0] Error creating reservation from catalog:", error)
       setIsReserving(false)
-      alert(error.message || "Error al crear la reserva. Por favor intenta de nuevo.")
+
+      toast({
+        variant: "destructive",
+        title: "Error al crear reserva",
+        description: error.message || "Por favor intenta de nuevo o contacta soporte.",
+        duration: 5000,
+      })
     }
   }
 

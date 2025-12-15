@@ -5,7 +5,7 @@ import { cookies } from "next/headers"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, phone } = body
+    const { email, password, firstName, lastName, phone, plan, origin } = body
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
@@ -75,7 +75,15 @@ export async function POST(request: NextRequest) {
           last_name: lastName,
           phone: phone || null,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.semzoprive.com"}/auth/callback`,
+        emailRedirectTo: (() => {
+          const baseUrl =
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.semzoprive.com"}/auth/callback`
+          const params = new URLSearchParams()
+          if (plan) params.set("plan", plan)
+          if (origin) params.set("origin", origin)
+          return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl
+        })(),
       },
     })
 
@@ -111,8 +119,6 @@ export async function POST(request: NextRequest) {
       ? "Registro exitoso. Por favor revisa tu email para confirmar tu cuenta."
       : "Registro exitoso. Ya puedes iniciar sesión."
 
-    console.log("[v0] Usuario registrado exitosamente:", authData.user.email)
-
     return NextResponse.json({
       success: true,
       message: message,
@@ -124,7 +130,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[v0] Error en registro:", error)
+    console.error("Error en registro:", error)
     return NextResponse.json(
       { success: false, message: "Error interno del servidor", error: "INTERNAL_SERVER_ERROR" },
       { status: 500 },

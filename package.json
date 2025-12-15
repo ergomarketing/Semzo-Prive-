@@ -39,6 +39,7 @@
     "@radix-ui/react-tooltip": "latest",
     "@stripe/react-stripe-js": "latest",
     "@stripe/stripe-js": "latest",
+    "@supabase/auth-helpers-nextjs": "0.15.0",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@vercel/blob": "latest",

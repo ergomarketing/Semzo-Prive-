@@ -87,6 +87,10 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* asegurar z-index alto para toasts */
+  [data-radix-toast-viewport] {
+    z-index: 9999 !important;
+  }
 }
 
 /* Usar fuentes del sistema en lugar de Google Fonts */

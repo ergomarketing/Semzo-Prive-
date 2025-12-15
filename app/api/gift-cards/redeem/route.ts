@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const { code, amountToUse, orderReference } = await request.json()
+    const { code, amountToUse, orderReference, membershipType } = await request.json()
 
     if (!code) {
       return NextResponse.json({ error: "Código de gift card requerido" }, { status: 400 })
@@ -86,11 +86,41 @@ export async function POST(request: Request) {
 
     console.log(`[v0] Gift card ${code} redeemed: ${amountInCents / 100}€ used, ${newAmount / 100}€ remaining`)
 
+    if (membershipType) {
+      try {
+        const activationResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/user/update-membership`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              membershipType,
+              paymentId: `gift_${orderReference || Date.now()}`,
+              giftCardCode: code,
+            }),
+          },
+        )
+
+        if (!activationResponse.ok) {
+          const errorData = await activationResponse.json()
+          console.error("[v0] Error activating membership:", errorData)
+          // No fallar el redeem si la activación falla, solo logear
+        } else {
+          console.log(`[v0] Membership ${membershipType} activated for user ${user.id}`)
+        }
+      } catch (activationError) {
+        console.error("[v0] Error calling membership activation:", activationError)
+        // No fallar el redeem si la activación falla
+      }
+    }
+
     return NextResponse.json({
       success: true,
       amountUsed: amountInCents,
       remainingBalance: Math.max(0, newAmount),
       giftCardStatus: newStatus,
+      membershipActivated: !!membershipType,
     })
   } catch (error) {
     console.error("Error redeeming gift card:", error)

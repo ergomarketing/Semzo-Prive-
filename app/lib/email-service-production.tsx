@@ -20,9 +20,12 @@ interface EmailData {
   reservationId?: string
 }
 
+import { emailQueue } from "./email-queue"
+
 export class EmailServiceProduction {
   private static instance: EmailServiceProduction
   private config: EmailConfig
+  private adminEmail = "mailbox@semzoprive.com" // Added admin email
 
   constructor() {
     this.config = {
@@ -47,37 +50,50 @@ export class EmailServiceProduction {
   }
 
   async sendWithResend(data: EmailData): Promise<boolean> {
-    try {
-      console.log("[v0] 📧 Enviando email con API key:", this.config.apiKey.substring(0, 10) + "...")
+    return emailQueue.add(async () => {
+      try {
+        console.log("[v0] 📧 Enviando email con API key:", this.config.apiKey.substring(0, 10) + "...")
 
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: `${this.config.fromName} <${this.config.fromEmail}>`,
-          to: [data.to],
-          subject: data.subject,
-          html: data.html,
-          text: data.text || data.subject,
-        }),
-      })
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: `${this.config.fromName} <${this.config.fromEmail}>`,
+            to: [data.to],
+            subject: data.subject,
+            html: data.html,
+            text: data.text || data.subject,
+          }),
+        })
 
-      if (!response.ok) {
-        const errorData = await response.text()
-        console.error("❌ Error de Resend:", errorData)
+        if (!response.ok) {
+          const errorData = await response.text()
+          console.error("❌ Error de Resend:", errorData)
+          return false
+        }
+
+        const result = await response.json()
+        console.log("✅ Email enviado exitosamente, ID:", result.id)
+        return true
+      } catch (error) {
+        console.error("❌ Error enviando email:", error)
         return false
       }
+    })
+  }
 
-      const result = await response.json()
-      console.log("✅ Email enviado exitosamente, ID:", result.id)
-      return true
-    } catch (error) {
-      console.error("❌ Error enviando email:", error)
-      return false
+  // Helper to abstract sending email via Resend
+  private async sendEmail(data: { to: string; subject: string; html: string }): Promise<boolean> {
+    const emailData: EmailData = {
+      to: data.to,
+      subject: data.subject,
+      html: data.html,
+      text: data.subject, // Fallback text content
     }
+    return this.sendWithResend(emailData)
   }
 
   async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string): Promise<boolean> {
@@ -102,7 +118,7 @@ export class EmailServiceProduction {
   ): Promise<boolean> {
     // Send notification to admin
     const adminEmailData: EmailData = {
-      to: "mailbox@semzoprive.com",
+      to: this.adminEmail,
       subject: `Nueva consulta: ${subject}`,
       html: this.generateContactAdminHTML(name, email, subject, message, priority),
       text: `Nueva consulta de ${name} (${email}): ${message}`,
@@ -138,7 +154,7 @@ export class EmailServiceProduction {
 
     // Send notification to admin
     const adminEmailData: EmailData = {
-      to: "mailbox@semzoprive.com",
+      to: this.adminEmail,
       subject: `Nueva suscripción al newsletter: ${name}`,
       html: this.generateNewsletterAdminHTML(data),
       text: `Nueva suscripción de ${name} (${email}) al newsletter.`,
@@ -169,12 +185,12 @@ export class EmailServiceProduction {
       userEmail: data.userEmail,
       userName: data.userName,
       bagName: data.bagName,
-      adminEmail: "mailbox@semzoprive.com",
+      adminEmail: this.adminEmail,
     })
 
     // Send notification to admin
     const adminEmailData: EmailData = {
-      to: "mailbox@semzoprive.com",
+      to: this.adminEmail,
       subject: `Nueva reserva: ${data.bagName}`,
       html: this.generateReservationAdminHTML(data),
       text: `Nueva reserva de ${data.userName} para ${data.bagName}`,
@@ -213,12 +229,12 @@ export class EmailServiceProduction {
       userEmail: data.userEmail,
       userName: data.userName,
       bagName: data.bagName,
-      adminEmail: "mailbox@semzoprive.com",
+      adminEmail: this.adminEmail,
     })
 
     // Send notification to admin
     const adminEmailData: EmailData = {
-      to: "mailbox@semzoprive.com",
+      to: this.adminEmail,
       subject: `Reserva cancelada: ${data.bagName}`,
       html: this.generateCancellationAdminHTML(data),
       text: `${data.userName} ha cancelado su reserva de ${data.bagName}`,
@@ -255,7 +271,7 @@ export class EmailServiceProduction {
   }): Promise<boolean> {
     // Send notification to admin
     const adminEmailData: EmailData = {
-      to: "mailbox@semzoprive.com",
+      to: this.adminEmail,
       subject: `Pago recibido: €${data.amount}`,
       html: this.generatePaymentAdminHTML(data),
       text: `Pago de €${data.amount} recibido de ${data.userName}`,
@@ -273,6 +289,77 @@ export class EmailServiceProduction {
     const userSent = await this.sendWithResend(userEmailData)
 
     return adminSent && userSent
+  }
+
+  async sendMembershipCreatedEmail(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    startDate: string
+    endDate: string
+    benefits: string[]
+  }) {
+    try {
+      const html = this.generateMembershipCreatedHTML(data)
+      await this.sendEmail({
+        to: data.userEmail,
+        subject: `¡Bienvenida a ${data.membershipType}! - Semzo Privé`,
+        html,
+      })
+
+      const adminHtml = this.generateMembershipCreatedAdminHTML(data)
+      await this.sendEmail({
+        to: this.adminEmail,
+        subject: `Nueva membresía activada: ${data.membershipType}`,
+        html: adminHtml,
+      })
+    } catch (error) {
+      console.error("Error sending membership created email:", error)
+    }
+  }
+
+  async sendMembershipExpiringEmail(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    endDate: string
+    daysRemaining: number
+  }) {
+    try {
+      const html = this.generateMembershipExpiringHTML(data)
+      await this.sendEmail({
+        to: data.userEmail,
+        subject: `Tu membresía ${data.membershipType} expira pronto - Semzo Privé`,
+        html,
+      })
+    } catch (error) {
+      console.error("Error sending membership expiring email:", error)
+    }
+  }
+
+  async sendMembershipCancelledEmail(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    endDate: string
+  }) {
+    try {
+      const html = this.generateMembershipCancelledHTML(data)
+      await this.sendEmail({
+        to: data.userEmail,
+        subject: `Confirmación de cancelación - Semzo Privé`,
+        html,
+      })
+
+      const adminHtml = this.generateMembershipCancelledAdminHTML(data)
+      await this.sendEmail({
+        to: this.adminEmail,
+        subject: `Membresía cancelada: ${data.membershipType}`,
+        html: adminHtml,
+      })
+    } catch (error) {
+      console.error("Error sending membership cancelled email:", error)
+    }
   }
 
   private generateWelcomeHTML(customerName: string, confirmationUrl: string): string {
@@ -557,7 +644,7 @@ export class EmailServiceProduction {
                   <p>Gracias por contactarnos. Hemos recibido tu consulta sobre "<strong>${subject}</strong>" y nuestro equipo la revisará pronto.</p>
                   <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
                       <p><strong>⏰ Tiempo de respuesta:</strong> 24 horas</p>
-                      <p><strong>📧 Te responderemos a:</strong> ${name}</p>
+                      <p><strong>📧 Te responderemos a tu email registrado</strong></p>
                   </div>
                   <p>Si tu consulta es urgente, también puedes contactarnos por:</p>
                   <ul>
@@ -950,6 +1037,243 @@ export class EmailServiceProduction {
               </div>
               <div class="footer">
                   <p>© 2025 Semzo Privé - Luxury Bag Rental</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateMembershipCreatedHTML(data: {
+    userName: string
+    membershipType: string
+    startDate: string
+    endDate: string
+    benefits: string[]
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Membresía Activada - Semzo Privé</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+              .header { background: linear-gradient(135deg, #1a2c4e 0%, #d4a5a5 100%); color: white; padding: 30px 20px; text-align: center; }
+              .content { padding: 30px; }
+              .benefit-list { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+              .benefit-item { padding: 10px 0; border-bottom: 1px solid #e0e0e0; }
+              .benefit-item:last-child { border-bottom: none; }
+              .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+              .cta-button { display: inline-block; background: #1a2c4e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>SEMZO PRIVÉ</h1>
+                  <p style="font-size: 20px; margin: 10px 0;">🎉 ¡Membresía ${data.membershipType} Activada!</p>
+              </div>
+              <div class="content">
+                  <h2>¡Hola ${data.userName}!</h2>
+                  <p>Tu membresía <strong>${data.membershipType}</strong> ha sido activada exitosamente.</p>
+                  <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;">
+                      <p><strong>📅 Fecha de inicio:</strong> ${new Date(data.startDate).toLocaleDateString("es-ES")}</p>
+                      <p><strong>📅 Válida hasta:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
+                  </div>
+                  <h3>Tus beneficios:</h3>
+                  <div class="benefit-list">
+                      ${data.benefits.map((benefit) => `<div class="benefit-item">✓ ${benefit}</div>`).join("")}
+                  </div>
+                  <p>Puedes comenzar a reservar bolsos de tu colección desde tu panel de usuario.</p>
+                  <a href="https://www.semzoprive.com/dashboard" class="cta-button">Ir a mi Dashboard</a>
+              </div>
+              <div class="footer">
+                  <p><strong>SEMZO PRIVÉ</strong></p>
+                  <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateMembershipCreatedAdminHTML(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    startDate: string
+    endDate: string
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #4caf50; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+              .content { background: #fff; padding: 30px; border: 1px solid #e2e8f0; }
+              .field { margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+              .field strong { color: #1a2c4e; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Nueva Membresía Activada</h1>
+              </div>
+              <div class="content">
+                  <div class="field">
+                      <strong>Cliente:</strong> ${data.userName}
+                  </div>
+                  <div class="field">
+                      <strong>Email:</strong> ${data.userEmail}
+                  </div>
+                  <div class="field">
+                      <strong>Tipo:</strong> ${data.membershipType}
+                  </div>
+                  <div class="field">
+                      <strong>Inicio:</strong> ${new Date(data.startDate).toLocaleDateString("es-ES")}
+                  </div>
+                  <div class="field">
+                      <strong>Fin:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}
+                  </div>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateMembershipExpiringHTML(data: {
+    userName: string
+    membershipType: string
+    endDate: string
+    daysRemaining: number
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+              .header { background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); color: white; padding: 30px 20px; text-align: center; }
+              .content { padding: 30px; }
+              .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+              .cta-button { display: inline-block; background: #ff9800; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>SEMZO PRIVÉ</h1>
+                  <p style="font-size: 20px; margin: 10px 0;">⏰ Tu membresía expira pronto</p>
+              </div>
+              <div class="content">
+                  <h2>¡Hola ${data.userName}!</h2>
+                  <p>Tu membresía <strong>${data.membershipType}</strong> expirará en ${data.daysRemaining} días.</p>
+                  <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff9800;">
+                      <p><strong>📅 Fecha de expiración:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
+                  </div>
+                  <p>¡No pierdas acceso a tus beneficios! Renueva ahora y continúa disfrutando de nuestra colección exclusiva.</p>
+                  <a href="https://www.semzoprive.com/membresias" class="cta-button">Renovar Membresía</a>
+              </div>
+              <div class="footer">
+                  <p><strong>SEMZO PRIVÉ</strong></p>
+                  <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateMembershipCancelledHTML(data: {
+    userName: string
+    membershipType: string
+    endDate: string
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+              .header { background: #1a2c4e; color: white; padding: 30px 20px; text-align: center; }
+              .content { padding: 30px; }
+              .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>SEMZO PRIVÉ</h1>
+                  <p>Confirmación de cancelación</p>
+              </div>
+              <div class="content">
+                  <h2>Hola ${data.userName},</h2>
+                  <p>Tu membresía <strong>${data.membershipType}</strong> ha sido cancelada según tu solicitud.</p>
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <p><strong>📅 Tendrás acceso hasta:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
+                  </div>
+                  <p>Después de esta fecha, ya no podrás reservar bolsos. Esperamos verte de nuevo pronto.</p>
+                  <p>Si cambiaste de opinión, puedes reactivar tu membresía en cualquier momento.</p>
+              </div>
+              <div class="footer">
+                  <p><strong>SEMZO PRIVÉ</strong></p>
+                  <p>Avenida Ricardo Soriano s.n, Marbella, España</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `
+  }
+
+  private generateMembershipCancelledAdminHTML(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    endDate: string
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #f44336; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+              .content { background: #fff; padding: 30px; border: 1px solid #e2e8f0; }
+              .field { margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Membresía Cancelada</h1>
+              </div>
+              <div class="content">
+                  <div class="field">
+                      <strong>Cliente:</strong> ${data.userName}
+                  </div>
+                  <div class="field">
+                      <strong>Email:</strong> ${data.userEmail}
+                  </div>
+                  <div class="field">
+                      <strong>Tipo:</strong> ${data.membershipType}
+                  </div>
+                  <div class="field">
+                      <strong>Acceso hasta:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}
+                  </div>
               </div>
           </div>
       </body>
