@@ -181,7 +181,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       )
     }
 
-    await supabase.from("audit_logs").insert({
+    await supabase.from("audit_log").insert({
       user_id: userId,
       action: `reservation_${status}`,
       entity_type: "reservation",

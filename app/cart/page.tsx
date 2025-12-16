@@ -7,15 +7,17 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 import { Info, Tag, Gift, Loader2, X, Check, Trash2 } from "lucide-react"
+import { getSupabaseBrowser } from "@/lib/supabase"
+import { loadStripe } from "@stripe/stripe-js"
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function CartPage() {
-  const { items, removeItem, total, itemCount, clearCart } = useCart()
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [user, setUser] = useState(null)
-  const [selectedMembership, setSelectedMembership] = useState<any>(null)
+  const { items, removeItem, total, itemCount } = useCart()
+  const [user, setUser] = useState<any>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [processing, setProcessing] = useState(false)
 
   const [couponCode, setCouponCode] = useState("")
   const [giftCardCode, setGiftCardCode] = useState("")
@@ -27,10 +29,16 @@ export default function CartPage() {
   const [giftCardError, setGiftCardError] = useState("")
 
   useEffect(() => {
-    const saved = localStorage.getItem("selectedMembership")
-    if (saved) {
-      setSelectedMembership(JSON.parse(saved))
+    const checkAuth = async () => {
+      const supabase = getSupabaseBrowser()
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser()
+      if (currentUser) {
+        setUser(currentUser)
+      }
     }
+    checkAuth()
   }, [])
 
   const calculateFinalAmount = () => {
@@ -121,61 +129,102 @@ export default function CartPage() {
     }
   }
 
-  const handleAuthSuccess = (authenticatedUser: any) => {
-    setUser(authenticatedUser)
-
-    let planParam = "signature"
-
-    if (selectedMembership?.id) {
-      planParam = selectedMembership.id
-    } else if (items.length > 0) {
-      const firstItem = items[0]
-      if (firstItem.id.includes("petite")) {
-        planParam = "petite"
-      } else if (firstItem.id.includes("essentiel")) {
-        planParam = "essentiel"
-      } else if (firstItem.id.includes("prive")) {
-        planParam = "prive"
-      } else if (firstItem.id.includes("signature")) {
-        planParam = "signature"
-      }
-    }
-
-    const params = new URLSearchParams({ plan: planParam })
-    if (appliedCoupon) {
-      params.set("coupon", appliedCoupon.code)
-      params.set("couponDiscount", appliedCoupon.discount.toString())
-      params.set("couponType", appliedCoupon.type)
-    }
-    if (appliedGiftCard) {
-      params.set("giftCard", appliedGiftCard.code)
-      params.set("giftCardBalance", appliedGiftCard.balance.toString())
-    }
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "pendingCheckout",
-        JSON.stringify({
-          plan: planParam,
-          coupon: appliedCoupon,
-          giftCard: appliedGiftCard,
-          timestamp: Date.now(),
-        }),
-      )
-    }
-
-    window.location.href = `/checkout?${params.toString()}`
-  }
-
-  const handleFinalizarCompra = () => {
+  const handleDirectCheckout = async () => {
     if (!termsAccepted) {
       alert("Por favor, acepta los Términos y Condiciones para continuar.")
       return
     }
-    setShowAuthModal(true)
+
+    if (items.length === 0) {
+      alert("No hay items en el carrito")
+      return
+    }
+
+    if (!user) {
+      alert("Debes estar autenticado para continuar")
+      return
+    }
+
+    setProcessing(true)
+
+    try {
+      const firstItem = items[0]
+      const isBagPass = firstItem.itemType === "bag-pass"
+
+      // Si el total es 0, activar directamente sin Stripe
+      if (finalAmount === 0) {
+        const response = await fetch("/api/user/update-membership", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            membershipType: firstItem.id.includes("petite")
+              ? "petite"
+              : firstItem.id.includes("essentiel")
+                ? "essentiel"
+                : firstItem.id.includes("signature")
+                  ? "signature"
+                  : "prive",
+            paymentId: `gift_${Date.now()}`,
+            couponCode: appliedCoupon?.code,
+            giftCardCode: appliedGiftCard?.code,
+            isBagPass,
+          }),
+        })
+
+        if (response.ok) {
+          alert("¡Compra completada exitosamente!")
+          window.location.href = "/dashboard"
+        } else {
+          const errorData = await response.json()
+          alert(errorData.error || "Error al procesar la compra")
+        }
+        return
+      }
+
+      // Crear sesión de Stripe Checkout
+      const checkoutResponse = await fetch("/api/payments/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          items: items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.priceValue,
+            itemType: item.itemType,
+          })),
+          couponCode: appliedCoupon?.code,
+          giftCardCode: appliedGiftCard?.code,
+          finalAmount: finalAmount * 100, // en centavos
+        }),
+      })
+
+      if (!checkoutResponse.ok) {
+        const errorData = await checkoutResponse.json()
+        alert(errorData.error || "Error al crear la sesión de pago")
+        setProcessing(false)
+        return
+      }
+
+      const { sessionId } = await checkoutResponse.json()
+
+      // Redirigir a Stripe Checkout
+      const stripe = await stripePromise
+      const { error } = await stripe!.redirectToCheckout({ sessionId })
+
+      if (error) {
+        alert(error.message)
+        setProcessing(false)
+      }
+    } catch (error) {
+      console.error("[v0] Error en checkout:", error)
+      alert("Error al procesar el pago")
+      setProcessing(false)
+    }
   }
 
-  if (itemCount === 0 && !selectedMembership) {
+  if (itemCount === 0) {
     return (
       <div className="min-h-screen bg-white pt-32">
         <div className="container mx-auto px-4 text-center">
@@ -368,7 +417,7 @@ export default function CartPage() {
           </CardContent>
         </Card>
 
-        {/* Resumen de pedido */}
+        {/* Resumen del pedido */}
         <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6">
             <h3 className="font-serif text-lg text-indigo-dark mb-4">Resumen del pedido</h3>
@@ -453,11 +502,20 @@ export default function CartPage() {
         {/* Botones de acción */}
         <div className="flex flex-col gap-4 pb-12">
           <Button
-            onClick={handleFinalizarCompra}
-            disabled={!termsAccepted}
-            className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white disabled:opacity-50"
+            onClick={handleDirectCheckout}
+            disabled={!termsAccepted || processing}
+            className="w-full py-6 text-lg bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white disabled:opacity-50"
           >
-            {finalAmount === 0 ? "CONFIRMAR PEDIDO" : "FINALIZAR COMPRA"}
+            {processing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Procesando...
+              </>
+            ) : finalAmount === 0 ? (
+              "CONFIRMAR PEDIDO"
+            ) : (
+              "PAGAR AHORA"
+            )}
           </Button>
           <Link href="/catalog" className="w-full">
             <Button
@@ -468,8 +526,6 @@ export default function CartPage() {
             </Button>
           </Link>
         </div>
-
-        <SMSAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={handleAuthSuccess} />
       </div>
     </div>
   )

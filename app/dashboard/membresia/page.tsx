@@ -337,34 +337,35 @@ export default function MembresiaPage() {
                       <div>
                         <h4 className="font-medium text-indigo-dark mb-2">Pases de Bolso Disponibles</h4>
                         <p className="text-sm text-indigo-dark/70 mb-3">
-                          Con tu membresía Petite, puedes acceder a bolsos de colecciones premium:
+                          Con tu membresía Petite, puedes acceder a bolsos de colecciones premium comprando pases
+                          individuales:
                         </p>
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-white p-2 rounded-lg text-center">
-                            <p className="text-xs text-indigo-dark/60">L'Essentiel</p>
-                            <p className="font-medium text-indigo-dark">52€</p>
+                          <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
+                            <p className="text-xs text-indigo-dark/60 mb-1">L'Essentiel</p>
+                            <p className="font-medium text-indigo-dark text-lg">52€</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
                           </div>
-                          <div className="bg-white p-2 rounded-lg text-center">
-                            <p className="text-xs text-indigo-dark/60">Signature</p>
-                            <p className="font-medium text-indigo-dark">99€</p>
+                          <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
+                            <p className="text-xs text-indigo-dark/60 mb-1">Signature</p>
+                            <p className="font-medium text-indigo-dark text-lg">99€</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
                           </div>
-                          <div className="bg-white p-2 rounded-lg text-center">
-                            <p className="text-xs text-indigo-dark/60">Privé</p>
-                            <p className="font-medium text-indigo-dark">137€</p>
+                          <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
+                            <p className="text-xs text-indigo-dark/60 mb-1">Privé</p>
+                            <p className="font-medium text-indigo-dark text-lg">137€</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
                           </div>
                         </div>
+                        <Button
+                          onClick={() => router.push("/catalog")}
+                          className="w-full mt-3 bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                        >
+                          Comprar Pase y Explorar Catálogo
+                        </Button>
                       </div>
                     </div>
                   </div>
-                )}
-
-                {isPetite && isActive && (
-                  <Button
-                    onClick={() => router.push("/catalog")}
-                    className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
-                  >
-                    Explorar Catálogo y Reservar
-                  </Button>
                 )}
 
                 {!isActive && (

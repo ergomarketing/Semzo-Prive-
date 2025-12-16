@@ -10,17 +10,17 @@ En tu Supabase Dashboard → SQL Editor, ejecuta en este orden:
 
 ### 2. Configurar Variable de Entorno
 Agrega en tu proyecto Vercel (opcional para cuentas gratuitas):
-\`\`\`
+```
 TWILIO_MESSAGING_SERVICE_SID=tu_messaging_service_sid
-\`\`\`
+```
 
 ### 3. Verificar Configuración
 En Supabase SQL Editor, ejecuta:
-\`\`\`sql
+```sql
 SELECT sms_provider, sms_custom_hook_uri 
 FROM auth.config 
 WHERE id = 'default';
-\`\`\`
+```
 
 Debería mostrar:
 - `sms_provider`: "custom"
@@ -28,9 +28,9 @@ Debería mostrar:
 
 ### 4. Probar el Sistema
 Una vez configurado, todos los SMS de autenticación mostrarán:
-\`\`\`
+```
 "Tu código de verificación Semzo Privé es: 123456. Válido por 5 minutos."
-\`\`\`
+```
 
 ### Notas Importantes:
 - Con cuenta gratuita de Twilio, el número remitente seguirá siendo de Twilio

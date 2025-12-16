@@ -23,7 +23,7 @@ export async function GET() {
         )
 
       for (const reservation of toActivate) {
-        await supabase.from("audit_logs").insert({
+        await supabase.from("audit_log").insert({
           user_id: "system",
           action: "reservation_auto_activated",
           entity_type: "reservation",
@@ -53,7 +53,7 @@ export async function GET() {
       for (const reservation of toComplete) {
         await supabase.from("bags").update({ status: "available" }).eq("id", reservation.bag_id)
 
-        await supabase.from("audit_logs").insert({
+        await supabase.from("audit_log").insert({
           user_id: "system",
           action: "reservation_auto_completed",
           entity_type: "reservation",

@@ -18,6 +18,7 @@ interface UserProfile {
   shipping_city: string
   shipping_postal_code: string
   membership_status: string
+  membership_type: string
   gift_card_balance: number
 }
 
@@ -38,6 +39,8 @@ export default function DashboardHome() {
     wishlist: 0,
   })
   const [giftCardBalance, setGiftCardBalance] = useState(0)
+  const [membershipType, setMembershipType] = useState<string>("free")
+  const [membershipStatus, setMembershipStatus] = useState<string>("inactive")
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -50,7 +53,35 @@ export default function DashboardHome() {
 
         if (data) {
           setProfile(data)
-          setGiftCardBalance(data.gift_card_balance || 0)
+        }
+
+        const { data: membershipData, error: membershipError } = await supabase
+          .from("user_memberships")
+          .select("membership_type, status")
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        if (!membershipError && membershipData) {
+          // Si existe en user_memberships, usar esos datos
+          setMembershipType(membershipData.membership_type || "free")
+          setMembershipStatus(membershipData.status || "inactive")
+        } else if (data) {
+          // Fallback: usar membership_type de profiles
+          setMembershipType(data.membership_type || "free")
+          setMembershipStatus(data.membership_status || "inactive")
+        }
+
+        const { data: giftCardsData, error: gcError } = await supabase
+          .from("gift_cards")
+          .select("amount")
+          .eq("used_by", user.id)
+
+        if (!gcError && giftCardsData) {
+          // Sumar todos los balances disponibles (amount está en centavos)
+          const totalBalance = giftCardsData.reduce((sum, card) => sum + (card.amount || 0), 0)
+          setGiftCardBalance(totalBalance)
+        } else {
+          setGiftCardBalance(0)
         }
       } catch (error) {
         console.error("Error fetching profile:", error)
@@ -99,8 +130,39 @@ export default function DashboardHome() {
     fetchCounters()
   }, [user])
 
-  const membershipStatus = profile?.membership_status || "free"
-  const isPremium = membershipStatus === "active"
+  const getMembershipLabel = () => {
+    if (membershipStatus !== "active") return "Free"
+
+    switch (membershipType) {
+      case "petite":
+        return "Petite"
+      case "lessentiel":
+        return "L'Essentiel"
+      case "signature":
+        return "Signature"
+      case "prive":
+        return "Privé"
+      default:
+        return "Free"
+    }
+  }
+
+  const getMembershipDescription = () => {
+    if (membershipStatus !== "active") return "Acceso básico"
+
+    switch (membershipType) {
+      case "petite":
+        return "Acceso semanal + pases"
+      case "lessentiel":
+        return "Acceso a L'Essentiel"
+      case "signature":
+        return "Acceso a Signature + L'Essentiel"
+      case "prive":
+        return "Acceso completo"
+      default:
+        return "Acceso básico"
+    }
+  }
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -164,8 +226,8 @@ export default function DashboardHome() {
             <Crown className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{isPremium ? "Privé" : "Free"}</div>
-            <p className="text-xs text-slate-600 mt-1">{isPremium ? "Acceso completo" : "Acceso básico"}</p>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{getMembershipLabel()}</div>
+            <p className="text-xs text-slate-600 mt-1">{getMembershipDescription()}</p>
           </CardContent>
         </Card>
 
@@ -237,7 +299,7 @@ export default function DashboardHome() {
               <ShoppingBag className="h-4 w-4 mr-2" />
               Explorar Catálogo
             </Button>
-            {!isPremium && (
+            {membershipType !== "prive" && (
               <Button
                 onClick={() => router.push("/membership/upgrade")}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
@@ -264,7 +326,7 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600">Membresía</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {isPremium ? "Privé" : "Free"}
+                {getMembershipLabel()}
               </Badge>
             </div>
             <div className="flex items-center justify-between">

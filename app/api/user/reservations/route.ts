@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log("[v0] Reservation request body:", body)
 
-    const { bag_id, start_date, end_date } = body
+    const { bag_id, start_date, end_date, usePassId } = body
 
     if (!bag_id || !start_date || !end_date) {
       return NextResponse.json({ error: "Faltan campos requeridos: bag_id, start_date, end_date" }, { status: 400 })
@@ -198,20 +198,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
     }
 
-    const { data: userProfile, error: profileError } = await supabase
-      .from("profiles")
-      .select("full_name, email, membership_type, membership_status, can_make_reservations")
-      .eq("id", userId)
-      .single()
+    const [profileResult, membershipResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("full_name, email, membership_type, membership_status")
+        .eq("id", userId)
+        .single(),
+      supabase
+        .from("user_memberships")
+        .select("membership_type, status, can_make_reservations")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ])
+
+    const { data: userProfile, error: profileError } = profileResult
+    const { data: userMembership } = membershipResult
 
     if (profileError) {
       console.error("[v0] Error fetching user profile:", profileError)
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
     }
 
-    const userMembershipType = userProfile?.membership_type || "free"
-    const userMembershipStatus = userProfile?.membership_status
-    const canMakeReservations = userProfile?.can_make_reservations
+    const userMembershipType = (userMembership?.membership_type || userProfile?.membership_type || "free").toLowerCase()
+    const userMembershipStatus = userMembership?.status || userProfile?.membership_status
+    const canMakeReservations = userMembership?.can_make_reservations ?? true
 
     console.log("[v0] User membership:", {
       type: userMembershipType,
@@ -222,16 +232,15 @@ export async function POST(request: NextRequest) {
     if (canMakeReservations === false) {
       return NextResponse.json(
         {
-          error: "Tu cuenta no tiene permisos para hacer reservas. Contacta con soporte si crees que esto es un error.",
+          error: "Tu cuenta no tiene permisos para hacer reservas. Contacta con soporte.",
         },
         { status: 403 },
       )
     }
 
     const hasActiveMembership = ["active", "trialing"].includes(userMembershipStatus || "")
-    const isFreeOrPetite = ["free", "petite"].includes(userMembershipType.toLowerCase())
+    const isFreeOrPetite = ["free", "petite"].includes(userMembershipType)
 
-    // Solo validar membresía activa si NO es Free/Petite
     if (!isFreeOrPetite && !hasActiveMembership) {
       return NextResponse.json(
         {
@@ -262,76 +271,121 @@ export async function POST(request: NextRequest) {
     }
 
     const bagTier = (bag.membership_type || "essentiel").toLowerCase()
-    const userTier = userMembershipType.toLowerCase()
 
-    console.log("[v0] Membership tier validation:", { bagTier, userTier })
+    console.log("[v0] Membership tier validation:", { bagTier, userTier: userMembershipType, usePassId })
 
-    if (["free", "petite"].includes(userTier)) {
-      if (bagTier === "prive") {
-        return NextResponse.json(
-          {
-            error:
-              "Este bolso de la colección Privé requiere una membresía Privé (189€/mes). Actualiza tu membresía para acceder a esta colección exclusiva.",
-          },
-          { status: 403 },
-        )
+    let usedPassId = null
+
+    // REGLA 1: Usuarios Petite pueden reservar CUALQUIER tier con pases
+    if (userMembershipType === "petite") {
+      // Si el bolso es de colección premium, REQUIERE pase
+      if (["lessentiel", "signature", "prive"].includes(bagTier)) {
+        if (!usePassId) {
+          const tierNames = { lessentiel: "L'Essentiel", signature: "Signature", prive: "Privé" }
+          return NextResponse.json(
+            {
+              error: `Este bolso de la colección ${tierNames[bagTier as keyof typeof tierNames]} requiere un Pase de Bolso. Compra un pase para acceder.`,
+              requiresPass: true,
+              requiredTier: bagTier,
+            },
+            { status: 403 },
+          )
+        }
+
+        // Verificar que el pase existe, es válido y del tier correcto
+        const { data: pass, error: passError } = await supabase
+          .from("bag_passes")
+          .select("*")
+          .eq("id", usePassId)
+          .eq("user_id", userId)
+          .eq("status", "available")
+          .eq("pass_tier", bagTier)
+          .single()
+
+        if (passError || !pass) {
+          const tierNames = { lessentiel: "L'Essentiel", signature: "Signature", prive: "Privé" }
+          return NextResponse.json(
+            {
+              error: `No tienes un pase válido para ${tierNames[bagTier as keyof typeof tierNames]}. Compra un pase primero.`,
+              requiresPass: true,
+              requiredTier: bagTier,
+            },
+            { status: 403 },
+          )
+        }
+
+        // Verificar expiración
+        if (pass.expires_at && new Date(pass.expires_at) < new Date()) {
+          return NextResponse.json(
+            {
+              error: "El pase seleccionado ha expirado. Compra un nuevo pase.",
+              requiresPass: true,
+              requiredTier: bagTier,
+            },
+            { status: 403 },
+          )
+        }
+
+        usedPassId = usePassId
+        console.log("[v0] Valid pass found for Petite user:", pass.id)
       }
-
-      if (bagTier === "signature") {
-        return NextResponse.json(
-          {
-            error:
-              "Este bolso de la colección Signature requiere una membresía Signature (129€/mes) o superior. Actualiza tu membresía para acceder.",
-          },
-          { status: 403 },
-        )
+    }
+    // REGLA 2: Usuarios Free NO pueden reservar NADA sin actualizar
+    else if (userMembershipType === "free") {
+      return NextResponse.json(
+        {
+          error: "Necesitas una membresía activa (Petite, L'Essentiel, Signature o Privé) para realizar reservas.",
+        },
+        { status: 403 },
+      )
+    }
+    // REGLA 3: Membresías mensuales (L'Essentiel, Signature, Privé)
+    else {
+      // Privé → Acceso a TODO
+      if (userMembershipType === "prive") {
+        // Sin restricciones
       }
-
-      if (bagTier === "essentiel") {
-        return NextResponse.json(
-          {
-            error:
-              "Este bolso de la colección L'Essentiel requiere una membresía L'Essentiel (59€/mes) o superior. Actualiza tu membresía para acceder.",
-          },
-          { status: 403 },
-        )
+      // Signature → Acceso a Signature + L'Essentiel (NO Privé)
+      else if (userMembershipType === "signature") {
+        if (bagTier === "prive") {
+          return NextResponse.json(
+            {
+              error: "Este bolso de la colección Privé requiere membresía Privé (189€/mes). Actualiza tu membresía.",
+            },
+            { status: 403 },
+          )
+        }
       }
-    } else {
-      if (bagTier === "prive" && userTier !== "prive") {
-        return NextResponse.json(
-          {
-            error: "Este bolso requiere membresía Privé. Actualiza tu membresía para acceder a esta colección.",
-          },
-          { status: 403 },
-        )
-      }
-
-      if (bagTier === "signature" && !["signature", "prive"].includes(userTier)) {
-        return NextResponse.json(
-          {
-            error: "Este bolso requiere membresía Signature o superior. Actualiza tu membresía para acceder.",
-          },
-          { status: 403 },
-        )
-      }
-
-      if (bagTier === "essentiel" && !["essentiel", "signature", "prive"].includes(userTier)) {
-        return NextResponse.json(
-          {
-            error: "Este bolso requiere membresía L'Essentiel o superior para reservar.",
-          },
-          { status: 403 },
-        )
+      // L'Essentiel → SOLO L'Essentiel
+      else if (userMembershipType === "lessentiel") {
+        if (bagTier === "prive") {
+          return NextResponse.json(
+            {
+              error: "Este bolso de la colección Privé requiere membresía Privé (189€/mes). Actualiza tu membresía.",
+            },
+            { status: 403 },
+          )
+        }
+        if (bagTier === "signature") {
+          return NextResponse.json(
+            {
+              error: "Este bolso de la colección Signature requiere membresía Signature (129€/mes) o superior.",
+            },
+            { status: 403 },
+          )
+        }
       }
     }
 
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
     let totalAmount = 0
-    if (["essentiel", "signature", "prive"].includes(userTier)) {
-      totalAmount = 0 // Membresías de pago: reservas incluidas
+    if (userMembershipType === "petite" && usedPassId) {
+      totalAmount = 0 // Pase ya pagado
+    } else if (["lessentiel", "signature", "prive"].includes(userMembershipType)) {
+      totalAmount = 0 // Incluido en membresía
     } else {
-      totalAmount = bag.price || 59 // Free/Petite: pagan precio por reserva
+      totalAmount = bag.price || 59
     }
 
     console.log("[v0] Creating reservation:", {
@@ -341,6 +395,7 @@ export async function POST(request: NextRequest) {
       totalAmount,
       membershipType: userMembershipType,
       bagTier,
+      usedPassId,
     })
 
     const { data: reservation, error: createError } = await supabase
@@ -374,7 +429,30 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Reservation created successfully:", reservation.id)
 
-    await supabase.from("audit_logs").insert({
+    if (usedPassId) {
+      const { error: passUpdateError } = await supabase
+        .from("bag_passes")
+        .update({
+          status: "used",
+          used_for_reservation_id: reservation.id,
+          used_at: new Date().toISOString(),
+        })
+        .eq("id", usedPassId)
+
+      if (passUpdateError) {
+        console.error("[v0] Error updating pass status:", passUpdateError)
+      } else {
+        console.log("[v0] Pass marked as used:", usedPassId)
+      }
+
+      // Actualizar contador de pases
+      const { data: passCount } = await supabase.rpc("count_available_passes", { p_user_id: userId })
+      if (passCount !== null) {
+        await supabase.from("profiles").update({ available_passes_count: passCount }).eq("id", userId)
+      }
+    }
+
+    await supabase.from("audit_log").insert({
       user_id: userId,
       action: "reservation_created",
       entity_type: "reservation",
@@ -386,6 +464,7 @@ export async function POST(request: NextRequest) {
         end_date: endDate.toISOString(),
         status: "confirmed",
         total_amount: totalAmount,
+        used_pass_id: usedPassId,
       },
       created_at: new Date().toISOString(),
     })

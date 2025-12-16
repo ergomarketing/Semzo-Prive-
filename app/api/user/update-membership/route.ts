@@ -62,7 +62,7 @@ async function logAudit(
   oldData: any,
   newData: any,
 ) {
-  await supabase.from("audit_logs").insert({
+  await supabase.from("audit_log").insert({
     user_id: userId,
     action,
     entity_type: entityType,

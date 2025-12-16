@@ -34,7 +34,7 @@ El sistema permite comprar una nueva membresía sin validar si el usuario ya tie
 - Posibles fraudes (usuarios podrían explotar esto)
 
 **Código actual (INCORRECTO):**
-\`\`\`typescript
+```typescript
 // app/api/user/update-membership/route.ts - Línea 108
 const { error: profileError } = await supabase.from("profiles").upsert({
   id: userId,
@@ -42,10 +42,10 @@ const { error: profileError } = await supabase.from("profiles").upsert({
   membership_type: cleanMembershipType, // <-- Sobrescribe sin validar
   subscription_end_date: subscriptionEndDate.toISOString(),
 })
-\`\`\`
+```
 
 **Solución requerida:**
-\`\`\`typescript
+```typescript
 // PASO 1: Validar membresía existente
 const { data: existingMembership } = await supabase
   .from("profiles")
@@ -67,7 +67,7 @@ if (existingMembership?.membership_status === "active" &&
     }, { status: 400 })
   }
 }
-\`\`\`
+```
 
 **Impacto:**  
 - ✅ Previene pérdida de dinero del cliente
@@ -88,18 +88,18 @@ Cuando un usuario compra una nueva membresía, el sistema usa `upsert()` que SOB
 - Reembolso proporcional
 
 **Código actual:**
-\`\`\`typescript
+```typescript
 // Línea 108 - SOBRESCRIBE TODO
 await supabase.from("profiles").upsert({
   membership_type: cleanMembershipType, // Pierde Signature
   subscription_end_date: subscriptionEndDate.toISOString(), // Pierde fecha anterior
 })
-\`\`\`
+```
 
 **Solución requerida:**
 Implementar tabla `membership_history`:
 
-\`\`\`sql
+```sql
 CREATE TABLE membership_history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES profiles(id),
@@ -112,10 +112,10 @@ CREATE TABLE membership_history (
   action_type VARCHAR(20), -- 'upgrade', 'downgrade', 'new', 'replace'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-\`\`\`
+```
 
 **Lógica necesaria:**
-\`\`\`typescript
+```typescript
 // Calcular días restantes
 const daysRemaining = Math.ceil(
   (new Date(existingEndDate) - new Date()) / (1000 * 60 * 60 * 24)
@@ -137,7 +137,7 @@ await notifyAdmin("Membresía reemplazada", `
   por ${cleanMembershipType}. 
   Días restantes: ${daysRemaining}
 `)
-\`\`\`
+```
 
 ---
 
@@ -155,7 +155,7 @@ El sistema no verifica si el usuario tiene:
 - Restricciones por fraude
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // app/checkout/page.tsx - Antes de permitir checkout
 const { data: accountStatus } = await fetch("/api/user/account-status").then(r => r.json())
 
@@ -166,7 +166,7 @@ if (accountStatus.hasPendingPayments) {
 if (accountStatus.isSuspended) {
   return showError("Tu cuenta está suspendida.")
 }
-\`\`\`
+```
 
 ---
 
@@ -178,15 +178,15 @@ if (accountStatus.isSuspended) {
 Los nuevos usuarios no pueden registrarse porque no reciben emails de confirmación. Esto bloquea completamente el crecimiento del negocio.
 
 **Causa identificada:**
-\`\`\`typescript
+```typescript
 // app/signup/page.tsx - Línea 83
 emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin
-\`\`\`
+```
 
 El problema es que `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` puede estar configurado con URL de desarrollo.
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // Usar siempre la URL correcta en producción
 const getRedirectUrl = () => {
   // En producción, usar dominio real
@@ -204,7 +204,7 @@ const { data, error } = await supabase.auth.signUp({
     emailRedirectTo: getRedirectUrl()
   }
 })
-\`\`\`
+```
 
 **Además verificar:**
 1. SMTP configurado en Supabase Dashboard
@@ -243,7 +243,7 @@ El sistema de gift cards funciona completamente:
 
 **Solución:**
 
-\`\`\`typescript
+```typescript
 // app/dashboard/page.tsx - Agregar card de Gift Card Balance
 <Card>
   <CardHeader>
@@ -263,9 +263,9 @@ El sistema de gift cards funciona completamente:
     </Link>
   </CardContent>
 </Card>
-\`\`\`
+```
 
-\`\`\`typescript
+```typescript
 // Crear: app/dashboard/gift-cards/page.tsx
 export default function UserGiftCardsPage() {
   const [balance, setBalance] = useState(0)
@@ -321,7 +321,7 @@ export default function UserGiftCardsPage() {
     </div>
   )
 }
-\`\`\`
+```
 
 ---
 
@@ -339,7 +339,7 @@ El panel de admin muestra gift cards pero falta:
 **Solución:**
 Agregar métricas en el dashboard admin:
 
-\`\`\`typescript
+```typescript
 // app/admin/gift-cards/page.tsx
 const stats = {
   totalIssued: giftCards.reduce((sum, gc) => sum + gc.original_amount, 0),
@@ -352,7 +352,7 @@ const stats = {
     return gc.status === "active" && expiryDate < thisMonth
   }).length
 }
-\`\`\`
+```
 
 ---
 
@@ -376,7 +376,7 @@ Esto es un **riesgo legal** y de seguridad enorme.
 **Solución:**
 Crear tabla de auditoría:
 
-\`\`\`sql
+```sql
 CREATE TABLE admin_audit_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   admin_user_id UUID REFERENCES profiles(id),
@@ -393,11 +393,11 @@ CREATE TABLE admin_audit_log (
 
 CREATE INDEX idx_audit_admin ON admin_audit_log(admin_user_id, created_at DESC);
 CREATE INDEX idx_audit_resource ON admin_audit_log(resource_type, resource_id);
-\`\`\`
+```
 
 **Middleware para todas las rutas admin:**
 
-\`\`\`typescript
+```typescript
 // lib/admin-audit.ts
 export async function logAdminAction(params: {
   adminId: string
@@ -455,7 +455,7 @@ export async function PUT(request: NextRequest) {
   
   return NextResponse.json({ success: true })
 }
-\`\`\`
+```
 
 ---
 
@@ -471,7 +471,7 @@ Todos los pagos se procesan pero no hay logs detallados de:
 - Aplicación de cupones/gift cards
 
 **Solución:**
-\`\`\`sql
+```sql
 CREATE TABLE payment_audit_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES profiles(id),
@@ -487,7 +487,7 @@ CREATE TABLE payment_audit_log (
 
 CREATE INDEX idx_payment_audit_user ON payment_audit_log(user_id, created_at DESC);
 CREATE INDEX idx_payment_audit_stripe ON payment_audit_log(stripe_id);
-\`\`\`
+```
 
 ---
 
@@ -508,7 +508,7 @@ Cuando se activa/cambia una membresía, el usuario solo recibe UN email genéric
 
 **Solución:**
 
-\`\`\`typescript
+```typescript
 // lib/email-templates/membership-activated.ts
 export function getMembershipActivatedEmail(membership: string, endDate: string) {
   const benefits = {
@@ -536,7 +536,7 @@ export function getMembershipActivatedEmail(membership: string, endDate: string)
     <a href="${process.env.NEXT_PUBLIC_SITE_URL}/catalog">Explorar catálogo</a>
   `
 }
-\`\`\`
+```
 
 ---
 
@@ -553,7 +553,7 @@ Las membresías vencen sin previo aviso. El usuario debe:
 **Solución:**
 Crear cron job o Vercel Cron:
 
-\`\`\`typescript
+```typescript
 // app/api/cron/check-expiring-memberships/route.ts
 export async function GET(request: NextRequest) {
   // Validar que es cron de Vercel
@@ -591,10 +591,10 @@ export async function GET(request: NextRequest) {
   
   return NextResponse.json({ notified: expiring7Days.length })
 }
-\`\`\`
+```
 
 **Configurar en vercel.json:**
-\`\`\`json
+```json
 {
   "crons": [
     {
@@ -603,7 +603,7 @@ export async function GET(request: NextRequest) {
     }
   ]
 }
-\`\`\`
+```
 
 ---
 
@@ -622,7 +622,7 @@ Los emails al admin existen pero son básicos. Falta:
 
 **Solución:**
 
-\`\`\`typescript
+```typescript
 // app/admin/alerts/page.tsx - Crear página de alertas
 export default function AdminAlertsPage() {
   const [alerts, setAlerts] = useState([])
@@ -655,9 +655,9 @@ export default function AdminAlertsPage() {
     </div>
   )
 }
-\`\`\`
+```
 
-\`\`\`typescript
+```typescript
 // app/api/admin/alerts/route.ts
 export async function GET() {
   const alerts = []
@@ -709,7 +709,7 @@ export async function GET() {
 
   return NextResponse.json({ alerts })
 }
-\`\`\`
+```
 
 ---
 
@@ -732,7 +732,7 @@ En la sección "Pases de Bolso Disponibles" se usan demasiados colores:
 Esto viola la regla de máximo 3-5 colores.
 
 **Solución:**
-\`\`\`css
+```css
 /* Usar solo colores del sistema de diseño */
 --color-primary: #1a1a4b; /* Indigo dark */
 --color-accent: #f3c3cc; /* Rose pastel */
@@ -741,7 +741,7 @@ Esto viola la regla de máximo 3-5 colores.
 --color-text: #333333; /* Dark gray */
 
 /* ELIMINAR todos los demás colores */
-\`\`\`
+```
 
 ---
 
@@ -760,7 +760,7 @@ El usuario puede añadir membresías al carrito y llegar al checkout sin verific
 - Si el sistema está en mantenimiento
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // app/checkout/page.tsx - Antes de procesar pago
 const { data: membershipAvailability } = await fetch("/api/membership/check-availability", {
   method: "POST",
@@ -771,9 +771,9 @@ if (!membershipAvailability.available) {
   setErrorMessage(membershipAvailability.reason)
   return
 }
-\`\`\`
+```
 
-\`\`\`typescript
+```typescript
 // app/api/membership/check-availability/route.ts
 export async function POST(request: NextRequest) {
   const { membershipType } = await request.json()
@@ -801,7 +801,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ available: true })
 }
-\`\`\`
+```
 
 ---
 
@@ -816,7 +816,7 @@ Si hay error de red durante el checkout, el usuario ve error genérico. Falta:
 - Botón para contactar soporte
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // Wrapper para manejar errores de checkout
 async function processCheckoutWithRetry(maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -836,7 +836,7 @@ async function processCheckoutWithRetry(maxRetries = 3) {
     }
   }
 }
-\`\`\`
+```
 
 ---
 
@@ -860,7 +860,7 @@ Cuando un admin busca un usuario, no ve toda la información junta:
 Todo está en páginas separadas.
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // app/admin/members/[id]/page.tsx - Vista 360° del usuario
 export default function AdminUserDetailPage({ params }: { params: { id: string } }) {
   const [userData, setUserData] = useState(null)
@@ -955,7 +955,7 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
     </div>
   )
 }
-\`\`\`
+```
 
 ---
 
@@ -972,7 +972,7 @@ El dashboard admin solo muestra KPIs básicos. Falta:
 - Proyección de ingresos
 
 **Solución:**
-\`\`\`typescript
+```typescript
 // app/admin/analytics/page.tsx
 export default function AdminAnalyticsPage() {
   const [metrics, setMetrics] = useState(null)
@@ -1047,7 +1047,7 @@ export default function AdminAnalyticsPage() {
     </div>
   )
 }
-\`\`\`
+```
 
 ---
 
@@ -1134,7 +1134,7 @@ export default function AdminAnalyticsPage() {
 
 ### 10.1 Validación de Membresía Duplicada
 
-\`\`\`typescript
+```typescript
 // app/api/user/update-membership/route.ts
 export async function POST(request: NextRequest) {
   const { userId, membershipType, paymentId, giftCardCode } = await request.json()
@@ -1193,7 +1193,7 @@ export async function POST(request: NextRequest) {
   // PASO 4: Continuar con activación normal
   // ... resto del código existente ...
 }
-\`\`\`
+```
 
 ---
 

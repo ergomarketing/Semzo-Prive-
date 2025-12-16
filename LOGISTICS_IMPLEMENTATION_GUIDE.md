@@ -29,10 +29,10 @@ Este documento proporciona instrucciones paso a paso para implementar completame
 
 Después de ejecutar el script, verifica que todas las tablas se hayan creado correctamente:
 
-\`\`\`sql
+```sql
 SELECT table_name FROM information_schema.tables 
 WHERE table_schema = 'public' AND table_name LIKE '%shipment%' OR table_name LIKE '%return%' OR table_name LIKE '%logistics%';
-\`\`\`
+```
 
 ---
 
@@ -42,7 +42,7 @@ WHERE table_schema = 'public' AND table_name LIKE '%shipment%' OR table_name LIK
 
 Añade las siguientes variables de entorno para la configuración de transportistas:
 
-\`\`\`env
+```env
 # Admin Configuration
 NEXT_PUBLIC_ADMIN_EMAILS=admin@semzoprive.com,admin2@semzoprive.com
 
@@ -68,7 +68,7 @@ CORREOS_ACCOUNT_NUMBER=your_correos_account_number
 # Logistics Configuration - Glovo
 GLOVO_API_KEY=your_glovo_api_key
 GLOVO_ACCOUNT_NUMBER=your_glovo_account_number
-\`\`\`
+```
 
 ---
 
@@ -101,7 +101,7 @@ GLOVO_ACCOUNT_NUMBER=your_glovo_account_number
 
 Puedes probar los endpoints de la API usando curl o Postman:
 
-\`\`\`bash
+```bash
 # Obtener lista de envíos
 curl -X GET "http://localhost:3000/api/admin/logistics/shipments"
 
@@ -118,7 +118,7 @@ curl -X POST "http://localhost:3000/api/admin/logistics/shipments" \
 
 # Obtener configuración de transportistas
 curl -X GET "http://localhost:3000/api/admin/logistics/settings"
-\`\`\`
+```
 
 ---
 
@@ -148,7 +148,7 @@ curl -X GET "http://localhost:3000/api/admin/logistics/settings"
 
 Crea `/app/api/admin/logistics/integrations/dhl.ts`:
 
-\`\`\`typescript
+```typescript
 import axios from "axios"
 
 const DHL_API_URL = "https://api.dhl.com/v1"
@@ -198,7 +198,7 @@ export async function trackDHLShipment(trackingNumber: string) {
     throw error
   }
 }
-\`\`\`
+```
 
 ### 4.2 Configurar FedEx
 
@@ -238,7 +238,7 @@ Sigue el mismo proceso que con DHL:
 
 Crea `/app/api/admin/logistics/webhooks/route.ts`:
 
-\`\`\`typescript
+```typescript
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
@@ -289,15 +289,15 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-\`\`\`
+```
 
 ### 5.2 Configurar URLs de Webhook en Transportistas
 
 Para cada transportista, configura la URL del webhook:
 
-\`\`\`
+```
 https://tu-dominio.com/api/admin/logistics/webhooks
-\`\`\`
+```
 
 ---
 
@@ -307,7 +307,7 @@ https://tu-dominio.com/api/admin/logistics/webhooks
 
 Crea `/app/api/admin/logistics/notifications/send.ts`:
 
-\`\`\`typescript
+```typescript
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 
@@ -392,7 +392,7 @@ export async function sendShipmentNotification(
     sent_at: new Date().toISOString(),
   })
 }
-\`\`\`
+```
 
 ---
 
@@ -413,13 +413,13 @@ export async function sendShipmentNotification(
 
 ### 7.2 Pruebas de Integración
 
-\`\`\`bash
+```bash
 # Instalar dependencias si es necesario
 npm install axios
 
 # Ejecutar pruebas
 npm test -- logistics
-\`\`\`
+```
 
 ---
 
@@ -434,11 +434,11 @@ npm test -- logistics
 
 ### 8.2 Desplegar a Vercel
 
-\`\`\`bash
+```bash
 git add .
 git commit -m "feat: add logistics module with carrier integrations"
 git push origin main
-\`\`\`
+```
 
 ---
 

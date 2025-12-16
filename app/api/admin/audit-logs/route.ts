@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const action = url.searchParams.get("action")
     const limit = Number.parseInt(url.searchParams.get("limit") || "100")
 
-    let query = supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(limit)
+    let query = supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(limit)
 
     if (userId) {
       query = query.eq("user_id", userId)

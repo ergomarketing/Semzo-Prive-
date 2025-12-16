@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(request: NextRequest) {
@@ -18,15 +17,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const adminSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-    const { data: membership } = await adminSupabase
+    const { data: membership } = await supabase
       .from("user_memberships")
       .select("status, failed_payment_count")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
-    const { count: pendingPayments } = await adminSupabase
+    const { count: pendingPayments } = await supabase
       .from("payments")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
