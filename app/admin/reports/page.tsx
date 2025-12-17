@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Users, CreditCard, Gift } from "lucide-react"
+import { TrendingUp, Users, CreditCard, Gift } from 'lucide-react'
 
 export default function AdminReportsPage() {
   const supabase = createSupabaseBrowserClient()
