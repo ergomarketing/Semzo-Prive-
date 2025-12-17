@@ -28,6 +28,14 @@ export function getSupabaseBrowser() {
   return browserClient
 }
 
+export function createSupabaseBrowserClient() {
+  const client = getSupabaseBrowser()
+  if (!client) {
+    throw new Error("Supabase client could not be initialized. Check environment variables.")
+  }
+  return client
+}
+
 export function getSupabaseServiceRole() {
   // Solo ejecutar en el servidor
   if (typeof window !== "undefined") {

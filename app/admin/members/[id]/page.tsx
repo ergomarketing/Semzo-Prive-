@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminUserDetailPage() {
   const params = useParams()
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const [user, setUser] = useState<any>(null)
   const [membership, setMembership] = useState<any>(null)
   const [history, setHistory] = useState<any[]>([])

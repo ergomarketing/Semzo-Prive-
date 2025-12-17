@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Users, CreditCard, Gift } from "lucide-react"
 
 export default function AdminReportsPage() {
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
   const [metrics, setMetrics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
