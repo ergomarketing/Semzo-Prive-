@@ -1,29 +1,53 @@
-// Configuración centralizada de variables de entorno con fallbacks seguros
 function getEnvVar(name: string, fallback = ""): string {
-  if (typeof window !== "undefined") {
-    // En el cliente, solo las variables NEXT_PUBLIC_ están disponibles
-    return (window as any).__ENV__?.[name] || process.env[name] || fallback
+  // Variables privadas (sin NEXT_PUBLIC_) solo disponibles en servidor
+  const isPrivateVar = !name.startsWith("NEXT_PUBLIC_")
+
+  if (typeof window !== "undefined" && isPrivateVar) {
+    // En el cliente, retornar vacío para variables privadas
+    return fallback
   }
-  // En el servidor, todas las variables están disponibles
+
   return process.env[name] || fallback
 }
 
 export const env = {
-  // Supabase
+  // Supabase - públicas
   NEXT_PUBLIC_SUPABASE_URL: getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  SUPABASE_SERVICE_KEY: getEnvVar("SUPABASE_SERVICE_KEY"),
+
+  get SUPABASE_SERVICE_KEY() {
+    if (typeof window !== "undefined") {
+      return ""
+    }
+    return process.env.SUPABASE_SERVICE_KEY || ""
+  },
 
   // Site
   NEXT_PUBLIC_SITE_URL: getEnvVar("NEXT_PUBLIC_SITE_URL", "https://semzoprive.com"),
 
-  // Email
-  EMAIL_API_KEY: getEnvVar("EMAIL_API_KEY"),
+  get EMAIL_API_KEY() {
+    if (typeof window !== "undefined") {
+      return ""
+    }
+    return process.env.EMAIL_API_KEY || ""
+  },
 
   // Stripe
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: getEnvVar("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"),
-  STRIPE_SECRET_KEY: getEnvVar("STRIPE_SECRET_KEY"),
-  STRIPE_WEBHOOK_SECRET: getEnvVar("STRIPE_WEBHOOK_SECRET"),
+
+  get STRIPE_SECRET_KEY() {
+    if (typeof window !== "undefined") {
+      return ""
+    }
+    return process.env.STRIPE_SECRET_KEY || ""
+  },
+
+  get STRIPE_WEBHOOK_SECRET() {
+    if (typeof window !== "undefined") {
+      return ""
+    }
+    return process.env.STRIPE_WEBHOOK_SECRET || ""
+  },
 }
 
 // Validaciones
@@ -45,6 +69,10 @@ export function validateClientEnv() {
 }
 
 export function validateServerEnv() {
+  if (typeof window !== "undefined") {
+    return { isValid: true, errors: [] }
+  }
+
   const clientValidation = validateClientEnv()
   const errors = [...clientValidation.errors]
 
@@ -67,7 +95,9 @@ export function debugEnv() {
   console.log("=== ENV DEBUG ===")
   console.log("NEXT_PUBLIC_SUPABASE_URL:", env.NEXT_PUBLIC_SUPABASE_URL ? "SET" : "MISSING")
   console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "SET" : "MISSING")
-  console.log("SUPABASE_SERVICE_KEY:", env.SUPABASE_SERVICE_KEY ? "SET" : "MISSING")
-  console.log("EMAIL_API_KEY:", env.EMAIL_API_KEY ? "SET" : "MISSING")
+  if (typeof window === "undefined") {
+    console.log("SUPABASE_SERVICE_KEY:", env.SUPABASE_SERVICE_KEY ? "SET" : "MISSING")
+    console.log("EMAIL_API_KEY:", env.EMAIL_API_KEY ? "SET" : "MISSING")
+  }
   console.log("=================")
 }

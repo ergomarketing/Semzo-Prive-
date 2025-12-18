@@ -3,15 +3,13 @@ import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase environment variables not found")
 }
 
 // Cliente para el navegador (cliente)
-export function getSupabaseBrowser() {
-  // Retorna null en SSR/prerender para evitar errores
+export function createSupabaseBrowserClient() {
   if (typeof window === "undefined") {
     return null
   }
@@ -23,8 +21,16 @@ export function getSupabaseBrowser() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
-// Cliente con rol de servicio (admin)
-export function getSupabaseServiceRole() {
+export function createSupabaseServiceRoleClient() {
+  // Bloquear completamente en el cliente
+  if (typeof window !== "undefined") {
+    console.error("createSupabaseServiceRoleClient cannot be called from the browser")
+    return null
+  }
+
+  // Solo acceder a SERVICE_KEY en el servidor
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+
   if (!supabaseUrl || !supabaseServiceKey) {
     return null
   }
@@ -37,20 +43,60 @@ export function getSupabaseServiceRole() {
   })
 }
 
-// Cliente principal para compatibilidad con código existente
-export const supabase = getSupabaseBrowser()
+let browserClientInstance: ReturnType<typeof createBrowserClient> | null = null
 
-// Cliente admin para compatibilidad
-export const supabaseAdmin = getSupabaseServiceRole()
+export function getSupabaseBrowser() {
+  if (typeof window === "undefined") {
+    return null
+  }
 
-// Configuración
+  if (browserClientInstance) {
+    return browserClientInstance
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null
+  }
+
+  browserClientInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return browserClientInstance
+}
+
+let serviceRoleClientInstance: ReturnType<typeof createClient> | null = null
+
+export function getSupabaseServiceRole() {
+  if (typeof window !== "undefined") {
+    return null
+  }
+
+  if (serviceRoleClientInstance) {
+    return serviceRoleClientInstance
+  }
+
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null
+  }
+
+  serviceRoleClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+
+  return serviceRoleClientInstance
+}
+
+export const supabase = typeof window !== "undefined" ? getSupabaseBrowser() : null
+export const supabaseAdmin = null // Solo usar getSupabaseServiceRole() en servidor
+
 export const supabaseConfig = {
   url: supabaseUrl,
   anonKey: supabaseAnonKey,
-  hasServiceKey: !!supabaseServiceKey,
 }
 
-// Verificar configuración
 export function isSupabaseConfigured(): boolean {
   return !!(
     supabaseUrl &&

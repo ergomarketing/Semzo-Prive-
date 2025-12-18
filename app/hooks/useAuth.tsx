@@ -1,10 +1,21 @@
 "use client"
-
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import type { User, Session } from "@supabase/supabase-js"
 
-interface AuthContextType {
+export interface AuthUser {
+  id: string
+  email: string
+  phone?: string
+  metadata?: Record<string, unknown>
+  profile?: {
+    full_name?: string
+    first_name?: string
+    last_name?: string
+  }
+}
+
+export interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
@@ -15,44 +26,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Singleton pattern for Supabase client
-let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
-
-function getSupabaseClient() {
-  if (typeof window === "undefined") return null
-  if (!supabaseClient) {
-    supabaseClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: true,
-          detectSessionInUrl: false,
-        },
-      },
-    )
-  }
-  return supabaseClient
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const initialized = useRef(false)
+  const supabaseRef = useRef(getSupabaseBrowser())
 
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
 
-    const supabase = getSupabaseClient()
+    const supabase = supabaseRef.current
     if (!supabase) {
       setLoading(false)
       return
     }
 
-    // Get initial session
     const getSession = async () => {
       try {
         const {
@@ -61,6 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (error) {
+          // Handle invalid refresh token
+          if (error.message?.includes("refresh_token") || error.message?.includes("Invalid")) {
+            await supabase.auth.signOut()
+          }
           setSession(null)
           setUser(null)
           setLoading(false)
@@ -79,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getSession()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -94,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    const supabase = getSupabaseClient()
+    const supabase = supabaseRef.current
     if (!supabase) return
     await supabase.auth.signOut()
     setUser(null)
@@ -102,14 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
-    const supabase = getSupabaseClient()
+    const supabase = supabaseRef.current
     if (!supabase) return { error: null }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error: error as Error | null }
   }
 
   const signUp = async (email: string, password: string) => {
-    const supabase = getSupabaseClient()
+    const supabase = supabaseRef.current
     if (!supabase) return { error: null }
     const { error } = await supabase.auth.signUp({
       email,
