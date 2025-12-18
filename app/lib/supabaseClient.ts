@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 import { createBrowserClient } from "@supabase/ssr"
 
 const supabaseUrl =
@@ -11,8 +11,6 @@ const supabaseAnonKey =
   process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_SUPABASE_ANON_KEY
 
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY
-
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("⚠️ Supabase environment variables not found", {
     supabaseUrl: !!supabaseUrl,
@@ -21,7 +19,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 let browserClient: ReturnType<typeof createBrowserClient> | null = null
-let serviceRoleClient: SupabaseClient | null = null
 
 export function getSupabaseBrowser() {
   if (typeof window === "undefined") {
@@ -32,7 +29,6 @@ export function getSupabaseBrowser() {
     return null
   }
 
-  // Return existing instance if available
   if (browserClient) {
     return browserClient
   }
@@ -42,39 +38,33 @@ export function getSupabaseBrowser() {
 }
 
 export function getSupabaseServiceRole() {
+  if (typeof window !== "undefined") {
+    console.error("❌ getSupabaseServiceRole cannot be called from the browser")
+    return null
+  }
+
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY
+
   if (!supabaseUrl || !supabaseServiceKey) {
     return null
   }
 
-  // Return existing instance if available
-  if (serviceRoleClient) {
-    return serviceRoleClient
-  }
-
-  serviceRoleClient = createClient(supabaseUrl, supabaseServiceKey, {
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false,
     },
   })
-  return serviceRoleClient
 }
 
-// Cliente principal para compatibilidad con código existente
-export const supabase = getSupabaseBrowser()
+export const supabase = typeof window !== "undefined" ? getSupabaseBrowser() : null
 
-// Cliente admin para compatibilidad
-export const supabaseAdmin = getSupabaseServiceRole()
-
-// Configuración
 export const supabaseConfig = {
   url: supabaseUrl,
   anonKey: supabaseAnonKey,
-  hasServiceKey: !!supabaseServiceKey,
 }
 
-// Verificar configuración
 export function isSupabaseConfigured(): boolean {
   return !!(
     supabaseUrl &&
