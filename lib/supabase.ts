@@ -1,13 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { createBrowserClient } from "@supabase/ssr"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase environment variables not found")
-}
-
 // Singleton para el cliente del navegador
 let browserClient: ReturnType<typeof createBrowserClient> | null = null
 
@@ -16,6 +9,9 @@ export function getSupabaseBrowser() {
   if (typeof window === "undefined") {
     return null
   }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null
@@ -43,6 +39,8 @@ export function getSupabaseServiceRole() {
     return null
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+
   // Obtener la key solo en el servidor
   const supabaseServiceKey =
     process.env.SUPABASE_SERVICE_KEY ||
@@ -67,14 +65,19 @@ export const supabase = typeof window !== "undefined" ? getSupabaseBrowser() : n
 export const supabaseAdmin = null
 
 // Configuración
-export const supabaseConfig = {
-  url: supabaseUrl,
-  anonKey: supabaseAnonKey,
-  hasServiceKey: typeof window === "undefined" ? !!process.env.SUPABASE_SERVICE_KEY : false,
+export function getSupabaseConfig() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasServiceKey: typeof window === "undefined" ? !!process.env.SUPABASE_SERVICE_KEY : false,
+  }
 }
 
 // Verificar configuración
 export function isSupabaseConfigured(): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
   return !!(
     supabaseUrl &&
     supabaseAnonKey &&
