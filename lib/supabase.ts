@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { createBrowserClient } from "@supabase/ssr"
 
 // Variables de entorno
@@ -14,9 +14,16 @@ const supabaseAnonKey =
   process.env.SUPABASE_SUPABASE_ANON_KEY ||
   ""
 
-// Singleton a nivel de módulo
-let browserClientInstance: ReturnType<typeof createBrowserClient> | null = null
-let serviceClientInstance: ReturnType<typeof createClient> | null = null
+const BROWSER_CLIENT_KEY = Symbol.for("supabase.browser.client")
+const SERVICE_CLIENT_KEY = Symbol.for("supabase.service.client")
+
+// Tipo para el objeto global
+type GlobalWithSupabase = typeof globalThis & {
+  [BROWSER_CLIENT_KEY]?: SupabaseClient
+  [SERVICE_CLIENT_KEY]?: SupabaseClient
+}
+
+const globalRef = globalThis as GlobalWithSupabase
 
 // Obtener service key solo en servidor
 function getServiceKey(): string | null {
@@ -29,44 +36,48 @@ function getServiceKey(): string | null {
   )
 }
 
-// Cliente browser - singleton
-export function getSupabaseBrowser() {
+export function getSupabaseBrowser(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseAnonKey) return null
 
-  if (typeof window === "undefined") {
-    // En servidor, crear cliente sin persistencia
-    return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  // Solo crear singleton en el browser
+  if (typeof window !== "undefined") {
+    if (!globalRef[BROWSER_CLIENT_KEY]) {
+      globalRef[BROWSER_CLIENT_KEY] = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false,
+        },
+      })
+    }
+    return globalRef[BROWSER_CLIENT_KEY]
   }
 
-  // En browser, usar singleton
-  if (!browserClientInstance) {
-    browserClientInstance = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    })
-  }
-  return browserClientInstance
+  // En servidor, crear cliente temporal sin persistencia
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
 }
 
-// Cliente service role - solo servidor
-export function getSupabaseServiceRole() {
+// Cliente service role - solo servidor, singleton
+export function getSupabaseServiceRole(): SupabaseClient | null {
   if (typeof window !== "undefined") return null
 
   const serviceKey = getServiceKey()
   if (!supabaseUrl || !serviceKey) return null
 
-  if (!serviceClientInstance) {
-    serviceClientInstance = createClient(supabaseUrl, serviceKey, {
+  if (!globalRef[SERVICE_CLIENT_KEY]) {
+    globalRef[SERVICE_CLIENT_KEY] = createClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     })
   }
-  return serviceClientInstance
+  return globalRef[SERVICE_CLIENT_KEY]
 }
 
 // Alias para compatibilidad
@@ -80,7 +91,7 @@ export const supabase = {
     return client.from(table)
   },
   auth: {
-    onAuthStateChange(callback: Parameters<ReturnType<typeof createBrowserClient>["auth"]["onAuthStateChange"]>[0]) {
+    onAuthStateChange(callback: Parameters<SupabaseClient["auth"]["onAuthStateChange"]>[0]) {
       const client = getSupabaseBrowser()
       if (!client) throw new Error("Supabase not initialized")
       return client.auth.onAuthStateChange(callback)
