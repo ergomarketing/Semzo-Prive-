@@ -62,15 +62,19 @@ async function logAudit(
   oldData: any,
   newData: any,
 ) {
-  await supabase.from("audit_log").insert({
-    user_id: userId,
-    action,
-    entity_type: entityType,
-    entity_id: entityId,
-    old_data: oldData,
-    new_data: newData,
-    created_at: new Date().toISOString(),
-  })
+  try {
+    await supabase.from("audit_log").insert({
+      user_id: userId,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      old_data: oldData || {},
+      new_data: newData || {},
+      created_at: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("[v0] Audit log error (non-critical):", error)
+  }
 }
 
 function getMembershipLevel(type: string): number {
@@ -88,6 +92,8 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, membershipType, paymentId, giftCardCode, billingCycle } = await request.json()
 
+    console.log("[v0] update-membership received:", { userId, membershipType, paymentId, giftCardCode, billingCycle })
+
     if (!userId || !membershipType) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
@@ -104,7 +110,21 @@ export async function POST(request: NextRequest) {
       cleanMembershipType = "petite"
     }
 
-    const isWeeklyPass = cleanMembershipType === "petite" && (billingCycle === "weekly" || !billingCycle)
+    const isWeeklyPass =
+      billingCycle === "weekly" ||
+      billingCycle === "semanal" ||
+      billingCycle === "Semanal" ||
+      billingCycle?.toLowerCase()?.includes("week") ||
+      billingCycle?.toLowerCase()?.includes("semanal")
+
+    console.log(
+      "[v0] isWeeklyPass:",
+      isWeeklyPass,
+      "cleanMembershipType:",
+      cleanMembershipType,
+      "billingCycle:",
+      billingCycle,
+    )
 
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
@@ -120,11 +140,16 @@ export async function POST(request: NextRequest) {
 
     const { data: existingProfile } = await supabase
       .from("profiles")
-      .select("full_name, email, membership_status, membership_type, subscription_end_date, billing_cycle")
+      .select("full_name, email, membership_status, membership_type, subscription_end_date")
       .eq("id", userId)
       .single()
 
-    if (
+    console.log("[v0] existingProfile:", existingProfile)
+
+    if (isWeeklyPass) {
+      console.log("[v0] Es pase semanal - permitiendo renovación/compra sin bloquear")
+      // No bloquear - continuar con la lógica de renovación/activación
+    } else if (
       existingProfile?.membership_status === "active" &&
       existingProfile?.membership_type &&
       existingProfile?.membership_type !== "free"
@@ -133,16 +158,12 @@ export async function POST(request: NextRequest) {
         ? new Date(existingProfile.subscription_end_date)
         : new Date()
 
-      const existingIsWeeklyPetite = existingProfile.membership_type === "petite"
-
-      // Permitir renovación si:
-      // 1. El usuario tiene un pase semanal Petite y quiere renovarlo (también Petite)
-      // 2. El usuario quiere hacer upgrade a un plan superior
-      const isRenewal = isWeeklyPass && existingIsWeeklyPetite
       const isUpgrade = getMembershipLevel(cleanMembershipType) > getMembershipLevel(existingProfile.membership_type)
 
-      // Solo bloquear si NO es renovación de Petite y NO es upgrade
-      if (endDate > new Date() && !isRenewal && !isUpgrade) {
+      console.log("[v0] isUpgrade:", isUpgrade, "endDate:", endDate, "now:", new Date())
+
+      // Solo bloquear si NO es upgrade y la membresía no ha expirado
+      if (endDate > new Date() && !isUpgrade) {
         await logAudit(
           supabase,
           userId,
@@ -179,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     let subscriptionEndDate: Date
 
-    if (isWeeklyPass && existingProfile?.membership_type === "petite" && existingProfile?.subscription_end_date) {
+    if (isWeeklyPass && existingProfile?.subscription_end_date) {
       // Renovación: extender desde la fecha actual de fin o desde ahora si ya expiró
       const currentEndDate = new Date(existingProfile.subscription_end_date)
       const now = new Date()
@@ -188,7 +209,7 @@ export async function POST(request: NextRequest) {
       subscriptionEndDate = new Date(baseDate)
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
 
-      // Máximo 3 meses desde la fecha original de inicio
+      // Máximo 3 meses desde ahora
       const maxEndDate = new Date()
       maxEndDate.setMonth(maxEndDate.getMonth() + 3)
 
@@ -201,26 +222,16 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         )
       }
-    } else if (cleanMembershipType === "petite") {
-      // Nueva membresía Petite
+      console.log("[v0] Renovación semanal - nueva fecha fin:", subscriptionEndDate)
+    } else if (isWeeklyPass) {
+      // Nueva membresía semanal
       subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
+      console.log("[v0] Nueva semanal - fecha fin:", subscriptionEndDate)
     } else {
       // Otras membresías: 30 días
       subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
-    }
-
-    if (
-      existingProfile?.membership_type &&
-      existingProfile.membership_type !== "free" &&
-      existingProfile.membership_type !== cleanMembershipType
-    ) {
-      await supabase
-        .from("membership_history")
-        .update({ ended_at: new Date().toISOString(), reason: "upgraded" })
-        .eq("user_id", userId)
-        .is("ended_at", null)
     }
 
     const { error: profileError } = await supabase.from("profiles").upsert(
@@ -229,7 +240,6 @@ export async function POST(request: NextRequest) {
         membership_status: "active",
         membership_type: cleanMembershipType,
         subscription_end_date: subscriptionEndDate.toISOString(),
-        billing_cycle: isWeeklyPass ? "weekly" : billingCycle || "monthly", // Guardar billing_cycle
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },
@@ -266,16 +276,6 @@ export async function POST(request: NextRequest) {
       console.error("Error creating user_membership:", userMembershipError)
       return NextResponse.json({ error: "Failed to create membership record" }, { status: 500 })
     }
-
-    await supabase.from("membership_history").insert({
-      user_id: userId,
-      membership_type: cleanMembershipType,
-      status: "active",
-      started_at: new Date().toISOString(),
-      payment_method: giftCardCode ? "gift_card" : "stripe",
-      payment_reference: paymentId,
-      amount: membershipPrices[cleanMembershipType] || 0,
-    })
 
     await logAudit(supabase, userId, "membership_activated", "membership", userId, existingProfile, {
       membership_type: cleanMembershipType,

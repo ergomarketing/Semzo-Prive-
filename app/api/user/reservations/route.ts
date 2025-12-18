@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
         }
       }
       // L'Essentiel → SOLO L'Essentiel
-      else if (userMembershipType === "lessentiel") {
+      else if (userMembershipType === "lessentiel" || userMembershipType === "essentiel") {
         if (bagTier === "prive") {
           return NextResponse.json(
             {
@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
     let totalAmount = 0
     if (userMembershipType === "petite" && usedPassId) {
       totalAmount = 0 // Pase ya pagado
-    } else if (["lessentiel", "signature", "prive"].includes(userMembershipType)) {
+    } else if (["lessentiel", "essentiel", "signature", "prive"].includes(userMembershipType)) {
       totalAmount = 0 // Incluido en membresía
     } else {
       totalAmount = bag.price || 59
@@ -452,22 +452,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await supabase.from("audit_log").insert({
-      user_id: userId,
-      action: "reservation_created",
-      entity_type: "reservation",
-      entity_id: reservation.id,
-      old_data: null,
-      new_data: {
-        bag_id,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        status: "confirmed",
-        total_amount: totalAmount,
-        used_pass_id: usedPassId,
-      },
-      created_at: new Date().toISOString(),
-    })
+    try {
+      await supabase.from("audit_log").insert({
+        user_id: userId,
+        action: "reservation_created",
+        entity_type: "reservation",
+        entity_id: reservation.id,
+        old_data: {},
+        new_data: {
+          bag_id,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          status: "confirmed",
+          total_amount: totalAmount,
+          used_pass_id: usedPassId,
+        },
+        created_at: new Date().toISOString(),
+      })
+    } catch (auditError) {
+      console.error("[v0] Audit log error (non-critical):", auditError)
+    }
 
     await supabase.from("bags").update({ status: "rented", updated_at: new Date().toISOString() }).eq("id", bag_id)
 
