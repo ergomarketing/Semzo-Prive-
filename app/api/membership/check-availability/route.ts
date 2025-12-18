@@ -1,11 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 const MEMBERSHIP_LIMITS: Record<string, number> = {
   petite: 1000,
   essentiel: 500,
@@ -15,6 +10,11 @@ const MEMBERSHIP_LIMITS: Record<string, number> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
     const { membershipType } = await request.json()
 
     if (!MEMBERSHIP_LIMITS[membershipType]) {
