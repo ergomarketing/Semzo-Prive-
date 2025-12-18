@@ -1,5 +1,1 @@
-import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
-
-export const createBrowserSupabaseClient = getSupabaseBrowser
-
-export { getSupabaseBrowser }
+export { getSupabaseBrowser, getSupabaseBrowser as createBrowserSupabaseClient } from "@/lib/supabase"

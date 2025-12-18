@@ -1,10 +1,10 @@
-// Re-export everything from the main supabase file
+// Re-export desde lib/supabase para compatibilidad
 export {
   getSupabaseBrowser,
   getSupabaseServiceRole,
+  createSupabaseBrowserClient,
   supabase,
   supabaseAdmin,
   supabaseConfig,
   isSupabaseConfigured,
-  createSupabaseBrowserClient,
 } from "@/lib/supabase"
