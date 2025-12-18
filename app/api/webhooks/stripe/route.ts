@@ -396,11 +396,12 @@ export async function POST(request: NextRequest) {
             .eq("id", paymentUserId)
             .single()
 
+          // La membresía se activará cuando el paquete sea entregado
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
               membership_type: planId,
-              membership_status: "active",
+              membership_status: "pending_delivery", // Cambio de "active" a "pending_delivery"
               stripe_customer_id: paymentIntent.customer,
               updated_at: new Date().toISOString(),
             })
@@ -409,13 +410,16 @@ export async function POST(request: NextRequest) {
           if (error) {
             console.error("❌ Error al activar membresía:", error)
           } else {
-            console.log(`✅ Membresía activada para el usuario ${paymentUserId}`)
+            console.log(`✅ Membresía en espera de entrega para el usuario ${paymentUserId}`)
 
             await notifyAdmin(
-              `Nueva Membresía - ${planId.toUpperCase()}`,
+              `Nueva Membresía (Pendiente Entrega) - ${planId.toUpperCase()}`,
               `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a1a4b;">🎉 Nueva Membresía Activada</h2>
+                <h2 style="color: #1a1a4b;">🎉 Nueva Membresía - Pendiente de Entrega</h2>
+                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107;">
+                  <p><strong>⚠️ La membresía se activará cuando el paquete sea entregado</strong></p>
+                </div>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
                   <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
@@ -423,10 +427,34 @@ export async function POST(request: NextRequest) {
                   <p><strong>Monto:</strong> ${(paymentIntent.amount / 100).toFixed(2)}€</p>
                   <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
                 </div>
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/subscriptions" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/logistics" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Gestionar Envío</a>
               </div>
               `,
             )
+
+            if (userProfile?.email) {
+              await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: userProfile.email,
+                  subject: "¡Pago confirmado! Tu membresía se activará al recibir tu bolso",
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                      <h2 style="color: #1a1a4b;">¡Gracias por tu compra!</h2>
+                      <p>Hola ${userProfile.full_name || ""},</p>
+                      <p>Tu pago ha sido procesado exitosamente.</p>
+                      <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>✨ Tu membresía comenzará a contar desde el momento en que recibas tu bolso.</strong></p>
+                        <p>De esta forma, disfrutarás el tiempo completo de tu plan.</p>
+                      </div>
+                      <p>Te enviaremos un email cuando tu pedido sea enviado con el tracking de seguimiento.</p>
+                      <p>¡Gracias por confiar en Semzo Privé!</p>
+                    </div>
+                  `,
+                }),
+              })
+            }
           }
         }
         break

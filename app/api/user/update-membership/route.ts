@@ -73,9 +73,20 @@ async function logAudit(
   })
 }
 
+function getMembershipLevel(type: string): number {
+  const levels: Record<string, number> = {
+    free: 0,
+    petite: 1,
+    essentiel: 2,
+    signature: 3,
+    prive: 4,
+  }
+  return levels[type] || 0
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { userId, membershipType, paymentId, giftCardCode } = await request.json()
+    const { userId, membershipType, paymentId, giftCardCode, billingCycle } = await request.json()
 
     if (!userId || !membershipType) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -93,6 +104,8 @@ export async function POST(request: NextRequest) {
       cleanMembershipType = "petite"
     }
 
+    const isWeeklyPass = cleanMembershipType === "petite" && billingCycle === "weekly"
+
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
 
@@ -107,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingProfile } = await supabase
       .from("profiles")
-      .select("full_name, email, membership_status, membership_type, subscription_end_date")
+      .select("full_name, email, membership_status, membership_type, subscription_end_date, billing_cycle")
       .eq("id", userId)
       .single()
 
@@ -120,7 +133,17 @@ export async function POST(request: NextRequest) {
         ? new Date(existingProfile.subscription_end_date)
         : new Date()
 
-      if (endDate > new Date()) {
+      const existingIsWeeklyPass =
+        existingProfile.membership_type === "petite" &&
+        (existingProfile.billing_cycle === "weekly" || !existingProfile.billing_cycle)
+
+      // Permitir renovación si:
+      // 1. El usuario tiene un pase semanal y quiere renovarlo
+      // 2. El usuario quiere hacer upgrade a un plan superior
+      const isRenewal = isWeeklyPass && existingIsWeeklyPass
+      const isUpgrade = getMembershipLevel(cleanMembershipType) > getMembershipLevel(existingProfile.membership_type)
+
+      if (endDate > new Date() && !isRenewal && !isUpgrade) {
         await logAudit(
           supabase,
           userId,
@@ -155,14 +178,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const subscriptionEndDate = new Date()
-    if (cleanMembershipType === "petite") {
+    let subscriptionEndDate: Date
+
+    if (isWeeklyPass && existingProfile?.membership_type === "petite" && existingProfile?.subscription_end_date) {
+      // Renovación: extender desde la fecha actual de fin
+      const currentEndDate = new Date(existingProfile.subscription_end_date)
+      const now = new Date()
+
+      // Si aún no ha expirado, extender desde la fecha de fin actual
+      // Si ya expiró, empezar desde ahora
+      const baseDate = currentEndDate > now ? currentEndDate : now
+      subscriptionEndDate = new Date(baseDate)
+      subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
+
+      // Máximo 3 meses (aproximadamente 12 semanas)
+      const maxEndDate = new Date()
+      maxEndDate.setMonth(maxEndDate.getMonth() + 3)
+
+      if (subscriptionEndDate > maxEndDate) {
+        return NextResponse.json(
+          {
+            error: "Has alcanzado el máximo de renovaciones (3 meses). Considera una membresía mensual.",
+            maxReached: true,
+          },
+          { status: 400 },
+        )
+      }
+    } else if (cleanMembershipType === "petite") {
+      subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
     } else {
+      subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
     }
 
-    if (existingProfile?.membership_type && existingProfile.membership_type !== "free") {
+    if (
+      existingProfile?.membership_type &&
+      existingProfile.membership_type !== "free" &&
+      existingProfile.membership_type !== cleanMembershipType
+    ) {
       await supabase
         .from("membership_history")
         .update({ ended_at: new Date().toISOString(), reason: "upgraded" })
@@ -173,9 +227,10 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: userId,
-        membership_status: "active", // Siempre "active"
-        membership_type: cleanMembershipType, // El tipo específico
+        membership_status: "active",
+        membership_type: cleanMembershipType,
         subscription_end_date: subscriptionEndDate.toISOString(),
+        billing_cycle: isWeeklyPass ? "weekly" : billingCycle || "monthly", // Guardar billing_cycle
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },

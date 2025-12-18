@@ -3,6 +3,126 @@ import { type NextRequest, NextResponse } from "next/server"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
+function getMembershipDuration(planId: string): number {
+  const durations: Record<string, number> = {
+    petite: 7, // 7 días para pase semanal
+    signature: 30, // 30 días
+    "signature-quarterly": 90, // 90 días (trimestral)
+    infinite: 30, // 30 días por ciclo
+    "infinite-quarterly": 90, // 90 días
+  }
+  return durations[planId] || 30
+}
+
+async function activateMembershipOnDelivery(reservationId: string) {
+  try {
+    // Obtener la reserva con info del usuario
+    const { data: reservation, error: resError } = await supabase
+      .from("reservations")
+      .select("user_id, bags(name, brand)")
+      .eq("id", reservationId)
+      .single()
+
+    if (resError || !reservation) {
+      console.error("[Logistics] Error getting reservation:", resError)
+      return
+    }
+
+    // Obtener el perfil del usuario para ver su plan
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("membership_type, membership_status, email, full_name")
+      .eq("id", reservation.user_id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("[Logistics] Error getting profile:", profileError)
+      return
+    }
+
+    // Si ya tiene membresía activa con fecha, no modificar
+    if (profile.membership_status === "active") {
+      console.log("[Logistics] Membresía ya activa, actualizando fecha de inicio por nueva entrega")
+    }
+
+    const planId = profile.membership_type || "signature"
+    const durationDays = getMembershipDuration(planId)
+    const now = new Date()
+    const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000)
+
+    // Actualizar perfil con fechas de membresía basadas en la entrega
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        membership_status: "active",
+        membership_start_date: now.toISOString(),
+        membership_end_date: endDate.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("id", reservation.user_id)
+
+    if (updateError) {
+      console.error("[Logistics] Error activating membership:", updateError)
+      return
+    }
+
+    // También actualizar en user_memberships si existe
+    await supabase
+      .from("user_memberships")
+      .update({
+        status: "active",
+        start_date: now.toISOString(),
+        end_date: endDate.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("user_id", reservation.user_id)
+      .eq("status", "pending_delivery")
+
+    // Actualizar la reserva como activa
+    await supabase
+      .from("reservations")
+      .update({
+        status: "active",
+        start_date: now.toISOString(),
+        end_date: endDate.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("id", reservationId)
+
+    console.log(
+      `[Logistics] ✅ Membresía activada para usuario ${reservation.user_id}. Válida hasta: ${endDate.toISOString()}`,
+    )
+
+    // Enviar email de confirmación
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: profile.email,
+          subject: "¡Tu bolso ha sido entregado! Tu membresía está activa",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1a1a4b;">¡Disfruta tu bolso!</h2>
+              <p>Hola ${profile.full_name || ""},</p>
+              <p>Tu bolso ha sido entregado exitosamente. A partir de ahora, tu membresía está activa.</p>
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Inicio de membresía:</strong> ${now.toLocaleDateString("es-ES")}</p>
+                <p><strong>Válida hasta:</strong> ${endDate.toLocaleDateString("es-ES")}</p>
+              </div>
+              <p>¡Disfruta de tu experiencia Semzo Privé!</p>
+            </div>
+          `,
+        }),
+      })
+    } catch (emailError) {
+      console.error("[Logistics] Error sending delivery email:", emailError)
+    }
+  } catch (error) {
+    console.error("[Logistics] Error in activateMembershipOnDelivery:", error)
+  }
+}
+
 /**
  * GET /api/admin/logistics/shipments
  * Obtener lista de envíos con filtros opcionales
@@ -152,23 +272,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Obtener el envío actual para auditoría
-    const { data: oldData } = await supabase.from("shipments").select().eq("id", id).single()
+    const { data: oldData } = await supabase.from("shipments").select("*, reservation_id").eq("id", id).single()
 
     // Actualizar el envío
-    const { data, error } = await supabase
-      .from("shipments")
-      .update({
-        status: status || undefined,
-        carrier: carrier !== undefined ? carrier : undefined,
-        tracking_number: tracking_number !== undefined ? tracking_number : undefined,
-        estimated_delivery: estimated_delivery !== undefined ? estimated_delivery : undefined,
-        cost: cost !== undefined ? cost : undefined,
-        notes: notes !== undefined ? notes : undefined,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single()
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (status !== undefined) updateData.status = status
+    if (carrier !== undefined) updateData.carrier = carrier
+    if (tracking_number !== undefined) updateData.tracking_number = tracking_number
+    if (estimated_delivery !== undefined) updateData.estimated_delivery = estimated_delivery
+    if (cost !== undefined) updateData.cost = cost
+    if (notes !== undefined) updateData.notes = notes
+
+    if (status === "delivered") {
+      updateData.actual_delivery = new Date().toISOString()
+    }
+
+    const { data, error } = await supabase.from("shipments").update(updateData).eq("id", id).select().single()
 
     if (error) {
       console.error("[Logistics API] Error updating shipment:", error)
@@ -191,6 +313,10 @@ export async function PATCH(request: NextRequest) {
         event_type: status,
         description: `Status updated to ${status}`,
       })
+
+      if (status === "delivered" && oldData?.reservation_id) {
+        await activateMembershipOnDelivery(oldData.reservation_id)
+      }
     }
 
     return NextResponse.json(data)
