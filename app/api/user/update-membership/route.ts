@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       cleanMembershipType = "petite"
     }
 
-    const isWeeklyPass = cleanMembershipType === "petite" && billingCycle === "weekly"
+    const isWeeklyPass = cleanMembershipType === "petite" && (billingCycle === "weekly" || !billingCycle)
 
     const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
@@ -133,16 +133,15 @@ export async function POST(request: NextRequest) {
         ? new Date(existingProfile.subscription_end_date)
         : new Date()
 
-      const existingIsWeeklyPass =
-        existingProfile.membership_type === "petite" &&
-        (existingProfile.billing_cycle === "weekly" || !existingProfile.billing_cycle)
+      const existingIsWeeklyPetite = existingProfile.membership_type === "petite"
 
       // Permitir renovación si:
-      // 1. El usuario tiene un pase semanal y quiere renovarlo
+      // 1. El usuario tiene un pase semanal Petite y quiere renovarlo (también Petite)
       // 2. El usuario quiere hacer upgrade a un plan superior
-      const isRenewal = isWeeklyPass && existingIsWeeklyPass
+      const isRenewal = isWeeklyPass && existingIsWeeklyPetite
       const isUpgrade = getMembershipLevel(cleanMembershipType) > getMembershipLevel(existingProfile.membership_type)
 
+      // Solo bloquear si NO es renovación de Petite y NO es upgrade
       if (endDate > new Date() && !isRenewal && !isUpgrade) {
         await logAudit(
           supabase,
@@ -181,17 +180,15 @@ export async function POST(request: NextRequest) {
     let subscriptionEndDate: Date
 
     if (isWeeklyPass && existingProfile?.membership_type === "petite" && existingProfile?.subscription_end_date) {
-      // Renovación: extender desde la fecha actual de fin
+      // Renovación: extender desde la fecha actual de fin o desde ahora si ya expiró
       const currentEndDate = new Date(existingProfile.subscription_end_date)
       const now = new Date()
 
-      // Si aún no ha expirado, extender desde la fecha de fin actual
-      // Si ya expiró, empezar desde ahora
       const baseDate = currentEndDate > now ? currentEndDate : now
       subscriptionEndDate = new Date(baseDate)
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
 
-      // Máximo 3 meses (aproximadamente 12 semanas)
+      // Máximo 3 meses desde la fecha original de inicio
       const maxEndDate = new Date()
       maxEndDate.setMonth(maxEndDate.getMonth() + 3)
 
@@ -205,9 +202,11 @@ export async function POST(request: NextRequest) {
         )
       }
     } else if (cleanMembershipType === "petite") {
+      // Nueva membresía Petite
       subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7)
     } else {
+      // Otras membresías: 30 días
       subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
     }

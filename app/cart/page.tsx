@@ -7,17 +7,249 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Info, Tag, Gift, Loader2, X, Check, Trash2 } from "lucide-react"
+import { Info, Tag, Gift, Loader2, X, Check, Trash2, CreditCard, CheckCircle2 } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase"
 import { loadStripe } from "@stripe/stripe-js"
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
+function CheckoutForm({
+  finalAmount,
+  user,
+  items,
+  appliedCoupon,
+  appliedGiftCard,
+  termsAccepted,
+  onSuccess,
+  onError,
+}: {
+  finalAmount: number
+  user: any
+  items: any[]
+  appliedCoupon: any
+  appliedGiftCard: any
+  termsAccepted: boolean
+  onSuccess: () => void
+  onError: (error: string) => void
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [processing, setProcessing] = useState(false)
+  const [cardError, setCardError] = useState("")
+
+  const handlePayment = async () => {
+    if (!termsAccepted) {
+      onError("Por favor, acepta los Términos y Condiciones para continuar.")
+      return
+    }
+
+    if (!user) {
+      onError("Debes estar autenticado para continuar")
+      return
+    }
+
+    setProcessing(true)
+    setCardError("")
+
+    try {
+      const firstItem = items[0]
+      const membershipType = firstItem.id.includes("petite")
+        ? "petite"
+        : firstItem.id.includes("essentiel")
+          ? "essentiel"
+          : firstItem.id.includes("signature")
+            ? "signature"
+            : "prive"
+
+      // Si el total es 0, activar directamente sin Stripe
+      if (finalAmount <= 0.01) {
+        const response = await fetch("/api/user/update-membership", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            membershipType,
+            paymentId: `gift_${Date.now()}`,
+            couponCode: appliedCoupon?.code,
+            giftCardCode: appliedGiftCard?.code,
+            billingCycle: firstItem.billingCycle || "monthly",
+          }),
+        })
+
+        const responseData = await response.json()
+
+        if (response.ok) {
+          onSuccess()
+        } else {
+          onError(responseData.error || "Error al procesar la compra")
+        }
+        return
+      }
+
+      // Necesita pago con tarjeta
+      if (!stripe || !elements) {
+        onError("Error de inicialización de Stripe. Recarga la página.")
+        return
+      }
+
+      const cardElement = elements.getElement(CardElement)
+      if (!cardElement) {
+        onError("Error con el formulario de tarjeta.")
+        return
+      }
+
+      // Crear PaymentIntent
+      const intentResponse = await fetch("/api/payments/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: finalAmount,
+          membershipType,
+          userEmail: user.email,
+          couponCode: appliedCoupon?.code,
+          giftCardUsed: appliedGiftCard
+            ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
+            : null,
+        }),
+      })
+
+      if (!intentResponse.ok) {
+        const errorData = await intentResponse.json()
+        onError(errorData.error || "Error al crear el pago")
+        return
+      }
+
+      const { clientSecret } = await intentResponse.json()
+
+      // Confirmar pago
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { email: user.email },
+        },
+      })
+
+      if (error) {
+        let errorMessage = "Error al procesar el pago"
+        if (error.code === "card_declined") {
+          errorMessage = "Tu tarjeta ha sido denegada por intentos repetidos de compra con demasiada frecuencia."
+        } else if (error.code === "insufficient_funds") {
+          errorMessage = "Fondos insuficientes."
+        } else if (error.code === "expired_card") {
+          errorMessage = "Tarjeta expirada."
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        setCardError(errorMessage)
+        onError(errorMessage)
+        return
+      }
+
+      if (paymentIntent?.status === "succeeded") {
+        // Activar membresía
+        const membershipResponse = await fetch("/api/user/update-membership", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            membershipType,
+            paymentId: paymentIntent.id,
+            couponCode: appliedCoupon?.code,
+            giftCardCode: appliedGiftCard?.code,
+            billingCycle: firstItem.billingCycle || "monthly",
+          }),
+        })
+
+        const membershipData = await membershipResponse.json()
+
+        if (membershipResponse.ok) {
+          onSuccess()
+        } else {
+          onError(membershipData.error || "Pago exitoso pero error al activar membresía. Contacta soporte.")
+        }
+      } else {
+        onError("El pago no pudo completarse.")
+      }
+    } catch (error) {
+      console.error("[v0] Error en checkout:", error)
+      onError("Error al procesar el pago")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  return (
+    <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard className="w-5 h-5 text-indigo-dark" />
+          <h3 className="font-serif text-lg text-indigo-dark">Datos de pago</h3>
+        </div>
+
+        {cardError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{cardError}</p>
+          </div>
+        )}
+
+        {finalAmount > 0.01 ? (
+          <div className="p-4 border border-indigo-dark/20 rounded-lg mb-4">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: "16px",
+                    color: "#1a1a2e",
+                    fontFamily: "inherit",
+                    "::placeholder": { color: "#9ca3af" },
+                  },
+                },
+                hidePostalCode: true,
+              }}
+            />
+          </div>
+        ) : (
+          <div className="p-4 bg-rose-nude border border-rose-pastel/30 rounded-lg mb-4 text-center">
+            <p className="text-sm text-indigo-dark">
+              Tu pedido está completamente cubierto. No se realizará ningún cargo.
+            </p>
+          </div>
+        )}
+
+        <Button
+          onClick={handlePayment}
+          disabled={!termsAccepted || processing || (!stripe && finalAmount > 0.01)}
+          className="w-full py-6 text-lg bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white disabled:opacity-50"
+        >
+          {processing ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Procesando...
+            </>
+          ) : finalAmount <= 0.01 ? (
+            "CONFIRMAR PEDIDO"
+          ) : (
+            `Pagar ${finalAmount.toFixed(2)}€`
+          )}
+        </Button>
+
+        <div className="mt-4 flex items-start gap-2 text-sm text-indigo-dark/60">
+          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <span className="font-medium text-indigo-dark">Pago 100% seguro</span>
+            <span className="ml-1">Procesado por Stripe. Tus datos están protegidos.</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function CartPage() {
-  const { items, removeItem, total, itemCount } = useCart()
+  const { items, removeItem, total, itemCount, clearCart } = useCart()
   const [user, setUser] = useState<any>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [processing, setProcessing] = useState(false)
 
   const [couponCode, setCouponCode] = useState("")
   const [giftCardCode, setGiftCardCode] = useState("")
@@ -129,99 +361,13 @@ export default function CartPage() {
     }
   }
 
-  const handleDirectCheckout = async () => {
-    if (!termsAccepted) {
-      alert("Por favor, acepta los Términos y Condiciones para continuar.")
-      return
-    }
+  const handleSuccess = () => {
+    clearCart()
+    window.location.href = "/dashboard?welcome=true"
+  }
 
-    if (items.length === 0) {
-      alert("No hay items en el carrito")
-      return
-    }
-
-    if (!user) {
-      alert("Debes estar autenticado para continuar")
-      return
-    }
-
-    setProcessing(true)
-
-    try {
-      const firstItem = items[0]
-      const isBagPass = firstItem.itemType === "bag-pass"
-
-      // Si el total es 0, activar directamente sin Stripe
-      if (finalAmount === 0) {
-        const response = await fetch("/api/user/update-membership", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            membershipType: firstItem.id.includes("petite")
-              ? "petite"
-              : firstItem.id.includes("essentiel")
-                ? "essentiel"
-                : firstItem.id.includes("signature")
-                  ? "signature"
-                  : "prive",
-            paymentId: `gift_${Date.now()}`,
-            couponCode: appliedCoupon?.code,
-            giftCardCode: appliedGiftCard?.code,
-            isBagPass,
-          }),
-        })
-
-        if (response.ok) {
-          alert("¡Compra completada exitosamente!")
-          window.location.href = "/dashboard"
-        } else {
-          const errorData = await response.json()
-          alert(errorData.error || "Error al procesar la compra")
-        }
-        return
-      }
-
-      // Crear sesión de Stripe Checkout
-      const checkoutResponse = await fetch("/api/payments/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          items: items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            price: item.priceValue,
-            itemType: item.itemType,
-          })),
-          couponCode: appliedCoupon?.code,
-          giftCardCode: appliedGiftCard?.code,
-          finalAmount: finalAmount * 100, // en centavos
-        }),
-      })
-
-      if (!checkoutResponse.ok) {
-        const errorData = await checkoutResponse.json()
-        alert(errorData.error || "Error al crear la sesión de pago")
-        setProcessing(false)
-        return
-      }
-
-      const { sessionId } = await checkoutResponse.json()
-
-      // Redirigir a Stripe Checkout
-      const stripe = await stripePromise
-      const { error } = await stripe!.redirectToCheckout({ sessionId })
-
-      if (error) {
-        alert(error.message)
-        setProcessing(false)
-      }
-    } catch (error) {
-      console.error("[v0] Error en checkout:", error)
-      alert("Error al procesar el pago")
-      setProcessing(false)
-    }
+  const handleError = (error: string) => {
+    alert(error)
   }
 
   if (itemCount === 0) {
@@ -463,14 +609,6 @@ export default function CartPage() {
                 <span className="font-medium text-indigo-dark">Total</span>
                 <span className="font-serif text-xl text-indigo-dark">{finalAmount.toFixed(2)}€</span>
               </div>
-
-              {finalAmount === 0 && (
-                <div className="bg-rose-nude border border-rose-pastel/30 p-3 rounded-lg mt-2">
-                  <p className="text-sm text-indigo-dark text-center">
-                    Tu pedido está completamente cubierto. No se realizará ningún cargo.
-                  </p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -499,25 +637,21 @@ export default function CartPage() {
           </CardContent>
         </Card>
 
-        {/* Botones de acción */}
-        <div className="flex flex-col gap-4 pb-12">
-          <Button
-            onClick={handleDirectCheckout}
-            disabled={!termsAccepted || processing}
-            className="w-full py-6 text-lg bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white disabled:opacity-50"
-          >
-            {processing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Procesando...
-              </>
-            ) : finalAmount === 0 ? (
-              "CONFIRMAR PEDIDO"
-            ) : (
-              "PAGAR AHORA"
-            )}
-          </Button>
-          <Link href="/catalog" className="w-full">
+        <Elements stripe={stripePromise}>
+          <CheckoutForm
+            finalAmount={finalAmount}
+            user={user}
+            items={items}
+            appliedCoupon={appliedCoupon}
+            appliedGiftCard={appliedGiftCard}
+            termsAccepted={termsAccepted}
+            onSuccess={handleSuccess}
+            onError={handleError}
+          />
+        </Elements>
+
+        <div className="pb-12">
+          <Link href="/catalog" className="w-full block">
             <Button
               variant="outline"
               className="w-full py-6 text-lg border-indigo-dark text-indigo-dark hover:bg-rose-nude bg-transparent"
