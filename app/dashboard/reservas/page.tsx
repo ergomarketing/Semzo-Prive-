@@ -127,7 +127,7 @@ export default function ReservasPage() {
       pending: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
       confirmed: { label: "Confirmada", className: "bg-blue-100 text-blue-800 border-blue-200" },
       completed: { label: "Completada", className: "bg-slate-100 text-slate-800 border-slate-200" },
-      cancelled: { label: "Cancelada", className: "bg-red-100 text-red-800 border-red-200" },
+      cancelled: { label: "Cancelada", className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
@@ -173,14 +173,14 @@ export default function ReservasPage() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-[#f4c4cc] bg-[#fff0f3]">
           <CardContent className="p-6">
-            <h3 className="text-red-900 font-serif text-lg mb-2">Error al cargar reservas</h3>
-            <p className="text-red-700 text-sm mb-4">{error}</p>
+            <h3 className="text-[#1a1a4b] font-serif text-lg mb-2">Error al cargar reservas</h3>
+            <p className="text-[#1a1a4b]/70 text-sm mb-4">{error}</p>
             <Button
               onClick={handleManualRefresh}
               variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
+              className="border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b] hover:text-white bg-transparent"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Reintentar
@@ -238,7 +238,7 @@ export default function ReservasPage() {
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
+            <div className="text-2xl font-bold text-[#1a1a4b]">{stats.cancelled}</div>
             <div className="text-sm text-slate-600">Canceladas</div>
           </CardContent>
         </Card>

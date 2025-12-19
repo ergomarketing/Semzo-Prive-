@@ -42,29 +42,34 @@ export default function AuthError() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <XCircle className="h-12 w-12 text-red-600" />
+            <XCircle className="h-12 w-12 text-[#1a1a4b]" />
           </div>
 
-          <CardTitle className="text-2xl text-red-600">{getErrorMessage(error)}</CardTitle>
+          <CardTitle className="text-2xl text-[#1a1a4b]">{getErrorMessage(error)}</CardTitle>
 
           <CardDescription>Hubo un problema procesando tu solicitud</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Mensaje de error */}
+          {/* Mensaje de error con colores SEMZO PRIVÉ */}
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-2">Detalles del error:</p>
-            <p className="text-xs text-gray-500 bg-red-50 p-3 rounded-lg border border-red-200">{description}</p>
+            <p className="text-xs text-[#1a1a4b] bg-[#fff0f3] p-3 rounded-lg border border-[#f4c4cc]">{description}</p>
           </div>
 
           {/* Acciones */}
           <div className="space-y-3">
-            <Button onClick={handleRetry} className="w-full" size="lg">
+            <Button onClick={handleRetry} className="w-full bg-[#1a1a4b] hover:bg-[#1a1a4b]/90 text-white" size="lg">
               <Mail className="mr-2 h-4 w-4" />
               Intentar registro nuevamente
             </Button>
 
-            <Button onClick={handleGoHome} variant="outline" className="w-full bg-transparent" size="lg">
+            <Button
+              onClick={handleGoHome}
+              variant="outline"
+              className="w-full bg-transparent border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b] hover:text-white"
+              size="lg"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver al inicio
             </Button>

@@ -1,5 +1,4 @@
 "use client"
-
 import { useCart } from "@/app/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -7,14 +6,110 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Info, Tag, Gift, Loader2, X, Check, Trash2, CreditCard, CheckCircle2 } from "lucide-react"
-import { getSupabaseBrowser } from "@/lib/supabase"
+import { Info, Tag, Gift, Loader2, X, Check, Trash2, CreditCard, ShieldCheck } from "lucide-react"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
+import { Checkbox } from "@/components/ui/checkbox"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
 
-function CheckoutForm({
+function analyzeCartItems(items: any[]) {
+  console.log("[v0] analyzeCartItems - items:", JSON.stringify(items, null, 2))
+
+  const bagPassItem = items.find((item) => {
+    const itemType = (item.itemType || "").toLowerCase()
+
+    // SOLO confiar en itemType === "bag-pass"
+    // NO usar id ni name porque pueden ser confusos
+    const isBagPass = itemType === "bag-pass"
+
+    console.log("[v0] Checking item for bag-pass:", {
+      id: item.id,
+      name: item.name,
+      itemType,
+      isBagPass,
+    })
+
+    return isBagPass
+  })
+
+  const membershipItem = items.find((item) => {
+    const itemType = (item.itemType || "").toLowerCase()
+
+    // SOLO confiar en itemType === "membership"
+    const isMembership = itemType === "membership"
+
+    console.log("[v0] Checking item for membership:", {
+      id: item.id,
+      itemType,
+      isMembership,
+    })
+
+    return isMembership
+  })
+
+  // Determinar el tier del bag-pass usando el NOMBRE del item
+  let bagPassTier: string | null = null
+  if (bagPassItem) {
+    const itemName = (bagPassItem.name || "").toLowerCase()
+
+    if (itemName.includes("privé") || itemName.includes("prive")) {
+      bagPassTier = "prive"
+    } else if (itemName.includes("signature")) {
+      bagPassTier = "signature"
+    } else {
+      bagPassTier = "essentiel"
+    }
+    console.log("[v0] Detected bagPassTier from name:", bagPassTier)
+  }
+
+  // Determinar membership type SOLO del item de membresía (NO de bag-pass)
+  let membershipType: string | null = null
+  if (membershipItem) {
+    const itemId = (membershipItem.id || "").toLowerCase()
+    const itemName = (membershipItem.name || "").toLowerCase()
+
+    // Usar SOLO el itemId para determinar tipo (más confiable que el nombre)
+    if (itemId.includes("prive")) {
+      membershipType = "prive"
+    } else if (itemId.includes("signature")) {
+      membershipType = "signature"
+    } else if (itemId.includes("essentiel")) {
+      membershipType = "essentiel"
+    } else if (itemId.includes("petite")) {
+      membershipType = "petite"
+    }
+
+    console.log("[v0] Detected membershipType from ID:", membershipType)
+  }
+
+  const billingCycle = membershipItem?.billingCycle || bagPassItem?.billingCycle || "monthly"
+
+  const isBagPassOnly = !!bagPassItem && !membershipItem
+
+  console.log("[v0] Cart analysis result:", {
+    membershipItem: membershipItem
+      ? { id: membershipItem.id, name: membershipItem.name, itemType: membershipItem.itemType }
+      : null,
+    bagPassItem: bagPassItem ? { id: bagPassItem.id, name: bagPassItem.name, itemType: bagPassItem.itemType } : null,
+    membershipType,
+    bagPassTier,
+    billingCycle,
+    isBagPassOnly,
+  })
+
+  return {
+    membershipItem,
+    bagPassItem,
+    membershipType,
+    bagPassTier,
+    billingCycle,
+    isBagPassOnly,
+  }
+}
+
+function PaymentForm({
   finalAmount,
   user,
   items,
@@ -53,41 +148,75 @@ function CheckoutForm({
     setCardError("")
 
     try {
-      const firstItem = items[0]
-      const membershipType = firstItem.id.includes("petite")
-        ? "petite"
-        : firstItem.id.includes("essentiel")
-          ? "essentiel"
-          : firstItem.id.includes("signature")
-            ? "signature"
-            : "prive"
+      const cartAnalysis = analyzeCartItems(items)
 
-      // Si el total es 0, activar directamente sin Stripe
+      console.log("[v0] handlePayment - cartAnalysis:", cartAnalysis)
+      console.log("[v0] handlePayment - isBagPassOnly:", cartAnalysis.isBagPassOnly)
+
+      // CASO 1: Pago cubierto por gift card (finalAmount <= 0)
       if (finalAmount <= 0.01) {
-        const response = await fetch("/api/user/update-membership", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            membershipType,
-            paymentId: `gift_${Date.now()}`,
-            couponCode: appliedCoupon?.code,
-            giftCardCode: appliedGiftCard?.code,
-            billingCycle: firstItem.billingCycle || "monthly",
-          }),
-        })
+        if (cartAnalysis.isBagPassOnly && cartAnalysis.bagPassTier) {
+          console.log("[v0] Comprando SOLO bag-pass con gift card - NO cambiar membresía")
+          const response = await fetch("/api/bag-passes/purchase", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              passTier: cartAnalysis.bagPassTier,
+              quantity: 1,
+              paymentMethod: "gift_card",
+              giftCardCode: appliedGiftCard?.code,
+            }),
+          })
 
-        const responseData = await response.json()
+          const data = await response.json()
+          console.log("[v0] bag-passes/purchase response:", data)
 
-        if (response.ok) {
-          onSuccess()
-        } else {
-          onError(responseData.error || "Error al procesar la compra")
+          if (response.ok) {
+            onSuccess()
+          } else {
+            onError(data.error || "Error al procesar la compra del pase")
+          }
+          return // IMPORTANTE: terminar aquí
         }
+
+        // Si hay membresía (nueva suscripción o upgrade)
+        if (cartAnalysis.membershipType) {
+          console.log("[v0] Comprando membresía con gift card:", cartAnalysis.membershipType)
+          const response = await fetch("/api/user/update-membership", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              membershipType: cartAnalysis.membershipType,
+              paymentId: `gift_${Date.now()}`,
+              couponCode: appliedCoupon?.code,
+              giftCardUsed: appliedGiftCard
+                ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
+                : null,
+              billingCycle: cartAnalysis.billingCycle,
+              bagPassTier:
+                cartAnalysis.membershipType === "petite" && cartAnalysis.bagPassTier ? cartAnalysis.bagPassTier : null,
+            }),
+          })
+
+          const responseData = await response.json()
+          console.log("[v0] update-membership response:", responseData)
+
+          if (response.ok) {
+            onSuccess()
+          } else {
+            onError(responseData.error || "Error al procesar la compra")
+          }
+          return
+        }
+
+        // Fallback: no se pudo determinar qué comprar
+        onError("No se pudo determinar el tipo de compra. Verifica tu carrito.")
         return
       }
 
-      // Necesita pago con tarjeta
+      // CASO 2: Pago con tarjeta Stripe
       if (!stripe || !elements) {
         onError("Error de inicialización de Stripe. Recarga la página.")
         return
@@ -99,13 +228,15 @@ function CheckoutForm({
         return
       }
 
-      // Crear PaymentIntent
+      // Crear payment intent
       const intentResponse = await fetch("/api/payments/create-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: finalAmount,
-          membershipType,
+          membershipType: cartAnalysis.isBagPassOnly ? null : cartAnalysis.membershipType,
+          bagPassPurchase: cartAnalysis.isBagPassOnly,
+          bagPassTier: cartAnalysis.bagPassTier,
           userEmail: user.email,
           couponCode: appliedCoupon?.code,
           giftCardUsed: appliedGiftCard
@@ -122,7 +253,6 @@ function CheckoutForm({
 
       const { clientSecret } = await intentResponse.json()
 
-      // Confirmar pago
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
@@ -147,100 +277,148 @@ function CheckoutForm({
       }
 
       if (paymentIntent?.status === "succeeded") {
-        // Activar membresía
-        const membershipResponse = await fetch("/api/user/update-membership", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            membershipType,
-            paymentId: paymentIntent.id,
-            couponCode: appliedCoupon?.code,
-            giftCardCode: appliedGiftCard?.code,
-            billingCycle: firstItem.billingCycle || "monthly",
-          }),
-        })
+        if (cartAnalysis.isBagPassOnly && cartAnalysis.bagPassTier) {
+          console.log("[v0] Pago Stripe exitoso - registrando SOLO bag-pass - NO cambiar membresía")
+          const bagPassResponse = await fetch("/api/bag-passes/purchase", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              passTier: cartAnalysis.bagPassTier,
+              quantity: 1,
+              paymentMethod: "stripe",
+              stripePaymentId: paymentIntent.id,
+            }),
+          })
 
-        const membershipData = await membershipResponse.json()
+          const data = await bagPassResponse.json()
+          console.log("[v0] bag-passes/purchase (stripe) response:", data)
 
-        if (membershipResponse.ok) {
-          onSuccess()
-        } else {
-          onError(membershipData.error || "Pago exitoso pero error al activar membresía. Contacta soporte.")
+          if (bagPassResponse.ok) {
+            onSuccess()
+          } else {
+            onError(data.error || "Pago exitoso pero error al registrar pase. Contacta soporte.")
+          }
+          return // IMPORTANTE: terminar aquí
         }
+
+        // Si hay membresía
+        if (cartAnalysis.membershipType) {
+          console.log("[v0] Pago Stripe exitoso - registrando membresía:", cartAnalysis.membershipType)
+          const membershipResponse = await fetch("/api/user/update-membership", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              membershipType: cartAnalysis.membershipType,
+              paymentId: paymentIntent.id,
+              couponCode: appliedCoupon?.code,
+              giftCardCode: appliedGiftCard?.code,
+              billingCycle: cartAnalysis.billingCycle,
+              bagPassTier:
+                cartAnalysis.membershipType === "petite" && cartAnalysis.bagPassTier ? cartAnalysis.bagPassTier : null,
+            }),
+          })
+
+          const membershipData = await membershipResponse.json()
+          console.log("[v0] update-membership (stripe) response:", membershipData)
+
+          if (membershipResponse.ok) {
+            onSuccess()
+          } else {
+            onError(membershipData.error || "Pago exitoso pero error al activar membresía. Contacta soporte.")
+          }
+          return
+        }
+
+        onError("Pago exitoso pero no se pudo determinar el tipo de compra. Contacta soporte.")
       } else {
-        onError("El pago no pudo completarse.")
+        onError("El pago no se completó correctamente")
       }
     } catch (error) {
-      console.error("[v0] Error en checkout:", error)
-      onError("Error al procesar el pago")
+      console.error("Payment error:", error)
+      onError("Error al procesar el pago. Inténtalo de nuevo.")
     } finally {
       setProcessing(false)
     }
   }
 
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: "16px",
+        color: "#1a1a4b",
+        "::placeholder": { color: "#9ca3af" },
+        fontFamily: "system-ui, sans-serif",
+      },
+      invalid: { color: "#dc2626" },
+    },
+    hidePostalCode: true,
+  }
+
   return (
-    <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
-      <CardContent className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="w-5 h-5 text-indigo-dark" />
-          <h3 className="font-serif text-lg text-indigo-dark">Datos de pago</h3>
-        </div>
+    <Card className="border-[#f4c4cc]/30">
+      <CardContent className="pt-6">
+        <h3 className="font-medium text-[#1a1a4b] mb-4 flex items-center gap-2">
+          <CreditCard className="h-4 w-4" />
+          Datos de pago
+        </h3>
 
         {cardError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{cardError}</p>
+          <div className="mb-4 p-3 bg-[#fff0f3] border border-[#f4c4cc] rounded-lg">
+            <p className="text-sm text-[#1a1a4b]">{cardError}</p>
           </div>
         )}
 
-        {finalAmount > 0.01 ? (
-          <div className="p-4 border border-indigo-dark/20 rounded-lg mb-4">
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: "16px",
-                    color: "#1a1a2e",
-                    fontFamily: "inherit",
-                    "::placeholder": { color: "#9ca3af" },
-                  },
-                },
-                hidePostalCode: true,
-              }}
-            />
-          </div>
-        ) : (
-          <div className="p-4 bg-rose-nude border border-rose-pastel/30 rounded-lg mb-4 text-center">
-            <p className="text-sm text-indigo-dark">
+        {finalAmount <= 0 ? (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+            <p className="text-green-700 text-sm text-center">
               Tu pedido está completamente cubierto. No se realizará ningún cargo.
             </p>
+          </div>
+        ) : (
+          <div className="border rounded-lg p-4 mb-4">
+            <CardElement options={cardElementOptions} />
           </div>
         )}
 
         <Button
           onClick={handlePayment}
-          disabled={!termsAccepted || processing || (!stripe && finalAmount > 0.01)}
-          className="w-full py-6 text-lg bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white disabled:opacity-50"
+          disabled={processing || !termsAccepted}
+          className="w-full bg-[#1a1a4b] hover:bg-[#1a1a4b]/90 text-white py-6"
         >
           {processing ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
               Procesando...
-            </>
-          ) : finalAmount <= 0.01 ? (
-            "CONFIRMAR PEDIDO"
+            </span>
+          ) : finalAmount <= 0 ? (
+            "Confirmar Pedido"
           ) : (
             `Pagar ${finalAmount.toFixed(2)}€`
           )}
         </Button>
 
-        <div className="mt-4 flex items-start gap-2 text-sm text-indigo-dark/60">
-          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="font-medium text-indigo-dark">Pago 100% seguro</span>
-            <span className="ml-1">Procesado por Stripe. Tus datos están protegidos.</span>
-          </div>
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+          <ShieldCheck className="h-4 w-4 text-green-600" />
+          <span>Pago 100% seguro</span>
         </div>
+        <p className="text-xs text-gray-400 text-center mt-1">Procesado por Stripe. Tus datos están protegidos.</p>
       </CardContent>
     </Card>
   )
@@ -479,7 +657,6 @@ export default function CartPage() {
 
         <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6 space-y-4">
-            {/* Cupón */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Tag className="w-4 h-4 text-indigo-dark" />
@@ -519,7 +696,6 @@ export default function CartPage() {
               {couponError && <p className="text-sm text-red-500 mt-1">{couponError}</p>}
             </div>
 
-            {/* Gift Card */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Gift className="w-4 h-4 text-indigo-dark" />
@@ -563,7 +739,6 @@ export default function CartPage() {
           </CardContent>
         </Card>
 
-        {/* Resumen del pedido */}
         <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6">
             <h3 className="font-serif text-lg text-indigo-dark mb-4">Resumen del pedido</h3>
@@ -613,14 +788,12 @@ export default function CartPage() {
           </CardContent>
         </Card>
 
-        {/* Términos y condiciones */}
         <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6">
             <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
+                onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
                 className="mt-1 h-4 w-4 rounded border-indigo-dark/30 text-indigo-dark focus:ring-indigo-dark"
               />
               <span className="text-sm text-indigo-dark/70">
@@ -638,7 +811,7 @@ export default function CartPage() {
         </Card>
 
         <Elements stripe={stripePromise}>
-          <CheckoutForm
+          <PaymentForm
             finalAmount={finalAmount}
             user={user}
             items={items}

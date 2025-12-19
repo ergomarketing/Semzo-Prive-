@@ -88,7 +88,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
     icon: <RefreshCw className="h-4 w-4" />,
   },
   completed: { label: "Completada", color: "bg-slate-100 text-slate-800", icon: <CheckCircle2 className="h-4 w-4" /> },
-  cancelled: { label: "Cancelada", color: "bg-red-100 text-red-800", icon: <XCircle className="h-4 w-4" /> },
+  cancelled: { label: "Cancelada", color: "bg-[#fff0f3] text-[#1a1a4b]", icon: <XCircle className="h-4 w-4" /> },
 }
 
 const membershipLabels: Record<string, { label: string; color: string }> = {
@@ -265,14 +265,18 @@ export default function ReservationDetailsPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-[#f4c4cc] bg-[#fff0f3]">
           <CardContent className="flex flex-col items-center gap-4 py-8">
-            <AlertCircle className="h-12 w-12 text-red-500" />
+            <AlertCircle className="h-12 w-12 text-[#1a1a4b]" />
             <div className="text-center">
-              <h3 className="font-semibold text-red-800">Error al cargar la reserva</h3>
-              <p className="text-red-600 mt-1">{error}</p>
+              <h3 className="font-semibold text-[#1a1a4b]">Error al cargar la reserva</h3>
+              <p className="text-[#1a1a4b]/70 mt-1">{error}</p>
             </div>
-            <Button variant="outline" onClick={() => router.push("/dashboard/reservas")} className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/dashboard/reservas")}
+              className="mt-4 border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b] hover:text-white"
+            >
               Volver a Reservas
             </Button>
           </CardContent>
