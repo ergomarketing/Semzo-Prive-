@@ -143,7 +143,15 @@ function PaymentForm({
   const [showExtendedFormInline, setShowExtendedFormInline] = useState(false)
 
   const handlePayment = async () => {
+    console.log("[v0] handlePayment INICIADO")
+    console.log("[v0] needsExtendedForm:", needsExtendedForm)
+    console.log("[v0] showExtendedFormInline:", showExtendedFormInline)
+    console.log("[v0] needsVerification:", needsVerification)
+    console.log("[v0] termsAccepted:", termsAccepted)
+    console.log("[v0] processing:", processing)
+
     if (needsExtendedForm && !showExtendedFormInline) {
+      console.log("[v0] Mostrando formulario extendido")
       setShowExtendedFormInline(true)
       return
     }
@@ -158,10 +166,10 @@ function PaymentForm({
       return
     }
 
-    if (!user) {
-      onError("Debes estar autenticado para continuar")
-      return
-    }
+    // if (!user) {
+    //   onError("Debes estar autenticado para continuar")
+    //   return
+    // }
 
     setProcessing(true)
     setCardError("")
@@ -213,7 +221,7 @@ function PaymentForm({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: user.id,
+              userId: user?.id || `guest_${Date.now()}`,
               passTier: cartAnalysis.bagPassTier,
               quantity: 1,
               paymentMethod: "gift_card",
@@ -239,7 +247,7 @@ function PaymentForm({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: user.id,
+              userId: user?.id || `guest_${Date.now()}`,
               membershipType: cartAnalysis.membershipType,
               paymentId: `gift_${Date.now()}`,
               couponCode: appliedCoupon?.code,
@@ -289,8 +297,8 @@ function PaymentForm({
           membershipType: cartAnalysis.isBagPassOnly ? null : cartAnalysis.membershipType,
           bagPassPurchase: cartAnalysis.isBagPassOnly,
           bagPassTier: cartAnalysis.bagPassTier,
-          userEmail: user.email,
-          userId: user.id,
+          userEmail: extendedFormData.email || user?.email || "",
+          userId: user?.id || `guest_${Date.now()}`,
           couponCode: appliedCoupon?.code,
           giftCardUsed: appliedGiftCard
             ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
@@ -309,7 +317,7 @@ function PaymentForm({
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
-          billing_details: { email: user.email },
+          billing_details: { email: extendedFormData.email || user?.email || "" },
         },
       })
 
@@ -336,7 +344,7 @@ function PaymentForm({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: user.id,
+              userId: user?.id || `guest_${Date.now()}`,
               passTier: cartAnalysis.bagPassTier,
               quantity: 1,
               paymentMethod: "stripe",
@@ -362,7 +370,7 @@ function PaymentForm({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: user.id,
+              userId: user?.id || `guest_${Date.now()}`,
               membershipType: cartAnalysis.membershipType,
               paymentId: paymentIntent.id,
               couponCode: appliedCoupon?.code,
@@ -444,7 +452,13 @@ function PaymentForm({
         )}
 
         <Button
-          onClick={handlePayment}
+          onClick={() => {
+            console.log("[v0] BUTTON CLICKED")
+            console.log("[v0] Button disabled?:", processing || !termsAccepted)
+            console.log("[v0] processing:", processing)
+            console.log("[v0] termsAccepted:", termsAccepted)
+            handlePayment()
+          }}
           disabled={processing || !termsAccepted}
           className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6"
         >
@@ -538,6 +552,15 @@ function PaymentForm({
                     className="border-indigo-dark/20 focus:border-indigo-dark"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Email *</label>
+                  <Input
+                    value={extendedFormData.email}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, email: e.target.value }))}
+                    placeholder="tu@email.com"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <Button
@@ -596,6 +619,7 @@ export default function CartPage() {
     city: "",
     postalCode: "",
     country: "España",
+    email: "",
   })
   const [extendedFormCompleted, setExtendedFormCompleted] = useState(false)
   const [savingExtendedForm, setSavingExtendedForm] = useState(false)
@@ -640,6 +664,7 @@ export default function CartPage() {
             address: profile.address || "",
             city: profile.city || "",
             postalCode: profile.postal_code || "",
+            email: currentUser.email || "",
           }))
         }
       }

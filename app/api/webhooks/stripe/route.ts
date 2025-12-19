@@ -311,6 +311,7 @@ export async function POST(request: NextRequest) {
         })
 
         const paymentUserId = paymentIntent.metadata.user_id
+        const paymentUserEmail = paymentIntent.metadata.userEmail
         const planId = paymentIntent.metadata.plan_id
 
         if (paymentIntent.metadata.type === "gift_card") {
@@ -390,10 +391,38 @@ export async function POST(request: NextRequest) {
         if (paymentUserId && planId) {
           console.log(`Attempting to activate membership for user ${paymentUserId} with plan ${planId}`)
 
+          let targetUserId = paymentUserId
+
+          if (paymentUserId.startsWith("guest_")) {
+            console.log(`🔍 Guest checkout detected - searching user by email: ${paymentUserEmail}`)
+
+            const { data: existingUser } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("email", paymentUserEmail)
+              .single()
+
+            if (existingUser) {
+              targetUserId = existingUser.id
+              console.log(`✅ Found existing user: ${targetUserId}`)
+            } else {
+              console.log(`⚠️ No user found for email ${paymentUserEmail} - membership will be pending`)
+              // Guardar la membresía pendiente en una tabla temporal
+              await supabaseAdmin.from("pending_memberships").insert({
+                email: paymentUserEmail,
+                membership_type: planId,
+                payment_intent_id: paymentIntent.id,
+                amount: paymentIntent.amount,
+                created_at: new Date().toISOString(),
+              })
+              break
+            }
+          }
+
           const { data: userProfile } = await supabaseAdmin
             .from("profiles")
             .select("full_name, email")
-            .eq("id", paymentUserId)
+            .eq("id", targetUserId)
             .single()
 
           // La membresía se activará cuando el paquete sea entregado
@@ -401,16 +430,16 @@ export async function POST(request: NextRequest) {
             .from("profiles")
             .update({
               membership_type: planId,
-              membership_status: "pending_delivery", // Cambio de "active" a "pending_delivery"
+              membership_status: "pending_delivery",
               stripe_customer_id: paymentIntent.customer,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", paymentUserId)
+            .eq("id", targetUserId)
 
           if (error) {
             console.error("❌ Error al activar membresía:", error)
           } else {
-            console.log(`✅ Membresía en espera de entrega para el usuario ${paymentUserId}`)
+            console.log(`✅ Membresía en espera de entrega para el usuario ${targetUserId}`)
 
             await notifyAdmin(
               `Nueva Membresía (Pendiente Entrega) - ${planId.toUpperCase()}`,
