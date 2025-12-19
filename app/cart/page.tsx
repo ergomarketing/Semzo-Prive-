@@ -15,6 +15,7 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { Checkbox } from "@/components/ui/checkbox"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { toast } from "react-toastify"
+import { useRouter } from "next/navigation"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
 
@@ -138,38 +139,37 @@ function PaymentForm({
 }) {
   const stripe = useStripe()
   const elements = useElements()
+  const router = useRouter() // Import router
   const [processing, setProcessing] = useState(false)
   const [cardError, setCardError] = useState("")
   const [showExtendedFormInline, setShowExtendedFormInline] = useState(false)
+  const [extendedFormCompleted, setExtendedFormCompleted] = useState(false)
+  const [identityVerified, setIdentityVerified] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
 
   const handlePayment = async () => {
-    console.log("[v0] handlePayment INICIADO")
-    console.log("[v0] needsExtendedForm:", needsExtendedForm)
-    console.log("[v0] showExtendedFormInline:", showExtendedFormInline)
-    console.log("[v0] needsVerification:", needsVerification)
-    console.log("[v0] termsAccepted:", termsAccepted)
-    console.log("[v0] processing:", processing)
+    console.log("[v0] handlePayment iniciado")
 
-    if (needsExtendedForm && !showExtendedFormInline) {
-      console.log("[v0] Mostrando formulario extendido")
+    if (!termsAccepted) {
+      onError("Acepta los términos para continuar")
+      return
+    }
+
+    if (!user) {
+      setShowAuthModal(true)
+      toast.error("Debes crear una cuenta para continuar")
+      return
+    }
+
+    if (needsExtendedForm && !extendedFormCompleted) {
       setShowExtendedFormInline(true)
       return
     }
 
-    if (needsVerification) {
-      onError("Debes verificar tu identidad antes de continuar")
+    if (needsVerification && !identityVerified) {
+      setShowVerificationModal(true)
       return
     }
-
-    if (!termsAccepted) {
-      onError("Por favor, acepta los Términos y Condiciones para continuar.")
-      return
-    }
-
-    // if (!user) {
-    //   onError("Debes estar autenticado para continuar")
-    //   return
-    // }
 
     setProcessing(true)
     setCardError("")
@@ -177,14 +177,11 @@ function PaymentForm({
     try {
       const cartAnalysis = analyzeCartItems(items)
 
-      console.log("[v0] handlePayment - cartAnalysis:", cartAnalysis)
-      console.log("[v0] handlePayment - isBagPassOnly:", cartAnalysis.isBagPassOnly)
-
       if (cartAnalysis.membershipType) {
         const tierToCheck = cartAnalysis.membershipType
         const supabase = getSupabaseBrowser()
 
-        const { data: tierData, error: tierError } = await supabase
+        const { data: tierData } = await supabase
           .from("profiles")
           .select("membership_type")
           .eq("membership_type", tierToCheck)
@@ -192,7 +189,6 @@ function PaymentForm({
 
         const currentActiveMembers = tierData?.length || 0
 
-        // Límites por tier
         const tierLimits: Record<string, number> = {
           petite: 100,
           essentiel: 50,
@@ -203,202 +199,90 @@ function PaymentForm({
         const limit = tierLimits[tierToCheck] || 100
 
         if (currentActiveMembers >= limit) {
-          onError(
-            `La membresía ${tierToCheck.toUpperCase()} ha alcanzado el límite de cupos disponibles. Por favor, intenta con otra membresía o contacta soporte.`,
-          )
+          onError(`La membresía ${tierToCheck.toUpperCase()} alcanzó el límite. Intenta con otra.`)
+          setProcessing(false)
+          return
+        }
+      }
+
+      if (finalAmount > 0) {
+        if (!stripe || !elements) {
+          onError("Error de inicialización de Stripe. Recarga la página.")
+          return
+        }
+
+        const cardElement = elements.getElement(CardElement)
+        if (!cardElement) {
+          onError("Error con el formulario de tarjeta.")
+          return
+        }
+
+        const { error: cardError, paymentMethod } = await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+        })
+
+        if (cardError) {
+          setCardError(cardError.message || "Error al procesar la tarjeta")
+          onError(cardError.message || "Error al procesar la tarjeta")
           setProcessing(false)
           return
         }
 
-        console.log("[v0] Availability check passed:", { tier: tierToCheck, active: currentActiveMembers, limit })
-      }
-
-      // CASO 1: Pago cubierto por gift card (finalAmount <= 0)
-      if (finalAmount <= 0.01) {
-        if (cartAnalysis.isBagPassOnly && cartAnalysis.bagPassTier) {
-          console.log("[v0] Comprando SOLO bag-pass con gift card - NO cambiar membresía")
-          const response = await fetch("/api/bag-passes/purchase", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user?.id || `guest_${Date.now()}`,
-              passTier: cartAnalysis.bagPassTier,
-              quantity: 1,
-              paymentMethod: "gift_card",
-              giftCardCode: appliedGiftCard?.code,
-            }),
-          })
-
-          const data = await response.json()
-          console.log("[v0] bag-passes/purchase response:", data)
-
-          if (response.ok) {
-            onSuccess()
-          } else {
-            onError(data.error || "Error al procesar la compra del pase")
-          }
-          return // IMPORTANTE: terminar aquí
+        const metadata: Record<string, string> = {
+          user_id: user.id,
+          userEmail: user.email || "",
+          coupon_code: appliedCoupon?.code || "",
+          gift_card_code: appliedGiftCard?.code || "",
         }
 
-        // Si hay membresía (nueva suscripción o upgrade)
         if (cartAnalysis.membershipType) {
-          console.log("[v0] Comprando membresía con gift card:", cartAnalysis.membershipType)
-          const response = await fetch("/api/user/update-membership", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user?.id || `guest_${Date.now()}`,
-              membershipType: cartAnalysis.membershipType,
-              paymentId: `gift_${Date.now()}`,
-              couponCode: appliedCoupon?.code,
-              giftCardUsed: appliedGiftCard
-                ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
-                : null,
-              billingCycle: cartAnalysis.billingCycle,
-              bagPassTier:
-                cartAnalysis.membershipType === "petite" && cartAnalysis.bagPassTier ? cartAnalysis.bagPassTier : null,
-            }),
-          })
+          metadata.plan_id = cartAnalysis.membershipType
+          metadata.billing_period = cartAnalysis.billingCycle || "monthly"
+        }
 
-          const responseData = await response.json()
-          console.log("[v0] update-membership response:", responseData)
+        const response = await fetch("/api/payments/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Math.round(finalAmount * 100),
+            paymentMethodId: paymentMethod.id,
+            userId: user.id,
+            metadata,
+          }),
+        })
 
-          if (response.ok) {
-            onSuccess()
-          } else {
-            onError(responseData.error || "Error al procesar la compra")
-          }
+        if (!response.ok) {
+          const errorData = await response.json()
+          onError(errorData.error || "Error al procesar el pago")
+          throw new Error(errorData.error || "Error al procesar el pago")
+        }
+
+        const { clientSecret } = await response.json()
+
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret)
+
+        if (confirmError) {
+          setCardError(confirmError.message || "Error al confirmar el pago")
+          onError(confirmError.message || "Error al confirmar el pago")
+          setProcessing(false)
           return
         }
 
-        // Fallback: no se pudo determinar qué comprar
-        onError("No se pudo determinar el tipo de compra. Verifica tu carrito.")
-        return
-      }
-
-      // CASO 2: Pago con tarjeta Stripe
-      if (!stripe || !elements) {
-        onError("Error de inicialización de Stripe. Recarga la página.")
-        return
-      }
-
-      const cardElement = elements.getElement(CardElement)
-      if (!cardElement) {
-        onError("Error con el formulario de tarjeta.")
-        return
-      }
-
-      // Crear payment intent
-      const intentResponse = await fetch("/api/payments/create-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: finalAmount,
-          membershipType: cartAnalysis.isBagPassOnly ? null : cartAnalysis.membershipType,
-          bagPassPurchase: cartAnalysis.isBagPassOnly,
-          bagPassTier: cartAnalysis.bagPassTier,
-          userEmail: extendedFormData.email || user?.email || "",
-          userId: user?.id || `guest_${Date.now()}`,
-          couponCode: appliedCoupon?.code,
-          giftCardUsed: appliedGiftCard
-            ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
-            : null,
-        }),
-      })
-
-      if (!intentResponse.ok) {
-        const errorData = await intentResponse.json()
-        onError(errorData.error || "Error al crear el pago")
-        return
-      }
-
-      const { clientSecret } = await intentResponse.json()
-
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: { email: extendedFormData.email || user?.email || "" },
-        },
-      })
-
-      if (error) {
-        let errorMessage = "Error al procesar el pago"
-        if (error.code === "card_declined") {
-          errorMessage = "Tu tarjeta ha sido denegada por intentos repetidos de compra con demasiada frecuencia."
-        } else if (error.code === "insufficient_funds") {
-          errorMessage = "Fondos insuficientes."
-        } else if (error.code === "expired_card") {
-          errorMessage = "Tarjeta expirada."
-        } else if (error.message) {
-          errorMessage = error.message
+        if (paymentIntent.status === "succeeded") {
+          toast.success("¡Pago procesado correctamente!")
+          onSuccess() // Use the onSuccess callback
+        } else {
+          onError("El pago no se completó correctamente")
         }
-        setCardError(errorMessage)
-        onError(errorMessage)
-        return
-      }
-
-      if (paymentIntent?.status === "succeeded") {
-        if (cartAnalysis.isBagPassOnly && cartAnalysis.bagPassTier) {
-          console.log("[v0] Pago Stripe exitoso - registrando SOLO bag-pass - NO cambiar membresía")
-          const bagPassResponse = await fetch("/api/bag-passes/purchase", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user?.id || `guest_${Date.now()}`,
-              passTier: cartAnalysis.bagPassTier,
-              quantity: 1,
-              paymentMethod: "stripe",
-              stripePaymentId: paymentIntent.id,
-            }),
-          })
-
-          const data = await bagPassResponse.json()
-          console.log("[v0] bag-passes/purchase (stripe) response:", data)
-
-          if (bagPassResponse.ok) {
-            onSuccess()
-          } else {
-            onError(data.error || "Pago exitoso pero error al registrar pase. Contacta soporte.")
-          }
-          return // IMPORTANTE: terminar aquí
-        }
-
-        // Si hay membresía
-        if (cartAnalysis.membershipType) {
-          console.log("[v0] Pago Stripe exitoso - registrando membresía:", cartAnalysis.membershipType)
-          const membershipResponse = await fetch("/api/user/update-membership", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user?.id || `guest_${Date.now()}`,
-              membershipType: cartAnalysis.membershipType,
-              paymentId: paymentIntent.id,
-              couponCode: appliedCoupon?.code,
-              giftCardCode: appliedGiftCard?.code,
-              billingCycle: cartAnalysis.billingCycle,
-              bagPassTier:
-                cartAnalysis.membershipType === "petite" && cartAnalysis.bagPassTier ? cartAnalysis.bagPassTier : null,
-            }),
-          })
-
-          const membershipData = await membershipResponse.json()
-          console.log("[v0] update-membership (stripe) response:", membershipData)
-
-          if (membershipResponse.ok) {
-            onSuccess()
-          } else {
-            onError(membershipData.error || "Pago exitoso pero error al activar membresía. Contacta soporte.")
-          }
-          return
-        }
-
-        onError("Pago exitoso pero no se pudo determinar el tipo de compra. Contacta soporte.")
       } else {
-        onError("El pago no se completó correctamente")
+        toast.success("Pedido confirmado")
+        onSuccess() // Use the onSuccess callback
       }
-    } catch (error) {
-      console.error("Payment error:", error)
-      onError("Error al procesar el pago. Inténtalo de nuevo.")
+    } catch (error: any) {
+      console.error("[v0] Error en handlePayment:", error)
+      setCardError(error.message || "Error al procesar el pago")
+      onError(error.message || "Error al procesar el pago")
     } finally {
       setProcessing(false)
     }
@@ -467,9 +351,9 @@ function PaymentForm({
               <Loader2 className="h-5 w-5 animate-spin" />
               Procesando...
             </span>
-          ) : needsExtendedForm && !showExtendedFormInline ? (
+          ) : needsExtendedForm && !showExtendedFormInline && !extendedFormCompleted ? (
             "Completar datos personales"
-          ) : needsVerification ? (
+          ) : needsVerification && !identityVerified ? (
             "Verificar identidad"
           ) : finalAmount <= 0 ? (
             "Confirmar Pedido"
@@ -682,27 +566,29 @@ export default function CartPage() {
 
     setSavingExtendedForm(true)
     try {
-      console.log("[v0] Guardando datos personales:", extendedFormData)
+      console.log("[v0] Guardando datos personales para userId:", user.id)
 
       const response = await fetch("/api/user/update-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(extendedFormData),
+        body: JSON.stringify({
+          userId: user.id,
+          ...extendedFormData,
+        }),
       })
-
-      console.log("[v0] Response status:", response.status)
 
       if (response.ok) {
         console.log("[v0] Datos guardados exitosamente")
         setExtendedFormCompleted(true)
-        window.location.reload()
+        // setShowExtendedFormInline(false) // Removed to allow payment after saving
+        toast.success("Datos guardados correctamente")
       } else {
         const error = await response.json()
-        console.error("[v0] Error al guardar:", error)
+        console.error("[v0] Error:", error)
         toast.error(error.error || "Error al guardar datos")
       }
     } catch (error) {
-      console.error("[v0] Error en handleSaveExtendedForm:", error)
+      console.error("[v0] Error:", error)
       toast.error("Error al guardar la información")
     } finally {
       setSavingExtendedForm(false)
@@ -739,7 +625,7 @@ export default function CartPage() {
       const response = await fetch("/api/payments/validate-coupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ couponCode: couponCode.trim() }),
+        body: JSON.stringify({ couponCode: couponCode.trim(), amount: total }), // Pass total amount
       })
 
       const data = await response.json()
@@ -799,7 +685,7 @@ export default function CartPage() {
 
   const handleSuccess = () => {
     clearCart()
-    window.location.href = "/dashboard?welcome=true"
+    window.location.href = "/dashboard?welcome=true" // Use window.location.href to navigate
   }
 
   const handleError = (error: string) => {

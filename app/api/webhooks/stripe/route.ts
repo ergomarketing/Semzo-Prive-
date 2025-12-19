@@ -314,6 +314,11 @@ export async function POST(request: NextRequest) {
         const paymentUserEmail = paymentIntent.metadata.userEmail
         const planId = paymentIntent.metadata.plan_id
 
+        if (!paymentUserId || paymentUserId.startsWith("guest_")) {
+          console.log("❌ Invalid userId - payment requires authenticated user")
+          break
+        }
+
         if (paymentIntent.metadata.type === "gift_card") {
           console.log("🎁 Procesando gift card...")
           const recipientEmail = paymentIntent.metadata.recipient_email
@@ -389,101 +394,41 @@ export async function POST(request: NextRequest) {
         }
 
         if (paymentUserId && planId) {
-          console.log(`Attempting to activate membership for user ${paymentUserId} with plan ${planId}`)
-
-          let targetUserId = paymentUserId
-
-          if (paymentUserId.startsWith("guest_")) {
-            console.log(`🔍 Guest checkout detected - searching user by email: ${paymentUserEmail}`)
-
-            const { data: existingUser } = await supabaseAdmin
-              .from("profiles")
-              .select("id")
-              .eq("email", paymentUserEmail)
-              .single()
-
-            if (existingUser) {
-              targetUserId = existingUser.id
-              console.log(`✅ Found existing user: ${targetUserId}`)
-            } else {
-              console.log(`⚠️ No user found for email ${paymentUserEmail} - membership will be pending`)
-              // Guardar la membresía pendiente en una tabla temporal
-              await supabaseAdmin.from("pending_memberships").insert({
-                email: paymentUserEmail,
-                membership_type: planId,
-                payment_intent_id: paymentIntent.id,
-                amount: paymentIntent.amount,
-                created_at: new Date().toISOString(),
-              })
-              break
-            }
-          }
+          console.log(`Activating membership for user ${paymentUserId} with plan ${planId}`)
 
           const { data: userProfile } = await supabaseAdmin
             .from("profiles")
             .select("full_name, email")
-            .eq("id", targetUserId)
+            .eq("id", paymentUserId)
             .single()
 
-          // La membresía se activará cuando el paquete sea entregado
           const { error } = await supabaseAdmin
             .from("profiles")
             .update({
               membership_type: planId,
               membership_status: "pending_delivery",
-              stripe_customer_id: paymentIntent.customer,
+              membership_start_date: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
-            .eq("id", targetUserId)
+            .eq("id", paymentUserId)
 
           if (error) {
-            console.error("❌ Error al activar membresía:", error)
+            console.error("❌ Error activating membership:", error)
           } else {
-            console.log(`✅ Membresía en espera de entrega para el usuario ${targetUserId}`)
+            console.log("✅ Membership activated successfully")
 
             await notifyAdmin(
-              `Nueva Membresía (Pendiente Entrega) - ${planId.toUpperCase()}`,
+              `Nueva Membresía: ${planId.toUpperCase()}`,
               `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a1a4b;">🎉 Nueva Membresía - Pendiente de Entrega</h2>
-                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107;">
-                  <p><strong>⚠️ La membresía se activará cuando el paquete sea entregado</strong></p>
-                </div>
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
-                  <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
-                  <p><strong>Plan:</strong> ${planId.toUpperCase()}</p>
-                  <p><strong>Monto:</strong> ${(paymentIntent.amount / 100).toFixed(2)}€</p>
-                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-                </div>
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/logistics" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Gestionar Envío</a>
+              <div style="font-family: Arial, sans-serif;">
+                <h2>🎉 Nueva Membresía Activada</h2>
+                <p><strong>Usuario:</strong> ${userProfile?.full_name || "N/A"}</p>
+                <p><strong>Email:</strong> ${userProfile?.email || paymentUserEmail}</p>
+                <p><strong>Plan:</strong> ${planId.toUpperCase()}</p>
+                <p><strong>Monto:</strong> ${(paymentIntent.amount / 100).toFixed(2)}€</p>
               </div>
               `,
             )
-
-            if (userProfile?.email) {
-              await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  to: userProfile.email,
-                  subject: "¡Pago confirmado! Tu membresía se activará al recibir tu bolso",
-                  html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                      <h2 style="color: #1a1a4b;">¡Gracias por tu compra!</h2>
-                      <p>Hola ${userProfile.full_name || ""},</p>
-                      <p>Tu pago ha sido procesado exitosamente.</p>
-                      <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <p><strong>✨ Tu membresía comenzará a contar desde el momento en que recibas tu bolso.</strong></p>
-                        <p>De esta forma, disfrutarás el tiempo completo de tu plan.</p>
-                      </div>
-                      <p>Te enviaremos un email cuando tu pedido sea enviado con el tracking de seguimiento.</p>
-                      <p>¡Gracias por confiar en Semzo Privé!</p>
-                    </div>
-                  `,
-                }),
-              })
-            }
           }
         }
         break
