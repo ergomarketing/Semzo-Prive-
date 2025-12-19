@@ -519,6 +519,42 @@ export default function CartPage() {
   const [giftCardLoading, setGiftCardLoading] = useState(false)
   const [giftCardError, setGiftCardError] = useState("")
 
+  const router = useRouter()
+
+  const refetchUserProfile = async () => {
+    const supabase = getSupabaseBrowser()
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser()
+    if (currentUser) {
+      setUser(currentUser)
+      setAuthEmail(currentUser.email || "")
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("identity_verified, full_name, phone, document_number, address, city, postal_code")
+        .eq("id", currentUser.id)
+        .single()
+
+      const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.address
+      setExtendedFormCompleted(!!hasExtendedData)
+      setIdentityVerified(profile?.identity_verified === true)
+
+      if (profile) {
+        setExtendedFormData((prev) => ({
+          ...prev,
+          fullName: profile.full_name || "",
+          phone: profile.phone || "",
+          documentNumber: profile.document_number || "",
+          address: profile.address || "",
+          city: profile.city || "",
+          postalCode: profile.postal_code || "",
+          email: currentUser.email || "",
+        }))
+      }
+    }
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = getSupabaseBrowser()
@@ -580,11 +616,12 @@ export default function CartPage() {
       if (response.ok) {
         console.log("[v0] Datos guardados exitosamente")
         setExtendedFormCompleted(true)
-        // setShowExtendedFormInline(false) // Removed to allow payment after saving
+        // setShowExtendedFormInline(false) // Ocultar formulario después de guardar
         toast.success("Datos guardados correctamente")
+        await refetchUserProfile()
       } else {
         const error = await response.json()
-        console.error("[v0] Error:", error)
+        console.error("[v0] Error al guardar:", error)
         toast.error(error.error || "Error al guardar datos")
       }
     } catch (error) {
