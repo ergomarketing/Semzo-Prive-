@@ -164,6 +164,16 @@ export async function POST(request: NextRequest) {
 
       // Solo bloquear si NO es upgrade y la membresía no ha expirado
       if (endDate > new Date() && !isUpgrade) {
+        await supabase.from("membership_history").insert({
+          user_id: userId,
+          previous_membership: existingProfile.membership_type,
+          new_membership: cleanMembershipType,
+          previous_end_date: existingProfile.subscription_end_date,
+          remaining_days: Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+          action_type: "duplicate_attempt",
+          resolved: false,
+        })
+
         await logAudit(
           supabase,
           userId,
@@ -232,6 +242,42 @@ export async function POST(request: NextRequest) {
       // Otras membresías: 30 días
       subscriptionEndDate = new Date()
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
+    }
+
+    if (existingProfile?.membership_type && existingProfile.membership_type !== "free") {
+      const previousEndDate = existingProfile.subscription_end_date
+        ? new Date(existingProfile.subscription_end_date)
+        : new Date()
+      const remainingDays = Math.max(
+        0,
+        Math.ceil((previousEndDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+      )
+
+      const actionType = isWeeklyPass
+        ? "renew"
+        : getMembershipLevel(cleanMembershipType) > getMembershipLevel(existingProfile.membership_type)
+          ? "upgrade"
+          : getMembershipLevel(cleanMembershipType) < getMembershipLevel(existingProfile.membership_type)
+            ? "downgrade"
+            : "renew"
+
+      await supabase.from("membership_history").insert({
+        user_id: userId,
+        previous_membership: existingProfile.membership_type,
+        new_membership: cleanMembershipType,
+        previous_end_date: existingProfile.subscription_end_date,
+        new_end_date: subscriptionEndDate.toISOString(),
+        remaining_days: remainingDays,
+        action_type: actionType,
+        resolved: true,
+      })
+
+      console.log("[v0] Membership history recorded:", {
+        action: actionType,
+        from: existingProfile.membership_type,
+        to: cleanMembershipType,
+        remainingDays,
+      })
     }
 
     const { error: profileError } = await supabase.from("profiles").upsert(

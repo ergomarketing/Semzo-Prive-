@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
@@ -46,6 +47,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "embla-carousel-react": "latest",
+    "framer-motion": "12.23.26",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "next": "16.0.10",
@@ -57,6 +59,7 @@
     "react-hook-form": "latest",
     "react-markdown": "10.1.0",
     "react-resizable-panels": "latest",
+    "react-toastify": "11.0.5",
     "recharts": "latest",
     "resend": "^4.6.0",
     "sonner": "latest",

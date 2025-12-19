@@ -1,16 +1,20 @@
 "use client"
 import { useCart } from "@/app/contexts/cart-context"
+import type React from "react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Info, Tag, Gift, Loader2, X, Check, Trash2, CreditCard, ShieldCheck } from "lucide-react"
+import { Info, Tag, Gift, Loader2, X, Check, Trash2, CreditCard, ShieldCheck, Shield, ArrowLeft } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import { Checkbox } from "@/components/ui/checkbox"
+import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
+import { toast } from "react-toastify"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
 
@@ -19,9 +23,6 @@ function analyzeCartItems(items: any[]) {
 
   const bagPassItem = items.find((item) => {
     const itemType = (item.itemType || "").toLowerCase()
-
-    // SOLO confiar en itemType === "bag-pass"
-    // NO usar id ni name porque pueden ser confusos
     const isBagPass = itemType === "bag-pass"
 
     console.log("[v0] Checking item for bag-pass:", {
@@ -36,8 +37,6 @@ function analyzeCartItems(items: any[]) {
 
   const membershipItem = items.find((item) => {
     const itemType = (item.itemType || "").toLowerCase()
-
-    // SOLO confiar en itemType === "membership"
     const isMembership = itemType === "membership"
 
     console.log("[v0] Checking item for membership:", {
@@ -49,7 +48,6 @@ function analyzeCartItems(items: any[]) {
     return isMembership
   })
 
-  // Determinar el tier del bag-pass usando el NOMBRE del item
   let bagPassTier: string | null = null
   if (bagPassItem) {
     const itemName = (bagPassItem.name || "").toLowerCase()
@@ -64,13 +62,10 @@ function analyzeCartItems(items: any[]) {
     console.log("[v0] Detected bagPassTier from name:", bagPassTier)
   }
 
-  // Determinar membership type SOLO del item de membresía (NO de bag-pass)
   let membershipType: string | null = null
   if (membershipItem) {
     const itemId = (membershipItem.id || "").toLowerCase()
-    const itemName = (membershipItem.name || "").toLowerCase()
 
-    // Usar SOLO el itemId para determinar tipo (más confiable que el nombre)
     if (itemId.includes("prive")) {
       membershipType = "prive"
     } else if (itemId.includes("signature")) {
@@ -85,7 +80,6 @@ function analyzeCartItems(items: any[]) {
   }
 
   const billingCycle = membershipItem?.billingCycle || bagPassItem?.billingCycle || "monthly"
-
   const isBagPassOnly = !!bagPassItem && !membershipItem
 
   console.log("[v0] Cart analysis result:", {
@@ -118,6 +112,13 @@ function PaymentForm({
   termsAccepted,
   onSuccess,
   onError,
+  needsExtendedForm,
+  needsVerification,
+  extendedFormData,
+  setExtendedFormData,
+  onSaveExtendedForm,
+  savingExtendedForm,
+  setShowAuthModal,
 }: {
   finalAmount: number
   user: any
@@ -127,13 +128,31 @@ function PaymentForm({
   termsAccepted: boolean
   onSuccess: () => void
   onError: (error: string) => void
+  needsExtendedForm?: boolean
+  needsVerification?: boolean
+  extendedFormData: any
+  setExtendedFormData: (fn: (prev: any) => any) => void
+  onSaveExtendedForm: () => Promise<void>
+  savingExtendedForm: boolean
+  setShowAuthModal: (show: boolean) => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
   const [processing, setProcessing] = useState(false)
   const [cardError, setCardError] = useState("")
+  const [showExtendedFormInline, setShowExtendedFormInline] = useState(false)
 
   const handlePayment = async () => {
+    if (needsExtendedForm && !showExtendedFormInline) {
+      setShowExtendedFormInline(true)
+      return
+    }
+
+    if (needsVerification) {
+      onError("Debes verificar tu identidad antes de continuar")
+      return
+    }
+
     if (!termsAccepted) {
       onError("Por favor, acepta los Términos y Condiciones para continuar.")
       return
@@ -152,6 +171,39 @@ function PaymentForm({
 
       console.log("[v0] handlePayment - cartAnalysis:", cartAnalysis)
       console.log("[v0] handlePayment - isBagPassOnly:", cartAnalysis.isBagPassOnly)
+
+      if (cartAnalysis.membershipType) {
+        const tierToCheck = cartAnalysis.membershipType
+        const supabase = getSupabaseBrowser()
+
+        const { data: tierData, error: tierError } = await supabase
+          .from("profiles")
+          .select("membership_type")
+          .eq("membership_type", tierToCheck)
+          .eq("membership_status", "active")
+
+        const currentActiveMembers = tierData?.length || 0
+
+        // Límites por tier
+        const tierLimits: Record<string, number> = {
+          petite: 100,
+          essentiel: 50,
+          signature: 30,
+          prive: 20,
+        }
+
+        const limit = tierLimits[tierToCheck] || 100
+
+        if (currentActiveMembers >= limit) {
+          onError(
+            `La membresía ${tierToCheck.toUpperCase()} ha alcanzado el límite de cupos disponibles. Por favor, intenta con otra membresía o contacta soporte.`,
+          )
+          setProcessing(false)
+          return
+        }
+
+        console.log("[v0] Availability check passed:", { tier: tierToCheck, active: currentActiveMembers, limit })
+      }
 
       // CASO 1: Pago cubierto por gift card (finalAmount <= 0)
       if (finalAmount <= 0.01) {
@@ -238,6 +290,7 @@ function PaymentForm({
           bagPassPurchase: cartAnalysis.isBagPassOnly,
           bagPassTier: cartAnalysis.bagPassTier,
           userEmail: user.email,
+          userId: user.id,
           couponCode: appliedCoupon?.code,
           giftCardUsed: appliedGiftCard
             ? { code: appliedGiftCard.code, amountUsed: appliedGiftCard.balance * 100 }
@@ -356,28 +409,36 @@ function PaymentForm({
     hidePostalCode: true,
   }
 
+  const handleSaveExtendedFormClick = async () => {
+    if (!user) {
+      setShowAuthModal(true)
+      return
+    }
+    await onSaveExtendedForm()
+  }
+
   return (
-    <Card className="border-[#f4c4cc]/30">
+    <Card className="border border-indigo-dark/10 shadow-sm">
       <CardContent className="pt-6">
-        <h3 className="font-medium text-[#1a1a4b] mb-4 flex items-center gap-2">
+        <h3 className="font-medium text-indigo-dark mb-4 flex items-center gap-2">
           <CreditCard className="h-4 w-4" />
           Datos de pago
         </h3>
 
         {cardError && (
           <div className="mb-4 p-3 bg-[#fff0f3] border border-[#f4c4cc] rounded-lg">
-            <p className="text-sm text-[#1a1a4b]">{cardError}</p>
+            <p className="text-sm text-indigo-dark">{cardError}</p>
           </div>
         )}
 
         {finalAmount <= 0 ? (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-            <p className="text-green-700 text-sm text-center">
+          <div className="p-4 bg-rose-nude border border-rose-pastel/30 rounded-lg mb-4">
+            <p className="text-indigo-dark text-sm text-center">
               Tu pedido está completamente cubierto. No se realizará ningún cargo.
             </p>
           </div>
         ) : (
-          <div className="border rounded-lg p-4 mb-4">
+          <div className="border border-indigo-dark/20 rounded-lg p-4 mb-4">
             <CardElement options={cardElementOptions} />
           </div>
         )}
@@ -385,28 +446,17 @@ function PaymentForm({
         <Button
           onClick={handlePayment}
           disabled={processing || !termsAccepted}
-          className="w-full bg-[#1a1a4b] hover:bg-[#1a1a4b]/90 text-white py-6"
+          className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6"
         >
           {processing ? (
             <span className="flex items-center gap-2">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+              <Loader2 className="h-5 w-5 animate-spin" />
               Procesando...
             </span>
+          ) : needsExtendedForm && !showExtendedFormInline ? (
+            "Completar datos personales"
+          ) : needsVerification ? (
+            "Verificar identidad"
           ) : finalAmount <= 0 ? (
             "Confirmar Pedido"
           ) : (
@@ -414,11 +464,109 @@ function PaymentForm({
           )}
         </Button>
 
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
-          <ShieldCheck className="h-4 w-4 text-green-600" />
+        {showExtendedFormInline && needsExtendedForm && (
+          <div className="mt-6 pt-6 border-t border-indigo-dark/10">
+            <h4 className="font-medium text-indigo-dark mb-4 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Datos de envío y verificación
+            </h4>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Nombre completo *</label>
+                  <Input
+                    value={extendedFormData.fullName}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, fullName: e.target.value }))}
+                    placeholder="María García López"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Teléfono *</label>
+                  <Input
+                    value={extendedFormData.phone}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
+                    placeholder="+34 612 345 678"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Tipo de documento *</label>
+                  <select
+                    value={extendedFormData.documentType}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, documentType: e.target.value }))}
+                    className="w-full h-10 px-3 border border-indigo-dark/20 rounded-md focus:border-indigo-dark bg-white text-indigo-dark"
+                  >
+                    <option value="dni">DNI</option>
+                    <option value="nie">NIE</option>
+                    <option value="passport">Pasaporte</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Número de documento *</label>
+                  <Input
+                    value={extendedFormData.documentNumber}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, documentNumber: e.target.value }))}
+                    placeholder="12345678A"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Dirección *</label>
+                  <Input
+                    value={extendedFormData.address}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, address: e.target.value }))}
+                    placeholder="Calle Principal 123, 2º B"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Ciudad *</label>
+                  <Input
+                    value={extendedFormData.city}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, city: e.target.value }))}
+                    placeholder="Madrid"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-indigo-dark/70 mb-1">Código postal *</label>
+                  <Input
+                    value={extendedFormData.postalCode}
+                    onChange={(e) => setExtendedFormData((prev: any) => ({ ...prev, postalCode: e.target.value }))}
+                    placeholder="28001"
+                    className="border-indigo-dark/20 focus:border-indigo-dark"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowExtendedFormInline(false)}
+                  className="flex-1 border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude bg-transparent"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveExtendedFormClick}
+                  disabled={savingExtendedForm}
+                  className="flex-1 bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                >
+                  {savingExtendedForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Guardar y continuar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-indigo-dark/50">
+          <ShieldCheck className="h-4 w-4 text-indigo-dark flex-shrink-0 mt-0.5" />
           <span>Pago 100% seguro</span>
         </div>
-        <p className="text-xs text-gray-400 text-center mt-1">Procesado por Stripe. Tus datos están protegidos.</p>
+        <p className="text-xs text-indigo-dark/40 text-center mt-1">
+          Procesado por Stripe. Tus datos están protegidos.
+        </p>
       </CardContent>
     </Card>
   )
@@ -428,14 +576,39 @@ export default function CartPage() {
   const { items, removeItem, total, itemCount, clearCart } = useCart()
   const [user, setUser] = useState<any>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [identityVerified, setIdentityVerified] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [checkingVerification, setCheckingVerification] = useState(true)
 
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authEmail, setAuthEmail] = useState("")
+  const [authPassword, setAuthPassword] = useState("")
+  const [authMode, setAuthMode] = useState<"login" | "register">("register")
+  const [authLoading, setAuthLoading] = useState(false)
+  const [authError, setAuthError] = useState("")
+
+  const [extendedFormData, setExtendedFormData] = useState({
+    fullName: "",
+    phone: "",
+    documentType: "dni",
+    documentNumber: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    country: "España",
+  })
+  const [extendedFormCompleted, setExtendedFormCompleted] = useState(false)
+  const [savingExtendedForm, setSavingExtendedForm] = useState(false)
+
+  // State for coupons and gift cards
   const [couponCode, setCouponCode] = useState("")
-  const [giftCardCode, setGiftCardCode] = useState("")
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null)
-  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; balance: number } | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
   const [couponLoading, setCouponLoading] = useState(false)
-  const [giftCardLoading, setGiftCardLoading] = useState(false)
   const [couponError, setCouponError] = useState("")
+
+  const [giftCardCode, setGiftCardCode] = useState("")
+  const [appliedGiftCard, setAppliedGiftCard] = useState<any>(null)
+  const [giftCardLoading, setGiftCardLoading] = useState(false)
   const [giftCardError, setGiftCardError] = useState("")
 
   useEffect(() => {
@@ -446,10 +619,70 @@ export default function CartPage() {
       } = await supabase.auth.getUser()
       if (currentUser) {
         setUser(currentUser)
+        setAuthEmail(currentUser.email || "")
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("identity_verified, full_name, phone, document_number, address, city, postal_code")
+          .eq("id", currentUser.id)
+          .single()
+
+        const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.address
+        setExtendedFormCompleted(!!hasExtendedData)
+        setIdentityVerified(profile?.identity_verified === true)
+
+        if (profile) {
+          setExtendedFormData((prev) => ({
+            ...prev,
+            fullName: profile.full_name || "",
+            phone: profile.phone || "",
+            documentNumber: profile.document_number || "",
+            address: profile.address || "",
+            city: profile.city || "",
+            postalCode: profile.postal_code || "",
+          }))
+        }
       }
+      setCheckingVerification(false)
     }
     checkAuth()
   }, [])
+
+  const handleSaveExtendedForm = async () => {
+    if (!user) {
+      setShowAuthModal(true)
+      toast.error("Debes crear una cuenta antes de continuar")
+      return
+    }
+
+    setSavingExtendedForm(true)
+    try {
+      console.log("[v0] Guardando datos personales:", extendedFormData)
+
+      const response = await fetch("/api/user/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(extendedFormData),
+      })
+
+      console.log("[v0] Response status:", response.status)
+
+      if (response.ok) {
+        console.log("[v0] Datos guardados exitosamente")
+        setExtendedFormCompleted(true)
+        window.location.reload()
+      } else {
+        const error = await response.json()
+        console.error("[v0] Error al guardar:", error)
+        toast.error(error.error || "Error al guardar datos")
+      }
+    } catch (error) {
+      console.error("[v0] Error en handleSaveExtendedForm:", error)
+      toast.error("Error al guardar la información")
+    } finally {
+      setSavingExtendedForm(false)
+    }
+  }
 
   const calculateFinalAmount = () => {
     let amount = total
@@ -545,21 +778,52 @@ export default function CartPage() {
   }
 
   const handleError = (error: string) => {
-    alert(error)
+    toast.error(error)
   }
 
-  if (itemCount === 0) {
-    return (
-      <div className="min-h-screen bg-white pt-32">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl font-serif text-indigo-dark mb-6">Tu Carrito</h1>
-          <p className="text-indigo-dark/70 mb-8">Tu carrito está vacío</p>
-          <Link href="/#membresias">
-            <Button className="bg-indigo-dark hover:bg-indigo-dark/90 text-white">Ver Membresías</Button>
-          </Link>
-        </div>
-      </div>
-    )
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthLoading(true)
+    setAuthError("")
+
+    try {
+      const supabase = getSupabaseBrowser()
+
+      if (authMode === "register") {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+          options: {
+            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+          },
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          setUser(data.user)
+          setShowAuthModal(false)
+          toast.success("Cuenta creada. Ahora completa tus datos personales")
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          setUser(data.user)
+          setShowAuthModal(false)
+          window.location.reload()
+        }
+      }
+    } catch (error: any) {
+      setAuthError(error.message)
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const getBillingCycleLabel = (cycle: string) => {
@@ -577,10 +841,33 @@ export default function CartPage() {
 
   const isPetiteCart = items.some((item) => item.id.includes("petite-membership"))
 
+  const cartAnalysis = items.length > 0 ? analyzeCartItems(items) : null
+  const needsVerification = cartAnalysis?.membershipType && !identityVerified
+  const needsExtendedForm = cartAnalysis?.membershipType && !extendedFormCompleted
+
+  const handleVerificationComplete = (verified: boolean) => {
+    setIdentityVerified(verified)
+    setShowVerificationModal(false)
+  }
+
+  if (checkingVerification) {
+    return (
+      <div className="min-h-screen bg-white pt-32 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#1a1a4b]" />
+          <p className="mt-2 text-[#1a1a4b]/70">Verificando tu cuenta...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white pt-32">
       <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">CARRITO</h1>
+        <Link href="/" className="inline-flex items-center gap-2 text-[#1a1a4b]/70 hover:text-[#1a1a4b] mb-6">
+          <ArrowLeft className="h-4 w-4" />
+          Volver al resumen
+        </Link>
 
         {items.length > 0 && (
           <div className="space-y-4 mb-6">
@@ -693,7 +980,7 @@ export default function CartPage() {
                   </Button>
                 </div>
               )}
-              {couponError && <p className="text-sm text-red-500 mt-1">{couponError}</p>}
+              {couponError && <p className="text-sm text-rose-pastel mt-1">{couponError}</p>}
             </div>
 
             <div>
@@ -734,7 +1021,7 @@ export default function CartPage() {
                   </Button>
                 </div>
               )}
-              {giftCardError && <p className="text-sm text-red-500 mt-1">{giftCardError}</p>}
+              {giftCardError && <p className="text-sm text-rose-pastel mt-1">{giftCardError}</p>}
             </div>
           </CardContent>
         </Card>
@@ -820,19 +1107,98 @@ export default function CartPage() {
             termsAccepted={termsAccepted}
             onSuccess={handleSuccess}
             onError={handleError}
+            needsExtendedForm={needsExtendedForm}
+            needsVerification={needsVerification}
+            extendedFormData={extendedFormData}
+            setExtendedFormData={setExtendedFormData}
+            onSaveExtendedForm={handleSaveExtendedForm}
+            savingExtendedForm={savingExtendedForm}
+            setShowAuthModal={setShowAuthModal}
           />
         </Elements>
 
-        <div className="pb-12">
-          <Link href="/catalog" className="w-full block">
-            <Button
-              variant="outline"
-              className="w-full py-6 text-lg border-indigo-dark text-indigo-dark hover:bg-rose-nude bg-transparent"
-            >
-              SEGUIR COMPRANDO
-            </Button>
-          </Link>
-        </div>
+        <div className="pb-12" />
+
+        {user && (
+          <IdentityVerificationModal
+            isOpen={showVerificationModal}
+            onClose={() => setShowVerificationModal(false)}
+            onVerificationComplete={handleVerificationComplete}
+            userId={user.id}
+            membershipType={cartAnalysis?.membershipType || ""}
+          />
+        )}
+
+        {showAuthModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-serif text-indigo-dark">
+                  {authMode === "register" ? "Crear cuenta" : "Iniciar sesión"}
+                </h3>
+                <button onClick={() => setShowAuthModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-6">
+                {authMode === "register"
+                  ? "Crea una cuenta para continuar con tu compra"
+                  : "Inicia sesión para continuar"}
+              </p>
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-dark"
+                    placeholder="tu@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-dark"
+                    placeholder="••••••••"
+                    minLength={6}
+                  />
+                </div>
+
+                {authError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">{authError}</div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full bg-indigo-dark text-white py-3 rounded-md hover:bg-indigo-dark/90 disabled:opacity-50 transition-colors"
+                >
+                  {authLoading ? "Procesando..." : authMode === "register" ? "Crear cuenta" : "Iniciar sesión"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === "register" ? "login" : "register")
+                    setAuthError("")
+                  }}
+                  className="w-full text-sm text-indigo-dark hover:underline"
+                >
+                  {authMode === "register" ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

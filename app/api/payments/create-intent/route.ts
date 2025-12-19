@@ -28,23 +28,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, membershipType, userEmail, couponCode, giftCardUsed } = await request.json()
+    const { amount, membershipType, userEmail, userId, couponCode, giftCardUsed } = await request.json()
 
     console.log("📊 Datos recibidos:", {
       amount,
       membershipType,
       userEmail,
+      userId,
       couponCode,
       timestamp: new Date().toISOString(),
     })
 
     // Validar datos
-    if (!membershipType || !userEmail) {
-      console.error("❌ Datos faltantes:", { amount, membershipType, userEmail })
+    if (!membershipType || !userEmail || !userId) {
+      console.error("❌ Datos faltantes:", { amount, membershipType, userEmail, userId })
       return NextResponse.json(
         {
           error: "Datos incompletos",
-          details: "Se requieren membershipType y userEmail",
+          details: "Se requieren membershipType, userEmail y userId",
         },
         { status: 400 },
       )
@@ -98,6 +99,8 @@ export async function POST(request: NextRequest) {
         enabled: true,
       },
       metadata: {
+        user_id: userId,
+        plan_id: membershipType,
         membershipType,
         userEmail,
         couponCode: couponCode || "", // Guardar cupón en metadata

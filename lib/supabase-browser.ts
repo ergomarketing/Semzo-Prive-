@@ -1,2 +1,6 @@
-// Re-export getSupabaseBrowser from the main supabase file
-export { getSupabaseBrowser } from "./supabase"
+import { getSupabaseBrowser as getSupabaseBrowserOriginal } from "./supabase"
+
+export const getSupabaseBrowser = getSupabaseBrowserOriginal
+
+// Default export para compatibilidad
+export default getSupabaseBrowserOriginal
