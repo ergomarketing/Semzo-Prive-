@@ -191,6 +191,12 @@ export const supabaseAdmin = {
   },
 }
 
+export async function createRouteHandlerClient() {
+  const client = getSupabaseServiceRole()
+  if (!client) throw new Error("Supabase service role not available")
+  return client
+}
+
 export const supabaseConfig = { url: supabaseUrl, anonKey: supabaseAnonKey }
 
 export function getSupabaseConfig() {
