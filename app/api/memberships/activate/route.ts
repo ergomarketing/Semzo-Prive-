@@ -3,8 +3,7 @@ import { createRouteHandlerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 
 export async function POST() {
-  const cookieStore = await cookies()
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const supabase = createRouteHandlerClient({ cookies })
 
   // 1️⃣ Usuario autenticado
   const {

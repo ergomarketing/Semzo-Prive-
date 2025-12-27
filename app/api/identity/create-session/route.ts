@@ -9,9 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
+    const supabase = await createRouteHandlerClient({ cookies })
     const {
       data: { user },
     } = await supabase.auth.getUser()

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient, createServerClient } from "@supabase/ssr"
+import type { cookies } from "next/headers"
 
 // Variables de entorno
 const supabaseUrl =
@@ -191,10 +192,30 @@ export const supabaseAdmin = {
   },
 }
 
-export async function createRouteHandlerClient() {
-  const client = getSupabaseServiceRole()
-  if (!client) throw new Error("Supabase service role not available")
-  return client
+export async function createRouteHandlerClient({ cookies: cookiesFn }: { cookies: typeof cookies }) {
+  const cookieStore = await cookiesFn()
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
+      },
+      set(name: string, value: string, options: any) {
+        try {
+          cookieStore.set({ name, value, ...options })
+        } catch (error) {
+          // En build time, set puede fallar
+        }
+      },
+      remove(name: string, options: any) {
+        try {
+          cookieStore.set({ name, value: "", ...options })
+        } catch (error) {
+          // En build time, remove puede fallar
+        }
+      },
+    },
+  })
 }
 
 export const supabaseConfig = { url: supabaseUrl, anonKey: supabaseAnonKey }

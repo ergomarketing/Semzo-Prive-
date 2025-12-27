@@ -16,9 +16,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "sessionId requerido" }, { status: 400 })
     }
 
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
+    const supabase = createRouteHandlerClient({ cookies })
     const {
       data: { user },
     } = await supabase.auth.getUser()
