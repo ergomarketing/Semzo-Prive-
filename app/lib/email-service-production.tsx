@@ -1,5 +1,5 @@
 interface EmailConfig {
-  provider: "resend" | "sendgrid" | "mailgun"
+  provider: "resend" | "sendgrid" | "mailgun" | "smtp"
   apiKey: string
   fromEmail: string
   fromName: string
@@ -28,16 +28,21 @@ export class EmailServiceProduction {
   private adminEmail = "mailbox@semzoprive.com" // Added admin email
 
   constructor() {
+    const hasResend = !!(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+
     this.config = {
-      provider: "resend",
+      provider: hasResend ? "resend" : hasSmtp ? "smtp" : "resend",
       apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
-      fromEmail: "noreply@semzoprive.com",
+      fromEmail: process.env.SMTP_USER || "noreply@semzoprive.com", // Use SMTP user if available, otherwise default
       fromName: "Semzo Privé",
     }
 
-    console.log("[v0] 🔍 Debug API Key:")
+    console.log("[v0] EmailServiceProduction initialized:")
+    console.log("[v0] Provider:", this.config.provider)
     console.log("[v0] RESEND_API_KEY disponible:", !!process.env.RESEND_API_KEY)
     console.log("[v0] EMAIL_API_KEY disponible:", !!process.env.EMAIL_API_KEY)
+    console.log("[v0] SMTP disponible:", hasSmtp)
     console.log("[v0] API Key usada (primeros 10 chars):", this.config.apiKey.substring(0, 10))
     console.log("[v0] API Key válida (empieza con re_):", this.config.apiKey.startsWith("re_"))
   }
@@ -52,16 +57,21 @@ export class EmailServiceProduction {
   async sendWithResend(data: EmailData): Promise<boolean> {
     return emailQueue.add(async () => {
       try {
-        console.log("[v0] 📧 Enviando email con API key:", this.config.apiKey.substring(0, 10) + "...")
+        const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || ""
+
+        if (!apiKey) {
+          console.error("❌ No hay API key de Resend disponible")
+          return false
+        }
 
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${this.config.apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: `${this.config.fromName} <${this.config.fromEmail}>`,
+            from: "Semzo Privé <noreply@semzoprive.com>",
             to: [data.to],
             subject: data.subject,
             html: data.html,
@@ -76,7 +86,7 @@ export class EmailServiceProduction {
         }
 
         const result = await response.json()
-        console.log("✅ Email enviado exitosamente, ID:", result.id)
+        console.log("✅ Email enviado, ID:", result.id)
         return true
       } catch (error) {
         console.error("❌ Error enviando email:", error)
@@ -85,7 +95,27 @@ export class EmailServiceProduction {
     })
   }
 
-  // Helper to abstract sending email via Resend
+  private async sendWithSMTP(data: EmailData): Promise<boolean> {
+    try {
+      const response = await fetch("/api/admin/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: data.to,
+          subject: data.subject,
+          body: data.html, // Use 'body' for the main content
+          html: data.html, // Also include 'html' if the API supports it directly
+        }),
+      })
+
+      return response.ok
+    } catch (error) {
+      console.error("❌ Error enviando con SMTP:", error)
+      return false
+    }
+  }
+
+  // Helper to abstract sending email via Resend or SMTP
   private async sendEmail(data: { to: string; subject: string; html: string }): Promise<boolean> {
     const emailData: EmailData = {
       to: data.to,
@@ -93,7 +123,17 @@ export class EmailServiceProduction {
       html: data.html,
       text: data.subject, // Fallback text content
     }
-    return this.sendWithResend(emailData)
+
+    // Intentar con Resend
+    if (this.config.provider === "resend") {
+      const resendSuccess = await this.sendWithResend(emailData)
+      if (resendSuccess) return true
+
+      console.log("[v0] Resend falló, intentando con SMTP...")
+    }
+
+    // Fallback a SMTP
+    return this.sendWithSMTP(emailData)
   }
 
   async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string): Promise<boolean> {
@@ -498,7 +538,7 @@ export class EmailServiceProduction {
               <div class="content">
                   <h2>Semzo Privé</h2>
                   
-                  <h3>¡Bienvenido a la experiencia exclusiva!</h3>
+                  <h3>¡Bienvenida a la experiencia exclusiva!</h3>
                   
                   <p>Estamos encantados de darte la bienvenida a nuestra comunidad exclusiva. En Semzo Privé, encontrarás una selección cuidadosamente curada de los bolsos de lujo más exclusivos de diseñadores.</p>
                   
@@ -1181,7 +1221,7 @@ export class EmailServiceProduction {
                   <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff9800;">
                       <p><strong>📅 Fecha de expiración:</strong> ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
                   </div>
-                  <p>¡No pierdas acceso a tus beneficios! Renueva ahora y continúa disfrutando de nuestra colección exclusiva.</p>
+                  <p>¡No pierdas acceso a tus beneficios! Renueva ahora y continúua disfrutando de nuestra colección exclusiva.</p>
                   <a href="https://www.semzoprive.com/membresias" class="cta-button">Renovar Membresía</a>
               </div>
               <div class="footer">
