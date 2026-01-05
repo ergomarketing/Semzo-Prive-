@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -27,50 +27,12 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError("Por favor ingresa un email válido")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const checkResponse = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-
-      const checkData = await checkResponse.json()
-
-      if (!checkData.exists) {
-        setError("Este email no está registrado en nuestro sistema")
-        setIsLoading(false)
-        return
-      }
-
-      const supabase = getSupabaseBrowser()
-
-      if (!supabase) {
-        setError("Error de configuración. Contacta al administrador.")
-        setIsLoading(false)
-        return
-      }
-
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`,
-      })
-
-      if (resetError) {
-        setError("Error al enviar el email. Inténtalo de nuevo más tarde.")
-        setIsLoading(false)
-        return
-      }
-
+      // Simulación de envío de email
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       setIsSubmitted(true)
     } catch (error) {
-      setError("Error al procesar la solicitud. Inténtalo de nuevo.")
-      setIsLoading(false)
+      setError("Error al enviar el email. Inténtalo de nuevo.")
     } finally {
       setIsLoading(false)
     }
@@ -107,8 +69,8 @@ export default function ForgotPasswordPage() {
       <div className="container mx-auto px-4 max-w-md">
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center pb-8">
-            <div className="mx-auto mb-4">
-              <img src="/images/logo-20semzo-20prive.png" alt="Semzo Privé" className="h-12 w-auto mx-auto" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
+              <span className="text-2xl text-indigo-dark font-serif">SP</span>
             </div>
             <CardTitle className="font-serif text-3xl text-slate-900">¿Olvidaste tu contraseña?</CardTitle>
             <p className="text-slate-600">Te enviaremos un enlace para restablecerla</p>
@@ -134,7 +96,6 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   className="h-12"
-                  autoComplete="email"
                 />
               </div>
 
@@ -146,7 +107,7 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Verificando...
+                    Enviando...
                   </>
                 ) : (
                   "Enviar instrucciones"

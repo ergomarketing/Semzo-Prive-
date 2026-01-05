@@ -260,11 +260,7 @@ export default function EmailLogsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                onClick={clearLogs}
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-              >
+              <Button onClick={clearLogs} variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
                 Limpiar logs
               </Button>
             </div>

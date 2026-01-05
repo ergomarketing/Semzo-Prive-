@@ -9,7 +9,6 @@ import { useState } from "react"
 const plans = [
   {
     name: "L'Essentiel",
-    id: "essentiel",
     priceMonthly: "59€",
     priceQuarterly: "159€",
     quarterlyDiscount: "15%",
@@ -29,7 +28,6 @@ const plans = [
   },
   {
     name: "Signature",
-    id: "signature",
     priceMonthly: "129€",
     priceQuarterly: "329€",
     quarterlyDiscount: "15%",
@@ -50,7 +48,6 @@ const plans = [
   },
   {
     name: "Privé",
-    id: "prive",
     priceMonthly: "189€",
     priceQuarterly: "479€",
     quarterlyDiscount: "15%",
@@ -75,19 +72,6 @@ const plans = [
 
 export default function PricingSection() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "quarterly">("monthly")
-  const [showPassInfoModal, setShowPassInfoModal] = useState(false)
-
-  const handleSelectPlan = (planId: string) => {
-    setShowPassInfoModal(true)
-    sessionStorage.setItem("selectedPlanId", planId)
-    sessionStorage.setItem("selectedBillingCycle", billingCycle)
-  }
-
-  const handleContinueToSignup = () => {
-    const planId = sessionStorage.getItem("selectedPlanId")
-    const billing = sessionStorage.getItem("selectedBillingCycle")
-    window.location.href = `/signup?plan=${planId}&billing=${billing}`
-  }
 
   return (
     <section id="membresias" className="py-24 bg-slate-50">
@@ -184,7 +168,6 @@ export default function PricingSection() {
                 </ul>
 
                 <Button
-                  onClick={() => handleSelectPlan(plan.id)}
                   className={`w-full font-semibold py-4 text-lg transition-all duration-300 ${
                     plan.popular
                       ? "bg-rose-500 hover:bg-rose-600 text-white"
@@ -204,47 +187,6 @@ export default function PricingSection() {
           </p>
         </div>
       </div>
-
-      {/* Modal explaining bag passes */}
-      {showPassInfoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full">
-            <h3 className="text-2xl font-bold text-slate-900 mb-4">Pases de Bolsos Incluidos</h3>
-            <p className="text-slate-600 mb-6">
-              Tu membresía incluye el alquiler mensual, pero para acceder a los bolsos necesitarás{" "}
-              <strong>Pases de Bolsos</strong> adicionales:
-            </p>
-
-            <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Pase L'Essentiel</span>
-                <span className="text-slate-900 font-bold">+52€/mes</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Pase Signature</span>
-                <span className="text-slate-900 font-bold">+99€/mes</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Pase Privé</span>
-                <span className="text-slate-900 font-bold">+137€/mes</span>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-500 mb-6">
-              Podrás seleccionar tus pases de bolsos después de registrarte y elegir tus bolsos del catálogo.
-            </p>
-
-            <div className="flex gap-3">
-              <Button onClick={() => setShowPassInfoModal(false)} variant="outline" className="flex-1">
-                Volver
-              </Button>
-              <Button onClick={handleContinueToSignup} className="flex-1 bg-slate-900 hover:bg-slate-800">
-                Continuar con el registro
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

@@ -12,9 +12,8 @@ export default function CTASection() {
       }}
     >
       <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
-          {/* Left side - CTA Content */}
-          <div>
+        <div className="grid md:grid-cols-12 gap-8 items-center">
+          <div className="md:col-span-6">
             <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
               Únete ahora
             </p>
@@ -28,12 +27,7 @@ export default function CTASection() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
-                onClick={() => {
-                  const membresiaSection = document.getElementById("membresias")
-                  if (membresiaSection) {
-                    membresiaSection.scrollIntoView({ behavior: "smooth" })
-                  }
-                }}
+                onClick={() => (window.location.href = "/checkout?plan=signature")}
                 className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
                 style={{
                   backgroundColor: "rgba(244, 196, 204, 0.6)",
@@ -56,41 +50,40 @@ export default function CTASection() {
             </div>
           </div>
 
-          {/* Right side - Gift Card */}
-          <div className="relative">
-            {/* Ambient background glow */}
+          <div className="md:col-span-5 md:col-start-8">
             <div
-              className="absolute inset-0 rounded-3xl blur-3xl opacity-30"
+              className="pt-8 space-y-8 p-6 rounded-lg backdrop-blur-sm"
               style={{
-                background: "radial-gradient(circle, rgba(244, 196, 204, 0.4) 0%, transparent 70%)",
+                borderTop: "1px solid rgba(244, 196, 204, 0.3)",
+                backgroundColor: "rgba(255, 240, 243, 0.3)",
               }}
-            />
+            >
+              <div>
+                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
+                  Membresías disponibles
+                </div>
+                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
+                  50/100
+                </div>
+              </div>
 
-            <div className="relative w-full aspect-[4/3]">
-              <img
-                src="/images/semzo-gift-card.jpg"
-                alt="Gift Card de Semzo Privé - Expande tu armario, Eleva tus looks cada día"
-                className="w-full h-full object-contain transition-transform duration-500 hover:scale-[1.02]"
-              />
-            </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
+                  Próxima apertura de plazas
+                </div>
+                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
+                  15 de Junio
+                </div>
+              </div>
 
-            {/* Info section below card */}
-            <div className="text-center space-y-4 mt-8">
-              <h3 className="font-serif text-2xl md:text-3xl font-light" style={{ color: "#1a1a4b" }}>
-                Gift Cards de Semzo Privé
-              </h3>
-              <p className="text-sm md:text-base text-slate-600 leading-relaxed max-w-md mx-auto px-4">
-                Regala acceso a lujo y diseño exclusivo. El regalo perfecto para quien valora la elegancia.
-              </p>
-              <Button
-                className="rounded-full px-8 py-5 text-xs uppercase tracking-widest font-medium transition-all duration-300 hover:scale-105"
-                style={{
-                  backgroundColor: "#1a1a4b",
-                  color: "#fff0f3",
-                }}
-              >
-                Próximamente
-              </Button>
+              <div>
+                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
+                  Tiempo de espera actual
+                </div>
+                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
+                  2 semanas
+                </div>
+              </div>
             </div>
           </div>
         </div>

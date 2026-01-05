@@ -4,10 +4,6 @@
 
 @layer base {
   :root {
-    --foreground-rgb: 0, 0, 0;
-    --background-start-rgb: 214, 219, 220;
-    --background-end-rgb: 255, 255, 255;
-
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -40,10 +36,6 @@
   }
 
   .dark {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -83,17 +75,10 @@
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  /* asegurar z-index alto para toasts */
-  [data-radix-toast-viewport] {
-    z-index: 9999 !important;
-  }
-}
+/* Importar fuentes serif para títulos */
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap");
 
-/* Usar fuentes del sistema en lugar de Google Fonts */
+/* Aplicar fuente serif a los elementos con la clase font-serif */
 .font-serif {
-  font-family: "Playfair Display", "Georgia", "Times New Roman", serif;
+  font-family: "Cormorant Garamond", serif;
 }

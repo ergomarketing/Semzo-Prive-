@@ -1,17 +1,10 @@
-"use client"
-
-import type React from "react"
-
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, ArrowRight } from "lucide-react"
-import Link from "next/link"
 
 const featuredArticles = [
   {
     id: 1,
     title: "La Historia Secreta del Birkin de Hermès",
-    slug: "historia-secreta-birkin-hermes",
     excerpt:
       "Descubre los orígenes de uno de los bolsos más codiciados del mundo y por qué su lista de espera puede durar años.",
     category: "Historia",
@@ -23,7 +16,6 @@ const featuredArticles = [
   {
     id: 2,
     title: "Cómo Elegir el Bolso Perfecto para Cada Ocasión",
-    slug: "cuidado-bolsos-lujo",
     excerpt:
       "Nuestra guía definitiva para seleccionar el complemento ideal según el evento, la temporada y tu estilo personal.",
     category: "Guía de Estilo",
@@ -33,19 +25,17 @@ const featuredArticles = [
   },
   {
     id: 3,
-    title: "Gabrielle Chanel y su Legado Atemporal",
-    slug: "gabrielle-chanel-legado",
+    title: "Entrevista: Gabrielle Chanel y su Legado Atemporal",
     excerpt:
       "Un viaje por la vida de la mujer que revolucionó la moda femenina y creó algunos de los diseños más icónicos.",
-    category: "Historia",
+    category: "Entrevista",
     readTime: "12 min",
     date: "10 Mar 2024",
     image: "bg-indigo-dark/10",
   },
   {
     id: 4,
-    title: "Tendencias Primavera 2025: Colores y Texturas",
-    slug: "tendencias-primavera-2025",
+    title: "Tendencias Primavera 2024: Colores y Texturas",
     excerpt: "Los tonos y materiales que dominarán la próxima temporada según las pasarelas de París y Milán.",
     category: "Tendencias",
     readTime: "5 min",
@@ -55,61 +45,6 @@ const featuredArticles = [
 ]
 
 export default function MagazineSection() {
-  const [email, setEmail] = useState("")
-  const [isSubscribing, setIsSubscribing] = useState(false)
-  const [subscribed, setSubscribed] = useState(false)
-
-  const handleNewsletterSubscription = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) return
-
-    setIsSubscribing(true)
-
-    try {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(email)) {
-        console.error("Email inválido")
-        return
-      }
-
-      const defaultName = email.includes("@") ? email.split("@")[0] : "Usuario"
-
-      const response = await fetch("/api/newsletter/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          name: defaultName,
-          preferences: {
-            newArrivals: true,
-            exclusiveOffers: true,
-            styleGuides: true,
-            events: false,
-            membershipUpdates: true,
-          },
-        }),
-      })
-
-      const responseData = await response.json()
-
-      if (response.ok) {
-        console.log("[v0] ✅ Suscripción exitosa:", responseData)
-        setSubscribed(true)
-        setEmail("")
-      } else {
-        console.error("[v0] ❌ Error en suscripción:", responseData)
-        alert(responseData.message || "Error al suscribirse. Por favor, inténtalo de nuevo.")
-      }
-    } catch (error) {
-      console.error("[v0] ❌ Error de red:", error)
-      alert("Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.")
-    } finally {
-      setIsSubscribing(false)
-    }
-  }
-
   return (
     <section
       id="magazine"
@@ -133,11 +68,9 @@ export default function MagazineSection() {
               las últimas tendencias, nuestro magazine es tu ventana al universo de la elegancia atemporal.
             </p>
             <div className="flex justify-center lg:justify-start">
-              <Link href="/blog">
-                <Button className="rounded-none px-6 md:px-8 py-3 md:py-4 text-sm uppercase tracking-widest font-medium bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-900 hover:bg-white transition-all duration-300">
-                  Ver todos los artículos
-                </Button>
-              </Link>
+              <Button className="rounded-none px-6 md:px-8 py-3 md:py-4 text-sm uppercase tracking-widest font-medium bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-900 hover:bg-white transition-all duration-300">
+                Ver todos los artículos
+              </Button>
             </div>
           </div>
         </div>
@@ -146,99 +79,95 @@ export default function MagazineSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Artículo destacado */}
           <div className="lg:col-span-8">
-            <Link href={`/blog/${featuredArticles[0].slug}`}>
-              <article className="group cursor-pointer">
-                <div
-                  className={`relative aspect-[4/3] md:aspect-[16/10] w-full rounded-lg ${featuredArticles[0].image} flex items-center justify-center mb-6 md:mb-8 overflow-hidden`}
-                >
-                  <div className="text-center p-6 md:p-8">
-                    <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-white/40 flex items-center justify-center">
-                      <span className="text-2xl md:text-3xl lg:text-4xl text-indigo-dark">SM</span>
-                    </div>
-                    <h3 className="text-lg md:text-xl font-serif text-indigo-dark mb-2">Imagen Destacada</h3>
-                    <p className="text-sm text-slate-600">Artículo principal del magazine</p>
+            <article className="group cursor-pointer">
+              <div
+                className={`relative aspect-[4/3] md:aspect-[16/10] w-full rounded-lg ${featuredArticles[0].image} flex items-center justify-center mb-6 md:mb-8 overflow-hidden`}
+              >
+                <div className="text-center p-6 md:p-8">
+                  <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-white/40 flex items-center justify-center">
+                    <span className="text-2xl md:text-3xl lg:text-4xl text-indigo-dark">SM</span>
                   </div>
+                  <h3 className="text-lg md:text-xl font-serif text-slate-900 mb-2">Imagen Destacada</h3>
+                  <p className="text-sm text-slate-600">Artículo principal del magazine</p>
+                </div>
 
-                  {/* Overlay con categoría */}
-                  <div className="absolute top-4 md:top-6 left-4 md:left-6">
-                    <span className="px-3 md:px-4 py-1 md:py-2 bg-white/95 backdrop-blur-sm rounded-lg text-xs uppercase tracking-widest font-medium text-indigo-dark">
-                      {featuredArticles[0].category}
-                    </span>
+                {/* Overlay con categoría */}
+                <div className="absolute top-4 md:top-6 left-4 md:left-6">
+                  <span className="px-3 md:px-4 py-1 md:py-2 bg-white/95 backdrop-blur-sm rounded-lg text-xs uppercase tracking-widest font-medium text-indigo-dark">
+                    {featuredArticles[0].category}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 md:space-y-4 text-center lg:text-left">
+                <div className="flex items-center justify-center lg:justify-start space-x-4 md:space-x-6 text-sm text-slate-500">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>{featuredArticles[0].date}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4" />
+                    <span>{featuredArticles[0].readTime} lectura</span>
                   </div>
                 </div>
 
-                <div className="space-y-3 md:space-y-4 text-center lg:text-left">
-                  <div className="flex items-center justify-center lg:justify-start space-x-4 md:space-x-6 text-sm text-slate-500">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{featuredArticles[0].date}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{featuredArticles[0].readTime} lectura</span>
-                    </div>
-                  </div>
+                <h3 className="font-serif text-2xl md:text-3xl lg:text-4xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
+                  {featuredArticles[0].title}
+                </h3>
 
-                  <h3 className="font-serif text-2xl md:text-3xl lg:text-4xl text-indigo-dark leading-tight group-hover:text-indigo-dark/80 transition-colors">
-                    {featuredArticles[0].title}
-                  </h3>
+                <p className="text-base md:text-lg text-slate-600 leading-relaxed font-light">
+                  {featuredArticles[0].excerpt}
+                </p>
 
-                  <p className="text-base md:text-lg text-slate-600 leading-relaxed font-light">
-                    {featuredArticles[0].excerpt}
-                  </p>
-
-                  <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-2 transition-transform">
-                    <span className="text-sm uppercase tracking-widest font-medium mr-2">Leer artículo</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
+                <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-2 transition-transform">
+                  <span className="text-sm uppercase tracking-widest font-medium mr-2">Leer artículo</span>
+                  <ArrowRight className="h-4 w-4" />
                 </div>
-              </article>
-            </Link>
+              </div>
+            </article>
           </div>
 
           {/* Artículos secundarios - mejor spacing en móvil */}
           <div className="lg:col-span-4 space-y-8 md:space-y-12">
             {featuredArticles.slice(1).map((article) => (
-              <Link key={article.id} href={`/blog/${article.slug}`}>
-                <article className="group cursor-pointer">
-                  <div
-                    className={`relative aspect-[4/3] w-full rounded-lg ${article.image} flex items-center justify-center mb-4 md:mb-6 overflow-hidden`}
-                  >
-                    <div className="text-center p-4 md:p-6">
-                      <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-full bg-white/40 flex items-center justify-center">
-                        <span className="text-xl md:text-2xl text-indigo-dark">SM</span>
-                      </div>
-                      <p className="text-xs text-slate-600">Imagen del artículo</p>
+              <article key={article.id} className="group cursor-pointer">
+                <div
+                  className={`relative aspect-[4/3] w-full rounded-lg ${article.image} flex items-center justify-center mb-4 md:mb-6 overflow-hidden`}
+                >
+                  <div className="text-center p-4 md:p-6">
+                    <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-full bg-white/40 flex items-center justify-center">
+                      <span className="text-xl md:text-2xl text-indigo-dark">SM</span>
                     </div>
-
-                    {/* Overlay con categoría */}
-                    <div className="absolute top-3 md:top-4 left-3 md:left-4">
-                      <span className="px-2 md:px-3 py-1 bg-white/95 backdrop-blur-sm rounded text-xs uppercase tracking-widest font-medium text-indigo-dark">
-                        {article.category}
-                      </span>
-                    </div>
+                    <p className="text-xs text-slate-600">Imagen del artículo</p>
                   </div>
 
-                  <div className="space-y-2 md:space-y-3 text-center lg:text-left">
-                    <div className="flex items-center justify-center lg:justify-start space-x-3 md:space-x-4 text-xs text-slate-500">
-                      <span>{article.date}</span>
-                      <span>•</span>
-                      <span>{article.readTime}</span>
-                    </div>
-
-                    <h4 className="font-serif text-lg md:text-xl text-indigo-dark leading-tight group-hover:text-indigo-dark/80 transition-colors">
-                      {article.title}
-                    </h4>
-
-                    <p className="text-sm text-slate-600 leading-relaxed font-light line-clamp-3">{article.excerpt}</p>
-
-                    <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-1 transition-transform">
-                      <span className="text-xs uppercase tracking-widest font-medium mr-2">Leer más</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </div>
+                  {/* Overlay con categoría */}
+                  <div className="absolute top-3 md:top-4 left-3 md:left-4">
+                    <span className="px-2 md:px-3 py-1 bg-white/95 backdrop-blur-sm rounded text-xs uppercase tracking-widest font-medium text-indigo-dark">
+                      {article.category}
+                    </span>
                   </div>
-                </article>
-              </Link>
+                </div>
+
+                <div className="space-y-2 md:space-y-3 text-center lg:text-left">
+                  <div className="flex items-center justify-center lg:justify-start space-x-3 md:space-x-4 text-xs text-slate-500">
+                    <span>{article.date}</span>
+                    <span>•</span>
+                    <span>{article.readTime}</span>
+                  </div>
+
+                  <h4 className="font-serif text-lg md:text-xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
+                    {article.title}
+                  </h4>
+
+                  <p className="text-sm text-slate-600 leading-relaxed font-light line-clamp-3">{article.excerpt}</p>
+
+                  <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-1 transition-transform">
+                    <span className="text-xs uppercase tracking-widest font-medium mr-2">Leer más</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         </div>
@@ -247,47 +176,23 @@ export default function MagazineSection() {
         <div className="mt-16 md:mt-24 p-6 md:p-12 rounded-lg bg-white/60 backdrop-blur-sm border border-slate-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center text-center md:text-left">
             <div>
-              <h3 className="font-serif text-2xl md:text-3xl text-indigo-dark mb-4">Suscríbete a Semzo Magazine</h3>
+              <h3 className="font-serif text-2xl md:text-3xl text-slate-900 mb-4">Suscríbete a Semzo Magazine</h3>
               <p className="text-slate-600 leading-relaxed font-light">
                 Recibe nuestros artículos exclusivos, guías de estilo y las últimas tendencias directamente en tu
                 bandeja de entrada. Una dosis semanal de elegancia y sofisticación.
               </p>
             </div>
             <div className="space-y-4">
-              {subscribed ? (
-                <div
-                  className="text-center p-4 rounded-lg border"
-                  style={{
-                    backgroundColor: "rgba(244, 196, 204, 0.6)",
-                    borderColor: "rgba(244, 196, 204, 0.3)",
-                  }}
-                >
-                  <p className="font-medium" style={{ color: "#1a1a4b" }}>
-                    ¡Gracias por suscribirte!
-                  </p>
-                  <p className="text-sm" style={{ color: "#1a1a4b" }}>
-                    Recibirás nuestro próximo newsletter pronto.
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleNewsletterSubscription} className="flex flex-col sm:flex-row">
-                  <input
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="flex-1 px-4 md:px-6 py-3 md:py-4 border border-slate-200 rounded-t sm:rounded-l sm:rounded-t-none focus:outline-none focus:border-indigo-dark text-slate-900"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={isSubscribing}
-                    className="rounded-b sm:rounded-l-none sm:rounded-r px-6 md:px-8 py-3 md:py-4 bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-all duration-300 disabled:opacity-50"
-                  >
-                    {isSubscribing ? "Suscribiendo..." : "Suscribirse"}
-                  </Button>
-                </form>
-              )}
+              <div className="flex flex-col sm:flex-row">
+                <input
+                  type="email"
+                  placeholder="tu@email.com"
+                  className="flex-1 px-4 md:px-6 py-3 md:py-4 border border-slate-200 rounded-t sm:rounded-l sm:rounded-t-none focus:outline-none focus:border-indigo-dark text-slate-900"
+                />
+                <Button className="rounded-b sm:rounded-l-none sm:rounded-r px-6 md:px-8 py-3 md:py-4 bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-all duration-300">
+                  Suscribirse
+                </Button>
+              </div>
               <p className="text-xs text-slate-500 text-center">
                 Sin spam. Solo contenido de calidad. Cancela cuando quieras.
               </p>

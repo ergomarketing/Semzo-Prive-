@@ -218,7 +218,8 @@ export default function CompleteReservationForm({
 
     setIsSubmitting(true)
     try {
-      const { supabase } = await import("@/lib/supabase")
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000))
 
       const reservationData = {
         bag: selectedBag,
@@ -232,35 +233,8 @@ export default function CompleteReservationForm({
         reservationId: `RES-${Date.now()}`,
       }
 
-      const { data, error } = await supabase
-        .from("reservations")
-        .insert([
-          {
-            user_id: customerInfo.email, // Using email as identifier for now
-            bag_id: selectedBag.id,
-            start_date: reservationDates.startDate.toISOString(),
-            end_date: reservationDates.endDate.toISOString(),
-            total_amount: pricing.total,
-            status: "pending",
-            customer_info: customerInfo,
-            shipping_info: shippingInfo,
-            payment_info: { method: paymentInfo.method }, // Don't store sensitive payment data
-            preferences: preferences,
-            created_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-
-      if (error) {
-        console.error("[v0] ❌ Error storing reservation in Supabase:", error)
-        setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
-        return
-      }
-
-      console.log("[v0] ✅ Reserva guardada en Supabase exitosamente")
       onSubmit?.(reservationData)
     } catch (error) {
-      console.error("[v0] ❌ Error en reserva:", error)
       setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
     } finally {
       setIsSubmitting(false)
@@ -837,7 +811,7 @@ export default function CompleteReservationForm({
                 <Button
                   variant="outline"
                   onClick={currentStep === 1 ? onCancel : prevStep}
-                  className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white bg-transparent"
+                  className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   {currentStep === 1 ? "Cancelar" : "Anterior"}

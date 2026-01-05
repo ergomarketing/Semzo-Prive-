@@ -28,54 +28,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, membershipType, userEmail, userId, couponCode, giftCardUsed } = await request.json()
+    const { amount, membershipType, userEmail } = await request.json()
 
     console.log("📊 Datos recibidos:", {
       amount,
       membershipType,
       userEmail,
-      userId,
-      couponCode,
       timestamp: new Date().toISOString(),
     })
 
     // Validar datos
-    if (!membershipType || !userEmail || !userId) {
-      console.error("❌ Datos faltantes:", { amount, membershipType, userEmail, userId })
+    if (!amount || !membershipType || !userEmail) {
+      console.error("❌ Datos faltantes:", { amount, membershipType, userEmail })
       return NextResponse.json(
         {
           error: "Datos incompletos",
-          details: "Se requieren membershipType, userEmail y userId",
+          details: "Se requieren amount, membershipType y userEmail",
         },
         { status: 400 },
       )
-    }
-
-    if (typeof userEmail !== "string" || userEmail.trim() === "" || !userEmail.includes("@")) {
-      console.error("❌ Email vacío o inválido:", userEmail)
-      return NextResponse.json(
-        {
-          error: "Dirección de correo electrónico no válida",
-          details: "Se requiere un email válido para procesar el pago",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (amount === 0 || amount === null || amount === undefined) {
-      console.log("🎁 Membresía gratuita con cupón/gift card:", { couponCode, giftCardUsed })
-
-      const freePaymentId = `FREE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-      return NextResponse.json({
-        clientSecret: null,
-        paymentIntentId: freePaymentId,
-        amount: 0,
-        currency: "eur",
-        isFree: true,
-        couponApplied: couponCode,
-        giftCardUsed,
-      })
     }
 
     if (typeof amount !== "number" || amount <= 0) {
@@ -99,12 +70,8 @@ export async function POST(request: NextRequest) {
         enabled: true,
       },
       metadata: {
-        user_id: userId,
-        plan_id: membershipType,
         membershipType,
         userEmail,
-        couponCode: couponCode || "", // Guardar cupón en metadata
-        giftCardUsed: giftCardUsed ? JSON.stringify(giftCardUsed) : "",
         createdAt: new Date().toISOString(),
       },
     })
@@ -115,7 +82,6 @@ export async function POST(request: NextRequest) {
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
       status: paymentIntent.status,
-      couponCode,
       processingTime: `${processingTime}ms`,
     })
 
@@ -124,7 +90,6 @@ export async function POST(request: NextRequest) {
       paymentIntentId: paymentIntent.id,
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
-      couponApplied: couponCode || null,
     })
   } catch (error) {
     const processingTime = Date.now() - startTime

@@ -1,324 +1,303 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
-import { Mail, CheckCircle2, AlertCircle } from "lucide-react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useRouter } from "next/navigation"
 
-function SignupContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+export default function SignupPage() {
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
     firstName: "",
     lastName: "",
+    email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
+    acceptTerms: false,
+    acceptMarketing: false,
   })
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null)
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [selectedBag, setSelectedBag] = useState<string | null>(null)
-  const [requiresConfirmation, setRequiresConfirmation] = useState(false)
-
-  useEffect(() => {
-    const plan = searchParams.get("plan")
-    const bag = searchParams.get("bag")
-    if (plan) setSelectedPlan(plan)
-    if (bag) setSelectedBag(bag)
-  }, [searchParams])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setMessage(null)
+    setIsLoading(true)
+    setErrors({})
+    setSuccess(false)
 
+    // Validación
+    const newErrors: Record<string, string> = {}
+    if (!formData.firstName.trim()) newErrors.firstName = "El nombre es obligatorio"
+    if (!formData.lastName.trim()) newErrors.lastName = "Los apellidos son obligatorios"
+    if (!formData.email.trim()) newErrors.email = "El email es obligatorio"
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Email inválido"
+    }
+    if (!formData.password) newErrors.password = "La contraseña es obligatoria"
+    if (formData.password.length < 6) newErrors.password = "La contraseña debe tener al menos 6 caracteres"
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Las contraseñas no coinciden" })
-      setLoading(false)
-      return
+      newErrors.confirmPassword = "Las contraseñas no coinciden"
     }
+    if (!formData.acceptTerms) newErrors.acceptTerms = "Debes aceptar los términos y condiciones"
 
-    if (formData.password.length < 8) {
-      setMessage({ type: "error", text: "La contraseña debe tener al menos 8 caracteres" })
-      setLoading(false)
-      return
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-    if (!passwordRegex.test(formData.password)) {
-      setMessage({
-        type: "error",
-        text: "La contraseña debe contener al menos una mayúscula, una minúscula y un número",
-      })
-      setLoading(false)
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      setIsLoading(false)
       return
     }
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
-
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/login?confirmed=true`,
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-          },
-        },
+      // Llamar a la API de registro
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+        }),
       })
 
-      if (error) {
-        if (error.message.includes("already registered")) {
-          setMessage({
-            type: "error",
-            text: "Este correo ya está registrado. Por favor inicia sesión o usa la opción de recuperar contraseña.",
-          })
-        } else {
-          setMessage({ type: "error", text: error.message })
-        }
-        setLoading(false)
-        return
-      }
+      const result = await response.json()
 
-      const needsConfirmation = data.user && !data.session
-      setRequiresConfirmation(needsConfirmation)
-
-      if (needsConfirmation) {
-        setMessage({
-          type: "success",
-          text: "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
-        })
-      } else {
-        setMessage({
-          type: "success",
-          text: "Cuenta creada exitosamente. Redirigiendo...",
-        })
-
+      if (result.success) {
+        setSuccess(true)
         setTimeout(() => {
-          let loginUrl = "/auth/login?registered=true"
-          if (selectedPlan) loginUrl += `&plan=${selectedPlan}`
-          if (selectedBag) loginUrl += `&bag=${selectedBag}`
-          router.push(loginUrl)
+          router.push("/dashboard")
         }, 2000)
+      } else {
+        setErrors({ general: result.message || "Error al crear la cuenta" })
       }
-
-      setFormData({
-        email: "",
-        password: "",
-        confirmPassword: "",
-        firstName: "",
-        lastName: "",
-        phone: "",
-      })
     } catch (error) {
-      setMessage({ type: "error", text: "Error de conexión. Por favor verifica tu internet e inténtalo de nuevo." })
+      setErrors({ general: "Error de conexión. Inténtalo de nuevo." })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-        <CardDescription className="text-gray-600">
-          {selectedPlan ? (
-            <>
-              Únete a Semzo Privé con el plan <span className="font-semibold capitalize">{selectedPlan}</span>
-            </>
-          ) : (
-            "Únete a Semzo Privé y accede a bolsos de lujo exclusivos"
-          )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {selectedPlan && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
-            <p className="text-sm text-rose-800 text-center">
-              Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
-            </p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">Nombre</Label>
-              <Input
-                id="firstName"
-                name="firstName"
-                type="text"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Apellido</Label>
-              <Input
-                id="lastName"
-                name="lastName"
-                type="text"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono (opcional)</Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500">Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas y números</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          {message && (
-            <Alert
-              className={
-                message.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : message.type === "info"
-                    ? "border-blue-200 bg-blue-50"
-                    : "border-rose-200 bg-rose-50"
-              }
-            >
-              <div className="flex items-start gap-2">
-                {message.type === "error" && <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />}
-                {message.type === "success" && <CheckCircle2 className="h-4 w-4 text-indigo-dark mt-0.5" />}
-                {message.type === "info" && <Mail className="h-4 w-4 text-blue-600 mt-0.5" />}
-                <AlertDescription
-                  className={
-                    message.type === "error"
-                      ? "text-red-800"
-                      : message.type === "info"
-                        ? "text-blue-800"
-                        : "text-indigo-dark"
-                  }
-                >
-                  {message.text}
-                  {message.type === "success" && requiresConfirmation && (
-                    <div className="mt-3 p-3 bg-white/50 rounded border border-indigo-dark">
-                      <p className="text-sm font-medium text-indigo-dark mb-1">Revisa tu bandeja de entrada</p>
-                      <p className="text-xs text-indigo-dark">
-                        Te hemos enviado un email de confirmación. Haz clic en el enlace para activar tu cuenta.
-                      </p>
-                    </div>
-                  )}
-                  {message.type === "success" && !requiresConfirmation && (
-                    <div className="mt-2 text-sm text-indigo-dark">Serás redirigido al login en 2 segundos...</div>
-                  )}
-                </AlertDescription>
-              </div>
-            </Alert>
-          )}
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creando cuenta..." : "Crear Cuenta"}
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            ¿Ya tienes cuenta?{" "}
-            <Link
-              href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
-              className="text-pink-600 hover:text-pink-700 font-medium"
-            >
-              Inicia sesión
-            </Link>
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-export default function SignupPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 p-4">
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-              <CardDescription className="text-gray-600">Cargando...</CardDescription>
-            </CardHeader>
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
+        <div className="container mx-auto px-4 max-w-md">
+          <Card className="border-0 shadow-xl">
+            <CardContent className="p-8 text-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="font-serif text-2xl text-slate-900 mb-4">¡Cuenta creada exitosamente!</h2>
+              <p className="text-slate-600 mb-6">
+                Bienvenida a Semzo Privé. Serás redirigida a tu dashboard en unos segundos...
+              </p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-dark mx-auto"></div>
+            </CardContent>
           </Card>
-        }
-      >
-        <SignupContent />
-      </Suspense>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 flex items-center justify-center py-12">
+      <div className="container mx-auto px-4 max-w-md">
+        <Card className="border-0 shadow-xl">
+          <CardHeader className="text-center pb-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-pastel/20 flex items-center justify-center">
+              <span className="text-2xl text-indigo-dark font-serif">SP</span>
+            </div>
+            <CardTitle className="font-serif text-3xl text-slate-900">Únete a Semzo Privé</CardTitle>
+            <p className="text-slate-600">Crea tu cuenta para acceder a nuestro catálogo exclusivo</p>
+          </CardHeader>
+
+          <CardContent className="px-8 pb-8">
+            {errors.general && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+                <span className="text-red-700">{errors.general}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName" className="text-slate-700 font-medium mb-2 block">
+                    Nombre *
+                  </Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    placeholder="María"
+                    className={`h-12 ${errors.firstName ? "border-red-300" : ""}`}
+                  />
+                  {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="lastName" className="text-slate-700 font-medium mb-2 block">
+                    Apellidos *
+                  </Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    placeholder="García"
+                    className={`h-12 ${errors.lastName ? "border-red-300" : ""}`}
+                  />
+                  {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
+                  Email *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="maria@ejemplo.com"
+                  className={`h-12 ${errors.email ? "border-red-300" : ""}`}
+                />
+                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="phone" className="text-slate-700 font-medium mb-2 block">
+                  Teléfono (opcional)
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+34 600 000 000"
+                  className="h-12"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
+                  Contraseña *
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    className={`h-12 pr-12 ${errors.password ? "border-red-300" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword" className="text-slate-700 font-medium mb-2 block">
+                  Confirmar contraseña *
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder="Repite tu contraseña"
+                    className={`h-12 pr-12 ${errors.confirmPassword ? "border-red-300" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={formData.acceptTerms}
+                    onChange={(e) => setFormData({ ...formData, acceptTerms: e.target.checked })}
+                    className="mt-1 mr-3"
+                  />
+                  <Label htmlFor="acceptTerms" className="text-sm text-slate-700">
+                    Acepto los{" "}
+                    <Link href="/legal/terms" className="text-indigo-dark underline">
+                      términos y condiciones
+                    </Link>{" "}
+                    y la{" "}
+                    <Link href="/legal/privacy" className="text-indigo-dark underline">
+                      política de privacidad
+                    </Link>{" "}
+                    *
+                  </Label>
+                </div>
+                {errors.acceptTerms && <p className="text-sm text-red-600">{errors.acceptTerms}</p>}
+
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="acceptMarketing"
+                    checked={formData.acceptMarketing}
+                    onChange={(e) => setFormData({ ...formData, acceptMarketing: e.target.checked })}
+                    className="mt-1 mr-3"
+                  />
+                  <Label htmlFor="acceptMarketing" className="text-sm text-slate-700">
+                    Quiero recibir ofertas exclusivas y novedades por email
+                  </Label>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    Creando cuenta...
+                  </>
+                ) : (
+                  "Crear cuenta"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-8 text-center">
+              <p className="text-slate-600">
+                ¿Ya tienes cuenta?{" "}
+                <Link href="/auth/login" className="text-indigo-dark hover:underline font-medium">
+                  Inicia sesión
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

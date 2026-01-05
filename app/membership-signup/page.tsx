@@ -7,7 +7,7 @@ import Link from "next/link"
 
 export default function MembershipSignupPage() {
   const handleSelectPlan = (planId: string) => {
-    window.location.href = `/signup?plan=${planId}`
+    window.location.href = `/checkout?plan=${planId}`
   }
 
   return (

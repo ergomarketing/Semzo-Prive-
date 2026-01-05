@@ -1,85 +1,40 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import {
-  Clock,
-  Shield,
-  Heart,
-  ArrowLeft,
-  ZoomIn,
-  Star,
-  Share2,
-  Truck,
-  RotateCcw,
-  Check,
-  Calendar,
-  Loader2,
-} from "lucide-react"
+import { Clock, Shield, Heart, ArrowLeft, ZoomIn, Star, Share2, Truck, RotateCcw } from "lucide-react"
 import Link from "next/link"
-import { createBrowserClient } from "@supabase/ssr"
-import { useCart } from "@/app/contexts/cart-context"
-import { useRouter } from "next/navigation"
-import { toast } from "@/components/ui/use-toast"
-import { useAuth } from "@/app/hooks/useAuth"
 
 interface BagDetailProps {
-  bag: {
-    id: string
-    name: string
-    brand: string
-    description: string
-    price: string
-    retailPrice: string
-    images: string[]
-    membership: "essentiel" | "signature" | "prive"
-    color: string
-    material: string
-    dimensions: string
-    condition: string
-    year: string
-    availability: {
-      status: "available" | "rented"
-      returnDate?: string
-    }
-    rating: number
-    reviews: number
-    features: string[]
-    careInstructions: string[]
+  id: string
+  name: string
+  brand: string
+  description: string
+  price: string
+  retailPrice: string
+  images: string[]
+  membership: "essentiel" | "signature" | "prive"
+  color: string
+  material: string
+  dimensions: string
+  condition: string
+  year: string
+  availability: {
+    status: "available" | "reserved" | "unavailable"
+    date?: string
   }
-  relatedBags?: {
-    id: string
-    name: string
-    brand: string
-    price: string
-    image: string
-    membership: string
-  }[]
+  features?: string[]
+  careInstructions?: string[]
+  rating?: number
+  reviews?: number
 }
 
-export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
+export default function BagDetail({ bag }: { bag: BagDetailProps }) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [inWishlist, setInWishlist] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
-  const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
-  const [isInWaitlist, setIsInWaitlist] = useState(false)
-  const [pendingItems, setPendingItems] = useState<any[]>([])
-  const [showReplaceDialog, setShowReplaceDialog] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-
-  const [userMembership, setUserMembership] = useState<{
-    tier: string | null
-    isActive: boolean
-  }>({ tier: null, isActive: false })
-  const [isReserving, setIsReserving] = useState(false)
-  const { user: authUser, loading: authLoading } = useAuth()
-  const userId = authUser?.id || null
-
-  const { addItem, addItems, hasMembership, replaceMembership } = useCart()
-  const router = useRouter()
-  const [selectedMembership, setSelectedMembership] = useState<string>("petite")
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -87,395 +42,63 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     prive: "bg-indigo-dark text-white",
   }
 
-  const membershipNames: Record<string, string> = {
-    petite: "Petite",
+  const membershipNames = {
     essentiel: "L'Essentiel",
     signature: "Signature",
     prive: "Privé",
   }
 
-  const membershipConfig: Record<string, { name: string; price: number; quarterlyPrice: number; description: string }> =
-    {
-      essentiel: {
-        name: "MEMBRESÍA L'ESSENTIEL",
-        price: 59,
-        quarterlyPrice: 149,
-        description: "Accede a este bolso y cámbialo por otro de la colección L'Essentiel cada mes.",
-      },
-      signature: {
-        name: "MEMBRESÍA SIGNATURE",
-        price: 129,
-        quarterlyPrice: 329,
-        description: "Accede a este bolso y cámbialo por otro de la colección Signature cada mes.",
-      },
-      prive: {
-        name: "MEMBRESÍA PRIVÉ",
-        price: 189,
-        quarterlyPrice: 479,
-        description: "Accede a este bolso y cámbialo por otro de la colección Privé cada mes.",
-      },
-    }
-
-  // Obtener la configuración correcta según el tier del bolso
-  const currentMembershipConfig = membershipConfig[bag.membership] || membershipConfig.essentiel
-
-  const membershipOptions: Record<
-    string,
-    {
-      name: string
-      badge: string
-      badgeColor: string
-      description: string
-      price?: number
-      monthlyEquivalent?: string
-      period: string
-      billingCycle: string
-    }
-  > = {
-    petite: {
-      name: membershipNames.petite,
-      badge: "Semanal",
-      badgeColor: "bg-rose-50 text-rose-500",
-      description:
-        "Accede a este bolso por una semana. Perfecto para eventos especiales o para probar antes de comprometerte.",
-      basePrice: 19.99,
-      bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137,
-      period: "/semana",
-      billingCycle: "weekly",
-    },
-    essentiel: {
-      name: currentMembershipConfig.name,
-      badge: "Mensual",
-      badgeColor: "bg-rose-50 text-rose-500",
-      description: currentMembershipConfig.description,
-      price: currentMembershipConfig.price,
-      period: "/mes",
-      billingCycle: "monthly",
-    },
-    "essentiel-quarterly": {
-      name: currentMembershipConfig.name,
-      badge: "Ahorra 16%",
-      badgeColor: "bg-rose-50 text-rose-500",
-      description: `Accede a la colección ${membershipNames[bag.membership]} completa durante 3 meses con descuento especial.`,
-      price: currentMembershipConfig.quarterlyPrice,
-      monthlyEquivalent: `${(currentMembershipConfig.quarterlyPrice / 3).toFixed(2)}€/mes`,
-      period: "/trimestre",
-      billingCycle: "quarterly",
-    },
-  }
-
-  const membershipImages: Record<string, string> = {
-    petite: "/images/jacquemus-le-chiquito.jpg",
-    essentiel: "/images/louis-vuitton-essentiel-new.jpg",
-    signature: "/images/dior-lady-bag.jpg",
-    prive: "/images/chanel-prive-pink.jpg",
-  }
-
   const availabilityStatus = {
     available: {
       label: "Disponible",
-      color: "text-[#1a2c4e]",
-      bgColor: "bg-rose-50",
+      color: "text-green-600",
+      bgColor: "bg-green-50",
       message: "Este bolso está disponible para reserva inmediata",
     },
-    rented: {
-      label: "Fuera con Miembro",
-      color: "text-[#1a2c4e]",
-      bgColor: "bg-rose-50",
-      message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
+    reserved: {
+      label: "Reservado",
+      color: "text-amber-600",
+      bgColor: "bg-amber-50",
+      message: "Este bolso estará disponible a partir del ",
+    },
+    unavailable: {
+      label: "No disponible",
+      color: "text-red-600",
+      bgColor: "bg-red-50",
+      message: "Este bolso no está disponible actualmente",
     },
   }
 
-  const bagsToShow = relatedBags || []
-
-  const addToWaitlist = async () => {
-    setIsAddingToWaitlist(true)
-    try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        alert("Debes iniciar sesión para unirte a la lista de espera")
-        window.location.href = "/login"
-        return
-      }
-
-      const { data: existing } = await supabase
-        .from("waitlist")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("bag_id", bag.id)
-        .single()
-
-      if (existing) {
-        setIsInWaitlist(true)
-        alert("Ya estás en la lista de espera para este bolso")
-        return
-      }
-
-      const { error } = await supabase.from("waitlist").insert({
-        user_id: user.id,
-        bag_id: bag.id,
-        bag_name: `${bag.brand} ${bag.name}`,
-      })
-
-      if (error) throw error
-
-      setIsInWaitlist(true)
-      alert("¡Te notificaremos cuando este bolso esté disponible!")
-    } catch (error) {
-      console.error("Error al agregar a lista de espera:", error)
-      alert("Hubo un error. Por favor intenta de nuevo.")
-    } finally {
-      setIsAddingToWaitlist(false)
-    }
-  }
-
-  const handleReserve = () => {
-    const option = membershipOptions[selectedMembership]
-    let itemsToAdd: any[] = []
-
-    if (selectedMembership === "petite") {
-      // Para Petite: agregar DOS items separados
-      const membershipItem = {
-        id: `petite-membership-${Date.now()}`,
-        name: "Membresía Petite",
-        price: `${option.basePrice.toFixed(2)}€`,
-        billingCycle: option.billingCycle,
-        description: "Membresía base semanal",
-        image: membershipImages.petite,
-        brand: "Semzo Privé",
-        itemType: "membership",
-      }
-
-      const bagPassItem = {
-        id: `bag-pass-${bag.id}-${Date.now()}`,
-        name: `Pase Bolso ${membershipNames[bag.membership]}`,
-        price: `${option.bagPass.toFixed(2)}€`,
-        billingCycle: option.billingCycle,
-        description: `${bag.brand} ${bag.name}`,
-        image: bag.images[0],
-        brand: bag.brand,
-        itemType: "bag-pass",
-      }
-
-      itemsToAdd = [membershipItem, bagPassItem]
-    } else {
-      // Para otras membresías: usar la imagen correcta según el tier del bolso
-      const membershipImage = membershipImages[bag.membership] || membershipImages.essentiel
-      const price = `${option.price}€`
-      const cartItem = {
-        id: `${selectedMembership}-${bag.id}-${Date.now()}`,
-        name: option.name.replace("MEMBRESÍA ", ""),
-        price,
-        billingCycle: option.billingCycle,
-        description: `${bag.brand} ${bag.name}`,
-        image: membershipImage,
-        brand: bag.brand,
-        itemType: "membership",
-      }
-      itemsToAdd = [cartItem]
-    }
-
-    // Simplemente agregamos los items y redirigimos
-    if (itemsToAdd.length > 1) {
-      addItems(itemsToAdd)
-    } else {
-      addItem(itemsToAdd[0])
-    }
-    router.push("/cart")
-  }
-
-  const handleConfirmReplace = () => {
-    replaceMembership(pendingItems)
-    setShowReplaceDialog(false)
-    setPendingItems([])
-    router.push("/cart")
-  }
-
-  const handleDirectReservation = async () => {
-    if (!userId) {
-      console.log("[v0] No userId, redirecting to login")
-      window.location.href = "/auth/login?redirect=/catalog/" + bag.id
-      return
-    }
-
-    if (!userMembership.tier || !userMembership.isActive) {
-      console.log("[v0] No active membership, showing upgrade option")
-      return
-    }
-
-    setIsReserving(true)
-
-    try {
-      console.log("[v0] Creating reservation for user:", userId, "bag:", bag.id)
-
-      const startDate = new Date()
-      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week
-
-      const response = await fetch("/api/user/reservations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId,
-        },
-        body: JSON.stringify({
-          bag_id: bag.id,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-        }),
-      })
-
-      const data = await response.json()
-      console.log("[v0] Reservation response:", data)
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al crear la reserva")
-      }
-
-      toast({
-        title: "¡Reserva exitosa!",
-        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
-      })
-
-      router.push("/dashboard/reservas")
-    } catch (error: any) {
-      console.error("[v0] Error creating reservation:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
-        variant: "destructive",
-      })
-    } finally {
-      setIsReserving(false)
-    }
-  }
-
-  const handleQuickReserve = async () => {
-    if (!authUser) {
-      setShowAuthModal(true)
-      return
-    }
-
-    if (!canReserveWithMembership()) {
-      toast({
-        title: "Membresía insuficiente",
-        description: `Este bolso requiere membresía ${bag.membership.toUpperCase()}. Tu membresía actual: ${userMembership.tier || "Free"}`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsReserving(true)
-
-    try {
-      const startDate = new Date()
-      startDate.setHours(0, 0, 0, 0)
-      const endDate = new Date(startDate)
-      endDate.setDate(endDate.getDate() + 7)
-
-      const response = await fetch("/api/user/reservations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": authUser.id,
-        },
-        body: JSON.stringify({
-          bag_id: bag.id,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al crear la reserva")
-      }
-
-      toast({
-        title: "¡Reserva exitosa!",
-        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
-      })
-
-      router.push("/dashboard/reservas")
-    } catch (error) {
-      console.error("[v0] Error creating quick reservation:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
-        variant: "destructive",
-      })
-    } finally {
-      setIsReserving(false)
-    }
-  }
-
-  const canReserveWithMembership = () => {
-    if (!userMembership.isActive || !userMembership.tier) return false
-
-    const tierHierarchy: Record<string, number> = {
-      free: 0,
-      petite: 1,
-      essentiel: 2,
-      signature: 3,
-      prive: 4,
-    }
-
-    const userTierLevel = tierHierarchy[userMembership.tier] || 0
-    const bagTierLevel = tierHierarchy[bag.membership] || 0
-
-    return userTierLevel >= bagTierLevel
-  }
-
-  useEffect(() => {
-    const fetchUserMembership = async () => {
-      if (!userId || authLoading) return
-
-      try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        )
-
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("membership_type, membership_status, subscription_end_date")
-          .eq("id", userId)
-          .single()
-
-        if (error) {
-          console.error("[v0] Error fetching membership:", error)
-          return
-        }
-
-        if (profile) {
-          const isActive =
-            profile.membership_status === "active" ||
-            (profile.subscription_end_date && new Date(profile.subscription_end_date) > new Date())
-
-          setUserMembership({
-            tier: profile.membership_type || null,
-            isActive: !!isActive,
-          })
-          console.log("[v0] User membership loaded:", { tier: profile.membership_type, isActive })
-        }
-      } catch (error) {
-        console.error("[v0] Error in fetchUserMembership:", error)
-      }
-    }
-
-    fetchUserMembership()
-  }, [userId, authLoading])
+  const relatedBags = [
+    {
+      id: "chanel-classic-flap",
+      name: "Classic Flap Medium",
+      brand: "Chanel",
+      price: "129€/mes",
+      image: "/images/catalog/chanel-classic-flap.png",
+      membership: "signature",
+    },
+    {
+      id: "dior-lady-dior",
+      name: "Lady Dior Medium",
+      brand: "Dior",
+      price: "129€/mes",
+      image: "/images/catalog/dior-lady-dior.png",
+      membership: "signature",
+    },
+    {
+      id: "lv-capucines-mm",
+      name: "Capucines MM",
+      brand: "Louis Vuitton",
+      price: "129€/mes",
+      image: "/images/catalog/lv-capucines.png",
+      membership: "signature",
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Navegación superior */}
       <div className="container mx-auto px-4 py-6">
         <Link
           href="/catalog"
@@ -488,15 +111,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
       <div className="container mx-auto px-4 pb-12">
         <div className="grid lg:grid-cols-2 gap-12">
+          {/* Galería de imágenes mejorada */}
           <div className="space-y-4">
             <div className="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden group">
-              {bag.availability.status === "rented" && (
-                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <p className="text-2xl font-serif mb-2">FUERA CON MIEMBRO</p>
-                  </div>
-                </div>
-              )}
               <Image
                 src={bag.images[selectedImage] || "/placeholder.svg"}
                 alt={bag.name}
@@ -511,6 +128,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 <ZoomIn className="h-5 w-5 text-slate-700" />
               </button>
 
+              {/* Indicadores de imagen */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
                 {bag.images.map((_, index) => (
                   <button
@@ -524,6 +142,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               </div>
             </div>
 
+            {/* Miniaturas */}
             <div className="grid grid-cols-4 gap-3">
               {bag.images.map((image, index) => (
                 <button
@@ -547,10 +166,14 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             </div>
           </div>
 
+          {/* Información del producto mejorada */}
           <div className="space-y-8">
+            {/* Header del producto */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <span className="inline-block px-4 py-2 rounded-full text-sm font-medium bg-rose-50 text-[#1a2c4e]">
+                <span
+                  className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${membershipColors[bag.membership]}`}
+                >
                   {membershipNames[bag.membership]}
                 </span>
                 <div className="flex items-center space-x-2">
@@ -566,15 +189,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 </div>
               </div>
 
-              <p className="text-lg text-slate-500 mb-1">{bag.brand}</p>
               <h1 className="font-serif text-4xl text-slate-900 mb-2">{bag.name}</h1>
+              <p className="text-2xl text-slate-700 mb-4">{bag.brand}</p>
 
-              <p className="text-sm text-slate-500 uppercase tracking-wide mb-2">
-                PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>
-              </p>
-
+              {/* Rating */}
               {bag.rating && (
-                <div className="flex items-center mb-6">
+                <div className="flex items-center mb-4">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -588,357 +208,241 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   <span className="ml-2 text-slate-600">({bag.reviews} reseñas)</span>
                 </div>
               )}
+
+              <div className="flex items-baseline space-x-4">
+                <p className="text-3xl font-semibold text-slate-900">{bag.price}</p>
+                <p className="text-lg text-slate-500 line-through">{bag.retailPrice}</p>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  Ahorro del 85%
+                </span>
+              </div>
             </div>
 
-            {authUser ? (
-              // User is logged in - show reservation options
-              <div className="space-y-4">
-                <div
-                  className={`p-4 rounded-xl border-2 ${canReserveWithMembership() ? "border-indigo-dark/30 bg-rose-nude" : "border-rose-pastel bg-rose-nude"}`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check
-                      className={`h-5 w-5 ${canReserveWithMembership() ? "text-indigo-dark" : "text-indigo-dark/70"}`}
-                    />
-                    <span
-                      className={`font-semibold ${canReserveWithMembership() ? "text-indigo-dark" : "text-indigo-dark/70"}`}
-                    >
-                      Membresía {userMembership.tier?.charAt(0).toUpperCase()}
-                      {userMembership.tier?.slice(1)} Activa
-                    </span>
-                  </div>
+            {/* Estado de disponibilidad */}
+            <div className={`p-6 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
+              <div className="flex items-start">
+                <Clock className={`h-6 w-6 mr-3 mt-0.5 ${availabilityStatus[bag.availability.status].color}`} />
+                <div>
+                  <h4 className={`font-semibold mb-2 ${availabilityStatus[bag.availability.status].color}`}>
+                    {availabilityStatus[bag.availability.status].label}
+                  </h4>
+                  <p className="text-slate-700">
+                    {availabilityStatus[bag.availability.status].message}
+                    {bag.availability.date && bag.availability.status === "reserved" && (
+                      <span className="font-medium">{bag.availability.date}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                  {userMembership.tier === "petite" && !canReserveWithMembership() ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-indigo-dark/70">
-                        Este bolso es de la colección {membershipNames[bag.membership]}. Necesitas un Pase de Bolso para
-                        acceder.
-                      </p>
-                      <div className="bg-white p-3 rounded-lg border border-rose-pastel">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-indigo-dark">Pase Bolso {membershipNames[bag.membership]}</p>
-                            <p className="text-sm text-indigo-dark/60">Acceso único a este bolso por una semana</p>
-                          </div>
-                          <p className="font-bold text-lg text-indigo-dark">
-                            {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€
-                          </p>
+            {/* Botones de acción */}
+            <div className="flex space-x-4">
+              <Button
+                className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90 h-14 text-lg font-medium"
+                disabled={bag.availability.status !== "available"}
+              >
+                {bag.availability.status === "available" ? "Reservar ahora" : "No disponible"}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white h-14 px-6"
+              >
+                Consultar
+              </Button>
+            </div>
+
+            {/* Tabs de información */}
+            <div className="border-t pt-8">
+              <div className="flex space-x-8 border-b">
+                {["details", "features", "care"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`pb-4 text-sm font-medium transition-colors ${
+                      activeTab === tab
+                        ? "text-indigo-dark border-b-2 border-indigo-dark"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {tab === "details" && "Detalles"}
+                    {tab === "features" && "Características"}
+                    {tab === "care" && "Cuidados"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-6">
+                {activeTab === "details" && (
+                  <div className="space-y-6">
+                    <p className="text-slate-700 leading-relaxed text-lg">{bag.description}</p>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-slate-500 text-sm">Color</span>
+                          <p className="font-medium text-slate-900">{bag.color}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Material</span>
+                          <p className="font-medium text-slate-900">{bag.material}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Dimensiones</span>
+                          <p className="font-medium text-slate-900">{bag.dimensions}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-slate-500 text-sm">Estado</span>
+                          <p className="font-medium text-slate-900">{bag.condition}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Año</span>
+                          <p className="font-medium text-slate-900">{bag.year}</p>
                         </div>
                       </div>
                     </div>
-                  ) : canReserveWithMembership() ? (
-                    <p className="text-sm text-indigo-dark/70">
-                      Puedes reservar este bolso directamente con tu membresía.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-indigo-dark/70">
-                      Este bolso requiere membresía {membershipNames[bag.membership]}. Tu membresía actual es{" "}
-                      {userMembership.tier}.
-                    </p>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {userMembership.tier === "petite" &&
-                  !canReserveWithMembership() &&
-                  bag.availability.status === "available" && (
-                    <Button
-                      onClick={() => {
-                        const bagPassItem = {
-                          id: `bag-pass-${bag.id}-${Date.now()}`,
-                          name: `Pase Bolso ${membershipNames[bag.membership]}`,
-                          price: `${bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€`,
-                          billingCycle: "weekly" as const,
-                          description: `${bag.brand} ${bag.name}`,
-                          image: bag.images[0],
-                          brand: bag.brand,
-                          itemType: "bag-pass" as const,
-                        }
-                        addItem(bagPassItem)
-                        router.push("/cart")
-                      }}
-                      className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
-                    >
-                      Comprar Pase de Bolso -{" "}
-                      {bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137}€
-                    </Button>
-                  )}
-
-                {canReserveWithMembership() && bag.availability.status === "available" && (
-                  <Button
-                    onClick={handleDirectReservation}
-                    disabled={isReserving}
-                    className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
-                  >
-                    {isReserving ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="h-5 w-5 mr-2" />
-                        Reservar Ahora
-                      </>
+                {activeTab === "features" && (
+                  <div className="space-y-4">
+                    {bag.features?.map((feature, index) => (
+                      <div key={index} className="flex items-start">
+                        <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                        <p className="text-slate-700">{feature}</p>
+                      </div>
+                    )) || (
+                      <div className="space-y-4">
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Diseño icónico y atemporal</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Materiales de la más alta calidad</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Perfecto para ocasiones especiales</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Compartimentos organizados</p>
+                        </div>
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 )}
 
-                {userMembership.tier !== "petite" && !canReserveWithMembership() && (
-                  <Button
-                    onClick={() => router.push("/dashboard/membresia")}
-                    className="w-full py-6 text-lg bg-rose-pastel hover:bg-rose-pastel/90 text-indigo-dark"
-                  >
-                    Mejorar Membresía
-                  </Button>
+                {activeTab === "care" && (
+                  <div className="space-y-4">
+                    {bag.careInstructions?.map((instruction, index) => (
+                      <div key={index} className="flex items-start">
+                        <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                        <p className="text-slate-700">{instruction}</p>
+                      </div>
+                    )) || (
+                      <div className="space-y-4">
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Evitar el contacto con agua y humedad excesiva</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Guardar en lugar seco y ventilado</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Limpiar con paño suave y seco</p>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="w-2 h-2 bg-indigo-dark rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <p className="text-slate-700">Evitar exposición directa al sol</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            ) : (
-              // User is not logged in - show membership options
-              <div className="space-y-4">
-                <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
-
-                <div
-                  onClick={() => setSelectedMembership("petite")}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    selectedMembership === "petite"
-                      ? "border-[#1a2c4e] bg-white"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                        {membershipOptions.petite.name}
-                      </span>
-                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                        {membershipOptions.petite.badge}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-3">{membershipOptions.petite.description}</p>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedMembership === "petite" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
-                      }`}
-                    >
-                      {selectedMembership === "petite" && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className="font-semibold text-slate-900">
-                      {(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€
-                    </span>
-                    <span className="text-slate-500">{membershipOptions.petite.period}</span>
-                  </div>
-                  <p className="text-xs text-[#1a2c4e] mt-1 ml-7">
-                    Base {membershipOptions.petite.basePrice}€ + Bolso {membershipNames[bag.membership]}{" "}
-                    {membershipOptions.petite.bagPass}€
-                  </p>
-                </div>
-
-                <div
-                  onClick={() => setSelectedMembership("essentiel")}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    selectedMembership === "essentiel"
-                      ? "border-[#1a2c4e] bg-white"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                        {membershipOptions.essentiel.name}
-                      </span>
-                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                        {membershipOptions.essentiel.badge}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-3">{membershipOptions.essentiel.description}</p>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedMembership === "essentiel" ? "border-[#1a2c4e] bg-[#1a2c4e]" : "border-slate-300"
-                      }`}
-                    >
-                      {selectedMembership === "essentiel" && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className="font-semibold text-slate-900">{membershipOptions.essentiel.price}€</span>
-                    <span className="text-slate-500">{membershipOptions.essentiel.period}</span>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setSelectedMembership("essentiel-quarterly")}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    selectedMembership === "essentiel-quarterly"
-                      ? "border-[#1a2c4e] bg-white"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900 uppercase text-sm tracking-wide">
-                        {membershipOptions["essentiel-quarterly"].name}
-                      </span>
-                      <span className="bg-rose-50 text-rose-500 text-xs px-2 py-0.5 rounded">
-                        {membershipOptions["essentiel-quarterly"].badge}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-3">{membershipOptions["essentiel-quarterly"].description}</p>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedMembership === "essentiel-quarterly"
-                          ? "border-[#1a2c4e] bg-[#1a2c4e]"
-                          : "border-slate-300"
-                      }`}
-                    >
-                      {selectedMembership === "essentiel-quarterly" && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className="font-semibold text-slate-900">
-                      {membershipOptions["essentiel-quarterly"].price}€
-                    </span>
-                    <span className="text-slate-500">{membershipOptions["essentiel-quarterly"].period}</span>
-                    <span className="text-sm text-slate-400">
-                      ({membershipOptions["essentiel-quarterly"].monthlyEquivalent})
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!authUser && bag.availability.status === "available" && (
-              <Button
-                onClick={handleQuickReserve}
-                className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
-              >
-                Reservar por{" "}
-                {selectedMembership === "petite"
-                  ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€/semana`
-                  : selectedMembership === "essentiel"
-                    ? `${membershipOptions.essentiel.price}€/mes`
-                    : `${membershipOptions["essentiel-quarterly"].price}€/trimestre`}
-              </Button>
-            )}
-
-            <div className={`p-4 rounded-xl ${availabilityStatus[bag.availability.status].bgColor}`}>
-              <div className="flex items-center gap-2">
-                <Clock className={`h-5 w-5 ${availabilityStatus[bag.availability.status].color}`} />
-                <span className={`font-medium ${availabilityStatus[bag.availability.status].color}`}>
-                  {availabilityStatus[bag.availability.status].label}
-                </span>
-              </div>
-              <p className={`text-sm mt-1 ${availabilityStatus[bag.availability.status].color}`}>
-                {availabilityStatus[bag.availability.status].message}
-              </p>
             </div>
 
-            <p className="text-slate-600 leading-relaxed">{bag.description}</p>
-
-            <div className="flex items-center justify-around py-4 border-y border-slate-100">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Truck className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Envío gratis</span>
+            {/* Garantías y servicios */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8 border-t">
+              <div className="flex items-center space-x-3">
+                <Shield className="h-6 w-6 text-indigo-dark" />
+                <div>
+                  <p className="font-medium text-slate-900 text-sm">Autenticidad</p>
+                  <p className="text-slate-600 text-xs">Verificada</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Shield className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Seguro incluido</span>
+              <div className="flex items-center space-x-3">
+                <Truck className="h-6 w-6 text-indigo-dark" />
+                <div>
+                  <p className="font-medium text-slate-900 text-sm">Envío gratis</p>
+                  <p className="text-slate-600 text-xs">24-48h</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <RotateCcw className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Devolución fácil</span>
+              <div className="flex items-center space-x-3">
+                <RotateCcw className="h-6 w-6 text-indigo-dark" />
+                <div>
+                  <p className="font-medium text-slate-900 text-sm">Devolución</p>
+                  <p className="text-slate-600 text-xs">Sin coste</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mt-16">
-          <div className="border-b border-slate-200">
-            <div className="flex gap-8">
-              <button
-                onClick={() => setActiveTab("details")}
-                className={`pb-4 text-sm font-medium transition-colors ${
-                  activeTab === "details"
-                    ? "border-b-2 border-[#1a2c4e] text-[#1a2c4e]"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Características
-              </button>
-              <button
-                onClick={() => setActiveTab("care")}
-                className={`pb-4 text-sm font-medium transition-colors ${
-                  activeTab === "care"
-                    ? "border-b-2 border-[#1a2c4e] text-[#1a2c4e]"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Cuidados
-              </button>
-            </div>
-          </div>
-
-          <div className="py-8">
-            {activeTab === "details" && (
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Material</span>
-                    <span className="text-slate-900">{bag.material}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Dimensiones</span>
-                    <span className="text-slate-900">{bag.dimensions}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Condición</span>
-                    <span className="text-slate-900">{bag.condition}</span>
-                  </div>
+        {/* Productos relacionados */}
+        <div className="mt-20">
+          <h3 className="font-serif text-3xl text-slate-900 mb-8 text-center">También te puede interesar</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {relatedBags.map((relatedBag) => (
+              <div key={relatedBag.id} className="group cursor-pointer">
+                <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-4 group-hover:shadow-lg transition-shadow">
+                  <Image
+                    src={relatedBag.image || "/placeholder.svg"}
+                    alt={relatedBag.name}
+                    width={300}
+                    height={300}
+                    className="object-contain w-full h-full p-4 group-hover:scale-105 transition-transform"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-slate-500 text-sm">{relatedBag.brand}</p>
+                  <h4 className="font-serif text-lg text-slate-900 mb-2">{relatedBag.name}</h4>
+                  <p className="font-medium text-slate-900">{relatedBag.price}</p>
                 </div>
               </div>
-            )}
-            {activeTab === "care" && (
-              <div className="space-y-4">
-                {bag.careInstructions?.map((instruction, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <Check className="h-5 w-5 text-[#1a2c4e] flex-shrink-0 mt-0.5" />
-                    <span className="text-slate-600">{instruction}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
         </div>
-
-        {/* Related bags */}
-        {bagsToShow.length > 0 && (
-          <div className="mt-16">
-            <h2 className="font-serif text-2xl text-slate-900 mb-8">También te puede gustar</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {bagsToShow.slice(0, 4).map((relatedBag) => (
-                <Link key={relatedBag.id} href={`/catalog/${relatedBag.id}`} className="group">
-                  <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3">
-                    <Image
-                      src={relatedBag.image || "/placeholder.svg"}
-                      alt={relatedBag.name}
-                      width={300}
-                      height={300}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                  <p className="text-sm text-slate-500">{relatedBag.brand}</p>
-                  <p className="font-medium text-slate-900">{relatedBag.name}</p>
-                  <p className="text-sm text-[#1a2c4e]">{relatedBag.price}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Modal de zoom */}
+      {showZoom && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowZoom(false)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <Image
+              src={bag.images[selectedImage] || "/placeholder.svg"}
+              alt={bag.name}
+              width={800}
+              height={800}
+              className="object-contain w-full h-full"
+            />
+            <button
+              onClick={() => setShowZoom(false)}
+              className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-export { BagDetail }
