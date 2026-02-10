@@ -51,12 +51,10 @@ export default function NavbarImproved() {
     <header className="bg-white border-b border-slate-200">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-4">
-          {/* Logo */}
           <Link href="/" className="font-serif text-2xl text-slate-900">
             Semzo Privé
           </Link>
 
-          {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             {navItems.map((item) => (
               <Link
@@ -71,7 +69,6 @@ export default function NavbarImproved() {
             ))}
           </nav>
 
-          {/* Auth Section */}
           <div className="flex items-center">
             {isLoading ? (
               <div className="w-20 h-8 bg-slate-200 animate-pulse rounded"></div>
@@ -87,7 +84,7 @@ export default function NavbarImproved() {
                   variant="outline"
                   size="sm"
                   onClick={handleLogout}
-                  className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  className="border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Salir

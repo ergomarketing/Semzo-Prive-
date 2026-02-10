@@ -1,3 +1,5 @@
+import Image from "next/image"
+
 export default function HowItWorks() {
   return (
     <section
@@ -30,40 +32,92 @@ export default function HowItWorks() {
 
         {/* Pasos en formato editorial */}
         <div className="grid md:grid-cols-3 gap-x-8 gap-y-16">
-          {[
-            {
-              number: "01",
-              title: "Selecciona tu membresía",
-              description: "Elige entre nuestros tres niveles de membresía según tus necesidades y preferencias.",
-            },
-            {
-              number: "02",
-              title: "Explora nuestra colección",
-              description: "Navega por nuestro catálogo curado de bolsos de las marcas más prestigiosas del mundo.",
-            },
-            {
-              number: "03",
-              title: "Recibe y disfruta",
-              description: "Tu selección llegará a tu puerta en un packaging exclusivo, lista para ser disfrutada.",
-            },
-          ].map((step) => (
-            <div
-              key={step.number}
-              className="pt-8 p-6 rounded-lg backdrop-blur-sm"
-              style={{
-                borderTop: "1px solid rgba(244, 196, 204, 0.3)",
-                backgroundColor: "rgba(255, 240, 243, 0.3)",
-              }}
-            >
-              <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-                Paso {step.number}
-              </div>
-              <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
-                {step.title}
-              </h3>
-              <p className="text-slate-600 font-light">{step.description}</p>
+          <div
+            className="pt-8 p-6 rounded-lg backdrop-blur-sm"
+            style={{
+              borderTop: "1px solid rgba(244, 196, 204, 0.3)",
+              backgroundColor: "rgba(255, 240, 243, 0.3)",
+            }}
+          >
+            <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
+              Paso 01
             </div>
-          ))}
+
+            {/* Imagen Chanel WOC */}
+            <div className="relative w-full aspect-[4/3] mb-6 rounded-lg overflow-hidden">
+              <Image
+                src="/images/chanel-woc-step1.jpeg"
+                alt="Chanel WOC - Selecciona tu membresía"
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
+              Selecciona tu membresía
+            </h3>
+            <p className="text-slate-600 font-light">
+              Elige entre nuestros tres niveles de membresía según tus necesidades y preferencias.
+            </p>
+          </div>
+
+          {/* Paso 02 */}
+          <div
+            className="pt-8 p-6 rounded-lg backdrop-blur-sm"
+            style={{
+              borderTop: "1px solid rgba(244, 196, 204, 0.3)",
+              backgroundColor: "rgba(255, 240, 243, 0.3)",
+            }}
+          >
+            <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
+              Paso 02
+            </div>
+
+            <div className="relative w-full aspect-[4/3] mb-6 rounded-lg overflow-hidden">
+              <Image
+                src="/images/prada-street-step2.jpeg"
+                alt="Prada - Explora nuestra colección"
+                fill
+                className="object-cover scale-125 object-[center_35%]"
+              />
+            </div>
+
+            <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
+              Explora nuestra colección
+            </h3>
+            <p className="text-slate-600 font-light">
+              Navega por nuestro catálogo curado de bolsos de las marcas más prestigiosas del mundo.
+            </p>
+          </div>
+
+          {/* Paso 03 */}
+          <div
+            className="pt-8 p-6 rounded-lg backdrop-blur-sm"
+            style={{
+              borderTop: "1px solid rgba(244, 196, 204, 0.3)",
+              backgroundColor: "rgba(255, 240, 243, 0.3)",
+            }}
+          >
+            <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
+              Paso 03
+            </div>
+
+            <div className="relative w-full aspect-[4/3] mb-6 rounded-lg overflow-hidden">
+              <Image
+                src="/images/ysl-step3.jpg"
+                alt="YSL - Recibe y disfruta"
+                fill
+                className="object-cover object-[center_60%]"
+              />
+            </div>
+
+            <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
+              Recibe y disfruta
+            </h3>
+            <p className="text-slate-600 font-light">
+              Tu selección llegará a tu puerta en un packaging exclusivo, lista para ser disfrutada.
+            </p>
+          </div>
         </div>
       </div>
     </section>

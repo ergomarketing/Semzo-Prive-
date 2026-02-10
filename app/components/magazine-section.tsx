@@ -1,204 +1,185 @@
-import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight } from "lucide-react"
+"use client"
+import { useEffect, useState, useRef } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Calendar, User, ChevronLeft, ChevronRight } from "lucide-react"
 
-const featuredArticles = [
-  {
-    id: 1,
-    title: "La Historia Secreta del Birkin de Hermès",
-    excerpt:
-      "Descubre los orígenes de uno de los bolsos más codiciados del mundo y por qué su lista de espera puede durar años.",
-    category: "Historia",
-    readTime: "8 min",
-    date: "15 Mar 2024",
-    image: "bg-rose-nude",
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "Cómo Elegir el Bolso Perfecto para Cada Ocasión",
-    excerpt:
-      "Nuestra guía definitiva para seleccionar el complemento ideal según el evento, la temporada y tu estilo personal.",
-    category: "Guía de Estilo",
-    readTime: "6 min",
-    date: "12 Mar 2024",
-    image: "bg-rose-pastel/20",
-  },
-  {
-    id: 3,
-    title: "Entrevista: Gabrielle Chanel y su Legado Atemporal",
-    excerpt:
-      "Un viaje por la vida de la mujer que revolucionó la moda femenina y creó algunos de los diseños más icónicos.",
-    category: "Entrevista",
-    readTime: "12 min",
-    date: "10 Mar 2024",
-    image: "bg-indigo-dark/10",
-  },
-  {
-    id: 4,
-    title: "Tendencias Primavera 2024: Colores y Texturas",
-    excerpt: "Los tonos y materiales que dominarán la próxima temporada según las pasarelas de París y Milán.",
-    category: "Tendencias",
-    readTime: "5 min",
-    date: "8 Mar 2024",
-    image: "bg-rose-nude/60",
-  },
-]
+interface BlogPost {
+  slug: string
+  title: string
+  date: string
+  author: string
+  excerpt: string
+  image?: string
+  content: string
+}
 
 export default function MagazineSection() {
-  return (
-    <section
-      id="magazine"
-      className="py-16 md:py-24 bg-gradient-to-b from-rose-nude/3 via-rose-pastel/5 to-rose-nude/3"
-    >
-      <div className="container mx-auto px-4">
-        {/* Encabezado editorial */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-12 md:mb-20">
-          <div className="lg:col-span-4 text-center lg:text-left">
-            <p className="text-xs uppercase tracking-widest mb-4 md:mb-6 font-medium text-indigo-dark">
-              Semzo Magazine
-            </p>
-            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900">
-              Historias de elegancia y sofisticación
+  const [posts, setPosts] = useState<BlogPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
+
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const response = await fetch("/api/blog", {
+          next: { revalidate: 604800 }, // Cache for 7 days (1-2 posts/week)
+        })
+
+        if (!response.ok) {
+          setPosts([])
+          return
+        }
+
+        const data = await response.json()
+        setPosts(data)
+      } catch {
+        setPosts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPosts()
+  }, [])
+
+  const checkScrollability = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+      setCanScrollLeft(scrollLeft > 0)
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10)
+    }
+  }
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 400
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      })
+    }
+  }
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener("scroll", checkScrollability)
+      checkScrollability()
+      return () => container.removeEventListener("scroll", checkScrollability)
+    }
+  }, [posts])
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">Semzo Magazine</p>
+            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900 mb-6">
+              Historias del Mundo del Lujo
             </h2>
           </div>
-          <div className="hidden lg:block lg:col-span-1"></div>
-          <div className="lg:col-span-7">
-            <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light mb-6 md:mb-8 text-center lg:text-left">
-              Sumérgete en el fascinante mundo de la moda de lujo. Desde la historia de las casas más prestigiosas hasta
-              las últimas tendencias, nuestro magazine es tu ventana al universo de la elegancia atemporal.
-            </p>
-            <div className="flex justify-center lg:justify-start">
-              <Button className="rounded-none px-6 md:px-8 py-3 md:py-4 text-sm uppercase tracking-widest font-medium bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-900 hover:bg-white transition-all duration-300">
-                Ver todos los artículos
-              </Button>
-            </div>
+          <div className="text-center py-12">
+            <p className="text-gray-500">Cargando artículos...</p>
           </div>
         </div>
+      </section>
+    )
+  }
 
-        {/* Layout tipo revista - stack en móvil */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Artículo destacado */}
-          <div className="lg:col-span-8">
-            <article className="group cursor-pointer">
-              <div
-                className={`relative aspect-[4/3] md:aspect-[16/10] w-full rounded-lg ${featuredArticles[0].image} flex items-center justify-center mb-6 md:mb-8 overflow-hidden`}
+  return (
+    <section className="py-16 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">Semzo Magazine</p>
+          <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900 mb-6">
+            Historias del Mundo del Lujo
+          </h2>
+          <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light max-w-3xl mx-auto mb-8">
+            Descubre las últimas tendencias, consejos de estilo y las historias detrás de los bolsos más icónicos del
+            mundo.
+          </p>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No hay artículos publicados aún.</p>
+            <p className="text-sm text-gray-400 mt-2">Publica tu primer artículo desde el panel de administración.</p>
+          </div>
+        ) : (
+          <div className="relative group">
+            {/* Left Arrow */}
+            {canScrollLeft && (
+              <button
+                onClick={() => scroll("left")}
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all opacity-0 group-hover:opacity-100"
+                aria-label="Scroll left"
               >
-                <div className="text-center p-6 md:p-8">
-                  <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-white/40 flex items-center justify-center">
-                    <span className="text-2xl md:text-3xl lg:text-4xl text-indigo-dark">SM</span>
-                  </div>
-                  <h3 className="text-lg md:text-xl font-serif text-slate-900 mb-2">Imagen Destacada</h3>
-                  <p className="text-sm text-slate-600">Artículo principal del magazine</p>
-                </div>
+                <ChevronLeft className="h-6 w-6 text-indigo-dark" />
+              </button>
+            )}
 
-                {/* Overlay con categoría */}
-                <div className="absolute top-4 md:top-6 left-4 md:left-6">
-                  <span className="px-3 md:px-4 py-1 md:py-2 bg-white/95 backdrop-blur-sm rounded-lg text-xs uppercase tracking-widest font-medium text-indigo-dark">
-                    {featuredArticles[0].category}
-                  </span>
-                </div>
-              </div>
+            {/* Right Arrow */}
+            {canScrollRight && (
+              <button
+                onClick={() => scroll("right")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all opacity-0 group-hover:opacity-100"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-6 w-6 text-indigo-dark" />
+              </button>
+            )}
 
-              <div className="space-y-3 md:space-y-4 text-center lg:text-left">
-                <div className="flex items-center justify-center lg:justify-start space-x-4 md:space-x-6 text-sm text-slate-500">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{featuredArticles[0].date}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{featuredArticles[0].readTime} lectura</span>
-                  </div>
-                </div>
+            <div ref={scrollContainerRef} className="overflow-x-auto -mx-4 px-4 scroll-smooth scrollbar-hide">
+              <div className="flex gap-4 md:gap-6 pb-4">
+                {posts.map((post) => (
+                  <Link
+                    key={post.slug}
+                    href={`/blog/${post.slug}`}
+                    className="flex-shrink-0 w-[85vw] md:w-[45vw] lg:w-[30vw] group/card"
+                  >
+                    <div className="flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
+                      <div className="relative aspect-[3/4] w-full overflow-hidden">
+                        <Image
+                          src={post.image || "/placeholder.svg?height=800&width=600"}
+                          alt={post.title}
+                          fill
+                          sizes="(max-width: 768px) 85vw, (max-width: 1024px) 45vw, 30vw"
+                          className="object-cover w-full h-full group-hover/card:scale-105 transition-transform duration-500"
+                        />
+                      </div>
 
-                <h3 className="font-serif text-2xl md:text-3xl lg:text-4xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
-                  {featuredArticles[0].title}
-                </h3>
+                      {/* Text content below image */}
+                      <div className="p-6 bg-white">
+                        <h3 className="font-serif text-xl text-indigo-dark mb-3 line-clamp-2 group-hover/card:text-rose-dark transition-colors">
+                          {post.title}
+                        </h3>
+                        <p className="text-sm text-indigo-dark/70 line-clamp-2 mb-4">{post.excerpt}</p>
 
-                <p className="text-base md:text-lg text-slate-600 leading-relaxed font-light">
-                  {featuredArticles[0].excerpt}
-                </p>
-
-                <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-2 transition-transform">
-                  <span className="text-sm uppercase tracking-widest font-medium mr-2">Leer artículo</span>
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </div>
-            </article>
-          </div>
-
-          {/* Artículos secundarios - mejor spacing en móvil */}
-          <div className="lg:col-span-4 space-y-8 md:space-y-12">
-            {featuredArticles.slice(1).map((article) => (
-              <article key={article.id} className="group cursor-pointer">
-                <div
-                  className={`relative aspect-[4/3] w-full rounded-lg ${article.image} flex items-center justify-center mb-4 md:mb-6 overflow-hidden`}
-                >
-                  <div className="text-center p-4 md:p-6">
-                    <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-full bg-white/40 flex items-center justify-center">
-                      <span className="text-xl md:text-2xl text-indigo-dark">SM</span>
+                        <div className="flex items-center gap-3 text-xs text-indigo-dark/50">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(post.date).toLocaleDateString("es-ES", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {post.author}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-600">Imagen del artículo</p>
-                  </div>
-
-                  {/* Overlay con categoría */}
-                  <div className="absolute top-3 md:top-4 left-3 md:left-4">
-                    <span className="px-2 md:px-3 py-1 bg-white/95 backdrop-blur-sm rounded text-xs uppercase tracking-widest font-medium text-indigo-dark">
-                      {article.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:space-y-3 text-center lg:text-left">
-                  <div className="flex items-center justify-center lg:justify-start space-x-3 md:space-x-4 text-xs text-slate-500">
-                    <span>{article.date}</span>
-                    <span>•</span>
-                    <span>{article.readTime}</span>
-                  </div>
-
-                  <h4 className="font-serif text-lg md:text-xl text-slate-900 leading-tight group-hover:text-indigo-dark transition-colors">
-                    {article.title}
-                  </h4>
-
-                  <p className="text-sm text-slate-600 leading-relaxed font-light line-clamp-3">{article.excerpt}</p>
-
-                  <div className="flex items-center justify-center lg:justify-start text-indigo-dark group-hover:translate-x-1 transition-transform">
-                    <span className="text-xs uppercase tracking-widest font-medium mr-2">Leer más</span>
-                    <ArrowRight className="h-3 w-3" />
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        {/* Newsletter del magazine - optimizada para móvil */}
-        <div className="mt-16 md:mt-24 p-6 md:p-12 rounded-lg bg-white/60 backdrop-blur-sm border border-slate-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center text-center md:text-left">
-            <div>
-              <h3 className="font-serif text-2xl md:text-3xl text-slate-900 mb-4">Suscríbete a Semzo Magazine</h3>
-              <p className="text-slate-600 leading-relaxed font-light">
-                Recibe nuestros artículos exclusivos, guías de estilo y las últimas tendencias directamente en tu
-                bandeja de entrada. Una dosis semanal de elegancia y sofisticación.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row">
-                <input
-                  type="email"
-                  placeholder="tu@email.com"
-                  className="flex-1 px-4 md:px-6 py-3 md:py-4 border border-slate-200 rounded-t sm:rounded-l sm:rounded-t-none focus:outline-none focus:border-indigo-dark text-slate-900"
-                />
-                <Button className="rounded-b sm:rounded-l-none sm:rounded-r px-6 md:px-8 py-3 md:py-4 bg-indigo-dark text-white hover:bg-indigo-dark/90 transition-all duration-300">
-                  Suscribirse
-                </Button>
+                  </Link>
+                ))}
               </div>
-              <p className="text-xs text-slate-500 text-center">
-                Sin spam. Solo contenido de calidad. Cancela cuando quieras.
-              </p>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   )

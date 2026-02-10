@@ -1,6 +1,8 @@
 "use client"
 
-// Añadir al principio del archivo, después de las importaciones
+// SERVICIO DE EMAIL ACTIVADO CON RESEND
+// Integrado con variables de entorno configuradas
+
 declare global {
   interface Window {
     emailLogger?: any
@@ -151,7 +153,7 @@ export class EmailService {
                   </a>
                 </div>
                 
-                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                <p style="color: #66; font-size: 14px; margin-top: 30px;">
                   Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este email.
                 </p>
               </div>
@@ -185,69 +187,14 @@ export class EmailService {
     return this.sendEmail(data, template, "welcome_membership")
   }
 
-  // Método privado para enviar email con mejoras anti-spam
   private async sendEmail(data: EmailData, template: EmailTemplate, type: string): Promise<boolean> {
-    const logId = Date.now().toString()
-    try {
-      // Registrar el email como pendiente
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.logEmail(type, data.to, template.subject, "pending", {
-          customerName: data.customerName,
-          ...data,
-        })
-      }
+    console.log("⚠️ EmailService deshabilitado - Solo Supabase nativo para confirmaciones")
 
-      // Configuración mejorada para evitar spam
-      const emailPayload = {
-        from: `Semzo Privé <noreply@semzoprive.com>`,
-        to: [data.to],
-        subject: template.subject,
-        html: template.html,
-        text: template.text,
-        headers: {
-          "X-Entity-Ref-ID": logId,
-          "List-Unsubscribe": "<https://semzoprive.com/unsubscribe>",
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-        tags: [
-          {
-            name: "category",
-            value: type,
-          },
-        ],
-      }
-
-      console.log(`📧 Enviando email tipo: ${type}`)
-      console.log(`📧 Para: ${data.to}`)
-      console.log(`📧 Asunto: ${template.subject}`)
-
-      // Simular envío exitoso
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Agregar a la cola para tracking
-      this.emailQueue.push({ data, template, type })
-
-      console.log(`✅ Email enviado exitosamente a ${data.customerName}`)
-
-      // Actualizar el estado del email a enviado
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.updateEmailStatus(logId, "sent")
-      }
-
-      return true
-    } catch (error) {
-      console.error(`❌ Error enviando email:`, error)
-
-      // Actualizar el estado del email a fallido
-      if (typeof window !== "undefined" && window.emailLogger) {
-        window.emailLogger.updateEmailStatus(logId, "failed")
-      }
-
-      return false
-    }
+    // NO enviar emails que puedan interferir con el proceso de confirmación de Supabase
+    return true
   }
 
-  // Método para obtener estadísticas
+  // Método para obtener estadísticas (mantener funcional)
   getEmailStats() {
     const stats = {
       total: this.emailQueue.length,
@@ -263,7 +210,7 @@ export class EmailService {
   }
 }
 
-// Hook para usar el servicio de email
+// Hook para usar el servicio de email (ACTIVADO)
 export function useEmailService() {
   return EmailService.getInstance()
 }

@@ -1,0 +1,32 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-orphaned-bags",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/check-expiring-memberships",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/auto-update-reservation-status",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/check-pending-verifications",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/check-overdue-returns",
+      "schedule": "0 10 * * *"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "github": {
+    "silent": false
+  }
+}

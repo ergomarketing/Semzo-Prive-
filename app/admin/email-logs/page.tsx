@@ -5,9 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mail, CheckCircle2, XCircle, Clock, RefreshCw, Send, Search, Filter, Download } from "lucide-react"
-import { emailLogger, type EmailLog } from "@/app/lib/email-logger"
+import { Mail, CheckCircle2, XCircle, Clock, RefreshCw, Send, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface EmailLog {
+  id: string
+  created_at: string
+  recipient_email: string
+  recipient_name: string | null
+  subject: string
+  email_type: string
+  status: "pending" | "sent" | "failed"
+  sent_at: string | null
+  error_message: string | null
+  resend_id: string | null
+  metadata: Record<string, any> | null
+}
 
 export default function EmailLogsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([])
@@ -23,50 +36,46 @@ export default function EmailLogsPage() {
     total: 0,
   })
 
-  const fetchLogs = () => {
+  const fetchLogs = async () => {
     try {
       setLoading(true)
-      // Obtener logs del servicio
-      const allLogs = emailLogger.getLogs()
-      setLogs(allLogs)
-      applyFilters(allLogs, searchTerm, filterType, filterStatus)
+      const response = await fetch("/api/admin/email-logs")
+      const data = await response.json()
 
-      // Calcular estadísticas
-      setStats({
-        sent: allLogs.filter((log) => log.status === "sent").length,
-        failed: allLogs.filter((log) => log.status === "failed").length,
-        pending: allLogs.filter((log) => log.status === "pending").length,
-        total: allLogs.length,
-      })
+      if (data.error) {
+        console.error("[v0] Error fetching email logs:", data.error)
+        return
+      }
+
+      setLogs(data.logs || [])
+      setFilteredLogs(data.logs || [])
+      setStats(data.stats || { sent: 0, failed: 0, pending: 0, total: 0 })
     } catch (error) {
-      console.error("Error fetching logs:", error)
+      console.error("[v0] Error fetching logs:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const applyFilters = (logsToFilter: EmailLog[], search: string, type: string, status: string) => {
-    let result = [...logsToFilter]
+  const applyFilters = () => {
+    let result = [...logs]
 
-    // Filtrar por término de búsqueda
-    if (search) {
-      const searchLower = search.toLowerCase()
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
       result = result.filter(
         (log) =>
-          log.to.toLowerCase().includes(searchLower) ||
+          log.recipient_email.toLowerCase().includes(searchLower) ||
           log.subject.toLowerCase().includes(searchLower) ||
-          log.type.toLowerCase().includes(searchLower),
+          log.email_type.toLowerCase().includes(searchLower),
       )
     }
 
-    // Filtrar por tipo
-    if (type !== "all") {
-      result = result.filter((log) => log.type === type)
+    if (filterType !== "all") {
+      result = result.filter((log) => log.email_type === filterType)
     }
 
-    // Filtrar por estado
-    if (status !== "all") {
-      result = result.filter((log) => log.status === status)
+    if (filterStatus !== "all") {
+      result = result.filter((log) => log.status === filterStatus)
     }
 
     setFilteredLogs(result)
@@ -74,13 +83,12 @@ export default function EmailLogsPage() {
 
   useEffect(() => {
     fetchLogs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    applyFilters(logs, searchTerm, filterType, filterStatus)
+    applyFilters()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, filterType, filterStatus])
+  }, [searchTerm, filterType, filterStatus, logs])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -122,48 +130,23 @@ export default function EmailLogsPage() {
 
   const getUniqueTypes = () => {
     const types = new Set<string>()
-    logs.forEach((log) => types.add(log.type))
+    logs.forEach((log) => types.add(log.email_type))
     return Array.from(types)
-  }
-
-  const clearLogs = () => {
-    if (confirm("¿Estás seguro de que quieres borrar todos los logs? Esta acción no se puede deshacer.")) {
-      emailLogger.clearLogs()
-      fetchLogs()
-    }
-  }
-
-  const exportLogs = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2))
-    const downloadAnchorNode = document.createElement("a")
-    downloadAnchorNode.setAttribute("href", dataStr)
-    downloadAnchorNode.setAttribute("download", `email-logs-${new Date().toISOString().split("T")[0]}.json`)
-    document.body.appendChild(downloadAnchorNode)
-    downloadAnchorNode.click()
-    downloadAnchorNode.remove()
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-slate-900">📧 Logs de Emails</h1>
+          <h1 className="font-serif text-3xl text-slate-900">Logs de Emails</h1>
           <p className="text-slate-600">Registro completo de todos los emails enviados desde la plataforma</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={exportLogs} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Button onClick={fetchLogs} disabled={loading} variant="outline" size="sm">
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Actualizar
-          </Button>
-        </div>
+        <Button onClick={fetchLogs} disabled={loading} variant="outline" size="sm">
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Actualizar
+        </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -214,7 +197,6 @@ export default function EmailLogsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -230,11 +212,11 @@ export default function EmailLogsPage() {
               </div>
             </div>
             <div className="flex gap-4">
-              <div className="w-40">
+              <div className="w-48">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger>
                     <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Tipo" />
+                    <SelectValue placeholder="Todos los tipos" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los tipos</SelectItem>
@@ -250,7 +232,7 @@ export default function EmailLogsPage() {
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger>
                     <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Estado" />
+                    <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
@@ -260,25 +242,16 @@ export default function EmailLogsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={clearLogs} variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
-                Limpiar logs
-              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Email Logs */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <Mail className="h-5 w-5 mr-2" />
             Historial de Emails
-            {filteredLogs.length > 0 && (
-              <Badge variant="outline" className="ml-2">
-                {filteredLogs.length} {filteredLogs.length === 1 ? "resultado" : "resultados"}
-              </Badge>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -291,9 +264,6 @@ export default function EmailLogsPage() {
             <div className="text-center py-8">
               <Mail className="h-12 w-12 mx-auto mb-4 text-slate-400" />
               <p className="text-slate-600">No hay emails registrados que coincidan con los filtros</p>
-              {logs.length > 0 && (
-                <p className="text-sm text-slate-500 mt-2">Prueba con otros filtros o limpia la búsqueda</p>
-              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -307,23 +277,28 @@ export default function EmailLogsPage() {
                       {getStatusIcon(log.status)}
                       <div>
                         <p className="font-medium text-slate-900">{log.subject}</p>
-                        <p className="text-sm text-slate-600">Para: {log.to}</p>
+                        <p className="text-sm text-slate-600">Para: {log.recipient_email}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
                       <Badge variant="outline" className="text-xs">
-                        {log.type}
+                        {log.email_type}
                       </Badge>
                       {getStatusBadge(log.status)}
-                      <span className="text-sm text-slate-500">{formatDate(log.timestamp)}</span>
+                      <span className="text-sm text-slate-500">{formatDate(log.created_at)}</span>
                     </div>
                   </div>
-                  {log.details && (
+                  {log.error_message && (
+                    <div className="mt-2 pt-2 border-t border-red-100 bg-red-50 p-2 rounded">
+                      <p className="text-xs text-red-600">Error: {log.error_message}</p>
+                    </div>
+                  )}
+                  {log.metadata && (
                     <div className="mt-2 pt-2 border-t border-slate-100">
                       <details className="text-xs text-slate-500">
                         <summary className="cursor-pointer hover:text-slate-700">Ver detalles</summary>
                         <pre className="mt-2 p-2 bg-slate-50 rounded overflow-auto max-h-40">
-                          {JSON.stringify(log.details, null, 2)}
+                          {JSON.stringify(log.metadata, null, 2)}
                         </pre>
                       </details>
                     </div>
