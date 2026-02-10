@@ -1,10 +1,10 @@
 import { put, del, list } from "@vercel/blob"
-import { promises as fs } from "fs"
+import fs from "fs/promises"
 import path from "path"
 
 // Feature flag: Set to 'true' to use Blob, 'false' to use filesystem
 const USE_BLOB = process.env.USE_BLOB === "true"
-const CONTENT_DIR = path.join(process.cwd(), "content", "blog")
+const CONTENT_DIR = path.join(process.cwd(), "content")
 
 interface BlogPost {
   slug: string
@@ -42,6 +42,35 @@ export function parseFrontmatter(content: string): { metadata: Record<string, st
   })
 
   return { metadata, content: markdown }
+}
+
+// Import blog posts from static index
+async function importBlogPosts() {
+  const posts: BlogPost[] = []
+  
+  // Import all blog posts from the index
+  const { blogPosts: allPosts } = await import('@/content/blog/index')
+
+  for (const [slug, content] of Object.entries(allPosts)) {
+    try {
+      const { metadata, content: markdownContent } = parseFrontmatter(content)
+
+      posts.push({
+        slug: metadata.slug || slug,
+        title: metadata.title || "Sin título",
+        date: metadata.date || new Date().toISOString().split("T")[0],
+        author: metadata.author || "Semzo Privé",
+        excerpt: metadata.excerpt || markdownContent.substring(0, 150) + "...",
+        image: metadata.image,
+        content: markdownContent,
+        updatedAt: metadata.updatedAt,
+      })
+    } catch (error) {
+      console.error(`[v0] Error parsing ${slug}:`, error)
+    }
+  }
+
+  return posts
 }
 
 // List all blog posts
@@ -82,37 +111,9 @@ export async function listPosts(): Promise<BlogPost[]> {
       }
     }
   } else {
-    // Use Filesystem
-    try {
-      const files = await fs.readdir(CONTENT_DIR)
-      
-      for (const file of files) {
-        if (file.endsWith(".md")) {
-          try {
-            const filePath = path.join(CONTENT_DIR, file)
-            const content = await fs.readFile(filePath, "utf-8")
-            const { metadata, content: markdownContent } = parseFrontmatter(content)
-
-            const postSlug = metadata.slug || file.replace(".md", "")
-
-            posts.push({
-              slug: postSlug,
-              title: metadata.title || "Sin título",
-              date: metadata.date || new Date().toISOString().split("T")[0],
-              author: metadata.author || "Semzo Privé",
-              excerpt: metadata.excerpt || markdownContent.substring(0, 150) + "...",
-              image: metadata.image,
-              content: markdownContent,
-              updatedAt: metadata.updatedAt,
-            })
-          } catch {
-            continue
-          }
-        }
-      }
-    } catch (error) {
-      console.error("[v0] Error reading blog directory:", error)
-    }
+    // Use static imports from content/blog
+    const importedPosts = await importBlogPosts()
+    posts.push(...importedPosts)
   }
 
   // Sort by date descending
@@ -138,11 +139,11 @@ export async function createPost(slug: string, content: string): Promise<{ succe
       })
       return { success: true, url: blob.url }
     } else {
-      // Use Filesystem
-      await fs.mkdir(CONTENT_DIR, { recursive: true })
-      const filePath = path.join(CONTENT_DIR, `${slug}.md`)
-      await fs.writeFile(filePath, content, "utf-8")
-      return { success: true }
+      // Filesystem mode: Return error - cannot dynamically create files in this runtime
+      return { 
+        success: false, 
+        error: "Creating posts in filesystem mode requires manual file creation in /content/blog/" 
+      }
     }
   } catch (error) {
     console.error("[v0] Error creating post:", error)
@@ -167,10 +168,11 @@ export async function updatePost(slug: string, content: string): Promise<{ succe
       })
       return { success: true, url: blob.url }
     } else {
-      // Use Filesystem
-      const filePath = path.join(CONTENT_DIR, `${slug}.md`)
-      await fs.writeFile(filePath, content, "utf-8")
-      return { success: true }
+      // Filesystem mode: Return error - cannot dynamically update files in this runtime
+      return { 
+        success: false, 
+        error: "Updating posts in filesystem mode requires manual file editing in /content/blog/" 
+      }
     }
   } catch (error) {
     console.error("[v0] Error updating post:", error)
@@ -189,10 +191,11 @@ export async function deletePost(slug: string): Promise<{ success: boolean; erro
       }
       return { success: true }
     } else {
-      // Use Filesystem
-      const filePath = path.join(CONTENT_DIR, `${slug}.md`)
-      await fs.unlink(filePath)
-      return { success: true }
+      // Filesystem mode: Return error - cannot dynamically delete files in this runtime
+      return { 
+        success: false, 
+        error: "Deleting posts in filesystem mode requires manual file removal from /content/blog/" 
+      }
     }
   } catch (error) {
     console.error("[v0] Error deleting post:", error)
