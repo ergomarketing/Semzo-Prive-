@@ -80,22 +80,22 @@
 Una misma gift card puede aparecer en el dashboard de un usuario por **dos caminos diferentes**:
 
 1. **Via `used_by`:** El usuario canjeó la gift card directamente
-   ```sql
+   \`\`\`sql
    SELECT * FROM gift_cards WHERE used_by = user_id
-   ```
+   \`\`\`
 
 2. **Via `membership_intents`:** El usuario compró una membresía con esa gift card
-   ```sql
+   \`\`\`sql
    SELECT gc.* 
    FROM gift_cards gc
    JOIN membership_intents mi ON mi.gift_card_id = gc.id
    WHERE mi.user_id = user_id
-   ```
+   \`\`\`
 
 **Problema:** Si canjeé una gift card Y además la usé para comprar una membresía, aparecería **2 veces** en mi saldo total (duplicando el saldo).
 
 **Solución implementada (líneas 155-161 en `/app/api/user/dashboard/route.ts`):**
-```typescript
+\`\`\`typescript
 // Obtener cards de ambas fuentes
 const allCards = [...directGiftCards, ...intentGiftCards]
 
@@ -106,7 +106,7 @@ const uniqueGiftCards = allCards.filter(
 
 // Sumar solo UNA VEZ cada card
 const totalBalance = uniqueGiftCards.reduce((sum, card) => sum + card.amount, 0)
-```
+\`\`\`
 
 **Ejemplo práctico:**
 - Gift Card GC123 tiene 100€
@@ -123,7 +123,7 @@ const totalBalance = uniqueGiftCards.reduce((sum, card) => sum + card.amount, 0)
 
 **Archivo:** `/app/api/bag-passes/purchase/route.ts` (líneas 168-204)
 
-```typescript
+\`\`\`typescript
 // PASO 1: Crear transacción (idempotencia por constraint único)
 const { error: txError } = await supabase
   .from("gift_card_transactions")
@@ -146,7 +146,7 @@ if (txError?.code === "23505") {
     .update({ amount: newAmount })
     .eq("id", giftCard.id)
 }
-```
+\`\`\`
 
 **✅ Confirmado:** Cada compra de pase crea un registro en `gift_card_transactions` con:
 - `reference_type = "bag_pass"`
@@ -156,7 +156,7 @@ if (txError?.code === "23505") {
 
 **Archivo:** `/app/api/gift-cards/redeem/route.ts` (líneas 85-92)
 
-```typescript
+\`\`\`typescript
 // Registrar transacción en redeem manual
 await supabase.from("gift_card_transactions").insert({
   gift_card_id: giftCard.id,
@@ -164,7 +164,7 @@ await supabase.from("gift_card_transactions").insert({
   amount_used: amountInCents,
   order_reference: orderReference || `manual_${Date.now()}`,
 })
-```
+\`\`\`
 
 **✅ Confirmado:** Cada redeem manual también crea un registro en `gift_card_transactions`.
 
@@ -174,29 +174,29 @@ await supabase.from("gift_card_transactions").insert({
 
 **Evidencia:**
 1. **Constraint único en transacciones:**
-   ```sql
+   \`\`\`sql
    -- /scripts/create-gift-card-transactions-v2.sql (línea 11)
    UNIQUE(gift_card_id, reference_type, reference_id)
-   ```
+   \`\`\`
    Esto **previene** que la misma gift card se use 2 veces para el mismo pase.
 
 2. **Idempotencia estricta:**
-   ```typescript
+   \`\`\`typescript
    // Si ya existe transacción, NO actualizar saldo (líneas 180-186)
    if (txError.code === "23505") {
      console.log("Transaction already processed (idempotent)")
      // NO modifica gift_cards.amount
    }
-   ```
+   \`\`\`
 
 3. **Balance siempre disminuye:**
-   ```typescript
+   \`\`\`typescript
    // /app/api/bag-passes/purchase/route.ts (línea 166)
    const newAmount = Math.max(0, previousAmount - totalPrice)
    
    // Solo actualiza si tiene saldo suficiente (línea 194)
    .gte("amount", totalPrice)
-   ```
+   \`\`\`
 
 **✅ Confirmado:** Una gift card NO puede usarse dos veces para la misma referencia. Cada uso registra una transacción única y reduce el saldo una sola vez.
 
@@ -219,7 +219,7 @@ await supabase.from("gift_card_transactions").insert({
   2. UPDATE en gift_cards (solo si INSERT exitoso) ✅ (igual)
 
 **LO ÚNICO QUE CAMBIÓ EN FASE 4:**
-```typescript
+\`\`\`typescript
 // ANTES: 3 queries secuenciales
 const directCards = await supabase.from("gift_cards")...
 const intentIds = await supabase.from("membership_intents")...
@@ -231,7 +231,7 @@ const [directCards, intentIds] = await Promise.all([
   supabase.from("membership_intents")...
 ])
 const intentCards = await supabase.from("gift_cards").in(intentIds)...
-```
+\`\`\`
 
 **✅ Confirmado:** Solo optimizamos la LECTURA del saldo para el dashboard. No se tocó ninguna lógica de consumo, transacciones o validaciones financieras.
 

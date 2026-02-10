@@ -19,18 +19,18 @@
 ### 2. REGLAS DE NEGOCIO NO IMPLEMENTADAS CORRECTAMENTE
 
 #### Membresías Mensuales (CORRECTO):
-```
+\`\`\`
 - Privé → Acceso TOTAL (prive, signature, lessentiel)
 - Signature → Acceso a signature + lessentiel (NO prive)
 - L'Essentiel → Acceso SOLO a lessentiel
-```
+\`\`\`
 
 #### Petite + Pases (NO IMPLEMENTADO):
-```
+\`\`\`
 - Petite semanal → Con PASES puede acceder a cualquier tier
 - Pases por tier: lessentiel (€52/semana), signature (€99/semana), prive (€137/semana)
 - Sistema de compra, validación y consumo de pases FALTA
-```
+\`\`\`
 
 ### 3. VALIDACIONES ACTUALES CON ERRORES
 
@@ -92,7 +92,7 @@
 
 ### FASE 3: LÓGICA DE VALIDACIÓN
 
-```typescript
+\`\`\`typescript
 // Validación completa de permisos
 function canReserve(user, bag):
   if bag.membership_type == 'petite':
@@ -112,7 +112,7 @@ function canReserve(user, bag):
     return hasAvailablePass(user.id, bag.membership_type)
   
   return false
-```
+\`\`\`
 
 ### FASE 4: UI COMPONENTES
 

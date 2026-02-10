@@ -44,7 +44,7 @@ Archivo: `app/cart/CartClient.tsx`
 
 Buscar la función donde se crea el setup intent de Stripe y ANTES agregar:
 
-```typescript
+\`\`\`typescript
 // Crear membership intent PRIMERO
 const intentRes = await fetch('/api/checkout/create-intent', {
   method: 'POST',
@@ -61,7 +61,7 @@ const intentRes = await fetch('/api/checkout/create-intent', {
 const { intentId } = await intentRes.json()
 
 // Luego pasar intentId en metadata del setup intent
-```
+\`\`\`
 
 ### B. Dashboard leer desde membership_intents
 
@@ -69,7 +69,7 @@ Archivo: `app/dashboard/page.tsx`
 
 Cambiar la consulta de membresía por:
 
-```typescript
+\`\`\`typescript
 const { data: activeIntent } = await supabase
   .from('membership_intents')
   .select('*')
@@ -80,7 +80,7 @@ const { data: activeIntent } = await supabase
   .single()
 
 // Mostrar estado basado en activeIntent.status
-```
+\`\`\`
 
 ## PRUEBA INMEDIATA
 

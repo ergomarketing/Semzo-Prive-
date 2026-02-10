@@ -27,21 +27,21 @@
 **POST Lógica (líneas 175-653):**
 
 #### A. Validaciones de Membresía (líneas 202-253)
-```typescript
+\`\`\`typescript
 // 1. Check membership_intents (source of truth)
 // 2. Check user_memberships (secondary)
 // 3. Determina canRent y effectivePlan
 // 4. Rechaza si no hay membresía activa
-```
+\`\`\`
 
 #### B. Validación de Bolso (líneas 255-273)
-```typescript
+\`\`\`typescript
 // 1. Fetch bag data
 // 2. Verifica status = available/disponible
-```
+\`\`\`
 
 #### C. **VALIDACIÓN PETITE COMPLEJA** (líneas 275-400)
-```typescript
+\`\`\`typescript
 if (userMembershipPlan === "petite") {
   // 1. Verifica vigencia (30 días desde activated_at/created_at)
   // 2. Cuenta pases usados en período de vigencia
@@ -49,41 +49,41 @@ if (userMembershipPlan === "petite") {
   // 4. Busca pase disponible del tier correcto
   // 5. Selecciona primer pase válido
 }
-```
+\`\`\`
 
 #### D. Validación Tier para Essentiel/Signature/Privé (líneas 404-430)
-```typescript
+\`\`\`typescript
 // Verifica que userTierLevel >= bagTierLevel
-```
+\`\`\`
 
 #### E. Idempotencia Manual (líneas 446-462)
-```typescript
+\`\`\`typescript
 // Busca reserva duplicada en últimos 5 minutos
-```
+\`\`\`
 
 #### F. **LOCK OPTIMISTA MANUAL** (líneas 464-514)
-```typescript
+\`\`\`typescript
 // 1. Lock de pase con UPDATE WHERE status='available'
 // 2. Lock de bolso con UPDATE WHERE status='available'
 // 3. Rollback manual si bolso falla
-```
+\`\`\`
 
 #### G. Creación de Reserva (líneas 517-549)
-```typescript
+\`\`\`typescript
 // INSERT INTO reservations
 // Rollback de bolso + pase si falla
-```
+\`\`\`
 
 #### H. Post-creación (líneas 554-565)
-```typescript
+\`\`\`typescript
 // 1. Link pase a reserva
 // 2. Actualiza contador de pases en profiles
-```
+\`\`\`
 
 #### I. Notificación Admin (líneas 567-622)
-```typescript
+\`\`\`typescript
 // Email a admin con detalles
-```
+\`\`\`
 
 ---
 
@@ -140,7 +140,7 @@ if (userMembershipPlan === "petite") {
 **Archivo:** `/app/api/webhooks/stripe-identity/route.ts`
 
 ### ✅ Lo que hace bien:
-```typescript
+\`\`\`typescript
 case "identity.verification_session.verified": {
   await supabase
     .from("membership_intents")
@@ -153,7 +153,7 @@ case "identity.verification_session.verified": {
     })
     .eq("id", intent.id)
 }
-```
+\`\`\`
 
 **Verificación:** Líneas 113-121 ya setean `activated_at` correctamente.
 
@@ -188,7 +188,7 @@ El endpoint mantiene:
 ## CÓDIGO ELIMINAR DEL ENDPOINT
 
 ### Bloque 1: Lock optimista manual (líneas 464-514)
-```typescript
+\`\`\`typescript
 // ELIMINAR: Lock de pase manual
 const { data: passLock, error: passLockError } = await supabase
   .from("bag_passes")
@@ -208,10 +208,10 @@ const { data: bagLock, error: bagLockError } = await supabase
 if (passIdToConsume) {
   await supabase.from("bag_passes").update({ status: "available" })...
 }
-```
+\`\`\`
 
 ### Bloque 2: Creación de reserva manual (líneas 517-549)
-```typescript
+\`\`\`typescript
 // ELIMINAR: INSERT manual
 const { data: reservation, error: createError } = await supabase
   .from("reservations")
@@ -219,19 +219,19 @@ const { data: reservation, error: createError } = await supabase
   
 // ELIMINAR: Rollback manual de reserva
 await supabase.from("bags").update({ status: "available" })...
-```
+\`\`\`
 
 ### Bloque 3: Update del pase con reservation_id (líneas 554-559)
-```typescript
+\`\`\`typescript
 // ELIMINAR: El RPC ya hace esto
 await supabase
   .from("bag_passes")
   .update({ used_for_reservation_id: reservation.id })
   .eq("id", passIdToConsume)
-```
+\`\`\`
 
 ### Bloque 4: Idempotencia manual (líneas 446-462)
-```typescript
+\`\`\`typescript
 // ELIMINAR: El RPC ya verifica duplicados
 const { data: existingReservation } = await supabase
   .from("reservations")
@@ -239,7 +239,7 @@ const { data: existingReservation } = await supabase
   .eq("user_id", userId)
   .eq("bag_id", bag_id)
   ...
-```
+\`\`\`
 
 **Total eliminado: ~150 líneas de lógica de lock/transacción**
 
@@ -247,7 +247,7 @@ const { data: existingReservation } = await supabase
 
 ## CÓDIGO NUEVO DEL ENDPOINT
 
-```typescript
+\`\`\`typescript
 // DESPUÉS de todas las validaciones de negocio...
 
 console.log("[v0] Calling atomic RPC with:", {
@@ -322,7 +322,7 @@ await supabase.from("audit_log").insert({ ... })
 await notifyAdmin(...)
 
 return NextResponse.json({ reservation })
-```
+\`\`\`
 
 ---
 

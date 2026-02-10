@@ -86,14 +86,14 @@ Se ha completado una auditoría técnica SEO exhaustiva del sitio web de Semzo P
 - ✅ Referencia al sitemap dinámico
 
 **Estructura limpia y clara:**
-```
+\`\`\`
 User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
 ...
 Sitemap: https://semzoprive.com/sitemap.xml
-```
+\`\`\`
 
 **Archivo:** `public/robots.txt`
 
@@ -116,7 +116,7 @@ Sitemap: https://semzoprive.com/sitemap.xml
 - ✅ Imágenes con dimensiones especificadas
 
 **Schemas implementados:**
-```json
+\`\`\`json
 {
   "@type": "Organization",
   "name": "Semzo Privé",
@@ -126,7 +126,7 @@ Sitemap: https://semzoprive.com/sitemap.xml
   "sameAs": ["instagram", "tiktok"],
   "contactPoint": {...}
 }
-```
+\`\`\`
 
 **Archivos modificados:**
 - `app/layout.tsx` (Organization + WebSite)
@@ -149,7 +149,7 @@ Sitemap: https://semzoprive.com/sitemap.xml
 - ✅ Metadatos dinámicos en páginas de blog y productos
 
 **Campos implementados:**
-```typescript
+\`\`\`typescript
 openGraph: {
   type: "website" | "article" | "product",
   locale: "es_ES",
@@ -171,7 +171,7 @@ twitter: {
   description: "...",
   images: ["..."]
 }
-```
+\`\`\`
 
 **Beneficios:**
 - Mejor apariencia en compartidos de redes sociales
@@ -194,7 +194,7 @@ twitter: {
 - ✅ Cache TTL configurado (60 segundos mínimo)
 
 **Mejoras de rendimiento:**
-```javascript
+\`\`\`javascript
 // Fuentes optimizadas
 const inter = Inter({
   subsets: ["latin"],
@@ -212,7 +212,7 @@ images: {
   deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
   minimumCacheTTL: 60,
 }
-```
+\`\`\`
 
 **Impacto esperado en Core Web Vitals:**
 - **LCP (Largest Contentful Paint):** Mejora con preload de fuentes y optimización de imágenes
@@ -236,12 +236,12 @@ images: {
 - ⚠️ Productos: `/catalog/[id]` - Funcional pero usa IDs numéricos
 
 **Utilidades creadas:**
-```typescript
+\`\`\`typescript
 // utils/url-helpers.ts
 export function generateSlug(text: string): string
 export function generateProductSlug(bag: any): string
 // Conversión de "Chanel Classic Flap" → "chanel-classic-flap-12"
-```
+\`\`\`
 
 **Documentación creada:**
 - `docs/SEO_URL_GUIDELINES.md` - Guía completa de mejores prácticas
@@ -272,14 +272,14 @@ export function generateProductSlug(bag: any): string
 - `app/components/image-optimization.tsx` - OptimizedImage wrapper
 
 **Configuración next.config.mjs:**
-```javascript
+\`\`\`javascript
 images: {
   formats: ['image/avif', 'image/webp'],
   deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
   imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   minimumCacheTTL: 60,
 }
-```
+\`\`\`
 
 **Documentación creada:**
 - `docs/SEO_IMAGE_OPTIMIZATION.md` - Guía completa de imágenes
@@ -295,12 +295,12 @@ images: {
 - ✅ Después: Jerarquía correcta con H2 intermedio
 
 **Corrección implementada:**
-```tsx
+\`\`\`tsx
 // app/proceso/proceso-client.tsx
 <h1>Cómo Funciona</h1>
 <h2 className="sr-only">Nuestro proceso de alquiler de bolsos de lujo</h2>
 <h3>Paso 1: ...</h3>
-```
+\`\`\`
 
 **Solución:** Agregado H2 con clase `sr-only` para mantener jerarquía SEO sin afectar diseño visual.
 
@@ -397,12 +397,12 @@ images: {
 ### Prioridad MEDIA 🟡
 
 4. **Implementar breadcrumbs con schema**
-   ```json
+   \`\`\`json
    {
      "@type": "BreadcrumbList",
      "itemListElement": [...]
    }
-   ```
+   \`\`\`
    - **Impacto:** Rich snippets en Google
 
 5. **Agregar FAQPage schema**
@@ -665,25 +665,25 @@ El sitio de Semzo Privé ahora cuenta con una base sólida de SEO técnico. Las 
 ### Anexo C: Comandos Útiles
 
 **Validar sitemap local:**
-```bash
+\`\`\`bash
 curl http://localhost:3000/sitemap.xml
-```
+\`\`\`
 
 **Validar robots.txt local:**
-```bash
+\`\`\`bash
 curl http://localhost:3000/robots.txt
-```
+\`\`\`
 
 **Lighthouse CI:**
-```bash
+\`\`\`bash
 npm run lighthouse
-```
+\`\`\`
 
 **Validar schemas:**
-```bash
+\`\`\`bash
 # Visitar: https://search.google.com/test/rich-results
 # Pegar URL de página con schema
-```
+\`\`\`
 
 ---
 

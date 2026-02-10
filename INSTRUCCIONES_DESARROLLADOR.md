@@ -5,7 +5,7 @@
 ### 1️⃣ VARIABLES DE ENTORNO
 Crear archivo `.env.local` en la raíz del proyecto:
 
-```env
+\`\`\`env
 # 📧 EMAIL CONFIGURATION
 EMAIL_API_KEY=tu_api_key_aqui
 EMAIL_PROVIDER=resend
@@ -16,7 +16,7 @@ ADMIN_PASSWORD=tu_password_seguro_aqui
 
 # 🌐 ENVIRONMENT
 NODE_ENV=production
-```
+\`\`\`
 
 ### 2️⃣ CONFIGURAR EMAIL (OPCIÓN A: RESEND - RECOMENDADO)
 1. Ir a [resend.com](https://resend.com)

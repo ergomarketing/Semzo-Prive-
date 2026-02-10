@@ -27,14 +27,14 @@
 
 ### 3. Configuración Recomendada para Semzo Privé
 
-```
+\`\`\`
 ID: PRIVE50
 Descuento: 50%
 Duración: Una vez (solo primer mes)
 Límite de usos: Sin límite (o 100 si quieres controlar)
 Solo nuevas clientas: Sí
 Fecha de expiración: No (o 6 meses desde hoy)
-```
+\`\`\`
 
 ### 4. Verificar Integración
 

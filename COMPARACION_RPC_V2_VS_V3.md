@@ -25,7 +25,7 @@ El RPC V2 actual **viola el principio de separación de responsabilidades** al c
 ### 1. Idempotencia (Lógica de Negocio)
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 -- Líneas 29-39
 SELECT id INTO v_existing_reservation
 FROM reservations
@@ -40,7 +40,7 @@ IF v_existing_reservation IS NOT NULL THEN
     'message', 'Reserva ya existente'
   );
 END IF;
-```
+\`\`\`
 
 **Problemas:**
 - La ventana de 5 minutos es una **regla de negocio**
@@ -48,7 +48,7 @@ END IF;
 - Mezcla detección de duplicados con locks transaccionales
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 -- Idempotencia ELIMINADA del RPC
 -- El endpoint valida ANTES de llamar al RPC:
 const { data: existingReservation } = await supabase
@@ -62,17 +62,17 @@ const { data: existingReservation } = await supabase
 if (existingReservation) {
   return NextResponse.json({ reservation: existingWithBag })
 }
-```
+\`\`\`
 
 ---
 
 ### 2. Mensajes Funcionales (Responsabilidad de Presentación)
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 RETURN jsonb_build_object('success', false, 'error', 'El bolso ya no está disponible');
 RETURN jsonb_build_object('success', true, 'message', 'Reserva ya existente');
-```
+\`\`\`
 
 **Problemas:**
 - Mensajes en español dentro de la DB (no i18n)
@@ -80,41 +80,41 @@ RETURN jsonb_build_object('success', true, 'message', 'Reserva ya existente');
 - Dificulta testing y manejo de errores específicos
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 RAISE EXCEPTION 'BAG_NOT_AVAILABLE: El bolso % tiene estado % (esperado: available)', 
   p_bag_id, v_bag_current_status;
-```
+\`\`\`
 
 **Endpoint mapea a respuestas HTTP:**
-```typescript
+\`\`\`typescript
 if (rpcError.message.includes('BAG_NOT_AVAILABLE')) {
   return NextResponse.json(
     { error: "El bolso ya no está disponible. Alguien más lo reservó." }, 
     { status: 409 }
   )
 }
-```
+\`\`\`
 
 ---
 
 ### 3. Parámetro Innecesario
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION create_reservation_atomic(
   ...
   p_membership_type TEXT  -- ❌ NO SE USA EN LOCKS
 )
-```
+\`\`\`
 
 **Uso en V2:**
-```sql
+\`\`\`sql
 -- NO SE USA EN NINGÚN LOCK
 -- NO SE ALMACENA EN RESERVATIONS (comentario: "sin membership_type si no existe la columna")
-```
+\`\`\`
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION create_reservation_atomic_v3(
   p_user_id UUID,
   p_bag_id UUID,
@@ -123,20 +123,20 @@ CREATE OR REPLACE FUNCTION create_reservation_atomic_v3(
   p_end_date TIMESTAMP WITH TIME ZONE
 )
 -- ✅ Solo parámetros necesarios para locks
-```
+\`\`\`
 
 ---
 
 ### 4. Manejo de Errores No Específico
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object(
     'success', false,
     'error', SQLERRM
   );
-```
+\`\`\`
 
 **Problemas:**
 - Captura TODOS los errores genéricamente
@@ -145,7 +145,7 @@ EXCEPTION WHEN OTHERS THEN
 - Retorna JSONB en lugar de propagar exception
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 -- Excepciones específicas que el endpoint captura:
 RAISE EXCEPTION 'PASS_NOT_FOUND: El pase % no existe', p_pass_id;
 RAISE EXCEPTION 'PASS_NOT_AVAILABLE: El pase % tiene estado %', p_pass_id, v_pass_current_status;
@@ -155,19 +155,19 @@ RAISE EXCEPTION 'BAG_UPDATE_FAILED: Race condition detectada', p_bag_id;
 
 -- No hay EXCEPTION WHEN OTHERS
 -- Las excepciones se propagan al endpoint para manejo específico
-```
+\`\`\`
 
 ---
 
 ### 5. Lock Strategy No Óptima
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 SELECT status INTO v_bag_status
 FROM bags
 WHERE id = p_bag_id
 FOR UPDATE;  -- ❌ BLOCKING: espera indefinidamente si hay lock
-```
+\`\`\`
 
 **Problemas:**
 - Si otro usuario tiene lock, este RPC ESPERA (blocking)
@@ -175,12 +175,12 @@ FOR UPDATE;  -- ❌ BLOCKING: espera indefinidamente si hay lock
 - No detecta conflictos inmediatamente
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 SELECT status INTO v_bag_current_status
 FROM bags
 WHERE id = p_bag_id
 FOR UPDATE NOWAIT;  -- ✅ FAIL-FAST: falla inmediatamente si hay lock
-```
+\`\`\`
 
 **Beneficios:**
 - Detecta conflictos en milisegundos
@@ -192,19 +192,19 @@ FOR UPDATE NOWAIT;  -- ✅ FAIL-FAST: falla inmediatamente si hay lock
 ### 6. UPDATE Sin Protección de Estado
 
 **V2 - INCORRECTO:**
-```sql
+\`\`\`sql
 UPDATE bags
 SET status = 'rented',
     updated_at = NOW()
 WHERE id = p_bag_id;  -- ❌ Sin verificar estado actual
-```
+\`\`\`
 
 **Problema:**
 - Si entre el SELECT y el UPDATE el estado cambió (race condition), el UPDATE sigue ejecutándose
 - Puede marcar como rented un bolso que ya está rented
 
 **V3 - CORRECTO:**
-```sql
+\`\`\`sql
 UPDATE bags
 SET 
   status = 'rented',
@@ -215,14 +215,14 @@ WHERE id = p_bag_id
 IF NOT FOUND THEN
   RAISE EXCEPTION 'BAG_UPDATE_FAILED: Race condition detectada';
 END IF;
-```
+\`\`\`
 
 ---
 
 ## Cambios en el Endpoint
 
 ### Antes (con V2):
-```typescript
+\`\`\`typescript
 const { data: rpcResult, error: rpcError } = await supabase.rpc("create_reservation_atomic", {
   p_user_id: userId,
   p_bag_id: bag_id,
@@ -242,10 +242,10 @@ if (!rpcResult?.success) {
 }
 
 const reservationId = rpcResult.reservation_id
-```
+\`\`\`
 
 ### Después (con V3):
-```typescript
+\`\`\`typescript
 // 1. IDEMPOTENCIA (antes de llamar al RPC)
 const { data: existingReservation } = await supabase
   .from("reservations")
@@ -308,7 +308,7 @@ const { data: reservation } = await supabase
   .select("*, bags(...)")
   .eq("id", reservationId)
   .single()
-```
+\`\`\`
 
 ---
 
@@ -366,9 +366,9 @@ const { data: reservation } = await supabase
 ## Migración Propuesta
 
 ### Paso 1: Ejecutar V3
-```sql
+\`\`\`sql
 \i scripts/PROPUESTA-create-atomic-reservation-rpc-v3-minimal.sql
-```
+\`\`\`
 
 ### Paso 2: Actualizar Endpoint
 - Agregar idempotencia ANTES de llamar al RPC

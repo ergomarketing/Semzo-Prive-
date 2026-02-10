@@ -24,7 +24,7 @@
 
 ### Configuración en next.config.mjs
 
-```javascript
+\`\`\`javascript
 images: {
   formats: ['image/avif', 'image/webp'],
   deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -36,7 +36,7 @@ images: {
     },
   ],
 }
-```
+\`\`\`
 
 ## Mejores Prácticas
 
@@ -50,7 +50,7 @@ images: {
 
 **Ejemplos:**
 
-```tsx
+\`\`\`tsx
 // ❌ Malo
 <Image src="/bag.jpg" alt="bolso" />
 
@@ -62,13 +62,13 @@ images: {
 
 // ✅ Para decorativas (raro)
 <Image src="/pattern.jpg" alt="" role="presentation" />
-```
+\`\`\`
 
 ### 2. Dimensiones Explícitas
 
 Siempre especifica `width` y `height` para evitar CLS (Cumulative Layout Shift):
 
-```tsx
+\`\`\`tsx
 // ✅ Bueno - previene CLS
 <Image 
   src="/product.jpg" 
@@ -87,25 +87,25 @@ Siempre especifica `width` y `height` para evitar CLS (Cumulative Layout Shift):
     className="object-cover"
   />
 </div>
-```
+\`\`\`
 
 ### 3. Priority Loading
 
 Usa `priority` solo para imágenes críticas (above-the-fold):
 
-```tsx
+\`\`\`tsx
 // ✅ Hero image - visible inmediatamente
 <Image src="/hero.jpg" alt="Hero" priority />
 
 // ✅ Imágenes del catálogo - lazy loading
 <Image src="/product.jpg" alt="Producto" loading="lazy" />
-```
+\`\`\`
 
 ### 4. Sizes Attribute
 
 Optimiza el tamaño de la imagen según el viewport:
 
-```tsx
+\`\`\`tsx
 <Image
   src="/product.jpg"
   alt="Producto"
@@ -113,7 +113,7 @@ Optimiza el tamaño de la imagen según el viewport:
   height={800}
   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 />
-```
+\`\`\`
 
 ### 5. Quality
 
@@ -121,9 +121,9 @@ Optimiza el tamaño de la imagen según el viewport:
 - Hero/Marketing: 85-90
 - Thumbnails: 60-75
 
-```tsx
+\`\`\`tsx
 <Image src="/hero.jpg" alt="Hero" quality={85} />
-```
+\`\`\`
 
 ## Checklist de Auditoría
 

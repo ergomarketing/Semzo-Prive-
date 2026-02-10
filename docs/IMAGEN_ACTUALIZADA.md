@@ -7,9 +7,9 @@
 **Nueva imagen:** Jacquemus Le Chiquito (800x1000px aprox)
 
 **URL de la imagen:** 
-```
+\`\`\`
 /images/jacquemus-20-c2-b7-20le-20chiquito-20alquiler-20semanal-20-2csemzoprive.png
-```
+\`\`\`
 
 ### Cómo actualizar manualmente desde el Admin
 

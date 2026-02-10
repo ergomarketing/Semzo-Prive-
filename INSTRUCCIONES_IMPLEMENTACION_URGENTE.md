@@ -13,9 +13,9 @@ El sistema actual tiene 3 desconexiones críticas:
 
 **Acción requerida:** Ejecuta este SQL en Supabase SQL Editor:
 
-```sql
+\`\`\`sql
 -- Ver archivo: scripts/create-membership-intents-MANUAL.sql
-```
+\`\`\`
 
 ### 2. Notificaciones de Admin (✅ COMPLETADO)
 
@@ -30,7 +30,7 @@ El sistema actual tiene 3 desconexiones críticas:
 
 En `app/cart/CartClient.tsx`, en la función `handleCheckout`, agregar:
 
-```typescript
+\`\`\`typescript
 // ANTES de crear el setup intent de Stripe:
 const intentResponse = await fetch('/api/checkout/create-intent', {
   method: 'POST',
@@ -50,7 +50,7 @@ const intentResponse = await fetch('/api/checkout/create-intent', {
 const { intentId, customerId } = await intentResponse.json()
 
 // LUEGO crear el setup intent con el intentId en metadata
-```
+\`\`\`
 
 #### B. Webhook ya actualizado (✅ PARCIAL)
 
@@ -60,7 +60,7 @@ El webhook de Stripe ya busca `intent_id` en metadata y actualiza el estado a `p
 
 Modificar `app/dashboard/page.tsx` para consultar:
 
-```typescript
+\`\`\`typescript
 const { data: activeIntent } = await supabase
   .from('membership_intents')
   .select('*')
@@ -69,11 +69,11 @@ const { data: activeIntent } = await supabase
   .order('created_at', { ascending: false })
   .limit(1)
   .single()
-```
+\`\`\`
 
 ## RESULTADO ESPERADO
 
-```
+\`\`\`
 Usuario selecciona plan
     ↓
 POST /api/checkout/create-intent
@@ -93,7 +93,7 @@ Webhook: identity.verification_session.verified
     ↓
 Dashboard lee desde membership_intents
     ↓ Muestra estado correcto
-```
+\`\`\`
 
 ## CHECKLIST DE DESPLIEGUE
 

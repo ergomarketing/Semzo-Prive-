@@ -3,9 +3,9 @@
 ## Problema Identificado
 
 Cuando intentas eliminar un usuario directamente de Supabase, obtienes el error:
-```
+\`\`\`
 Failed to delete user: Database error deleting user
-```
+\`\`\`
 
 **Causa**: Restricciones de foreign keys. El usuario tiene registros relacionados en múltiples tablas que deben eliminarse primero.
 
@@ -16,7 +16,7 @@ Se ha creado un sistema de eliminación segura que maneja automáticamente todas
 ### Endpoints Disponibles
 
 #### 1. Eliminación General (Recomendado)
-```bash
+\`\`\`bash
 POST /api/admin/delete-user
 Content-Type: application/json
 
@@ -27,12 +27,12 @@ Content-Type: application/json
   // O:
   "phone": "+34624239394"
 }
-```
+\`\`\`
 
 #### 2. Eliminación por Teléfono (Simplificado)
-```bash
+\`\`\`bash
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 ### Orden de Eliminación
 
@@ -88,7 +88,7 @@ Tienes un usuario con teléfono +34624239394 que ha estado pendiente de verifica
 **Solución Inmediata**:
 
 #### Opción A: Usar el nuevo endpoint (Recomendado)
-```bash
+\`\`\`bash
 # Desde Postman o similar
 POST https://tu-dominio.vercel.app/api/admin/delete-user
 Content-Type: application/json
@@ -96,15 +96,15 @@ Content-Type: application/json
 {
   "phone": "+34624239394"
 }
-```
+\`\`\`
 
 #### Opción B: Usar el endpoint simplificado
-```bash
+\`\`\`bash
 DELETE https://tu-dominio.vercel.app/api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 #### Opción C: Desde código cliente
-```typescript
+\`\`\`typescript
 const response = await fetch('/api/admin/delete-user', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -113,11 +113,11 @@ const response = await fetch('/api/admin/delete-user', {
 
 const result = await response.json()
 console.log(result)
-```
+\`\`\`
 
 ## Respuesta Esperada
 
-```json
+\`\`\`json
 {
   "success": true,
   "message": "Usuario eliminado exitosamente",
@@ -133,7 +133,7 @@ console.log(result)
     ...
   ]
 }
-```
+\`\`\`
 
 ## Prevención de Problemas Futuros
 
@@ -147,7 +147,7 @@ console.log(result)
 
 Considera agregar un cron job para limpiar usuarios no verificados después de cierto tiempo:
 
-```typescript
+\`\`\`typescript
 // app/api/cron/cleanup-unverified/route.ts
 export async function GET() {
   // Eliminar usuarios con más de 7 días sin verificar
@@ -167,7 +167,7 @@ export async function GET() {
     }
   }
 }
-```
+\`\`\`
 
 ## Notas de Seguridad
 
@@ -180,7 +180,7 @@ export async function GET() {
 
 Puedes probar la eliminación con usuarios de prueba:
 
-```typescript
+\`\`\`typescript
 // 1. Crear usuario de prueba
 const { data } = await supabase.auth.signUp({
   phone: '+34600000000',
@@ -192,7 +192,7 @@ await fetch('/api/admin/delete-user', {
   method: 'POST',
   body: JSON.stringify({ userId: data.user?.id })
 })
-```
+\`\`\`
 
 ## Soporte
 

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { put, del, list } from "@vercel/blob"
+import { updatePost } from "@/lib/blog-storage"
 
 // PUT/POST - Edit an existing blog post
 export async function POST(request: NextRequest) {
@@ -24,22 +24,16 @@ updatedAt: "${new Date().toISOString().split("T")[0]}"
 
 ${content}`
 
-    // Delete old version
-    const { blobs } = await list({ prefix: `blog/${slug}` })
-    for (const blob of blobs) {
-      await del(blob.url)
-    }
+    const result = await updatePost(slug, frontmatter)
 
-    // Upload new version
-    const blob = await put(`blog/${slug}.md`, frontmatter, {
-      access: "public",
-      contentType: "text/markdown",
-    })
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
       slug,
-      url: blob.url,
+      url: result.url,
     })
   } catch (error) {
     console.error("Error editing blog post:", error)
