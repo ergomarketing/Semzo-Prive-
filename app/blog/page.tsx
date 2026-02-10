@@ -98,9 +98,9 @@ export default async function BlogPage() {
 
             {posts.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No hay artículos publicados aún.</p>
+                <p className="text-gray-500 text-lg">Los artículos están temporalmente inaccesibles.</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Los artículos que publiques desde el panel de administración aparecerán aquí.
+                  Estamos trabajando para restaurar el acceso. Tus artículos originales están seguros y volverán pronto.
                 </p>
               </div>
             ) : (
