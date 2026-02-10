@@ -7,8 +7,17 @@ export default function PrivacyPage() {
 
           <div className="prose prose-slate max-w-none">
             <p className="text-lg text-slate-600 mb-8">
-              En Semzo Privé, valoramos y respetamos tu privacidad. Esta política explica cómo recopilamos, utilizamos y
-              protegemos tu información personal.
+              La presente Política de Privacidad describe el tratamiento de los datos personales recabados a través del
+              servicio prestado bajo la marca <strong>Semzo Privé</strong>.
+            </p>
+            <p className="text-slate-700 mb-8">
+              El tratamiento de los datos se realiza conforme a la normativa europea de protección de datos aplicable
+              (Reglamento (UE) 2016/679 – RGPD), aplicando las medidas técnicas y organizativas necesarias para
+              garantizar la seguridad y confidencialidad de la información.
+            </p>
+            <p className="text-slate-700 mb-8 p-4 rounded-lg border-l-4 border-slate-300">
+              En caso de que la titularidad del servicio sea asumida por una entidad jurídica constituida dentro de la
+              Unión Europea, la presente Política será actualizada para reflejar dicha circunstancia.
             </p>
 
             <h2 className="font-serif text-2xl text-slate-900 mt-8 mb-4">1. Información que recopilamos</h2>
@@ -60,9 +69,15 @@ export default function PrivacyPage() {
             <p className="text-slate-700">
               Para cualquier consulta sobre privacidad, contacta con nosotros en:
               <br />
-              Email: privacy@semzoprive.com
+              Email:{" "}
+              <a href="mailto:info@semzoprive.com" className="text-rose-400 hover:text-rose-500">
+                info@semzoprive.com
+              </a>
               <br />
-              Teléfono: +34 911 234 567
+              Teléfono:{" "}
+              <a href="tel:+34624239394" className="text-rose-400 hover:text-rose-500">
+                +34 624 239 394
+              </a>
             </p>
 
             <p className="text-sm text-slate-500 mt-8 pt-8 border-t border-slate-200">

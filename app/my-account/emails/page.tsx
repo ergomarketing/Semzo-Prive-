@@ -4,32 +4,32 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Mail, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react"
-import { emailLogger, type EmailLog } from "@/app/lib/email-logger"
+
+interface EmailLog {
+  id: string
+  created_at: string
+  recipient_email: string
+  subject: string
+  email_type: string
+  status: "pending" | "sent" | "failed"
+}
 
 export default function UserEmailsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([])
   const [loading, setLoading] = useState(true)
-  const [userEmail, setUserEmail] = useState<string>("")
 
   useEffect(() => {
-    // En un entorno real, obtendríamos el email del usuario autenticado
-    // Por ahora, simulamos que lo obtenemos del localStorage
-    if (typeof window !== "undefined") {
-      const email = localStorage.getItem("userEmail") || ""
-      setUserEmail(email)
-      fetchLogs(email)
-    }
+    fetchLogs()
   }, [])
 
-  const fetchLogs = (email: string) => {
+  const fetchLogs = async () => {
     try {
       setLoading(true)
-      // Obtener logs del servicio
-      const allLogs = emailLogger.getLogs()
-
-      // Filtrar solo los emails del usuario actual
-      const userLogs = allLogs.filter((log) => log.to === email)
-      setLogs(userLogs)
+      const response = await fetch("/api/user/email-logs")
+      if (response.ok) {
+        const data = await response.json()
+        setLogs(data.logs || [])
+      }
     } catch (error) {
       console.error("Error fetching logs:", error)
     } finally {
@@ -115,12 +115,12 @@ export default function UserEmailsPage() {
                       {getStatusIcon(log.status)}
                       <div>
                         <p className="font-medium text-slate-900">{log.subject}</p>
-                        <p className="text-sm text-slate-600">{formatDate(log.timestamp)}</p>
+                        <p className="text-sm text-slate-600">{formatDate(log.created_at)}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Badge variant="outline" className="text-xs">
-                        {log.type}
+                        {log.email_type}
                       </Badge>
                       {getStatusBadge(log.status)}
                     </div>

@@ -1,13 +1,130 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    workerThreads: false,
+    cpus: 1
+  },
+  async headers() {
+    return [
+      {
+        // Block specific logo from Google Images indexing
+        source: '/images/logo-20semzo-20prive.png',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, noimageindex',
+          },
+        ],
+      },
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:",
+              "script-src * 'unsafe-inline' 'unsafe-eval'",
+              "style-src * 'unsafe-inline'",
+              "img-src * data: blob:",
+              "font-src * data:",
+              "connect-src * wss: ws:",
+              "frame-src * data: blob: https://verify.stripe.com https://js.stripe.com https://*.stripe.com",
+              "object-src 'none'",
+            ].join('; ')
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          }
+        ]
+      }
+    ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/rss.xml',
+        destination: '/api/rss',
+      },
+      {
+        source: '/rss-pinterest.xml',
+        destination: '/api/rss-pinterest',
+      },
+    ]
+  },
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'misc.stripe.com',
+        port: '',
+        pathname: '/stripe-copy-assets/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.sanity.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'source.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.v0.dev',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.public.blob.vercel-storage.com',
+      },
+    ],
   },
 }
 

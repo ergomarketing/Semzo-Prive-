@@ -33,11 +33,11 @@ Ir a: https://vercel.com/tu-proyecto/settings/environment-variables
 
 **Configurar estas 3 variables:**
 
-\`\`\`
+```
 STRIPE_SECRET_KEY=sk_live_51RP3lcKBSKEgBoTn...TU_CLAVE_COMPLETA
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB
 STRIPE_WEBHOOK_SECRET=whsec_IEcUdP9jyx1fym8l9FQ0LmUszCgecj23
-\`\`\`
+```
 
 ### 4. 🔄 REDEPLOY OBLIGATORIO
 
@@ -52,7 +52,7 @@ Usar la página de diagnósticos: `/admin/stripe-diagnostics`
 
 ## 🎯 TUS CLAVES ACTUALES
 
-\`\`\`
+```
 ✅ Clave Pública (funcionando):
 pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB
 
@@ -61,7 +61,7 @@ sk_live_...O5hU (necesitas la clave completa)
 
 ✅ Webhook Secret:
 whsec_IEcUdP9jyx1fym8l9FQ0LmUszCgecj23
-\`\`\`
+```
 
 ## 🚨 IMPORTANTE: SEGURIDAD
 
@@ -74,6 +74,6 @@ whsec_IEcUdP9jyx1fym8l9FQ0LmUszCgecj23
 1. Verificar que estés en el proyecto correcto de Stripe
 2. Verificar permisos de tu cuenta en Stripe
 3. Contactar soporte de Stripe si no puedes acceder a las claves
-\`\`\`
+```
 
 Ahora vamos a crear una página de configuración rápida para verificar las claves:

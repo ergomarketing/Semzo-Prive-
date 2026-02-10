@@ -1,19 +1,32 @@
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  // Verificar variables de entorno directamente
-  const envVars = {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL_ENV: process.env.VERCEL_ENV,
-  }
+  try {
+    const envCheck = {
+      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+      EMAIL_API_KEY: !!process.env.EMAIL_API_KEY,
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "NOT_SET",
+      NODE_ENV: process.env.NODE_ENV,
+    }
 
-  return NextResponse.json({
-    message: "Debug de variables de entorno",
-    variables: envVars,
-    hasUrl: !!envVars.NEXT_PUBLIC_SUPABASE_URL,
-    hasKey: !!envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    timestamp: new Date().toISOString(),
-  })
+    console.log("🔍 Environment Check:", envCheck)
+
+    return NextResponse.json({
+      success: true,
+      environment: envCheck,
+      message: "Variables de entorno verificadas",
+    })
+  } catch (error) {
+    console.error("❌ Error verificando entorno:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Error verificando variables de entorno",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
+  }
 }

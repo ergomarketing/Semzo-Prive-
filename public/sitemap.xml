@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Homepage - Máxima prioridad -->
+  <url>
+    <loc>https://semzoprive.com/</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.00</priority>
+  </url>
+
+  <!-- Páginas comerciales principales - Alta prioridad -->
+  <url>
+    <loc>https://semzoprive.com/catalog</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/proceso</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Membresías - Páginas de conversión clave -->
+  <url>
+    <loc>https://semzoprive.com/membership/upgrade</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/membership/upgrade/signature</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/membership/upgrade/prive</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/membership/upgrade/essentiel</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/membership-signup</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Gift Cards - Página comercial -->
+  <url>
+    <loc>https://semzoprive.com/gift-cards</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Blog/Magazine - Contenido SEO -->
+  <url>
+    <loc>https://semzoprive.com/blog</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Soporte y páginas de ayuda -->
+  <url>
+    <loc>https://semzoprive.com/support</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+
+  <!-- Signup - Landing page conversión -->
+  <url>
+    <loc>https://semzoprive.com/signup</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Páginas legales - Baja prioridad pero necesarias -->
+  <url>
+    <loc>https://semzoprive.com/legal/terms</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/legal/privacy</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <url>
+    <loc>https://semzoprive.com/legal/cookies</loc>
+    <lastmod>2025-12-12T00:00:00+00:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <!-- 
+    NOTA: Las páginas individuales del catálogo (/catalog/[id]) y blog (/blog/[slug])
+    deben generarse dinámicamente. Ver app/sitemap.ts para implementación.
+  -->
+
+</urlset>

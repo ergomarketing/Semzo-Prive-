@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+export { Footer }
+
 export default function Footer() {
   return (
     <footer
@@ -12,7 +14,6 @@ export default function Footer() {
     >
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-12 gap-8">
-          {/* Logo y descripción */}
           <div className="md:col-span-4">
             <div className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
               Semzo Privé
@@ -22,7 +23,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Enlaces */}
           <div className="md:col-span-2 md:col-start-6">
             <h3 className="text-xs uppercase tracking-widest font-medium mb-6" style={{ color: "#1a1a4b" }}>
               Explorar
@@ -67,7 +67,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className="text-slate-500 hover:text-slate-700 transition-colors">
+                <Link href="/legal/cookies" className="text-slate-500 hover:text-slate-700 transition-colors">
                   Cookies
                 </Link>
               </li>
@@ -80,23 +80,25 @@ export default function Footer() {
             </h3>
             <ul className="space-y-4">
               <li>
-                <Link
-                  href="mailto:info@semzoprive.com"
-                  className="text-slate-500 hover:text-slate-700 transition-colors"
-                >
-                  info@semzoprive.com
+                <Link href="/support" className="text-slate-500 hover:text-slate-700 transition-colors">
+                  Centro de Soporte
                 </Link>
               </li>
               <li>
-                <Link href="tel:+34624239394" className="text-slate-500 hover:text-slate-700 transition-colors">
+                <a href="mailto:info@semzoprive.com" className="text-slate-500 hover:text-slate-700 transition-colors">
+                  info@semzoprive.com
+                </a>
+              </li>
+              <li>
+                <a href="tel:+34624239394" className="text-slate-500 hover:text-slate-700 transition-colors">
                   +34 624 23 9394
-                </Link>
+                </a>
               </li>
               <li>
                 <address className="text-slate-500 not-italic">
-                  Avenida Ricardo Soriano s.n
+                  Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n
                   <br />
-                  29600 Marbella
+                  Marbella, Málaga
                 </address>
               </li>
             </ul>
@@ -111,18 +113,34 @@ export default function Footer() {
           }}
         >
           <div className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} Semzo Privé. Todos los derechos reservados.
+            © {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de artículos
+            de lujo.
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            <a
+              href="https://www.instagram.com/semzoprive/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+            >
               Instagram
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
+            </a>
+            <a
+              href="https://www.facebook.com/semzoprive"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+            >
               Facebook
-            </Link>
-            <Link href="#" className="text-slate-500 hover:text-slate-700 transition-colors">
-              LinkedIn
-            </Link>
+            </a>
+            <a
+              href="https://www.tiktok.com/@semzoprive"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              TikTok
+            </a>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
 export default function CTASection() {
   return (
@@ -12,8 +13,9 @@ export default function CTASection() {
       }}
     >
       <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-6">
+        <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+          {/* Left side - CTA Content */}
+          <div>
             <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
               Únete ahora
             </p>
@@ -27,7 +29,12 @@ export default function CTASection() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
-                onClick={() => (window.location.href = "/checkout?plan=signature")}
+                onClick={() => {
+                  const membresiaSection = document.getElementById("membresias")
+                  if (membresiaSection) {
+                    membresiaSection.scrollIntoView({ behavior: "smooth" })
+                  }
+                }}
                 className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
                 style={{
                   backgroundColor: "rgba(244, 196, 204, 0.6)",
@@ -50,40 +57,36 @@ export default function CTASection() {
             </div>
           </div>
 
-          <div className="md:col-span-5 md:col-start-8">
+          {/* Right side - Lifestyle Image */}
+          <div className="relative">
+            {/* Ambient background glow */}
             <div
-              className="pt-8 space-y-8 p-6 rounded-lg backdrop-blur-sm"
+              className="absolute inset-0 rounded-3xl blur-3xl opacity-30"
               style={{
-                borderTop: "1px solid rgba(244, 196, 204, 0.3)",
-                backgroundColor: "rgba(255, 240, 243, 0.3)",
+                background: "radial-gradient(circle, rgba(244, 196, 204, 0.4) 0%, transparent 70%)",
               }}
-            >
-              <div>
-                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
-                  Membresías disponibles
-                </div>
-                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
-                  50/100
-                </div>
-              </div>
+            />
 
-              <div>
-                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
-                  Próxima apertura de plazas
-                </div>
-                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
-                  15 de Junio
-                </div>
-              </div>
+            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
+              <Image
+                src="/images/fendi-white-cta.jpeg"
+                alt="Bolso Fendi blanco de lujo - Membresía Semzo Privé"
+                fill
+                className="object-cover transition-transform duration-500 hover:scale-105"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            </div>
 
-              <div>
-                <div className="text-xs uppercase tracking-widest mb-2 font-medium" style={{ color: "#1a1a4b" }}>
-                  Tiempo de espera actual
-                </div>
-                <div className="font-serif text-3xl" style={{ color: "#1a1a4b" }}>
-                  2 semanas
-                </div>
-              </div>
+            {/* Info section below image */}
+            <div className="text-center space-y-4 mt-8">
+              <h3 className="font-serif text-2xl md:text-3xl font-light" style={{ color: "#1a1a4b" }}>
+                Acceso exclusivo cada mes
+              </h3>
+              <p className="text-sm md:text-base text-slate-600 leading-relaxed max-w-md mx-auto px-4">
+                Descubre piezas icónicas que elevan tu estilo. Cambia tu bolso tan a menudo como desees.
+              </p>
             </div>
           </div>
         </div>
