@@ -1,46 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { put, del, list } from "@vercel/blob"
+import { listPosts, getPost, parseFrontmatter } from "@/lib/blog-storage"
 
 // Cache GET requests for 7 days (posts published 1-2x/week)
 export const revalidate = 604800
-
-interface BlogPost {
-  slug: string
-  title: string
-  date: string
-  author: string
-  excerpt: string
-  image?: string
-  content: string
-  updatedAt?: string // Agregado campo updatedAt
-}
-
-// Parse frontmatter from markdown content
-function parseFrontmatter(content: string): { metadata: Record<string, string>; content: string } {
-  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
-  const match = content.match(frontmatterRegex)
-
-  if (!match) {
-    return { metadata: {}, content }
-  }
-
-  const frontmatter = match[1]
-  const markdown = match[2]
-
-  const metadata: Record<string, string> = {}
-  frontmatter.split("\n").forEach((line) => {
-    const [key, ...valueParts] = line.split(":")
-    if (key && valueParts.length) {
-      const value = valueParts
-        .join(":")
-        .trim()
-        .replace(/^["']|["']$/g, "")
-      metadata[key.trim()] = value
-    }
-  })
-
-  return { metadata, content: markdown }
-}
 
 // GET - List all blog posts or get a single post by slug
 export async function GET(request: NextRequest) {
@@ -48,48 +10,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
 
-    const { blobs } = await list({ prefix: "blog/" })
-    const posts: BlogPost[] = []
-
-    for (const blob of blobs) {
-      if (blob.pathname.endsWith(".md")) {
-        try {
-          const response = await fetch(blob.url, {
-            next: { revalidate: 604800 }, // Cache blob content for 7 days
-          }).catch(() => null)
-          if (!response || !response.ok) {
-            continue
-          }
-          const content = await response.text()
-          const { metadata, content: markdownContent } = parseFrontmatter(content)
-
-          const postSlug = metadata.slug || blob.pathname.replace("blog/", "").replace(".md", "")
-
-          if (slug && postSlug !== slug) continue
-
-          posts.push({
-            slug: postSlug,
-            title: metadata.title || "Sin título",
-            date: metadata.date || new Date().toISOString().split("T")[0],
-            author: metadata.author || "Semzo Privé",
-            excerpt: metadata.excerpt || markdownContent.substring(0, 150) + "...",
-            image: metadata.image,
-            content: markdownContent,
-            updatedAt: metadata.updatedAt,
-          })
-
-          if (slug && postSlug === slug) break
-        } catch {
-          continue
-        }
-      }
-    }
-
-    // Sort by date descending
-    posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
     if (slug) {
-      const post = posts[0] || null
+      const post = await getPost(slug)
       return NextResponse.json(post, {
         headers: {
           "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
@@ -97,6 +19,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const posts = await listPosts()
     return NextResponse.json(posts, {
       headers: {
         "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
@@ -145,16 +68,17 @@ ${directContent}`
       return NextResponse.json({ error: "Missing file or content" }, { status: 400 })
     }
 
-    // Upload to Vercel Blob
-    const blob = await put(`blog/${slug}.md`, content, {
-      access: "public",
-      contentType: "text/markdown",
-    })
+    const { createPost } = await import("@/lib/blog-storage")
+    const result = await createPost(slug, content)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
       slug,
-      url: blob.url,
+      url: result.url,
     })
   } catch (error) {
     console.error("Error creating blog post:", error)
@@ -172,10 +96,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Slug required" }, { status: 400 })
     }
 
-    const { blobs } = await list({ prefix: `blog/${slug}` })
+    const { deletePost } = await import("@/lib/blog-storage")
+    const result = await deletePost(slug)
 
-    for (const blob of blobs) {
-      await del(blob.url)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

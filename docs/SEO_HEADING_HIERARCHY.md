@@ -10,17 +10,17 @@ La jerarquía correcta de encabezados es crucial para:
 ## Reglas de Jerarquía
 
 ### 1. Un único H1 por página
-```tsx
+\`\`\`tsx
 // ✅ CORRECTO
 <h1>Título Principal de la Página</h1>
 
 // ❌ INCORRECTO - Múltiples H1
 <h1>Primer título</h1>
 <h1>Segundo título</h1>
-```
+\`\`\`
 
 ### 2. No saltar niveles
-```tsx
+\`\`\`tsx
 // ✅ CORRECTO
 <h1>Título Principal</h1>
 <h2>Sección 1</h2>
@@ -35,10 +35,10 @@ La jerarquía correcta de encabezados es crucial para:
 // ❌ INCORRECTO - Salta de H2 a H4
 <h2>Sección</h2>
 <h4>Subsección</h4>
-```
+\`\`\`
 
 ### 3. Los encabezados deben ser descriptivos
-```tsx
+\`\`\`tsx
 // ✅ CORRECTO
 <h2>Cómo funciona el proceso de alquiler</h2>
 <h3>Paso 1: Elige tu bolso de lujo</h3>
@@ -46,12 +46,12 @@ La jerarquía correcta de encabezados es crucial para:
 // ❌ INCORRECTO - Poco descriptivo
 <h2>Proceso</h2>
 <h3>Paso 1</h3>
-```
+\`\`\`
 
 ### 4. Usar sr-only cuando sea necesario para SEO
 Cuando la jerarquía visual no coincide con la jerarquía semántica necesaria para SEO:
 
-```tsx
+\`\`\`tsx
 // ✅ CORRECTO - H2 oculto visualmente pero presente para SEO
 <section>
   <h2 className="sr-only">Pasos del proceso</h2>
@@ -64,12 +64,12 @@ Cuando la jerarquía visual no coincide con la jerarquía semántica necesaria p
     </div>
   </div>
 </section>
-```
+\`\`\`
 
 ## Estructura de Encabezados por Página
 
 ### Homepage (/)
-```
+\`\`\`
 H1: "Tu puerta de acceso al armario de tus sueños"
 ├─ H2: "Nuestra Colección" (collection-section)
 ├─ H2: "Nuestras Membresías" (membership-section)
@@ -80,10 +80,10 @@ H1: "Tu puerta de acceso al armario de tus sueños"
 ├─ H2: "Testimonios" (testimonial-section)
 ├─ H2: "Semzo Magazine" (magazine-section)
 └─ H2: "Call to Action" (cta-section)
-```
+\`\`\`
 
 ### Página Proceso (/proceso)
-```
+\`\`\`
 H1: "Cómo Funciona Semzo Privé"
 ├─ H2: "Pasos del proceso de alquiler" (sr-only)
 │  ├─ H3: "Elige tu bolso"
@@ -95,25 +95,25 @@ H1: "Cómo Funciona Semzo Privé"
 │  ├─ H3: "Marcas Exclusivas"
 │  └─ H3: "Flexibilidad Total"
 └─ H2: "¿Lista para comenzar tu experiencia de lujo?"
-```
+\`\`\`
 
 ### Blog Post (/blog/[slug])
-```
+\`\`\`
 H1: {post.title}
 ├─ H2: Sección del contenido
 │  └─ H3: Subsección
 ├─ H2: Otra sección
 └─ H2: Conclusión
-```
+\`\`\`
 
 ### Página de Producto (/catalog/[id])
-```
+\`\`\`
 H1: {producto.nombre}
 ├─ H2: "Descripción"
 ├─ H2: "Detalles del producto"
 ├─ H2: "Política de alquiler"
 └─ H2: "Productos similares"
-```
+\`\`\`
 
 ## Checklist de Validación
 
@@ -135,15 +135,15 @@ Antes de hacer deploy, verificar:
 - **Lighthouse** (Chrome DevTools): Auditoría SEO y accesibilidad
 
 ### Validación manual
-```bash
+\`\`\`bash
 # Buscar todos los encabezados en un archivo
 grep -n "<h[1-6]" app/components/mi-componente.tsx
-```
+\`\`\`
 
 ## Ejemplos de Correcciones Comunes
 
 ### Problema: Múltiples H1
-```tsx
+\`\`\`tsx
 // ❌ ANTES
 <h1>Bienvenido</h1>
 <section>
@@ -155,10 +155,10 @@ grep -n "<h[1-6]" app/components/mi-componente.tsx
 <section>
   <h2>Nuestros Servicios</h2>
 </section>
-```
+\`\`\`
 
 ### Problema: Salto de niveles
-```tsx
+\`\`\`tsx
 // ❌ ANTES
 <h2>Servicios</h2>
 <div>
@@ -172,10 +172,10 @@ grep -n "<h[1-6]" app/components/mi-componente.tsx
   <h3>Servicio 1</h3>
   <h3>Servicio 2</h3>
 </div>
-```
+\`\`\`
 
 ### Problema: Jerarquía visual vs semántica
-```tsx
+\`\`\`tsx
 // ❌ ANTES - El H2 debería estar pero no visualmente
 <section>
   <div className="grid">
@@ -192,7 +192,7 @@ grep -n "<h[1-6]" app/components/mi-componente.tsx
     <h3>Paso 2</h3>
   </div>
 </section>
-```
+\`\`\`
 
 ## Recursos Adicionales
 

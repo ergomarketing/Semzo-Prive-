@@ -17,7 +17,7 @@ El script SQL `scripts/create-membership-intents-table.sql` **NO SE EJECUTÓ** e
 
 **Ve al SQL Editor de Supabase y ejecuta:**
 
-```sql
+\`\`\`sql
 -- Este es el contenido de scripts/create-membership-intents-table.sql
 CREATE TABLE IF NOT EXISTS membership_intents (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -91,16 +91,16 @@ BEGIN
     AND expires_at < NOW();
 END;
 $$ LANGUAGE plpgsql;
-```
+\`\`\`
 
 ### PASO 2: Verificar Email API Key
 
 Las notificaciones admin usan Resend con `EMAIL_API_KEY`. Verifica que esté configurada:
 
-```bash
+\`\`\`bash
 # En Vercel > Settings > Environment Variables
 EMAIL_API_KEY=re_xxxxxxxxxxxx
-```
+\`\`\`
 
 ### PASO 3: Deploy del Código Actualizado
 

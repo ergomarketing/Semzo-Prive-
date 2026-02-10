@@ -104,7 +104,7 @@ Debes responder:
 
 Cuando propongas un cambio funcional, debes responder así:
 
-```
+\`\`\`
 CAMBIO PROPUESTO:
 - Archivo: [ruta del archivo]
 - Regla afectada: [descripción de la regla actual]
@@ -113,7 +113,7 @@ CAMBIO PROPUESTO:
 - Riesgo: [BAJO/MEDIO/ALTO/CRÍTICO]
 
 ¿Confirmas este cambio? (SI / NO)
-```
+\`\`\`
 
 **Hasta recibir "SI", NO implementas nada.**
 
@@ -123,7 +123,7 @@ CAMBIO PROPUESTO:
 
 ### Flujo Correcto
 
-```
+\`\`\`
 1. Usuario se registra (por SMS o email)
    └─ Estado: sin membresía
 
@@ -142,17 +142,17 @@ CAMBIO PROPUESTO:
 5. Usuario reserva bolso
    └─ Consume: 1 pase
    └─ Crea: 1 reserva confirmed
-```
+\`\`\`
 
 ### Estados Inválidos (NUNCA deben ocurrir)
 
-```
+\`\`\`
 ❌ Pase comprado sin membresía activa
 ❌ Reserva creada sin pase disponible
 ❌ Reserva creada sin membresía activa
 ❌ Pase consumido sin crear reserva
 ❌ Membresía "activa" sin verificación de identidad completada
-```
+\`\`\`
 
 ---
 

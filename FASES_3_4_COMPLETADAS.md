@@ -21,7 +21,7 @@
 **Archivo:** `/app/api/webhooks/stripe-identity/route.ts`  
 **Línea:** 121
 
-```typescript
+\`\`\`typescript
 const { error: activationError } = await supabase
   .from("membership_intents")
   .update({
@@ -32,7 +32,7 @@ const { error: activationError } = await supabase
     updated_at: new Date().toISOString(),
   })
   .eq("id", intent.id)
-```
+\`\`\`
 
 ### Validación:
 
@@ -62,7 +62,7 @@ La query original hacía:
 
 **Estrategia:** Queries en paralelo + deduplicación
 
-```typescript
+\`\`\`typescript
 // ANTES (3 queries secuenciales):
 const { data: directGiftCards } = await supabase.from("gift_cards")...
 const { data: intentsWithGiftCards } = await supabase.from("membership_intents")...
@@ -79,7 +79,7 @@ const [{ data: directGiftCards }, { data: intentGiftCardIds }] = await Promise.a
 if (gcIds.length > 0) {
   const { data } = await supabase.from("gift_cards")...
 }
-```
+\`\`\`
 
 ### Mejoras de Performance:
 
@@ -94,7 +94,7 @@ if (gcIds.length > 0) {
 
 ### Lógica de Deduplicación:
 
-```typescript
+\`\`\`typescript
 // Una gift card puede aparecer 2 veces:
 // 1. used_by = user_id (asignada directamente al usuario)
 // 2. membership_intents.gift_card_id (usada para pagar membresía)
@@ -103,7 +103,7 @@ const allCards = [...directGiftCards, ...intentGiftCards]
 const uniqueGiftCards = allCards.filter(
   (card, index, self) => index === self.findIndex((c) => c.id === card.id)
 )
-```
+\`\`\`
 
 **Caso de uso:** Usuario recibe gift card de 100€, usa 60€ para membresía. Queda saldo de 40€.
 - La card aparece en `used_by` (directa)
@@ -137,10 +137,10 @@ const uniqueGiftCards = allCards.filter(
 
 ### Verificación Dashboard:
 
-```bash
+\`\`\`bash
 curl https://your-app.vercel.app/api/user/dashboard \
   -H "Authorization: Bearer <token>"
-```
+\`\`\`
 
 Validar que `gift_cards.total_balance` sea correcto.
 
@@ -175,18 +175,18 @@ Validar que `gift_cards.total_balance` sea correcto.
 
 El script `/scripts/add-gift-card-id-to-intents.sql` debe estar ejecutado para que esta query funcione correctamente.
 
-```sql
+\`\`\`sql
 ALTER TABLE membership_intents 
 ADD COLUMN IF NOT EXISTS gift_card_id UUID REFERENCES gift_cards(id);
-```
+\`\`\`
 
 **Validación:**
-```sql
+\`\`\`sql
 SELECT column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'membership_intents' 
 AND column_name = 'gift_card_id';
-```
+\`\`\`
 
 Expected: `gift_card_id | uuid`
 
@@ -225,9 +225,9 @@ Las 4 fases del plan de alineación están completadas:
 ### Por qué no usar .or() en Supabase:
 
 Intenté usar:
-```typescript
+\`\`\`typescript
 .or(`used_by.eq.${user.id},membership_intents.user_id.eq.${user.id}`)
-```
+\`\`\`
 
 **Problema:** Supabase no soporta `.or()` con foreign key joins complejos en la misma query.
 

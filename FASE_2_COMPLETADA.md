@@ -33,7 +33,7 @@ Se ha completado exitosamente la migración del endpoint `/api/user/reservations
 
 ### ❌ ANTES: Locks Manuales (Código Frágil)
 
-```typescript
+\`\`\`typescript
 // 1. Check idempotencia manual (15 líneas)
 const { data: existingReservation } = await supabase
   .from("reservations")
@@ -99,7 +99,7 @@ if (createError) {
   }
   return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
 }
-```
+\`\`\`
 
 **Problemas:**
 - Race conditions entre pasos 2, 3 y 4
@@ -111,7 +111,7 @@ if (createError) {
 
 ### ✅ DESPUÉS: RPC Atómico (Código Robusto)
 
-```typescript
+\`\`\`typescript
 // 1. Llamada única al RPC atómico
 const { data: rpcResult, error: rpcError } = await supabase.rpc("create_reservation_atomic", {
   p_user_id: userId,
@@ -144,7 +144,7 @@ const { data: reservation } = await supabase
 if (rpcResult.message === "Reserva ya existente") {
   return NextResponse.json({ reservation, message: "Reserva ya existente" })
 }
-```
+\`\`\`
 
 **Ventajas:**
 - ✅ FOR UPDATE garantiza locks transaccionales
@@ -160,7 +160,7 @@ if (rpcResult.message === "Reserva ya existente") {
 **TODAS las validaciones críticas se mantienen intactas en el endpoint:**
 
 ### 1. Validación de Vigencia Petite (líneas 284-310)
-```typescript
+\`\`\`typescript
 const membershipStartDate = activeIntent?.activated_at || activeIntent?.created_at || 
   userMembershipRecord?.start_date
 
@@ -174,10 +174,10 @@ if (now > expiresAt) {
     membershipExpired: true,
   }, { status: 403 })
 }
-```
+\`\`\`
 
 ### 2. Límite de 4 Pases por Membresía (líneas 313-337)
-```typescript
+\`\`\`typescript
 const { count: usedPassesCount } = await supabase
   .from("bag_passes")
   .select("id", { count: "exact", head: true })
@@ -193,10 +193,10 @@ if ((usedPassesCount || 0) >= MAX_PASSES_PER_MEMBERSHIP) {
     maxPassesReached: true,
   }, { status: 403 })
 }
-```
+\`\`\`
 
 ### 3. Selección Inteligente de Pase por Tier (líneas 340-400)
-```typescript
+\`\`\`typescript
 const tierHierarchy: Record<string, number> = {
   lessentiel: 1,
   essentiel: 1,
@@ -219,10 +219,10 @@ if (validPasses.length === 0) {
 }
 
 passToUse = validPasses[0] // Primer pase válido disponible
-```
+\`\`\`
 
 ### 4. Validación de Tier para Membresías Superiores (líneas 404-430)
-```typescript
+\`\`\`typescript
 if (["essentiel", "signature", "prive"].includes(userMembershipPlan)) {
   const userTierLevel = tierHierarchy[userMembershipPlan] || 0
   const bagTierLevel = tierHierarchy[bagTier] || 1
@@ -234,7 +234,7 @@ if (["essentiel", "signature", "prive"].includes(userMembershipPlan)) {
     }, { status: 403 })
   }
 }
-```
+\`\`\`
 
 ---
 
@@ -243,7 +243,7 @@ if (["essentiel", "signature", "prive"].includes(userMembershipPlan)) {
 **Todas las operaciones post-creación se mantienen intactas:**
 
 ### 1. Actualización de Contador de Pases (líneas 528-536)
-```typescript
+\`\`\`typescript
 if (passIdToConsume) {
   // El pase ya fue marcado como usado por el RPC
   // Solo actualizamos el contador en profiles
@@ -252,10 +252,10 @@ if (passIdToConsume) {
     await supabase.from("profiles").update({ available_passes_count: passCount }).eq("id", userId)
   }
 }
-```
+\`\`\`
 
 ### 2. Auditoría Completa (líneas 538-557)
-```typescript
+\`\`\`typescript
 await supabase.from("audit_log").insert({
   user_id: userId,
   action: "reservation_created",
@@ -272,10 +272,10 @@ await supabase.from("audit_log").insert({
   },
   created_at: new Date().toISOString(),
 })
-```
+\`\`\`
 
 ### 3. Notificación a Admin (líneas 559-590)
-```typescript
+\`\`\`typescript
 await notifyAdmin(
   `Nueva Reserva - ${bag.brand} ${bag.name}`,
   `<div>
@@ -286,10 +286,10 @@ await notifyAdmin(
     ...
   </div>`
 )
-```
+\`\`\`
 
 ### 4. Notificación a Usuario (líneas 592-608)
-```typescript
+\`\`\`typescript
 await emailService.sendReservationNotification({
   userEmail: userProfile?.email || "",
   userName: userProfile?.full_name || "Cliente",
@@ -297,13 +297,13 @@ await emailService.sendReservationNotification({
   reservationDate: startDate.toLocaleDateString("es-ES"),
   reservationId: reservation.id,
 })
-```
+\`\`\`
 
 ---
 
 ## 🔍 FLUJO COMPLETO POST-CONSOLIDACIÓN
 
-```
+\`\`\`
 1. VALIDACIONES PRE-RPC (endpoint)
    ├─ Autenticación de usuario
    ├─ Validación de campos requeridos
@@ -331,7 +331,7 @@ await emailService.sendReservationNotification({
    ├─ Notificar a admin
    ├─ Notificar a usuario
    └─ Retornar reserva exitosa
-```
+\`\`\`
 
 ---
 
@@ -408,7 +408,7 @@ await emailService.sendReservationNotification({
 ## 🔍 CÓDIGO ESPECÍFICO ELIMINADO
 
 ### Líneas 446-462 (Idempotencia Manual)
-```typescript
+\`\`\`typescript
 // ❌ ELIMINADO
 const { data: existingReservation } = await supabase
   .from("reservations")
@@ -427,13 +427,13 @@ if (existingReservation) {
     .single()
   return NextResponse.json({ reservation: existingWithBag, message: "Reserva ya existente" })
 }
-```
+\`\`\`
 **Razón:** Ahora manejado por el RPC dentro de la transacción
 
 ---
 
 ### Líneas 464-486 (Lock Manual de Pase)
-```typescript
+\`\`\`typescript
 // ❌ ELIMINADO
 const passIdToConsume = passToUse?.id || usePassId
 if (passIdToConsume) {
@@ -457,13 +457,13 @@ if (passIdToConsume) {
   }
   console.log("[v0] Pass locked successfully:", passIdToConsume)
 }
-```
+\`\`\`
 **Razón:** Ahora manejado por el RPC con FOR UPDATE
 
 ---
 
 ### Líneas 488-514 (Lock Manual de Bolso + Rollback Manual)
-```typescript
+\`\`\`typescript
 // ❌ ELIMINADO
 const { data: bagLock, error: bagLockError } = await supabase
   .from("bags")
@@ -491,13 +491,13 @@ if (bagLockError || !bagLock) {
   )
 }
 console.log("[v0] Bag locked successfully:", bag_id)
-```
+\`\`\`
 **Razón:** Ahora manejado por el RPC con FOR UPDATE y rollback automático
 
 ---
 
 ### Líneas 516-549 (Creación Manual de Reserva + Rollback Complejo)
-```typescript
+\`\`\`typescript
 // ❌ ELIMINADO
 const { data: reservation, error: createError } = await supabase
   .from("reservations")
@@ -534,7 +534,7 @@ if (createError) {
 }
 
 console.log("[v0] Reservation created successfully:", reservation.id)
-```
+\`\`\`
 **Razón:** Ahora manejado por el RPC con rollback automático de PostgreSQL
 
 ---

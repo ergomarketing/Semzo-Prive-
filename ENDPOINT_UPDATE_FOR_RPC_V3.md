@@ -3,7 +3,7 @@
 ## Cambios necesarios después de ejecutar el RPC V3
 
 ### Antes (RPC V2 - retorna JSONB):
-```typescript
+\`\`\`typescript
 const { data: rpcResult, error: rpcError } = await supabase.rpc("create_reservation_atomic", {
   p_user_id: userId,
   p_bag_id: bag_id,
@@ -19,10 +19,10 @@ if (!rpcResult?.success) { /* ... */ } // ❌ Ya no retorna JSONB
 
 const reservationId = rpcResult.reservation_id // ❌ Ya no es objeto
 const isExisting = rpcResult.message === "Reserva ya existente" // ❌ Sin idempotencia
-```
+\`\`\`
 
 ### Después (RPC V3 - retorna UUID):
-```typescript
+\`\`\`typescript
 const { data: reservationId, error: rpcError } = await supabase.rpc("create_reservation_atomic", {
   p_user_id: userId,
   p_bag_id: bag_id,
@@ -72,7 +72,7 @@ if (!reservationId) {
 }
 
 console.log("[v0] Reservation created via RPC:", reservationId)
-```
+\`\`\`
 
 ## Líneas exactas a cambiar
 

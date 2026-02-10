@@ -33,22 +33,22 @@ Se ha completado la **alineación total** del sistema de membresías, eliminando
 **Cambios clave:**
 
 1. **Sistema de Mapeo Centralizado** (`/lib/membership-state-mapper.ts`):
-   ```typescript
+   \`\`\`typescript
    export function mapDBStatusToUI(dbStatus: string): MembershipUIStatus {
      if (dbStatus === "initiated") return "pending_payment"
      // ... más mapeos
    }
-   ```
+   \`\`\`
 
 2. **Dashboard refactorizado** para usar SWR + API:
-   ```typescript
+   \`\`\`typescript
    // ANTES: Queries directas a Supabase
    const { data } = await supabase.from("profiles")...
    const { data: intents } = await supabase.from("membership_intents")...
    
    // DESPUÉS: SWR + API canónico
    const { data } = useSWR("/api/user/dashboard", fetcher)
-   ```
+   \`\`\`
 
 3. **Eliminados fallbacks a `profiles.membership_status`**:
    - En `/app/api/user/reservations/route.ts`
@@ -69,7 +69,7 @@ Se ha completado la **alineación total** del sistema de membresías, eliminando
 
 **Estrategia Híbrida Implementada:**
 
-```
+\`\`\`
 ┌─────────────────────────────────────────────────────┐
 │  ENDPOINT /api/user/reservations (Node.js)         │
 │                                                      │
@@ -97,7 +97,7 @@ Se ha completado la **alineación total** del sistema de membresías, eliminando
 │  4. Idempotencia (5 minutos)                       │
 │  5. Rollback automático si falla                   │
 └─────────────────────────────────────────────────────┘
-```
+\`\`\`
 
 **Código eliminado:**
 - ~86 líneas de locks manuales y creación de reserva
@@ -120,7 +120,7 @@ Se ha completado la **alineación total** del sistema de membresías, eliminando
 - `/app/api/webhooks/stripe-identity/route.ts`
 
 **Validación:**
-```typescript
+\`\`\`typescript
 // Línea 121 - Ya setea activated_at correctamente ✅
 const { error: activationError } = await supabase
   .from("membership_intents")
@@ -129,7 +129,7 @@ const { error: activationError } = await supabase
     verified_at: new Date().toISOString(),
     activated_at: new Date().toISOString(),  // ✅ CORRECTO
   })
-```
+\`\`\`
 
 **Conclusión:** No requirió cambios. El webhook ya estaba alineado.
 
@@ -142,7 +142,7 @@ const { error: activationError } = await supabase
 
 **Optimización:**
 
-```typescript
+\`\`\`typescript
 // ANTES (3 queries secuenciales):
 const { data: directGiftCards } = await supabase.from("gift_cards")
   .eq("used_by", user.id)...
@@ -165,7 +165,7 @@ const [{ data: directGiftCards }, { data: intentGiftCardIds }] =
 if (gcIds.length > 0) {
   const { data } = await supabase.from("gift_cards").in("id", gcIds)...
 }
-```
+\`\`\`
 
 **Performance:**
 - Sin intents: ~150ms → ~80ms (47% faster)
@@ -177,7 +177,7 @@ if (gcIds.length > 0) {
 
 ### Source of Truth Establecido:
 
-```
+\`\`\`
 ┌─────────────────────────────────────────────────────┐
 │  membership_intents (PRIMARY SOURCE OF TRUTH)       │
 │                                                      │
@@ -203,11 +203,11 @@ if (gcIds.length > 0) {
 │  - membership_type: YA NO ES SOURCE OF TRUTH ✅     │
 │  - Solo se usa para: email, nombre, dirección       │
 └─────────────────────────────────────────────────────┘
-```
+\`\`\`
 
 ### Flujo de Datos Canónico:
 
-```
+\`\`\`
 ┌─────────────┐
 │  DATABASE   │  membership_intents (source of truth)
 └──────┬──────┘
@@ -219,7 +219,7 @@ if (gcIds.length > 0) {
 ┌─────────────┐
 │  UI LAYER   │  SWR + State Mapper
 └─────────────┘  (dashboard/page.tsx, membresia/page.tsx)
-```
+\`\`\`
 
 **Garantía:** Todos los componentes UI que necesitan saber el estado de membresía DEBEN:
 1. Llamar a `/api/user/dashboard`
@@ -233,7 +233,7 @@ if (gcIds.length > 0) {
 ### Casos de Prueba Críticos:
 
 #### 1. Membresía Petite - Vigencia 30 días
-```typescript
+\`\`\`typescript
 // Setup:
 // - Usuario compra Petite el 2025-01-01
 // - activated_at: 2025-01-01 00:00:00
@@ -261,10 +261,10 @@ Expected:
     ends_at: "2025-01-31T00:00:00Z"
   }
 }
-```
+\`\`\`
 
 #### 2. Reserva con RPC Atómico - Race Condition
-```typescript
+\`\`\`typescript
 // Setup: 1 bolso disponible, 2 usuarios intentan reservar simultáneamente
 
 // Request 1 y 2 (simultáneas):
@@ -281,10 +281,10 @@ SELECT status FROM bags WHERE id = 'bag-123'
 
 SELECT COUNT(*) FROM reservations WHERE bag_id = 'bag-123' AND status IN ('confirmed', 'active')
 // Expected: 1
-```
+\`\`\`
 
 #### 3. Gift Card Balance - Deduplicación
-```typescript
+\`\`\`typescript
 // Setup:
 // - Gift card GC-100: amount = 100€
 // - User compra membresía con GC-100, usa 60€
@@ -303,10 +303,10 @@ GET /api/user/dashboard
 }
 
 // NO debe ser 80.00 (40€ + 40€)
-```
+\`\`\`
 
 #### 4. Dashboard Consistency - UI vs API
-```typescript
+\`\`\`typescript
 // Test: Abrir dashboard principal Y página de membresía simultáneamente
 
 // Expected:
@@ -318,7 +318,7 @@ GET /api/user/dashboard
 // Validation:
 // Ambos componentes usan useSWR("/api/user/dashboard")
 // Deberían ver exactamente los mismos datos en cache
-```
+\`\`\`
 
 ---
 
@@ -390,12 +390,12 @@ GET /api/user/dashboard
 
 Agregar métricas a Vercel Analytics:
 
-```typescript
+\`\`\`typescript
 // En /api/user/dashboard
 console.time("[v0] Dashboard API total time")
 // ... código ...
 console.timeEnd("[v0] Dashboard API total time")
-```
+\`\`\`
 
 Alertas si latencia > 500ms.
 
@@ -403,14 +403,14 @@ Alertas si latencia > 500ms.
 
 Considerar agregar cache de 10 segundos:
 
-```typescript
+\`\`\`typescript
 export const dynamic = "force-dynamic"
 export const revalidate = 10 // Cache 10 segundos
 
 export async function GET() {
   // ... existing code
 }
-```
+\`\`\`
 
 **Trade-off:** Datos pueden tener hasta 10s de delay, pero reduce load en DB.
 
@@ -418,7 +418,7 @@ export async function GET() {
 
 Eventualmente, podemos eliminar completamente las columnas legacy:
 
-```sql
+\`\`\`sql
 -- FASE 1: Dejar de escribir (ya hecho en webhooks)
 -- FASE 2: Eliminar consultas (✅ COMPLETADO)
 -- FASE 3: Drop columns (futuro)
@@ -428,7 +428,7 @@ DROP COLUMN IF EXISTS membership_status CASCADE;
 
 ALTER TABLE profiles 
 DROP COLUMN IF EXISTS membership_type CASCADE;
-```
+\`\`\`
 
 **Timing:** Después de 3 meses de monitoreo sin incidentes.
 

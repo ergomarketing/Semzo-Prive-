@@ -3,13 +3,13 @@
 ## ESTADO ACTUAL (15 Enero 2026)
 
 ### Base de Datos
-```sql
+\`\`\`sql
 -- TABLA MEMBERSHIP_INTENTS: ❌ NO EXISTE
 -- Script creado pero NUNCA ejecutado
-```
+\`\`\`
 
 ### Flujo de Pago Actual (ROTO)
-```
+\`\`\`
 1. Usuario agrega Petite al carrito (€19.99)
 2. Aplica gift card 100€
 3. PaymentFormContent llama DIRECTAMENTE a /api/payments/create-intent
@@ -24,10 +24,10 @@
    ❌ profiles.membership_type (viejo)
    ❌ user_memberships (viejo)
    ❌ NO lee desde membership_intents (no existe)
-```
+\`\`\`
 
 ### Flujo de Notificaciones (PARCIALMENTE ROTO)
-```
+\`\`\`
 REGISTRO EMAIL:
 - auth/callback llama adminNotifications.notifyNewUserRegistration()
 - PERO redirect sucede ANTES de await
@@ -36,19 +36,19 @@ REGISTRO EMAIL:
 REGISTRO SMS:
 - Lógica diferente, email SÍ se envía
 - Inconsistencia en flujos
-```
+\`\`\`
 
 ### Flujo de Verification Identity (ROTO)
-```
+\`\`\`
 1. Stripe Identity completa verificación
 2. return_url = /verification-complete?userId=XXX
 3. Página hace polling a /api/user/check-verification-status
 4. PROBLEMA: userId probablemente NULL o incorrecto
 5. Usuario es redirigido a home en lugar de dashboard
-```
+\`\`\`
 
 ### Flujo de Gift Cards (COMPLETAMENTE ROTO)
-```
+\`\`\`
 1. Usuario aplica gift card 100€
 2. Checkout crea payment intent con metadata:
    {
@@ -61,7 +61,7 @@ REGISTRO SMS:
    ❌ NO deduce saldo de gift_cards table
    ❌ NO crea transaction en gift_card_transactions
 4. Resultado: Gift card NO se descuenta
-```
+\`\`\`
 
 ## PROBLEMAS CRÍTICOS
 
@@ -100,7 +100,7 @@ REGISTRO SMS:
 ## SOLUCIÓN REQUERIDA
 
 ### FASE 1: Preparación Base de Datos
-```sql
+\`\`\`sql
 -- 1. Ejecutar script MANUALMENTE en Supabase
 CREATE TABLE membership_intents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -114,10 +114,10 @@ CREATE TABLE membership_intents (
 
 -- 2. Verificar tabla existe
 SELECT * FROM membership_intents LIMIT 1;
-```
+\`\`\`
 
 ### FASE 2: Integrar PaymentFormContent
-```typescript
+\`\`\`typescript
 // ANTES de llamar a /api/payments/create-intent:
 const intentResponse = await fetch("/api/checkout/create-intent", {
   method: "POST",
@@ -133,10 +133,10 @@ const intentResponse = await fetch("/api/checkout/create-intent", {
 const { intentId } = await intentResponse.json();
 
 // LUEGO pasar intentId a Stripe
-```
+\`\`\`
 
 ### FASE 3: Actualizar Webhooks
-```typescript
+\`\`\`typescript
 // payment_intent.succeeded
 const intentId = paymentIntent.metadata.intent_id;
 if (intentId) {
@@ -175,10 +175,10 @@ await supabase
 await supabase
   .from("user_memberships")
   .upsert({...});
-```
+\`\`\`
 
 ### FASE 4: Actualizar Dashboard
-```typescript
+\`\`\`typescript
 // Leer SOLO desde membership_intents
 const { data } = await supabase
   .from("membership_intents")
@@ -191,18 +191,18 @@ const { data } = await supabase
 if (data.status === "paid_pending_verification") {
   return "Pago confirmado - Pendiente verificación";
 }
-```
+\`\`\`
 
 ### FASE 5: Fix Notificaciones
-```typescript
+\`\`\`typescript
 // auth/callback - AWAIT antes de redirect
 await adminNotifications.notifyNewUserRegistration({...});
 // LUEGO redirect
 return NextResponse.redirect(successUrl);
-```
+\`\`\`
 
 ### FASE 6: Fix Redirecciones
-```typescript
+\`\`\`typescript
 // Stripe Identity return_url debe incluir userId correcto
 return_url: `${origin}/verification-complete?userId=${userId}`
 
@@ -211,7 +211,7 @@ const userId = searchParams.get("userId");
 
 // Botón "Activar Membresía" debe ir a verification flow
 onClick={() => router.push("/dashboard/membresia/verify")}
-```
+\`\`\`
 
 ## ORDEN DE IMPLEMENTACIÓN
 

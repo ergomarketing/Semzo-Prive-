@@ -47,7 +47,7 @@ Ejemplos recomendados:
 - Dashboard y áreas privadas pueden usar inglés
 
 ### 2. Estructura Jerárquica Clara
-```
+\`\`\`
 ✅ Correcto:
 /membership/upgrade/signature
 /legal/privacy
@@ -55,25 +55,25 @@ Ejemplos recomendados:
 ❌ Incorrecto:
 /signature-membership
 /privacy-policy
-```
+\`\`\`
 
 ### 3. Sin Parámetros de Query Visibles
-```
+\`\`\`
 ✅ Correcto: /blog/tendencias-moda-2025
 ❌ Incorrecto: /blog?id=123
-```
+\`\`\`
 
 ### 4. Lowercase y Guiones
-```
+\`\`\`
 ✅ Correcto: /como-elegir-bolso
 ❌ Incorrecto: /Como_Elegir_Bolso
-```
+\`\`\`
 
 ### 5. Sin Trailing Slashes
-```
+\`\`\`
 ✅ Correcto: /proceso
 ❌ Incorrecto: /proceso/
-```
+\`\`\`
 
 ## Redirecciones Implementadas
 

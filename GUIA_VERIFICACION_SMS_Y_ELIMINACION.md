@@ -17,22 +17,22 @@ Para el usuario con el número que estuvo pendiente 2 días:
 
 **Opción 1: Eliminar y Reiniciar (Recomendado)**
 
-```bash
+\`\`\`bash
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 Después el usuario puede registrarse nuevamente desde cero.
 
 **Opción 2: Reenviar Código**
 
-```bash
+\`\`\`bash
 POST /api/sms/resend-code
 Content-Type: application/json
 
 {
   "phone": "+34624239394"
 }
-```
+\`\`\`
 
 Esto enviará un nuevo código válido por 60 segundos.
 
@@ -44,17 +44,17 @@ Esto enviará un nuevo código válido por 60 segundos.
 
 #### 1. Eliminar por Teléfono
 
-```bash
+\`\`\`bash
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 **Uso desde navegador/Postman:**
-```
+\`\`\`
 DELETE https://tu-dominio.com/api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 **Respuesta exitosa:**
-```json
+\`\`\`json
 {
   "success": true,
   "message": "Usuario eliminado exitosamente",
@@ -68,29 +68,29 @@ DELETE https://tu-dominio.com/api/admin/delete-user/by-phone?phone=+34624239394
     { "table": "payment_history", "status": "success", "deleted": 0 }
   ]
 }
-```
+\`\`\`
 
 #### 2. Eliminar por ID de Usuario
 
-```bash
+\`\`\`bash
 POST /api/admin/delete-user
 Content-Type: application/json
 
 {
   "userId": "uuid-aqui"
 }
-```
+\`\`\`
 
 #### 3. Eliminar por Email
 
-```bash
+\`\`\`bash
 POST /api/admin/delete-user
 Content-Type: application/json
 
 {
   "email": "usuario@example.com"
 }
-```
+\`\`\`
 
 ---
 
@@ -122,16 +122,16 @@ El sistema elimina en este orden para evitar errores de foreign keys:
 
 ### Caso 1: Usuario con Verificación Pendiente desde Hace Días (Tu Caso)
 
-```bash
+\`\`\`bash
 # El código expiró hace mucho tiempo, elimina el usuario
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
 
 # El usuario puede registrarse de nuevo
-```
+\`\`\`
 
 ### Caso 2: Código Expiró Durante el Proceso
 
-```bash
+\`\`\`bash
 # Reenviar nuevo código (usuario tiene 60 segundos)
 POST /api/sms/resend-code
 Content-Type: application/json
@@ -139,16 +139,16 @@ Content-Type: application/json
 {
   "phone": "+34624239394"
 }
-```
+\`\`\`
 
 ### Caso 3: Usuario Quiere Cambiar de Número
 
-```bash
+\`\`\`bash
 # Eliminar cuenta con número viejo
 DELETE /api/admin/delete-user/by-phone?phone=+34NUMEROVIEJO
 
 # Usuario puede registrarse con número nuevo
-```
+\`\`\`
 
 ---
 
@@ -159,19 +159,19 @@ DELETE /api/admin/delete-user/by-phone?phone=+34NUMEROVIEJO
 **Causa**: El código OTP expiró (>60 segundos) o ya fue usado
 
 **Solución Inmediata**:
-```bash
+\`\`\`bash
 POST /api/sms/resend-code
 Body: { "phone": "+34624239394" }
-```
+\`\`\`
 
 ### Error: "Database error deleting user" (Tu Error)
 
 **Causa**: Intentaste eliminar directamente desde Supabase Dashboard sin respetar foreign keys
 
 **Solución**: Usa el endpoint que maneja todo automáticamente:
-```bash
+\`\`\`bash
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 ### Error: "Usuario no encontrado"
 
@@ -185,7 +185,7 @@ DELETE /api/admin/delete-user/by-phone?phone=+34624239394
 
 ### 1. Timer Visible de Expiración
 
-```tsx
+\`\`\`tsx
 const [timeLeft, setTimeLeft] = useState(60)
 
 useEffect(() => {
@@ -196,28 +196,28 @@ useEffect(() => {
 }, [codeRequestTime])
 
 // UI: "Código válido por {timeLeft} segundos"
-```
+\`\`\`
 
 ### 2. Botón de Reenvío
 
-```tsx
+\`\`\`tsx
 {timeLeft === 0 && (
   <button onClick={handleResendCode}>
     Reenviar código
   </button>
 )}
-```
+\`\`\`
 
 ### 3. Auto-expiración del Formulario
 
-```tsx
+\`\`\`tsx
 useEffect(() => {
   if (timeLeft === 0) {
     setCode('')
     setError('El código ha expirado. Solicita uno nuevo.')
   }
 }, [timeLeft])
-```
+\`\`\`
 
 ---
 
@@ -228,9 +228,9 @@ useEffect(() => {
 1. Crear usuario de prueba desde el frontend
 2. Verificar que existe en Supabase Dashboard
 3. Llamar al endpoint:
-```bash
+\`\`\`bash
 curl -X DELETE "http://localhost:3000/api/admin/delete-user/by-phone?phone=+34TEST123"
-```
+\`\`\`
 4. Verificar que fue eliminado completamente
 
 ### Probar Reenvío de Código
@@ -238,11 +238,11 @@ curl -X DELETE "http://localhost:3000/api/admin/delete-user/by-phone?phone=+34TE
 1. Iniciar verificación SMS desde frontend
 2. Esperar >60 segundos
 3. Hacer request de reenvío:
-```bash
+\`\`\`bash
 curl -X POST http://localhost:3000/api/sms/resend-code \
   -H "Content-Type: application/json" \
   -d '{"phone": "+34TEST123"}'
-```
+\`\`\`
 4. Ingresar el nuevo código en <60 segundos
 
 ---
@@ -264,9 +264,9 @@ curl -X POST http://localhost:3000/api/sms/resend-code \
 - Error al intentar eliminar desde Supabase Dashboard
 
 **Solución inmediata:**
-```bash
+\`\`\`bash
 DELETE /api/admin/delete-user/by-phone?phone=+34624239394
-```
+\`\`\`
 
 Después el usuario puede:
 1. Volver a la página de registro

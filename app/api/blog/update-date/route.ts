@@ -1,31 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { put, list, del } from "@vercel/blob"
-
-function parseFrontmatter(content: string): { metadata: Record<string, string>; content: string } {
-  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
-  const match = content.match(frontmatterRegex)
-
-  if (!match) {
-    return { metadata: {}, content }
-  }
-
-  const frontmatter = match[1]
-  const markdown = match[2]
-
-  const metadata: Record<string, string> = {}
-  frontmatter.split("\n").forEach((line) => {
-    const [key, ...valueParts] = line.split(":")
-    if (key && valueParts.length) {
-      const value = valueParts
-        .join(":")
-        .trim()
-        .replace(/^["']|["']$/g, "")
-      metadata[key.trim()] = value
-    }
-  })
-
-  return { metadata, content: markdown }
-}
+import { getPost, updatePost, parseFrontmatter } from "@/lib/blog-storage"
 
 // POST - Update the date of a blog post
 export async function POST(request: NextRequest) {
@@ -38,40 +12,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing slug or date" }, { status: 400 })
     }
 
-    const { blobs } = await list({ prefix: "blog/" })
-    const blob = blobs.find((b) => b.pathname === `blog/${slug}.md`)
+    const post = await getPost(slug)
 
-    if (!blob) {
+    if (!post) {
       console.error("[v0] Post not found:", slug)
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }
 
-    console.log("[v0] Found blob:", blob.pathname)
+    console.log("[v0] Found post:", slug)
 
-    // Get the current content
-    const response = await fetch(blob.url)
-    const content = await response.text()
-    const { metadata, content: markdownContent } = parseFrontmatter(content)
-
-    console.log("[v0] Current metadata:", metadata)
-
-    metadata.date = date
-
-    // Rebuild the frontmatter
-    const frontmatterLines = Object.entries(metadata).map(([key, value]) => `${key}: "${value}"`)
+    // Create updated content with new date
     const newContent = `---
-${frontmatterLines.join("\n")}
+title: "${post.title}"
+date: "${date}"
+author: "${post.author}"
+excerpt: "${post.excerpt}"
+slug: "${slug}"
+${post.image ? `image: "${post.image}"` : ""}
+${post.updatedAt ? `updatedAt: "${post.updatedAt}"` : ""}
 ---
 
-${markdownContent}`
+${post.content}`
 
-    console.log("[v0] Updating blob with new date")
+    console.log("[v0] Updating post with new date")
 
-    await del(blob.url)
-    await put(`blog/${slug}.md`, newContent, {
-      access: "public",
-      contentType: "text/markdown",
-    })
+    const result = await updatePost(slug, newContent)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
 
     console.log("[v0] Date updated successfully")
 

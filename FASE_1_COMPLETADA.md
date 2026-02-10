@@ -12,7 +12,7 @@
 - `getStatusDescription()`: Descripciones contextuales por tipo de membresía
 
 **Mapeos implementados:**
-```typescript
+\`\`\`typescript
 DB (membership_intents)  →  UI (mostrar al usuario)
 ─────────────────────────────────────────────────────
 initiated                →  pending_payment
@@ -21,7 +21,7 @@ active                   →  active
 expired                  →  expired
 cancelled                →  cancelled
 null/undefined           →  inactive
-```
+\`\`\`
 
 ---
 
@@ -31,22 +31,22 @@ null/undefined           →  inactive
 **Cambios realizados:**
 
 #### ❌ ELIMINADO (queries directas):
-```typescript
+\`\`\`typescript
 // ❌ Ya no se hace esto:
 const { data, error } = await supabase.from("profiles").select("*")
 const { data: intentData } = await supabase.from("membership_intents").select(...)
 const { count: waitlistCount } = await supabase.from("waitlist").select(...)
-```
+\`\`\`
 
 #### ✅ IMPLEMENTADO (API canónico):
-```typescript
+\`\`\`typescript
 // ✅ Ahora se hace esto:
 const { data, error, isLoading } = useSWR(
   user?.id ? DASHBOARD_KEY : null, 
   fetcher
 )
 // data contiene: profile, membership, gift_cards, reservations
-```
+\`\`\`
 
 **Beneficios:**
 - Single source of truth: `/api/user/dashboard`
@@ -70,7 +70,7 @@ const { data, error, isLoading } = useSWR(
 **Archivo:** `/app/api/user/reservations/route.ts`
 
 **Antes:**
-```typescript
+\`\`\`typescript
 const { data: userProfile } = await supabase
   .from("profiles")
   .select("full_name, email, membership_type, membership_status")  // ❌
@@ -81,10 +81,10 @@ const canRent =
   activeIntent?.status === "active" ||
   userMembershipRecord?.status === "active" ||
   userProfile.membership_status === "active"  // ❌ FALLBACK ELIMINADO
-```
+\`\`\`
 
 **Después:**
-```typescript
+\`\`\`typescript
 const { data: userProfile } = await supabase
   .from("profiles")
   .select("full_name, email")  // ✅ Solo datos básicos
@@ -94,13 +94,13 @@ const { data: userProfile } = await supabase
 const canRent =
   activeIntent?.status === "active" ||
   userMembershipRecord?.status === "active"  // ✅ Solo fuentes confiables
-```
+\`\`\`
 
 #### 3.2 Endpoint de Compra de Pases
 **Archivo:** `/app/api/bag-passes/purchase/route.ts`
 
 **Antes:**
-```typescript
+\`\`\`typescript
 const { data: profile } = await supabase
   .from("profiles")
   .select("membership_type, membership_status, email, full_name")  // ❌
@@ -112,10 +112,10 @@ const hasActiveMembership =
   activeIntent?.status === "paid_pending_verification" ||
   profile?.membership_status === "active" ||  // ❌ FALLBACK ELIMINADO
   userMembership?.status === "active"
-```
+\`\`\`
 
 **Después:**
-```typescript
+\`\`\`typescript
 const { data: profile } = await supabase
   .from("profiles")
   .select("email, full_name")  // ✅ Solo datos básicos
@@ -126,7 +126,7 @@ const hasActiveMembership =
   activeIntent?.status === "active" ||
   activeIntent?.status === "paid_pending_verification" ||
   userMembership?.status === "active"  // ✅ Solo fuentes confiables
-```
+\`\`\`
 
 ---
 
@@ -162,31 +162,31 @@ const hasActiveMembership =
 Para confirmar que todo funciona correctamente:
 
 ### 1. Dashboard muestra mismo estado que Membresía
-```bash
+\`\`\`bash
 # Navega a /dashboard
 # Navega a /dashboard/membresia
 # Compara el estado mostrado → debe ser idéntico
-```
+\`\`\`
 
 ### 2. No hay discrepancias entre vistas
-```bash
+\`\`\`bash
 # Usuario con membresía "initiated" debe ver:
 # - Dashboard: "Procesando pago..."
 # - Membresía: "Procesando pago..."
-```
+\`\`\`
 
 ### 3. No hay referencias a profiles.membership_status en frontend
-```bash
+\`\`\`bash
 grep -r "profiles.membership_status" app/dashboard/
 # Resultado esperado: solo en archivos .md de documentación
-```
+\`\`\`
 
 ### 4. Backend crítico no usa profiles como fallback
-```bash
+\`\`\`bash
 grep -r "membership_status.*active" app/api/user/reservations/
 grep -r "membership_status.*active" app/api/bag-passes/
 # Resultado esperado: sin matches en validaciones de membresía
-```
+\`\`\`
 
 ---
 

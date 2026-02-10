@@ -37,7 +37,7 @@ Se ha completado exitosamente la refactorización del RPC `create_reservation_at
 
 ### Firma del RPC V3
 
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION create_reservation_atomic(
   p_user_id UUID,
   p_bag_id UUID,
@@ -46,11 +46,11 @@ CREATE OR REPLACE FUNCTION create_reservation_atomic(
   p_end_date TIMESTAMPTZ
 )
 RETURNS UUID                 -- Solo retorna reservation_id
-```
+\`\`\`
 
 ### Flujo de ejecución
 
-```
+\`\`\`
 1. SELECT bag FOR UPDATE → Lock explícito
 2. UPDATE bag SET status='rented' WHERE status IN (available...)
 3. IF pass_id: SELECT pass FOR UPDATE → Lock explícito
@@ -58,7 +58,7 @@ RETURNS UUID                 -- Solo retorna reservation_id
 5. INSERT INTO reservations → Retorna ID
 6. IF pass_id: UPDATE pass SET used_for_reservation_id
 7. RETURN reservation_id
-```
+\`\`\`
 
 ---
 
@@ -74,7 +74,7 @@ RETURNS UUID                 -- Solo retorna reservation_id
 **ANTES (V2):** RPC manejaba idempotencia internamente
 
 **AHORA (V3):**
-```typescript
+\`\`\`typescript
 // IDEMPOTENCIA: Verificar si ya existe reserva reciente (5 min window)
 const { data: existingReservation } = await supabase
   .from("reservations")
@@ -91,14 +91,14 @@ if (existingReservation) {
     message: "Reserva ya existente" 
   })
 }
-```
+\`\`\`
 
 **Beneficio:** Evitamos llamadas innecesarias al RPC si ya existe la reserva.
 
 #### 2. Llamada al RPC simplificada (líneas 467-490)
 
 **ANTES (V2):**
-```typescript
+\`\`\`typescript
 const { data: rpcResult, error: rpcError } = await supabase.rpc(
   "create_reservation_atomic", 
   {
@@ -117,10 +117,10 @@ if (!rpcResult?.success) {
   // ...
 }
 const reservationId = rpcResult.reservation_id
-```
+\`\`\`
 
 **AHORA (V3):**
-```typescript
+\`\`\`typescript
 const { data: reservationId, error: rpcError } = await supabase.rpc(
   "create_reservation_atomic",
   {
@@ -140,22 +140,22 @@ if (!reservationId) {
     { status: 500 }
   )
 }
-```
+\`\`\`
 
 **Beneficio:** Código más simple, retorno directo del UUID.
 
 #### 3. Mapeo de errores específicos (líneas 491-514)
 
 **ANTES (V2):**
-```typescript
+\`\`\`typescript
 if (errorMessage.includes("no está disponible") || 
     errorMessage.includes("ya fue utilizado")) {
   return NextResponse.json({ error: errorMessage }, { status: 409 })
 }
-```
+\`\`\`
 
 **AHORA (V3):**
-```typescript
+\`\`\`typescript
 const errorMsg = rpcError.message || ""
 
 if (errorMsg.includes("BAG_NOT_AVAILABLE")) {
@@ -171,7 +171,7 @@ if (errorMsg.includes("PASS_NOT_AVAILABLE")) {
     { status: 409 }
   )
 }
-```
+\`\`\`
 
 **Beneficio:** Mensajes de error más específicos y controlados.
 
@@ -252,12 +252,12 @@ if (errorMsg.includes("PASS_NOT_AVAILABLE")) {
 ### Logs de debugging
 
 Para depurar problemas, buscar en logs:
-```
+\`\`\`
 [v0] Calling atomic RPC V3:        # Antes de llamar al RPC
 [v0] RPC V3 error:                 # Si hay error del RPC
 [v0] Reservation created via RPC V3: # Éxito, retorna UUID
 [v0] Duplicate reservation detected # Idempotencia funcionó
-```
+\`\`\`
 
 ---
 

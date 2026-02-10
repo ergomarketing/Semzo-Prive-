@@ -21,7 +21,7 @@
 ### ✅ ESTADO ACTUAL EN DB
 
 **Esquema `membership_intents`:**
-```sql
+\`\`\`sql
 CREATE TABLE membership_intents (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id),
@@ -45,7 +45,7 @@ CREATE TABLE membership_intents (
   coupon_code TEXT,
   gift_card_code TEXT
 );
-```
+\`\`\`
 
 **Estados válidos según reglas:**
 - `pending_payment` ❌ NO EXISTE EN DB (solo 'initiated')
@@ -56,12 +56,12 @@ CREATE TABLE membership_intents (
 ### 🔴 PROBLEMA 1: Estado "pending_payment" no existe
 
 **Ubicación:** `/app/dashboard/page.tsx` (líneas 50-52)
-```typescript
+\`\`\`typescript
 if (intentData.status === "initiated") {
   setMembershipType(intentData.membership_type)
   setMembershipStatus("processing_payment") // ❌ Estado inventado en frontend
 }
-```
+\`\`\`
 
 **Corrección necesaria:**
 - `initiated` → mapear a estado UI "pending_payment" ✅
@@ -74,7 +74,7 @@ if (intentData.status === "initiated") {
 - Usa 3 queries diferentes para determinar estado ❌
 - Inferencias de estado en cliente ❌
 
-```typescript
+\`\`\`typescript
 // ❌ MAL: Múltiples queries en frontend
 const { data: intentData } = await supabase
   .from("membership_intents")
@@ -86,10 +86,10 @@ const { data: allIntents } = await supabase
   .from("membership_intents")
   .select("id")
   .eq("user_id", user.id)
-```
+\`\`\`
 
 **API canónico EXISTE (`/app/api/user/dashboard/route.ts`):**
-```typescript
+\`\`\`typescript
 // ✅ BIEN: Single source of truth
 export async function GET() {
   // ... calcula estado real desde membership_intents
@@ -102,14 +102,14 @@ export async function GET() {
     }
   })
 }
-```
+\`\`\`
 
 **⚠️ DESALINEACIÓN:** Dashboard page.tsx NO usa el API `/api/user/dashboard` que SÍ existe.
 
 ### 🟢 PROBLEMA 3: Cálculo de vigencia Petite (30 días)
 
 **En `/app/api/user/dashboard/route.ts` (CORRECTO):**
-```typescript
+\`\`\`typescript
 if (membershipType === "petite") {
   const startDate = activeIntent?.activated_at || activeIntent?.created_at
   if (startDate) {
@@ -119,12 +119,12 @@ if (membershipType === "petite") {
 }
 
 const isPetiteExpired = membershipType === "petite" && membershipEndsAt && new Date() > new Date(membershipEndsAt)
-```
+\`\`\`
 
 **✅ CORRECTO:** Usa `activated_at` como source of truth.
 
 **En `/app/api/user/reservations/route.ts` (CORRECTO):**
-```typescript
+\`\`\`typescript
 const membershipStartDate = activeIntent?.activated_at || activeIntent?.created_at
 const startedAt = new Date(membershipStartDate)
 const expiresAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -135,7 +135,7 @@ if (now > expiresAt) {
     membershipExpired: true
   }, { status: 403 })
 }
-```
+\`\`\`
 
 **✅ CORRECTO:** Validación de expiración antes de crear reserva.
 
@@ -146,7 +146,7 @@ if (now > expiresAt) {
 ### ✅ ESTADO ACTUAL EN DB
 
 **Esquema `bag_passes`:**
-```sql
+\`\`\`sql
 CREATE TABLE bag_passes (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES profiles(id),
@@ -158,7 +158,7 @@ CREATE TABLE bag_passes (
   expires_at TIMESTAMPTZ,  -- ⚠️ Siempre NULL (pases no expiran)
   price DECIMAL(10, 2) NOT NULL
 );
-```
+\`\`\`
 
 **Reglas de negocio:**
 - ✅ Pases NO expiran automáticamente (`expires_at` siempre NULL)
@@ -168,7 +168,7 @@ CREATE TABLE bag_passes (
 ### 🟢 PROBLEMA RESUELTO: Compra de pases
 
 **En `/app/api/bag-passes/purchase/route.ts` (CORRECTO):**
-```typescript
+\`\`\`typescript
 const passes = []
 for (let i = 0; i < quantity; i++) {
   passes.push({
@@ -180,7 +180,7 @@ for (let i = 0; i < quantity; i++) {
     expires_at: null,  // ✅ No expiran
   })
 }
-```
+\`\`\`
 
 **✅ CORRECTO:** Pases creados con `status: "available"` y sin expiración.
 
@@ -194,7 +194,7 @@ for (let i = 0; i < quantity; i++) {
 3. ✅ Validar tier del pase vs tier del bolso
 4. ✅ Lock optimista del pase antes de crear reserva
 
-```typescript
+\`\`\`typescript
 // 1. Verificar vigencia
 const expiresAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000)
 if (now > expiresAt) {
@@ -231,7 +231,7 @@ const { data: passLock, error: passLockError } = await supabase
   .eq("status", "available")  // ✅ Lock optimista
   .select("id")
   .single()
-```
+\`\`\`
 
 **✅ CORRECTO:** Implementación completa con locks y validaciones atómicas.
 
@@ -242,7 +242,7 @@ const { data: passLock, error: passLockError } = await supabase
 ### ✅ ESTADO ACTUAL EN DB
 
 **Esquema `reservations`:**
-```sql
+\`\`\`sql
 CREATE TABLE reservations (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES profiles(id),
@@ -255,7 +255,7 @@ CREATE TABLE reservations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-```
+\`\`\`
 
 ### 🟢 PROBLEMA RESUELTO: Orden obligatorio de operaciones
 
@@ -269,7 +269,7 @@ CREATE TABLE reservations (
 5. ✅ Crear reserva
 6. ✅ Rollback automático si falla cualquier paso
 
-```typescript
+\`\`\`typescript
 // PASO 1: Lock del pase
 if (passIdToConsume) {
   const { data: passLock } = await supabase
@@ -311,14 +311,14 @@ if (!bagLock) {
 const { data: reservation } = await supabase
   .from("reservations")
   .insert({ ... })
-```
+\`\`\`
 
 **✅ CORRECTO:** Orden correcto, locks optimistas, rollback manual implementado.
 
 ### 🟡 PROBLEMA: RPC atómico NO está siendo usado
 
 **Existe RPC atómico:** `/scripts/create-atomic-reservation-rpc-v2.sql`
-```sql
+\`\`\`sql
 CREATE OR REPLACE FUNCTION create_reservation_atomic(...)
 RETURNS JSONB
 AS $$
@@ -337,7 +337,7 @@ BEGIN
   -- Commit atómico
 END;
 $$;
-```
+\`\`\`
 
 **⚠️ DESALINEACIÓN:** El código actual NO usa este RPC, implementa locks manualmente en TypeScript.
 
@@ -452,7 +452,7 @@ $$;
 **Archivos a modificar:**
 1. `/app/api/webhooks/stripe-identity/route.ts`
    - Después de verificar identidad, actualizar:
-     ```typescript
+     \`\`\`typescript
      await supabaseAdmin
        .from("membership_intents")
        .update({
@@ -460,14 +460,14 @@ $$;
          activated_at: new Date().toISOString()
        })
        .eq("id", intent_id)
-     ```
+     \`\`\`
 
 ### Fase 4: Migrar a RPC atómico (1 hora - OPCIONAL)
 
 **Archivos a modificar:**
 1. `/app/api/user/reservations/route.ts`
    - Reemplazar locks manuales con:
-     ```typescript
+     \`\`\`typescript
      const { data, error } = await supabase.rpc("create_reservation_atomic", {
        p_user_id: userId,
        p_bag_id: bag_id,
@@ -476,7 +476,7 @@ $$;
        p_end_date: endDate,
        p_membership_type: userMembershipPlan
      })
-     ```
+     \`\`\`
 
 ---
 
