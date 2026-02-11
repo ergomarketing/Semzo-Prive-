@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // VALIDATION: Required fields
-    if (!priceId || !membershipType) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType })
+    if (!priceId || !membershipType || !intentId) {
+      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
       return NextResponse.json({
         error: "Missing required fields",
-        details: "priceId and membershipType are required"
+        details: "priceId, membershipType and intentId are required"
       }, { status: 400 })
     }
 
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
       hasEmail: !!customerEmail,
       membershipType,
       billingCycle,
-      priceId
+      priceId,
+      intentId,
     })
 
     // STEP 2: Get or create Stripe customer
@@ -129,10 +130,10 @@ export async function POST(request: NextRequest) {
       ],
       subscription_data: {
         metadata: {
+          intent_id: intentId,
           user_id: userId,
           membership_type: membershipType,
           billing_cycle: billingCycle || "monthly",
-          intent_id: intentId || "",
           sepa_backup: customerEmail ? "true" : "false",
           service: "luxury_rental",
         },
