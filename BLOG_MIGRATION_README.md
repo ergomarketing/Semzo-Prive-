@@ -8,10 +8,10 @@ El blog ha sido migrado exitosamente de **Vercel Blob Storage** a **Filesystem**
 
 El sistema ahora soporta ambos métodos de almacenamiento mediante una variable de entorno:
 
-```bash
+\`\`\`bash
 USE_BLOB=false  # Usa filesystem (ACTUAL - Recomendado)
 USE_BLOB=true   # Usa Vercel Blob Storage
-```
+\`\`\`
 
 ### Configuración Actual
 
@@ -19,12 +19,12 @@ Por defecto, el sistema usa **filesystem** (`USE_BLOB=false` o no definida).
 
 ## Estructura de Archivos
 
-```
+\`\`\`
 /content/blog/
 ├── historia-del-birkin.md
 ├── cuidado-bolsos-lujo.md
 └── lujo-sostenible.md
-```
+\`\`\`
 
 ## Archivos Modificados
 
@@ -83,7 +83,7 @@ Por defecto, el sistema usa **filesystem** (`USE_BLOB=false` o no definida).
 ### Opción 1: Manualmente
 1. Crear archivo `.md` en `/content/blog/`
 2. Agregar frontmatter:
-```yaml
+\`\`\`yaml
 ---
 title: "Tu Título"
 date: "2024-02-10"
@@ -94,7 +94,7 @@ image: "/ruta/a/imagen.jpg"
 ---
 
 Contenido del post aquí...
-```
+\`\`\`
 3. Hacer commit y deploy
 
 ### Opción 2: Admin Panel
@@ -137,16 +137,16 @@ No requiere cambios de código adicionales.
 ## Testing
 
 ### Local Development
-```bash
+\`\`\`bash
 npm run dev
 # El sistema usa filesystem automáticamente
-```
+\`\`\`
 
 ### Production
-```bash
+\`\`\`bash
 # Build y deploy
 vercel deploy --prod
-```
+\`\`\`
 
 ## Next Steps
 
