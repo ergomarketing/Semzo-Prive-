@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔄 Procesando evento:", event.type)
+    console.log("📥 Webhook event:", { eventId: event.id, eventType: event.type })
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -125,10 +126,39 @@ export async function POST(request: NextRequest) {
           }
 
           // CRÍTICO: ACTIVAR MEMBRESÍA INMEDIATAMENTE (billing webhook es source of truth)
-          // La activación NO depende de intentId - el pago de Stripe es suficiente
+          // El intentId SÍ se usa para resolver el membership_intent asociado
           const now = new Date()
+          let intentRecord: any = null
+          let resolvedMembershipType = membershipType
+          let resolvedBillingCycle = billingCycle
+
+          if (intentId) {
+            const { data: selectedIntent, error: selectIntentError } = await supabaseAdmin
+              .from("membership_intents")
+              .select("*")
+              .eq("id", intentId)
+              .single()
+
+            if (selectIntentError) {
+              console.error("❌ Error loading membership_intent by intent_id:", {
+                intent_id: intentId,
+                error: selectIntentError,
+              })
+            } else {
+              intentRecord = selectedIntent
+              resolvedMembershipType = selectedIntent.membership_type || membershipType
+              resolvedBillingCycle = selectedIntent.billing_cycle || billingCycle
+              console.log("✅ membership_intent loaded from metadata.intent_id", {
+                intent_id: intentId,
+                membership_type: resolvedMembershipType,
+                billing_cycle: resolvedBillingCycle,
+              })
+            }
+          } else {
+            console.error("❌ Missing session.metadata.intent_id in checkout.session.completed")
+          }
           
-          // 1. Si hay intentId, actualizar intent a "active" (opcional, solo tracking)
+          // 1. Si hay intentId, actualizar intent a "active"
           if (intentId) {
             const { error: intentError } = await supabaseAdmin
               .from("membership_intents")
@@ -154,39 +184,51 @@ export async function POST(request: NextRequest) {
 
           // 2. ACTIVAR MEMBRESÍA INMEDIATAMENTE en user_memberships (billing es source of truth)
           let endsAt = null
-          if (membershipType === "petite") {
+          if (resolvedMembershipType === "petite") {
             endsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
           }
 
           console.log("[v0] Attempting to insert user_membership:", {
             user_id: userId,
-            membership_type: membershipType,
-            billing_cycle: billingCycle,
+            membership_type: resolvedMembershipType,
+            billing_cycle: resolvedBillingCycle,
             status: "active",
             stripe_subscription_id: session.subscription,
             stripe_customer_id: session.customer,
           })
 
-          const { data: membershipData, error: membershipError } = await supabaseAdmin.from("user_memberships").insert({
-            user_id: userId,
-            membership_type: membershipType,
-            billing_cycle: billingCycle,
-            status: "active",
-            stripe_subscription_id: session.subscription as string,
-            stripe_customer_id: session.customer as string,
-            starts_at: now.toISOString(),
-            ends_at: endsAt,
-            created_at: now.toISOString(),
-            updated_at: now.toISOString(),
-          }).select()
+          const { data: membershipData, error: membershipError } = await supabaseAdmin
+            .from("user_memberships")
+            .upsert(
+              {
+                user_id: userId,
+                membership_type: resolvedMembershipType,
+                billing_cycle: resolvedBillingCycle,
+                status: "active",
+                stripe_subscription_id: session.subscription as string,
+                stripe_customer_id: session.customer as string,
+                starts_at: now.toISOString(),
+                ends_at: endsAt,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+              },
+              { onConflict: "user_id" },
+            )
+            .select()
 
           if (membershipError) {
             console.error("❌ Error creating user_membership:", membershipError)
             console.error("[v0] Full error details:", JSON.stringify(membershipError, null, 2))
           } else {
-            console.log(`✅ Membresía ${membershipType} ACTIVADA inmediatamente para usuario ${userId}`)
+            console.log(`✅ user_memberships upsert OK para usuario ${userId}`)
             console.log("[v0] Membership data inserted:", membershipData)
           }
+
+          console.log("✅ checkout.session.completed branch finished", {
+            eventId: event.id,
+            intent_id: intentId,
+            intent_found: !!intentRecord,
+          })
 
           // 3. Actualizar profile
           await supabaseAdmin

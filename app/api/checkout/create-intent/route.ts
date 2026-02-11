@@ -58,7 +58,20 @@ export async function POST(request: NextRequest) {
 
     finalAmountCents = Math.max(0, finalAmountCents)
 
-    // Create new intent
+    // Create new intent (ONLY with columns that exist in membership_intents)
+    console.log("[v0] 💾 Inserting membership_intent:", {
+      user_id: userId,
+      membership_type: membershipType,
+      billing_cycle: billingCycle,
+      amount_cents: finalAmountCents,
+      original_amount_cents: originalAmountCents,
+      coupon_code: coupon?.code || null,
+      coupon_discount_cents: couponDiscountCents,
+      gift_card_code: giftCard?.code || null,
+      gift_card_applied_cents: giftCardAppliedCents,
+      status: "initiated",
+    })
+
     const { data: intent, error } = await supabase
       .from("membership_intents")
       .insert({
@@ -69,7 +82,6 @@ export async function POST(request: NextRequest) {
         original_amount_cents: originalAmountCents,
         coupon_code: coupon?.code || null,
         coupon_discount_cents: couponDiscountCents,
-        gift_card_id: resolvedGiftCardId,
         gift_card_code: giftCard?.code || null,
         gift_card_applied_cents: giftCardAppliedCents,
         status: "initiated",
@@ -83,7 +95,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log("[v0] Created intent:", intent.id, "gift_card_id:", resolvedGiftCardId)
+    console.log("[v0] ✅ membership_intent created:", {
+      intent_id: intent.id,
+      amount_cents: finalAmountCents,
+      gift_card_id: resolvedGiftCardId,
+    })
 
     if (userProfile) {
       adminNotifications.notifyNewUserRegistration({
@@ -96,7 +112,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       intentId: intent.id,
       giftCardId: resolvedGiftCardId,
-      amount: finalAmountCents,
+      amount_cents: finalAmountCents,
+      original_amount_cents: originalAmountCents,
       membership: { type: membershipType, cycle: billingCycle },
     })
   } catch (error: any) {
