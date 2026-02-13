@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
   console.log("🎣 Webhook recibido:", new Date().toISOString())
 
   try {
+    // ✅ CORRECTO: Usa .text() para signature verification
     const body = await request.text()
     const signature = request.headers.get("stripe-signature")
 
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
           const billingCycle = session.metadata?.billing_cycle || "monthly"
           const intentId = session.metadata?.intent_id
 
+          // VALIDACIÓN CRÍTICA: user_id y membership_type OBLIGATORIOS
           if (!userId) {
             console.error("❌ No user_id en metadata del checkout session", { sessionId: session.id })
             break
@@ -91,7 +93,18 @@ export async function POST(request: NextRequest) {
             break
           }
 
-          console.log(`[v0] Checkout completado para usuario ${userId}, tipo: ${membershipType}, intent_id: ${intentId}`)
+          // ⚠️ NUEVO: Validación estricta de intent_id (opcional - depende de tu flujo)
+          if (!intentId) {
+            console.error("❌ CRÍTICO: No intent_id en metadata del checkout session", {
+              sessionId: session.id,
+              userId,
+              membershipType,
+            })
+            // Opcional: Puedes hacer break aquí si quieres que intent_id sea obligatorio
+            // break
+          }
+
+          console.log(`[v0] Checkout completado para usuario ${userId}, tipo: ${membershipType}, intent_id: ${intentId || "N/A"}`)
 
           // AUDIT LOG: checkout.session.completed
           await supabaseAdmin.from("audit_logs").insert({
@@ -105,14 +118,14 @@ export async function POST(request: NextRequest) {
               customer_id: session.customer,
               membership_type: membershipType,
               billing_cycle: billingCycle,
-              intent_id: intentId,
+              intent_id: intentId || null,
               amount: session.amount_total,
               currency: session.currency,
             },
             created_at: new Date().toISOString(),
           })
 
-          // Guardar stripe_customer_id, stripe_subscription_id y SEPA flags en profile
+          // Guardar stripe_customer_id, stripe_subscription_id en profile
           const { error: profileError } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -130,8 +143,7 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Profile actualizado con subscription_id: ${session.subscription}`)
           }
 
-          // CRÍTICO: ACTIVAR MEMBRESÍA INMEDIATAMENTE (billing webhook es source of truth)
-          // El intentId SÍ se usa para resolver el membership_intent asociado
+          // RESOLVER INTENT (si existe)
           const now = new Date()
           let intentRecord: any = null
           let resolvedMembershipType = membershipType
@@ -159,12 +171,8 @@ export async function POST(request: NextRequest) {
                 billing_cycle: resolvedBillingCycle,
               })
             }
-          } else {
-            console.error("❌ Missing session.metadata.intent_id in checkout.session.completed")
-          }
-          
-          // 1. Si hay intentId, actualizar intent a "active"
-          if (intentId) {
+
+            // Actualizar intent a "active"
             const { error: intentError } = await supabaseAdmin
               .from("membership_intents")
               .update({
@@ -187,7 +195,7 @@ export async function POST(request: NextRequest) {
             console.log("⚠️ No intentId en metadata - creando membresía sin intent tracking")
           }
 
-          // 2. ACTIVAR MEMBRESÍA INMEDIATAMENTE en user_memberships (billing es source of truth)
+          // ACTIVAR MEMBRESÍA INMEDIATAMENTE en user_memberships
           let endsAt = null
           if (resolvedMembershipType === "petite") {
             endsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -202,6 +210,7 @@ export async function POST(request: NextRequest) {
             stripe_customer_id: session.customer,
           })
 
+          // ✅ NUEVO: UPSERT con manejo de error crítico
           const { data: membershipData, error: membershipError } = await supabaseAdmin
             .from("user_memberships")
             .upsert(
@@ -221,9 +230,39 @@ export async function POST(request: NextRequest) {
             )
             .select()
 
+          // ⚠️ MEJORA: Si falla el UPSERT, devolver error 500 para que Stripe reintente
           if (membershipError) {
-            console.error("❌ Error creating user_membership:", membershipError)
+            console.error("❌ CRÍTICO: Error creating user_membership:", membershipError)
             console.error("[v0] Full error details:", JSON.stringify(membershipError, null, 2))
+            
+            // Notificar admin inmediatamente
+            await notifyAdmin(
+              "🚨 CRÍTICO: Error activando membresía",
+              `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #ef4444;">🚨 Error Crítico en Webhook</h2>
+                <div style="background: #fee; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #ef4444;">
+                  <p><strong>Evento:</strong> checkout.session.completed</p>
+                  <p><strong>Session ID:</strong> ${session.id}</p>
+                  <p><strong>User ID:</strong> ${userId}</p>
+                  <p><strong>Membership Type:</strong> ${resolvedMembershipType}</p>
+                  <p><strong>Error:</strong> ${membershipError.message || JSON.stringify(membershipError)}</p>
+                </div>
+                <p style="color: #ef4444;"><strong>⚠️ La membresía NO se activó. Revisar inmediatamente.</strong></p>
+              </div>
+              `
+            )
+
+            // Devolver error 500 para que Stripe reintente el webhook
+            return NextResponse.json(
+              { 
+                error: "Failed to create membership", 
+                details: membershipError.message || "Unknown error",
+                session_id: session.id,
+                user_id: userId
+              }, 
+              { status: 500 }
+            )
           } else {
             console.log(`✅ user_memberships upsert OK para usuario ${userId}`)
             console.log("[v0] Membership data inserted:", membershipData)
@@ -231,15 +270,15 @@ export async function POST(request: NextRequest) {
 
           console.log("✅ checkout.session.completed branch finished", {
             eventId: event.id,
-            intent_id: intentId,
+            intent_id: intentId || "N/A",
             intent_found: !!intentRecord,
           })
 
-          // 3. Actualizar profile
+          // Actualizar profile con membership_type y status
           await supabaseAdmin
             .from("profiles")
             .update({
-              membership_type: membershipType,
+              membership_type: resolvedMembershipType,
               membership_status: "active",
               updated_at: now.toISOString(),
             })
@@ -252,7 +291,7 @@ export async function POST(request: NextRequest) {
             .eq("id", userId)
             .single()
 
-          // Email de bienvenida al usuario (membresía ya activa)
+          // Email de bienvenida al usuario
           if (userProfile?.email) {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/send-email`, {
               method: "POST",
@@ -266,11 +305,10 @@ export async function POST(request: NextRequest) {
                     <p>Hola ${userProfile.full_name || ""},</p>
                     <p>Tu pago ha sido procesado exitosamente y <strong>tu membresía está activa</strong>. Ya puedes acceder a nuestro catálogo exclusivo de bolsos de lujo.</p>
                     <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #10b981;">
-                      <p><strong>Plan:</strong> ${membershipType}</p>
-                      <p><strong>Ciclo:</strong> ${billingCycle === "monthly" ? "Mensual" : "Trimestral"}</p>
+                      <p><strong>Plan:</strong> ${resolvedMembershipType}</p>
+                      <p><strong>Ciclo:</strong> ${resolvedBillingCycle === "monthly" ? "Mensual" : "Trimestral"}</p>
                       <p><strong>Estado:</strong> ✅ Activa</p>
                     </div>
-                    <p><strong>Opcional:</strong> Puedes completar la verificación de identidad para desbloquear features premium adicionales.</p>
                     <div style="margin: 30px 0;">
                       <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard" 
                          style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -288,20 +326,20 @@ export async function POST(request: NextRequest) {
 
           // Notificar admin
           await notifyAdmin(
-            `Membresía Activada - ${membershipType}`,
+            `Membresía Activada - ${resolvedMembershipType}`,
             `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2 style="color: #10b981;">✅ Membresía Activada</h2>
               <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #10b981;">
                 <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
                 <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
-                <p><strong>Plan:</strong> ${membershipType}</p>
-                <p><strong>Ciclo:</strong> ${billingCycle}</p>
+                <p><strong>Plan:</strong> ${resolvedMembershipType}</p>
+                <p><strong>Ciclo:</strong> ${resolvedBillingCycle}</p>
                 <p><strong>Estado:</strong> ✅ Activa</p>
                 <p><strong>Subscription ID:</strong> ${session.subscription}</p>
+                <p><strong>Intent ID:</strong> ${intentId || "N/A"}</p>
                 <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
               </div>
-              <p style="color: #10b981;">✅ Membresía activada inmediatamente. Identity verification es opcional para features premium.</p>
             </div>
             `,
           )
@@ -331,11 +369,11 @@ export async function POST(request: NextRequest) {
           break
         }
 
-        // 👉 ACTIVACIÓN DE MEMBRESÍA - ÚNICA FUENTE DE VERDAD
+        // ACTIVACIÓN DE MEMBRESÍA - ÚNICA FUENTE DE VERDAD
         if (subscription.status === "active" || subscription.status === "trialing") {
           console.log(`[v0] Activando membresía para usuario ${subUserId}`)
 
-          // Actualizar user_memberships con fechas de Stripe (NO calculadas manualmente)
+          // Actualizar user_memberships con fechas de Stripe
           const { error: membershipError } = await supabaseAdmin.from("user_memberships").upsert(
             {
               user_id: subUserId,
@@ -360,7 +398,7 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Membresía activada: ${membershipType}, end_date: ${new Date(subscription.current_period_end * 1000).toISOString()}`)
           }
 
-          // Actualizar profiles con IDs de Stripe
+          // Actualizar profiles
           const { error: profileError } = await supabaseAdmin
             .from("profiles")
             .update({
@@ -408,7 +446,6 @@ export async function POST(request: NextRequest) {
                   <p><strong>Inicio:</strong> ${new Date(subscription.current_period_start * 1000).toLocaleString("es-ES")}</p>
                   <p><strong>Fin:</strong> ${new Date(subscription.current_period_end * 1000).toLocaleString("es-ES")}</p>
                 </div>
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/subscriptions" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
               </div>
               `,
             )
@@ -422,11 +459,10 @@ export async function POST(request: NextRequest) {
         console.log("🚫 Suscripción cancelada:", canceledSub.id)
 
         const cancelUserId = canceledSub.metadata.user_id
-
         let userId: string | null = cancelUserId
 
         if (!cancelUserId) {
-          // Buscar user_id desde la DB si no está en metadata
+          // Buscar user_id desde la DB
           const { data: membership } = await supabaseAdmin
             .from("user_memberships")
             .select("user_id")
@@ -445,7 +481,7 @@ export async function POST(request: NextRequest) {
           userId = membership.user_id
         }
 
-        // Marcar user_memberships como cancelled
+        // Marcar como cancelled
         const { error: membershipError } = await supabaseAdmin
           .from("user_memberships")
           .update({
@@ -489,14 +525,12 @@ export async function POST(request: NextRequest) {
           break
         }
 
-        // CRÍTICO: Extender la membresía en renovaciones automáticas
+        // Extender la membresía en renovaciones automáticas
         if (invoice.subscription) {
-          // Obtener datos de la suscripción desde Stripe para fechas actualizadas
           const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
           
           console.log(`[v0] Renovación automática detectada para subscription ${subscription.id}`)
 
-          // Buscar el user_id desde user_memberships si no está en metadata
           let userId = invoiceUserId
           if (!userId) {
             const { data: membership } = await supabaseAdmin
@@ -514,7 +548,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // ACTUALIZAR las fechas de la membresía con los datos de Stripe
+          // ACTUALIZAR fechas de la membresía
           const { error: membershipError } = await supabaseAdmin
             .from("user_memberships")
             .update({
@@ -532,7 +566,7 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Membresía extendida hasta: ${new Date(subscription.current_period_end * 1000).toISOString()}`)
           }
 
-          // Registrar invoice en DB si existe tabla subscriptions
+          // Registrar invoice en DB
           const { data: subData } = await supabaseAdmin
             .from("subscriptions")
             .select("id")
@@ -622,7 +656,7 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log("✅ PaymentIntent succeeded:", paymentIntent.id)
 
-        // FRAUDE: Verificar el pago con las reglas de seguridad
+        // Verificar fraude
         const { allow, reason } = await runFraudGate({
           userId: paymentIntent.metadata?.user_id,
           email: paymentIntent.receipt_email || undefined,
