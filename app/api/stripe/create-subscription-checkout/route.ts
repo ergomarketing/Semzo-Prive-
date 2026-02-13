@@ -16,7 +16,7 @@ const stripe = new Stripe(stripeSecretKey || "", {
 
 /**
  * FASE 2 - CHECKOUT DE SUSCRIPCIÓN
- * 
+ *
  * Responsabilidades:
  * 1. Crear/recuperar stripe_customer_id
  * 2. Crear Checkout Session en modo subscription
@@ -40,17 +40,23 @@ export async function POST(request: NextRequest) {
     }
 
     const { priceId, membershipType, billingCycle, intentId } = await request.json()
-    
+
     const supabase = await createClient()
 
     // VALIDATION: Get authenticated session (works for SMS + email users)
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error: authError,
+    } = await supabase.auth.getSession()
+
     if (authError || !session) {
-      return NextResponse.json({
-        error: "Authentication required",
-        details: "User must be logged in to create subscription"
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          error: "Authentication required",
+          details: "User must be logged in to create subscription",
+        },
+        { status: 401 },
+      )
     }
 
     const userId = session.user.id
@@ -58,10 +64,13 @@ export async function POST(request: NextRequest) {
     // VALIDATION: Required fields
     if (!priceId || !membershipType || !intentId) {
       console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
-      return NextResponse.json({
-        error: "Missing required fields",
-        details: "priceId, membershipType and intentId are required"
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Missing required fields",
+          details: "priceId, membershipType and intentId are required",
+        },
+        { status: 400 },
+      )
     }
 
     // STEP 1: Get email from profiles (NOT from Supabase Auth)
@@ -100,10 +109,7 @@ export async function POST(request: NextRequest) {
       })
       stripeCustomerId = customer.id
 
-      await supabase
-        .from("profiles")
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq("id", userId)
+      await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
 
       console.log("[SUBSCRIPTION CHECKOUT] Created Stripe customer:", stripeCustomerId)
     } else {
@@ -111,8 +117,9 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 3: Create Checkout Session in subscription mode
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 
     // Stripe no permite customer + customer_email juntos
     // Si ya tenemos customer_id, usamos customer (Stripe usa el email del customer)
@@ -121,6 +128,13 @@ export async function POST(request: NextRequest) {
     const successUrl = requiresIdentityFlow
       ? `${baseUrl}/dashboard/membresia/status?session_id={CHECKOUT_SESSION_ID}`
       : `${baseUrl}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+
+    const commonMetadata = {
+      intent_id: intentId,
+      user_id: userId,
+      membership_type: membershipType,
+      billing_cycle: billingCycle || "monthly",
+    }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
@@ -133,12 +147,10 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
+      metadata: commonMetadata,
       subscription_data: {
         metadata: {
-          intent_id: intentId,
-          user_id: userId,
-          membership_type: membershipType,
-          billing_cycle: billingCycle || "monthly",
+          ...commonMetadata,
           sepa_backup: customerEmail ? "true" : "false",
           service: "luxury_rental",
         },
@@ -158,20 +170,19 @@ export async function POST(request: NextRequest) {
     console.log("[SUBSCRIPTION CHECKOUT] ✅ Checkout session created:", {
       sessionId: checkoutSession.id,
       url: checkoutSession.url,
-      duration: `${Date.now() - startTime}ms`
+      duration: `${Date.now() - startTime}ms`,
     })
 
     return NextResponse.json({
       sessionId: checkoutSession.id,
       url: checkoutSession.url,
     })
-
   } catch (error: any) {
     console.error("[SUBSCRIPTION CHECKOUT] ❌ Error:", {
       message: error?.message,
       type: error?.type,
       code: error?.code,
-      stack: error?.stack
+      stack: error?.stack,
     })
 
     return NextResponse.json(
