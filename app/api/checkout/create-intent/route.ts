@@ -9,6 +9,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { userId, membershipType, billingCycle, amount, coupon, giftCard } = body
 
+    const validMembershipTypes = ["petite", "essentiel", "signature", "prive"]
+    const validBillingCycles = ["weekly", "monthly", "quarterly"]
+
+    if (!validMembershipTypes.includes(membershipType)) {
+      return NextResponse.json({ error: `Invalid membershipType: ${membershipType}` }, { status: 400 })
+    }
+
+    if (!validBillingCycles.includes(billingCycle)) {
+      return NextResponse.json({ error: `Invalid billingCycle: ${billingCycle}` }, { status: 400 })
+    }
+
     console.log("[v0] create-intent:", { userId, membershipType, billingCycle, amount, giftCard: giftCard?.code })
 
     if (!userId || userId.startsWith("guest_")) {

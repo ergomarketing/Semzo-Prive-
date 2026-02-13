@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         membership_type: membershipType,
         billing_cycle: billingCycle,
-        status: "pending",
+        status: "initiated",
         amount_cents: amountCents,
         original_amount_cents: amountCents, // Before any discounts (if applicable later)
         coupon_code: couponCode || appliedCoupon?.code || null,
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         membership_type: membershipType,
         billing_cycle: billingCycle,
         amount_cents: amountCents,
-        status: "pending"
+        status: "initiated"
       })
     } else {
       console.log("[BACKEND] 💾 Reusing existing intent_id:", dbIntentId)
