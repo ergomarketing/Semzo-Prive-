@@ -195,7 +195,9 @@ export async function POST(request: NextRequest) {
         if (subscription.status === "active" || subscription.status === "trialing") {
           console.log(`[v0] Activando membresía para usuario ${subUserId}`)
 
-          // Actualizar user_memberships con fechas de Stripe (NO calculadas manualmente)
+          // Actualizar user_memberships (payload mínimo compatible con esquemas legacy)
+          // Nota: evitamos columnas no universales como membership_start_date/membership_end_date
+          // para no romper activación en entornos con schema distinto.
           const { error: membershipError } = await supabaseAdmin.from("user_memberships").upsert(
             {
               user_id: subUserId,
@@ -204,9 +206,8 @@ export async function POST(request: NextRequest) {
               status: "active",
               stripe_subscription_id: subscription.id,
               stripe_customer_id: subscription.customer as string,
-              membership_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-              membership_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
+              start_date: new Date(subscription.current_period_start * 1000).toISOString(),
+              end_date: new Date(subscription.current_period_end * 1000).toISOString(),
               updated_at: new Date().toISOString(),
             },
             {
