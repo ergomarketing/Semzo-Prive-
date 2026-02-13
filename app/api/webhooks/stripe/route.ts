@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔄 Procesando evento:", event.type)
+    console.log("📥 Webhook event:", { eventId: event.id, eventType: event.type })
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -75,13 +76,21 @@ export async function POST(request: NextRequest) {
 
         // Solo procesar si es una suscripción (no one-time payments)
         if (session.mode === "subscription" && session.subscription) {
-          const userId = session.metadata?.user_id
-          const membershipType = session.metadata?.membership_type
-          const billingCycle = session.metadata?.billing_cycle || "monthly"
-          const intentId = session.metadata?.intent_id
+          let userId = session.metadata?.user_id
+          let membershipType = session.metadata?.membership_type
+          let billingCycle = session.metadata?.billing_cycle || "monthly"
+          let intentId = session.metadata?.intent_id
+
+          if ((!userId || !intentId || !membershipType) && session.subscription) {
+            const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription as string)
+            userId = userId || stripeSubscription.metadata?.user_id
+            membershipType = membershipType || stripeSubscription.metadata?.membership_type || stripeSubscription.metadata?.plan_id
+            billingCycle = billingCycle || stripeSubscription.metadata?.billing_cycle || "monthly"
+            intentId = intentId || stripeSubscription.metadata?.intent_id
+          }
 
           if (!userId) {
-            console.error("❌ No user_id en metadata del checkout session")
+            console.error("❌ No user_id en metadata del checkout session/subscription")
             break
           }
 
@@ -124,140 +133,42 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Profile actualizado con subscription_id: ${session.subscription}`)
           }
 
-          // CRÍTICO: ACTIVAR MEMBRESÍA INMEDIATAMENTE (billing webhook es source of truth)
-          // La activación NO depende de intentId - el pago de Stripe es suficiente
-          const now = new Date()
-          
-          // 1. Si hay intentId, actualizar intent a "active" (opcional, solo tracking)
+          // En checkout.session.completed solo persistimos trazabilidad.
+          // La activación principal ocurre en customer.subscription.* e invoice.payment_succeeded
+          const now = new Date().toISOString()
+
           if (intentId) {
             const { error: intentError } = await supabaseAdmin
               .from("membership_intents")
               .update({
-                status: "active",
-                stripe_payment_intent_id: session.payment_intent as string,
                 stripe_customer_id: session.customer as string,
                 stripe_subscription_id: session.subscription as string,
-                paid_at: now.toISOString(),
-                activated_at: now.toISOString(),
-                updated_at: now.toISOString(),
+                updated_at: now,
               })
               .eq("id", intentId)
 
             if (intentError) {
-              console.error("❌ Error actualizando membership_intent:", intentError)
+              console.error("❌ Error linking membership_intent from checkout session:", {
+                intent_id: intentId,
+                error: intentError,
+              })
             } else {
-              console.log(`✅ Intent ${intentId} actualizado a active`)
+              console.log("✅ membership_intent linked from checkout session", {
+                intent_id: intentId,
+                subscription_id: session.subscription,
+              })
             }
           } else {
-            console.log("⚠️ No intentId en metadata - creando membresía sin intent tracking")
+            console.error("❌ Missing intent_id in checkout session/subscription metadata")
           }
 
-          // 2. ACTIVAR MEMBRESÍA INMEDIATAMENTE en user_memberships (billing es source of truth)
-          let endsAt = null
-          if (membershipType === "petite") {
-            endsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          }
-
-          console.log("[v0] Attempting to insert user_membership:", {
-            user_id: userId,
-            membership_type: membershipType,
-            billing_cycle: billingCycle,
-            status: "active",
-            stripe_subscription_id: session.subscription,
-            stripe_customer_id: session.customer,
+          console.log("✅ checkout.session.completed tracking finished", {
+            eventId: event.id,
+            userId,
+            membershipType,
+            billingCycle,
+            intentId,
           })
-
-          const { data: membershipData, error: membershipError } = await supabaseAdmin.from("user_memberships").insert({
-            user_id: userId,
-            membership_type: membershipType,
-            billing_cycle: billingCycle,
-            status: "active",
-            stripe_subscription_id: session.subscription as string,
-            stripe_customer_id: session.customer as string,
-            starts_at: now.toISOString(),
-            ends_at: endsAt,
-            created_at: now.toISOString(),
-            updated_at: now.toISOString(),
-          }).select()
-
-          if (membershipError) {
-            console.error("❌ Error creating user_membership:", membershipError)
-            console.error("[v0] Full error details:", JSON.stringify(membershipError, null, 2))
-          } else {
-            console.log(`✅ Membresía ${membershipType} ACTIVADA inmediatamente para usuario ${userId}`)
-            console.log("[v0] Membership data inserted:", membershipData)
-          }
-
-          // 3. Actualizar profile
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              membership_type: membershipType,
-              membership_status: "active",
-              updated_at: now.toISOString(),
-            })
-            .eq("id", userId)
-
-          // Obtener datos del usuario
-          const { data: userProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("full_name, email")
-            .eq("id", userId)
-            .single()
-
-          // Email de bienvenida al usuario (membresía ya activa)
-          if (userProfile?.email) {
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/send-email`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: userProfile.email,
-                subject: "¡Bienvenida a Semzo Privé!",
-                html: `
-                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #10b981;">¡Bienvenida a Semzo Privé!</h2>
-                    <p>Hola ${userProfile.full_name || ""},</p>
-                    <p>Tu pago ha sido procesado exitosamente y <strong>tu membresía está activa</strong>. Ya puedes acceder a nuestro catálogo exclusivo de bolsos de lujo.</p>
-                    <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #10b981;">
-                      <p><strong>Plan:</strong> ${membershipType}</p>
-                      <p><strong>Ciclo:</strong> ${billingCycle === "monthly" ? "Mensual" : "Trimestral"}</p>
-                      <p><strong>Estado:</strong> ✅ Activa</p>
-                    </div>
-                    <p><strong>Opcional:</strong> Puedes completar la verificación de identidad para desbloquear features premium adicionales.</p>
-                    <div style="margin: 30px 0;">
-                      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard" 
-                         style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Ir a Mi Dashboard
-                      </a>
-                    </div>
-                    <p style="color: #666; font-size: 12px;">
-                      Si tienes alguna pregunta, contáctanos en ${ADMIN_EMAIL}
-                    </p>
-                  </div>
-                `,
-              }),
-            })
-          }
-
-          // Notificar admin
-          await notifyAdmin(
-            `Membresía Activada - ${membershipType}`,
-            `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #10b981;">✅ Membresía Activada</h2>
-              <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #10b981;">
-                <p><strong>Cliente:</strong> ${userProfile?.full_name || "N/A"}</p>
-                <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
-                <p><strong>Plan:</strong> ${membershipType}</p>
-                <p><strong>Ciclo:</strong> ${billingCycle}</p>
-                <p><strong>Estado:</strong> ✅ Activa</p>
-                <p><strong>Subscription ID:</strong> ${session.subscription}</p>
-                <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-              </div>
-              <p style="color: #10b981;">✅ Membresía activada inmediatamente. Identity verification es opcional para features premium.</p>
-            </div>
-            `,
-          )
         }
         break
       }
@@ -427,8 +338,26 @@ export async function POST(request: NextRequest) {
         console.log("💰 Pago de factura exitoso:", invoice.id)
 
         const invoiceUserId = invoice.metadata?.user_id || invoice.subscription_details?.metadata?.user_id
+        let resolvedUserId = invoiceUserId || null
+        let resolvedMembershipType: string | null =
+          invoice.subscription_details?.metadata?.membership_type || invoice.metadata?.membership_type || null
+        let resolvedBillingCycle: string =
+          invoice.subscription_details?.metadata?.billing_cycle || invoice.metadata?.billing_cycle || "monthly"
+        let resolvedIntentId: string | null = invoice.subscription_details?.metadata?.intent_id || invoice.metadata?.intent_id || null
 
-        if (invoiceUserId) {
+        if (invoice.subscription && (!resolvedUserId || !resolvedMembershipType || !resolvedIntentId)) {
+          try {
+            const stripeSubscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
+            resolvedUserId = resolvedUserId || stripeSubscription.metadata?.user_id || null
+            resolvedMembershipType = resolvedMembershipType || stripeSubscription.metadata?.membership_type || stripeSubscription.metadata?.plan_id || null
+            resolvedBillingCycle = resolvedBillingCycle || stripeSubscription.metadata?.billing_cycle || "monthly"
+            resolvedIntentId = resolvedIntentId || stripeSubscription.metadata?.intent_id || null
+          } catch (subError) {
+            console.error("❌ Error retrieving subscription in invoice.payment_succeeded:", subError)
+          }
+        }
+
+        if (resolvedUserId) {
           const { data: subData } = await supabaseAdmin
             .from("subscriptions")
             .select("id")
@@ -436,7 +365,7 @@ export async function POST(request: NextRequest) {
             .single()
 
           await supabaseAdmin.from("payment_history").insert({
-            user_id: invoiceUserId,
+            user_id: resolvedUserId,
             subscription_id: subData?.id || null,
             stripe_invoice_id: invoice.id,
             stripe_payment_intent_id: invoice.payment_intent as string,
@@ -446,7 +375,58 @@ export async function POST(request: NextRequest) {
             description: `Pago mensual - ${invoice.lines.data[0]?.description || "Membresía"}`,
             payment_date: new Date(invoice.created * 1000).toISOString(),
           })
-          console.log(`✅ Pago registrado para usuario ${invoiceUserId}`)
+          console.log(`✅ Pago registrado para usuario ${resolvedUserId}`)
+
+          if (resolvedMembershipType) {
+            const now = new Date().toISOString()
+            const { error: membershipError } = await supabaseAdmin
+              .from("user_memberships")
+              .upsert(
+                {
+                  user_id: resolvedUserId,
+                  membership_type: resolvedMembershipType,
+                  billing_cycle: resolvedBillingCycle,
+                  status: "active",
+                  stripe_subscription_id: invoice.subscription as string,
+                  stripe_customer_id: invoice.customer as string,
+                  updated_at: now,
+                },
+                { onConflict: "user_id" },
+              )
+
+            if (membershipError) {
+              console.error("❌ Error activating membership in invoice.payment_succeeded:", membershipError)
+            } else {
+              console.log("✅ Membership activated from invoice.payment_succeeded", {
+                userId: resolvedUserId,
+                membershipType: resolvedMembershipType,
+                billingCycle: resolvedBillingCycle,
+              })
+            }
+
+            await supabaseAdmin
+              .from("profiles")
+              .update({
+                membership_status: "active",
+                membership_type: resolvedMembershipType,
+                updated_at: now,
+              })
+              .eq("id", resolvedUserId)
+
+            if (resolvedIntentId) {
+              await supabaseAdmin
+                .from("membership_intents")
+                .update({
+                  status: "active",
+                  stripe_payment_intent_id: invoice.payment_intent as string,
+                  stripe_subscription_id: invoice.subscription as string,
+                  paid_at: now,
+                  activated_at: now,
+                  updated_at: now,
+                })
+                .eq("id", resolvedIntentId)
+            }
+          }
         }
         break
       }
@@ -939,76 +919,6 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent
-        console.log("💳 Payment Intent succeeded:", paymentIntent.id)
-
-        // Si el payment intent viene de un checkout session con metadata de membresía, activar
-        const userId = paymentIntent.metadata?.user_id
-        const membershipType = paymentIntent.metadata?.membership_type
-        const billingCycle = paymentIntent.metadata?.billing_cycle
-        const intentId = paymentIntent.metadata?.intent_id
-
-        if (userId && membershipType) {
-          console.log(`[v0] Payment Intent tiene metadata de membresía - activando para ${userId}`)
-
-          const now = new Date()
-          let endsAt = null
-          if (membershipType === "petite") {
-            endsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          }
-
-          // Activar membresía en user_memberships
-          const { error: membershipError } = await supabaseAdmin.from("user_memberships").insert({
-            user_id: userId,
-            membership_type: membershipType,
-            billing_cycle: billingCycle || "monthly",
-            status: "active",
-            stripe_payment_intent_id: paymentIntent.id,
-            stripe_customer_id: paymentIntent.customer as string,
-            starts_at: now.toISOString(),
-            ends_at: endsAt,
-            created_at: now.toISOString(),
-            updated_at: now.toISOString(),
-          })
-
-          if (membershipError) {
-            console.error("❌ Error creating membership from payment_intent:", membershipError)
-          } else {
-            console.log(`✅ Membresía ${membershipType} activada desde payment_intent`)
-          }
-
-          // Actualizar intent si existe
-          if (intentId) {
-            await supabaseAdmin
-              .from("membership_intents")
-              .update({
-                status: "active",
-                stripe_payment_intent_id: paymentIntent.id,
-                paid_at: now.toISOString(),
-                activated_at: now.toISOString(),
-                updated_at: now.toISOString(),
-              })
-              .eq("id", intentId)
-          }
-
-          // Actualizar profile
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              membership_type: membershipType,
-              membership_status: "active",
-              updated_at: now.toISOString(),
-            })
-            .eq("id", userId)
-
-        } else {
-          console.log("ℹ️ Payment Intent sin metadata de membresía - probablemente otro tipo de pago")
-        }
-
-        break
-      }
-
       default:
         console.log(`ℹ️ Evento no manejado: ${event.type}`)
     }
@@ -1016,7 +926,11 @@ export async function POST(request: NextRequest) {
     console.log("✅ Webhook procesado exitosamente")
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (err) {
-    console.error("❌ Error procesando webhook:", err)
-    return NextResponse.json({ received: true, error: "internal_error" }, { status: 200 })
+    console.error("❌ Error procesando webhook:", {
+      error: err,
+      message: err instanceof Error ? err.message : "unknown_error",
+      stack: err instanceof Error ? err.stack : undefined,
+    })
+    return NextResponse.json({ error: "internal_error" }, { status: 500 })
   }
 }

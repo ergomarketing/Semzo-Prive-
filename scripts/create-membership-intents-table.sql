@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS membership_intents (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   
   -- Membership details
-  membership_type TEXT NOT NULL CHECK (membership_type IN ('petite', 'lessentiel', 'signature', 'prive')),
+  membership_type TEXT NOT NULL CHECK (membership_type IN ('petite', 'essentiel', 'signature', 'prive')),
   billing_cycle TEXT NOT NULL CHECK (billing_cycle IN ('weekly', 'monthly', 'quarterly')),
   
   -- Pricing
@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS membership_intents (
   -- Discounts applied
   coupon_code TEXT,
   coupon_discount_cents INTEGER DEFAULT 0,
+  gift_card_id UUID REFERENCES gift_cards(id),
   gift_card_code TEXT,
   gift_card_applied_cents INTEGER DEFAULT 0,
   
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS membership_intents (
 CREATE INDEX IF NOT EXISTS idx_membership_intents_user_id ON membership_intents(user_id);
 CREATE INDEX IF NOT EXISTS idx_membership_intents_status ON membership_intents(status);
 CREATE INDEX IF NOT EXISTS idx_membership_intents_stripe_payment_intent ON membership_intents(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_membership_intents_gift_card_id ON membership_intents(gift_card_id);
 CREATE INDEX IF NOT EXISTS idx_membership_intents_expires_at ON membership_intents(expires_at);
 
 -- RLS Policies

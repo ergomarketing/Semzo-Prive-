@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS membership_intents (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  membership_type TEXT NOT NULL CHECK (membership_type IN ('petite', 'lessentiel', 'signature', 'prive')),
+  membership_type TEXT NOT NULL CHECK (membership_type IN ('petite', 'essentiel', 'signature', 'prive')),
   billing_cycle TEXT NOT NULL CHECK (billing_cycle IN ('weekly', 'monthly')),
   amount DECIMAL(10,2) NOT NULL,
   status TEXT NOT NULL DEFAULT 'initiated' CHECK (status IN ('initiated', 'paid_pending_verification', 'active', 'failed', 'cancelled')),

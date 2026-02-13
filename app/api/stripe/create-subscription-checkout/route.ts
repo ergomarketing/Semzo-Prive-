@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // VALIDATION: Required fields
-    if (!priceId || !membershipType) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType })
+    if (!priceId || !membershipType || !intentId) {
+      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
       return NextResponse.json({
         error: "Missing required fields",
-        details: "priceId and membershipType are required"
+        details: "priceId, membershipType and intentId are required"
       }, { status: 400 })
     }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     // SMS users have null email in auth but may have real email in profiles
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_customer_id, full_name, email")
+      .select("stripe_customer_id, full_name, email, auth_method")
       .eq("id", userId)
       .single()
 
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
       hasEmail: !!customerEmail,
       membershipType,
       billingCycle,
-      priceId
+      priceId,
+      intentId,
     })
 
     // STEP 2: Get or create Stripe customer
@@ -116,6 +117,18 @@ export async function POST(request: NextRequest) {
     // Stripe no permite customer + customer_email juntos
     // Si ya tenemos customer_id, usamos customer (Stripe usa el email del customer)
     // Si el customer no tiene email (SMS user), Stripe lo pedira en el checkout
+    const requiresIdentityFlow = profile?.auth_method === "sms"
+    const successUrl = requiresIdentityFlow
+      ? `${baseUrl}/dashboard/membresia/status?session_id={CHECKOUT_SESSION_ID}`
+      : `${baseUrl}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+
+    const commonMetadata = {
+      intent_id: intentId,
+      user_id: userId,
+      membership_type: membershipType,
+      billing_cycle: billingCycle || "monthly",
+    }
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       customer: stripeCustomerId,
@@ -127,17 +140,15 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
+      metadata: commonMetadata,
       subscription_data: {
         metadata: {
-          user_id: userId,
-          membership_type: membershipType,
-          billing_cycle: billingCycle || "monthly",
-          intent_id: intentId || "",
+          ...commonMetadata,
           sepa_backup: customerEmail ? "true" : "false",
           service: "luxury_rental",
         },
       },
-      success_url: `${baseUrl}/dashboard/membresia/status?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: successUrl,
       cancel_url: `${baseUrl}/cart?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: "auto",
