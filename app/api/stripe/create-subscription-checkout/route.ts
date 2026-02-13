@@ -55,13 +55,16 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id
 
-    // VALIDATION: Required fields
+    // VALIDATION: Required fields for subscription checkout
     if (!priceId || !membershipType || !intentId) {
       console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
-      return NextResponse.json({
-        error: "Missing required fields",
-        details: "priceId, membershipType and intentId are required"
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Missing required fields",
+          details: "priceId, membershipType and intentId are required",
+        },
+        { status: 400 },
+      )
     }
 
     // STEP 1: Get email from profiles (NOT from Supabase Auth)
