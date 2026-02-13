@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id
 
+    // VALIDATION: Required fields
     if (!priceId || !membershipType || !intentId) {
       console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
       return NextResponse.json(
