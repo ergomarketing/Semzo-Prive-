@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js"
 import { logAudit } from "@/lib/fraud-gate"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2024-06-20",
 })
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
@@ -18,14 +18,14 @@ export async function POST(request: Request) {
 
     if (!signature) {
       console.error("[v0] Missing Stripe signature header")
-      return NextResponse.json({ received: true, error: "missing_signature" }, { status: 200 })
+      return NextResponse.json({ error: "missing_signature" }, { status: 400 })
     }
 
     const webhookSecret = process.env.STRIPE_IDENTITY_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET
 
     if (!webhookSecret) {
       console.error("[v0] No webhook secret configured")
-      return NextResponse.json({ received: true, error: "no_webhook_secret" }, { status: 200 })
+      return NextResponse.json({ error: "no_webhook_secret" }, { status: 500 })
     }
 
     let event: Stripe.Event
@@ -35,19 +35,22 @@ export async function POST(request: Request) {
       console.log("[v0] Webhook signature verified successfully, event type:", event.type)
     } catch (err: any) {
       console.error("[v0] Webhook signature verification failed:", err.message)
-      return NextResponse.json({ received: true, error: "invalid_signature" }, { status: 200 })
+      return NextResponse.json({ error: "invalid_signature" }, { status: 400 })
     }
 
     const session = event.data.object as Stripe.Identity.VerificationSession
 
-    processWebhookAsync(event, session).catch((error) => {
-      console.error("[v0] Background webhook processing failed:", error)
-    })
+    if (!event.type.startsWith("identity.verification_session.")) {
+      console.log("[v0] Ignoring non-identity event on identity webhook:", event.type)
+      return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    await processWebhookAsync(event, session)
 
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (error: any) {
     console.error("[v0] Critical error in webhook handler:", error)
-    return NextResponse.json({ received: true, error: "critical_error" }, { status: 200 })
+    return NextResponse.json({ error: "critical_error" }, { status: 500 })
   }
 }
 
@@ -135,7 +138,7 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
         }
 
         // 2. Actualizar profile - ÚNICA acción de Identity
-        await supabase
+        const { error: profileError } = await supabase
           .from("profiles")
           .update({
             identity_verified: true,
@@ -143,6 +146,21 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
             updated_at: new Date().toISOString(),
           })
           .eq("id", intent.user_id)
+
+        if (profileError) {
+          console.error("[v0] ❌ Error updating profile identity flags:", profileError)
+        }
+
+        // 3. Actualizar identity_verifications a verified
+        await supabase
+          .from("identity_verifications")
+          .update({
+            status: "verified",
+            verified_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            last_error: null,
+          })
+          .eq("stripe_verification_id", session.id)
 
         console.log("[v0] ✅ Identity flag set - billing/membership untouched")
 
@@ -189,13 +207,10 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           entityType: "membership_intent",
           entityId: intent.id,
           actorType: "webhook",
-          changes: {
-            before: { status: "pending_identity_verification" },
-            after: { status: "verified" },
-          },
           metadata: {
             verificationSessionId: session.id,
             userId: intent.user_id,
+            intentStatus: intent.status,
           },
         })
         break

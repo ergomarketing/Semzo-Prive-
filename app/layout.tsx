@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Playfair_Display } from "next/font/google"
 import Script from "next/script"
 import TikTokPixel from "@/components/TikTokPixel"
 import "./globals.css"
@@ -10,19 +9,6 @@ import CookieConsent from "./components/cookie-consent"
 import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
 import { Toaster } from "@/components/ui/toaster"
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-  preload: true,
-})
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-  preload: true,
-})
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://semzoprive.com"),
@@ -167,7 +153,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <AuthProvider>
           <CartProvider>
             <Navbar />
