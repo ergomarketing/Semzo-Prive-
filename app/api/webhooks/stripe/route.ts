@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
 
           if (!userId) {
             console.error("❌ No user_id en metadata del checkout session/subscription")
+codex/explain-/api/checkout/create-intent-endpoint-k8euwz
             break
           }
 
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
               sessionId: session.id,
               userId,
             })
+
+ main
             break
           }
 
@@ -377,7 +380,11 @@ export async function POST(request: NextRequest) {
             .eq("stripe_subscription_id", invoice.subscription)
             .single()
 
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
           const { error: paymentHistoryError } = await supabaseAdmin.from("payment_history").insert({
+
+          await supabaseAdmin.from("payment_history").insert({
+ main
             user_id: resolvedUserId,
             subscription_id: subData?.id || null,
             stripe_invoice_id: invoice.id,
@@ -388,11 +395,14 @@ export async function POST(request: NextRequest) {
             description: `Pago mensual - ${invoice.lines.data[0]?.description || "Membresía"}`,
             payment_date: new Date(invoice.created * 1000).toISOString(),
           })
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
 
           if (paymentHistoryError) {
             throw new Error(`Error inserting payment history: ${paymentHistoryError.message || "unknown"}`)
           }
 
+
+ main
           console.log(`✅ Pago registrado para usuario ${resolvedUserId}`)
 
           if (resolvedMembershipType) {
@@ -413,7 +423,11 @@ export async function POST(request: NextRequest) {
               )
 
             if (membershipError) {
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
               throw new Error(`Error activating membership from invoice webhook: ${membershipError.message || "unknown"}`)
+
+              console.error("❌ Error activating membership in invoice.payment_succeeded:", membershipError)
+ main
             } else {
               console.log("✅ Membership activated from invoice.payment_succeeded", {
                 userId: resolvedUserId,
@@ -422,7 +436,11 @@ export async function POST(request: NextRequest) {
               })
             }
 
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
             const { error: invoiceProfileError } = await supabaseAdmin
+
+            await supabaseAdmin
+ main
               .from("profiles")
               .update({
                 membership_status: "active",
@@ -431,12 +449,17 @@ export async function POST(request: NextRequest) {
               })
               .eq("id", resolvedUserId)
 
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
             if (invoiceProfileError) {
               throw new Error(`Error updating profile from invoice webhook: ${invoiceProfileError.message || "unknown"}`)
             }
 
             if (resolvedIntentId) {
               const { error: invoiceIntentError } = await supabaseAdmin
+
+            if (resolvedIntentId) {
+              await supabaseAdmin
+ main
                 .from("membership_intents")
                 .update({
                   status: "active",
@@ -447,10 +470,13 @@ export async function POST(request: NextRequest) {
                   updated_at: now,
                 })
                 .eq("id", resolvedIntentId)
+ codex/explain-/api/checkout/create-intent-endpoint-k8euwz
 
               if (invoiceIntentError) {
                 throw new Error(`Error updating membership intent from invoice webhook: ${invoiceIntentError.message || "unknown"}`)
               }
+
+ main
             }
           }
         }
@@ -960,3 +986,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
   }
 }
+

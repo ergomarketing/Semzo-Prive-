@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
         original_amount_cents: originalAmountCents,
         coupon_code: coupon?.code || null,
         coupon_discount_cents: couponDiscountCents,
-        gift_card_id: resolvedGiftCardId,
         gift_card_code: giftCard?.code || null,
         gift_card_applied_cents: giftCardAppliedCents,
         status: "initiated",
