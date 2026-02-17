@@ -5,4 +5,4 @@ export {
   supabaseAdmin,
   supabaseConfig,
   isSupabaseConfigured,
-} from "../app/lib/supabaseClient"
+} from "@/lib/supabase"

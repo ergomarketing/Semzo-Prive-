@@ -7,12 +7,12 @@ import { Card, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordSettings } from "@/components/password-settings"
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase"
 import { AlertCircle, CheckCircle, Edit, Loader2, Mail, Pencil, Phone, Save } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { supabase } from "@/utils/supabase/client" // Import supabase
+import { supabase } from "@/lib/supabase" // Import supabase
 
 interface UserProfile {
   first_name: string

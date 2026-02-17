@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { getSupabaseBrowser } from "../lib/supabaseClient"
+import { getSupabaseBrowser } from "@/lib/supabase"
 
 interface CheckoutModalProps {
   isOpen: boolean
