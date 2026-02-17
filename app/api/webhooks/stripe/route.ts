@@ -28,6 +28,14 @@ async function notifyAdmin(subject: string, htmlContent: string) {
   }
 }
 
+async function insertPaymentHistory(payload: Record<string, any>, context: string) {
+  const { error } = await supabaseAdmin.from("payment_history").insert(payload)
+
+  if (error) {
+    throw new Error(`Error inserting payment history (${context}): ${error.message || "unknown"}`)
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log("🎣 Webhook recibido:", new Date().toISOString())
 
@@ -91,6 +99,17 @@ export async function POST(request: NextRequest) {
 
           if (!userId) {
             console.error("❌ No user_id en metadata del checkout session/subscription")
+ codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+            break
+          }
+
+          if (!membershipType) {
+            console.error("❌ No membership_type en metadata del checkout session/subscription", {
+              sessionId: session.id,
+              userId,
+            })
+            
+ main
             break
           }
 
@@ -187,8 +206,7 @@ export async function POST(request: NextRequest) {
         const billingCycle = subscription.metadata.billing_cycle || "monthly"
 
         if (!subUserId) {
-          console.error("❌ No user_id en metadata de la suscripción")
-          break
+          throw new Error("Missing user_id in subscription metadata")
         }
 
         // 👉 ACTIVACIÓN DE MEMBRESÍA - ÚNICA FUENTE DE VERDAD
@@ -216,7 +234,7 @@ export async function POST(request: NextRequest) {
           )
 
           if (membershipError) {
-            console.error("❌ Error activando membresía en user_memberships:", membershipError)
+            throw new Error(`Error activating membership in user_memberships: ${membershipError.message || "unknown"}`)
           } else {
             console.log(`✅ Membresía activada: ${membershipType}, end_date: ${new Date(subscription.current_period_end * 1000).toISOString()}`)
           }
@@ -234,11 +252,11 @@ export async function POST(request: NextRequest) {
             .eq("id", subUserId)
 
           if (profileError) {
-            console.error("❌ Error actualizando profile:", profileError)
+            throw new Error(`Error updating profile from subscription webhook: ${profileError.message || "unknown"}`)
           }
 
           // Actualizar membership_intent a active si existe
-          await supabaseAdmin
+          const { error: intentActivationError } = await supabaseAdmin
             .from("membership_intents")
             .update({
               status: "active",
@@ -246,6 +264,10 @@ export async function POST(request: NextRequest) {
             })
             .eq("user_id", subUserId)
             .eq("stripe_subscription_id", subscription.id)
+
+          if (intentActivationError) {
+            throw new Error(`Error updating membership intent from subscription webhook: ${intentActivationError.message || "unknown"}`)
+          }
 
           // Notificar admin solo en creación
           if (event.type === "customer.subscription.created") {
@@ -334,7 +356,8 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      case "invoice.payment_succeeded": {
+      case "invoice.payment_succeeded":
+      case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice
         console.log("💰 Pago de factura exitoso:", invoice.id)
 
@@ -365,6 +388,23 @@ export async function POST(request: NextRequest) {
             .eq("stripe_subscription_id", invoice.subscription)
             .single()
 
+codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+          await insertPaymentHistory(
+            {
+              user_id: resolvedUserId,
+              subscription_id: subData?.id || null,
+              stripe_invoice_id: invoice.id,
+              stripe_payment_intent_id: invoice.payment_intent as string,
+              amount: invoice.amount_paid,
+              currency: invoice.currency,
+              status: "succeeded",
+              description: `Pago mensual - ${invoice.lines.data[0]?.description || "Membresía"}`,
+              payment_date: new Date(invoice.created * 1000).toISOString(),
+            },
+            "invoice.payment_succeeded",
+          )
+
+
           await supabaseAdmin.from("payment_history").insert({
             user_id: resolvedUserId,
             subscription_id: subData?.id || null,
@@ -376,6 +416,7 @@ export async function POST(request: NextRequest) {
             description: `Pago mensual - ${invoice.lines.data[0]?.description || "Membresía"}`,
             payment_date: new Date(invoice.created * 1000).toISOString(),
           })
+ main
           console.log(`✅ Pago registrado para usuario ${resolvedUserId}`)
 
           if (resolvedMembershipType) {
@@ -396,7 +437,11 @@ export async function POST(request: NextRequest) {
               )
 
             if (membershipError) {
+codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+              throw new Error(`Error activating membership from invoice webhook: ${membershipError.message || "unknown"}`)
+
               console.error("❌ Error activating membership in invoice.payment_succeeded:", membershipError)
+main
             } else {
               console.log("✅ Membership activated from invoice.payment_succeeded", {
                 userId: resolvedUserId,
@@ -405,7 +450,11 @@ export async function POST(request: NextRequest) {
               })
             }
 
+ codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+            const { error: invoiceProfileError } = await supabaseAdmin
+
             await supabaseAdmin
+ main
               .from("profiles")
               .update({
                 membership_status: "active",
@@ -414,8 +463,17 @@ export async function POST(request: NextRequest) {
               })
               .eq("id", resolvedUserId)
 
+ codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+            if (invoiceProfileError) {
+              throw new Error(`Error updating profile from invoice webhook: ${invoiceProfileError.message || "unknown"}`)
+            }
+
+            if (resolvedIntentId) {
+              const { error: invoiceIntentError } = await supabaseAdmin
+
             if (resolvedIntentId) {
               await supabaseAdmin
+main
                 .from("membership_intents")
                 .update({
                   status: "active",
@@ -426,6 +484,13 @@ export async function POST(request: NextRequest) {
                   updated_at: now,
                 })
                 .eq("id", resolvedIntentId)
+ codex/explain-/api/checkout/create-intent-endpoint-x4ypoa
+
+              if (invoiceIntentError) {
+                throw new Error(`Error updating membership intent from invoice webhook: ${invoiceIntentError.message || "unknown"}`)
+              }
+
+ main
             }
           }
         }
@@ -768,15 +833,18 @@ export async function POST(request: NextRequest) {
 
         const refundUserId = refundedCharge.metadata.user_id
         if (refundUserId) {
-          await supabaseAdmin.from("payment_history").insert({
-            user_id: refundUserId,
-            stripe_payment_intent_id: refundedCharge.payment_intent as string,
-            amount: refundedCharge.amount_refunded,
-            currency: refundedCharge.currency,
-            status: "refunded",
-            description: "Reembolso procesado",
-            payment_date: new Date().toISOString(),
-          })
+          await insertPaymentHistory(
+            {
+              user_id: refundUserId,
+              stripe_payment_intent_id: refundedCharge.payment_intent as string,
+              amount: refundedCharge.amount_refunded,
+              currency: refundedCharge.currency,
+              status: "refunded",
+              description: "Reembolso procesado",
+              payment_date: new Date().toISOString(),
+            },
+            "charge.refunded",
+          )
 
           const { error } = await supabaseAdmin
             .from("profiles")
