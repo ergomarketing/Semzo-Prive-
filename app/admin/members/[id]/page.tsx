@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from 'next/navigation'
-import { createSupabaseBrowserClient } from "@/lib/supabase"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminUserDetailPage() {
   const params = useParams()
-  const supabase = createSupabaseBrowserClient()
+  const supabase = getSupabaseBrowser()
   const [user, setUser] = useState<any>(null)
   const [membership, setMembership] = useState<any>(null)
   const [history, setHistory] = useState<any[]>([])

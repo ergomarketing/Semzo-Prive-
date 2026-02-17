@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordSettings } from "@/components/password-settings"
-import { createClient } from "@/lib/supabase"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import { AlertCircle, CheckCircle, Edit, Loader2, Mail, Pencil, Phone, Save } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -25,7 +25,7 @@ interface UserProfile {
 export default function PerfilPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = getSupabaseBrowser()
   
   const [profile, setProfile] = useState<UserProfile>({
     first_name: "",

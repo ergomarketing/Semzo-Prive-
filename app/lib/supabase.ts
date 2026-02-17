@@ -1,4 +1,4 @@
-import { getSupabaseBrowser, getSupabaseServiceRole } from "./supabaseClient"
+import { getSupabaseBrowser, getSupabaseServiceRole } from "@/lib/supabase"
 
 export interface User {
   id: string
@@ -17,4 +17,4 @@ export const supabase = getSupabaseBrowser()
 export const supabaseAdmin = getSupabaseServiceRole()
 
 // Re-export other utilities
-export { getSupabaseBrowser, getSupabaseServiceRole, getSupabaseServer } from "./supabaseClient"
+export { getSupabaseBrowser, getSupabaseServiceRole, getSupabaseServer } from "@/lib/supabase"

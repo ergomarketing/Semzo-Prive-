@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js"
 export async function GET() {
   try {
     // Test with both clients
-    const supabaseClient = createClient(
+    const sbClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
@@ -25,7 +25,7 @@ export async function GET() {
 
     // Test 1: Client connection
     try {
-      const { data, error } = await supabaseClient.from("users").select("count").limit(1)
+      const { data, error } = await sbClient.from("users").select("count").limit(1)
       if (error) {
         results.clientConnection = {
           success: false,

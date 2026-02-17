@@ -5,7 +5,7 @@ import React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/lib/supabase"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -20,7 +20,7 @@ export function AccountUpgradeModal({ currentPhone, onSuccess, onCancel }: Accou
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const supabase = createClient()
+  const supabase = getSupabaseBrowser()
 
   const handleUpgrade = async (e: React.FormEvent) => {
     e.preventDefault()

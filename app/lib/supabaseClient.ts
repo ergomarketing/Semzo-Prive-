@@ -2,7 +2,6 @@
 export {
   getSupabaseBrowser,
   getSupabaseServiceRole,
-  createSupabaseBrowserClient,
   supabase,
   supabaseAdmin,
   supabaseConfig,

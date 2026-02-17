@@ -45,11 +45,11 @@ export async function POST(request: Request) {
     // Si no viene userId, intentar obtenerlo de la sesión
     let finalUserId = userId
     if (!finalUserId) {
-      const supabaseClient = await getSupabaseServer()
-      if (supabaseClient) {
+      const sbClient = await getSupabaseServer()
+      if (sbClient) {
         const {
           data: { user },
-        } = await supabaseClient.auth.getUser()
+        } = await sbClient.auth.getUser()
         finalUserId = user?.id
       }
     }
