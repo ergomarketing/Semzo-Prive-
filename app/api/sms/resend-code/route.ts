@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseServiceRole } from "@/lib/supabaseClient"
+import { getSupabaseServiceRole } from "@/lib/supabase"
 
 /**
  * Reenvía un código OTP al número de teléfono especificado

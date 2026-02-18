@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { getSupabaseBrowser } from "@/app/lib/supabaseClient"
+import { getSupabaseBrowser } from "@/app/lib/supabase"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")

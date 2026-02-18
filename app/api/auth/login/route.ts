@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseBrowser } from "@/lib/supabaseClient"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import { loginLimiter } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {

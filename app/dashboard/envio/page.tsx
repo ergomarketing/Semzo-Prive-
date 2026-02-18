@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Loader2, Save } from "lucide-react"
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from "../../lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 
 interface ShippingInfo {
