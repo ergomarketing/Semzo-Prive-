@@ -1,4 +1,4 @@
-import { getSupabaseServiceRole } from "./supabaseClient"
+import { getSupabaseServiceRole } from "@/lib/supabase"
 import type { User } from "./supabase"
 
 interface AuthUser {
