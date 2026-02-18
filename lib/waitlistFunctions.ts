@@ -1,4 +1,4 @@
-import { getSupabaseBrowser } from "./supabaseClient"
+import { getSupabaseBrowser } from "@/lib/supabase"
 
 export async function addToWaitlist(userId: string, bagId: string): Promise<boolean> {
   if (!userId) {
