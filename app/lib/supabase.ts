@@ -1,5 +1,4 @@
-import { getSupabaseBrowser, getSupabaseServiceRole } from "./supabaseClient"
-
+import { getSupabaseBrowser, getSupabaseServiceRole } from "@/lib/supabase"
 export interface User {
   id: string
   email: string
