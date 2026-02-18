@@ -1,4 +1,4 @@
-import { getSupabaseBrowser } from "./supabaseClient"
+import { getSupabaseBrowser } from "@/lib/supabase"
 import type { User } from "./supabase"
 
 export class AuthServiceSupabase {
