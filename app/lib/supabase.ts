@@ -15,13 +15,9 @@ export interface User {
   updated_at: string
 }
 
-// Cliente público (browser)
 export const supabase = getSupabaseBrowser()
-
-// Cliente admin (service role)
 export const supabaseAdmin = getSupabaseServiceRole()
 
-// Re-export centralizado
 export {
   getSupabaseBrowser,
   getSupabaseServiceRole,
