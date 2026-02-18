@@ -225,3 +225,15 @@ export function isSupabaseConfigured(): boolean {
     supabaseUrl.includes("supabase.co")
   )
 }
+// ===============================
+// COMPATIBILITY EXPORTS (LEGACY)
+// ===============================
+
+// Alias antiguo usado en componentes
+export const createClient = getSupabaseBrowser
+
+// Alias antiguo usado en dashboards/admin
+export const createSupabaseBrowserClient = getSupabaseBrowser
+
+// Alias antiguo usado en APIs
+export const getSupabaseServer = getSupabaseServiceRole
