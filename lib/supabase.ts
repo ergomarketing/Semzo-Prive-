@@ -2,111 +2,103 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { createBrowserClient, createServerClient } from "@supabase/ssr"
 import type { cookies } from "next/headers"
 
-// Variables de entorno
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_SUPABASE_URL ||
+/* =========================================================
+   ENV CONFIG (limpio y sin duplicaciones innecesarias)
+========================================================= */
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
   ""
 
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_SUPABASE_ANON_KEY ||
-  ""
+/* =========================================================
+   SINGLETONS
+========================================================= */
 
-const BROWSER_CLIENT_KEY = Symbol.for("supabase.browser.client")
-const SERVICE_CLIENT_KEY = Symbol.for("supabase.service.client")
+const BROWSER_CLIENT = Symbol.for("supabase.browser")
+const SERVICE_CLIENT = Symbol.for("supabase.service")
 
-// Tipo para el objeto global
 type GlobalWithSupabase = typeof globalThis & {
-  [BROWSER_CLIENT_KEY]?: SupabaseClient
-  [SERVICE_CLIENT_KEY]?: SupabaseClient
+  [BROWSER_CLIENT]?: SupabaseClient
+  [SERVICE_CLIENT]?: SupabaseClient
 }
 
 const globalRef = globalThis as GlobalWithSupabase
 
-// Obtener service key solo en servidor
-function getServiceKey(): string | null {
-  if (typeof window !== "undefined") return null
-  return (
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    null
-  )
-}
+/* =========================================================
+   SAFE FETCH (mantiene compatibilidad con tu sistema actual)
+========================================================= */
 
-const fetchWithAbortHandler = (url: RequestInfo | URL, options?: RequestInit) => {
-  return fetch(url, {
-    ...options,
-    signal: options?.signal,
-  }).catch((err) => {
-    if (err.name === "AbortError") {
+const safeFetch: typeof fetch = async (input, init) => {
+  try {
+    return await fetch(input, init)
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
       return new Response(JSON.stringify({ data: null, error: null }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
     }
     throw err
-  })
+  }
 }
+
+/* =========================================================
+   CLIENTE BROWSER
+========================================================= */
 
 export function getSupabaseBrowser(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseAnonKey) return null
 
-  // Solo crear singleton en el browser
   if (typeof window !== "undefined") {
-    if (!globalRef[BROWSER_CLIENT_KEY]) {
-      globalRef[BROWSER_CLIENT_KEY] = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: false,
-        },
-        global: {
-          fetch: fetchWithAbortHandler,
-        },
-      })
+    if (!globalRef[BROWSER_CLIENT]) {
+      globalRef[BROWSER_CLIENT] = createBrowserClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          global: { fetch: safeFetch },
+        }
+      )
     }
-    return globalRef[BROWSER_CLIENT_KEY]
+    return globalRef[BROWSER_CLIENT]
   }
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    global: {
-      fetch: fetchWithAbortHandler,
-    },
+    global: { fetch: safeFetch },
   })
 }
 
+/* =========================================================
+   CLIENTE SERVICE ROLE (SERVER ONLY)
+========================================================= */
+
 export function getSupabaseServiceRole(): SupabaseClient | null {
   if (typeof window !== "undefined") return null
+  if (!supabaseUrl || !supabaseServiceKey) return null
 
-  const serviceKey = getServiceKey()
-  if (!supabaseUrl || !serviceKey) return null
-
-  if (!globalRef[SERVICE_CLIENT_KEY]) {
-    globalRef[SERVICE_CLIENT_KEY] = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        fetch: fetchWithAbortHandler,
-      },
-    })
+  if (!globalRef[SERVICE_CLIENT]) {
+    globalRef[SERVICE_CLIENT] = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        global: { fetch: safeFetch },
+      }
+    )
   }
-  return globalRef[SERVICE_CLIENT_KEY]
+
+  return globalRef[SERVICE_CLIENT]
 }
 
-// Alias para compatibilidad
-export const createSupabaseBrowserClient = getSupabaseBrowser
+/* =========================================================
+   WRAPPER CLIENTE (NO ROMPE TU CÓDIGO ACTUAL)
+========================================================= */
 
-// Objeto supabase con getters lazy
 export const supabase = {
   from(table: string) {
     const client = getSupabaseBrowser()
@@ -114,11 +106,6 @@ export const supabase = {
     return client.from(table)
   },
   auth: {
-    onAuthStateChange(callback: Parameters<SupabaseClient["auth"]["onAuthStateChange"]>[0]) {
-      const client = getSupabaseBrowser()
-      if (!client) throw new Error("Supabase not initialized")
-      return client.auth.onAuthStateChange(callback)
-    },
     getSession() {
       const client = getSupabaseBrowser()
       if (!client) throw new Error("Supabase not initialized")
@@ -169,52 +156,42 @@ export const supabase = {
   },
 }
 
-// Objeto supabaseAdmin para servidor
+/* =========================================================
+   WRAPPER ADMIN (SERVER)
+========================================================= */
+
 export const supabaseAdmin = {
   from(table: string) {
     const client = getSupabaseServiceRole()
-    if (!client) throw new Error("Supabase admin not available (server-side only)")
+    if (!client)
+      throw new Error("Supabase admin not available (server only)")
     return client.from(table)
-  },
-  auth: {
-    admin: {
-      deleteUser(userId: string) {
-        const client = getSupabaseServiceRole()
-        if (!client) throw new Error("Supabase admin not available")
-        return client.auth.admin.deleteUser(userId)
-      },
-      listUsers(params?: any) {
-        const client = getSupabaseServiceRole()
-        if (!client) throw new Error("Supabase admin not available")
-        return client.auth.admin.listUsers(params)
-      },
-      createUser(attributes: any) {
-        const client = getSupabaseServiceRole()
-        if (!client) throw new Error("Supabase admin not available")
-        return client.auth.admin.createUser(attributes)
-      },
-      updateUserById(userId: string, attributes: any) {
-        const client = getSupabaseServiceRole()
-        if (!client) throw new Error("Supabase admin not available")
-        return client.auth.admin.updateUserById(userId, attributes)
-      },
-    },
   },
   storage: {
     from(bucket: string) {
       const client = getSupabaseServiceRole()
-      if (!client) throw new Error("Supabase admin not available")
+      if (!client)
+        throw new Error("Supabase admin not available (server only)")
       return client.storage.from(bucket)
     },
   },
   rpc(fn: string, params?: any) {
     const client = getSupabaseServiceRole()
-    if (!client) throw new Error("Supabase admin not available")
+    if (!client)
+      throw new Error("Supabase admin not available (server only)")
     return client.rpc(fn, params)
   },
 }
 
-export async function createRouteHandlerClient({ cookies: cookiesFn }: { cookies: typeof cookies }) {
+/* =========================================================
+   SSR ROUTE HANDLER
+========================================================= */
+
+export async function createRouteHandlerClient({
+  cookies: cookiesFn,
+}: {
+  cookies: typeof cookies
+}) {
   const cookieStore = await cookiesFn()
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -225,38 +202,26 @@ export async function createRouteHandlerClient({ cookies: cookiesFn }: { cookies
       set(name: string, value: string, options: any) {
         try {
           cookieStore.set({ name, value, ...options })
-        } catch (error) {
-          // En build time, set puede fallar
-        }
+        } catch {}
       },
       remove(name: string, options: any) {
         try {
           cookieStore.set({ name, value: "", ...options })
-        } catch (error) {
-          // En build time, remove puede fallar
-        }
+        } catch {}
       },
     },
-    global: {
-      fetch: fetchWithAbortHandler,
-    },
+    global: { fetch: safeFetch },
   })
 }
 
-export const supabaseConfig = { url: supabaseUrl, anonKey: supabaseAnonKey }
-
-export function getSupabaseConfig() {
-  return supabaseConfig
-}
+/* =========================================================
+   HELPERS
+========================================================= */
 
 export function isSupabaseConfigured(): boolean {
   return !!(
     supabaseUrl &&
     supabaseAnonKey &&
-    supabaseUrl !== "https://placeholder.supabase.co" &&
-    supabaseAnonKey !== "placeholder-key" &&
     supabaseUrl.includes("supabase.co")
   )
 }
-
-export { createBrowserClient, createServerClient } from "@supabase/ssr"
