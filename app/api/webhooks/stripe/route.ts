@@ -2,47 +2,69 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * ============================================================
+ * CONFIGURACIÓN
+ * ============================================================
+ */
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
 });
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+// 🔥 CRÍTICO: Service Role para bypass RLS en webhook
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const sig = req.headers.get("stripe-signature")!;
+/**
+ * ============================================================
+ * WEBHOOK HANDLER
+ * ============================================================
+ */
 
+export async function POST(req: NextRequest) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-  } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err);
-    return NextResponse.json({ error: "Webhook error" }, { status: 400 });
+    const body = await req.text();
+    const signature = req.headers.get("stripe-signature")!;
+
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      endpointSecret
+    );
+  } catch (err: any) {
+    console.error("❌ Invalid webhook signature:", err.message);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-
+  const now = new Date().toISOString();
 
   try {
     switch (event.type) {
+
       /**
-       * ==========================
-       * ACTIVACIÓN INICIAL (checkout.session.completed)
-       * ==========================
-       * Se activa cuando un cliente completa el proceso de pago de una nueva suscripción.
-       * Crea o actualiza la membresía del usuario y su estado en el perfil.
+       * ============================================================
+       * 1️⃣ ACTIVACIÓN INICIAL
+       * ============================================================
+       * Punto único de activación de suscripción nueva.
        */
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // Solo procesar si es una suscripción y tiene un ID de suscripción
-        if (session.mode !== "subscription" || !session.subscription) {
-          console.log("⏩ Checkout session no es de suscripción o falta subscription ID — skipping");
+        if (
+          session.mode !== "subscription" ||
+          session.payment_status !== "paid" ||
+          !session.subscription
+        ) {
+          console.log("⏩ Checkout no válido para activación — skipping");
           break;
         }
 
@@ -51,39 +73,44 @@ export async function POST(req: NextRequest) {
         );
 
         const userId = subscription.metadata?.user_id;
+        const membershipType =
+          subscription.metadata?.membership_type || "petite";
 
         if (!userId) {
-          console.error("❌ Missing user_id in subscription metadata for checkout.session.completed");
+          console.error("❌ Missing user_id in subscription metadata");
           break;
         }
 
-        const now = new Date().toISOString();
-
-        // UPSERT en user_memberships
-        const { error: upsertMembershipError } = await supabase
+        // UPSERT idempotente por user_id
+        const { error: membershipError } = await supabase
           .from("user_memberships")
           .upsert(
             {
               user_id: userId,
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
-              membership_type: subscription.metadata?.membership_type || "petite", // Asume 'petite' si no está en metadata
-              status: subscription.status, // 'active' o 'trialing'
-              start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-              end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
+              membership_type: membershipType,
+              status: subscription.status,
+              start_date: new Date(
+                subscription.current_period_start * 1000
+              ).toISOString(),
+              end_date: new Date(
+                subscription.current_period_end * 1000
+              ).toISOString(),
+              failed_payment_count: 0,
+              dunning_status: null,
               updated_at: now,
             },
-            { onConflict: "user_id" } // Actualiza si ya existe una membresía para este user_id
+            { onConflict: "user_id" }
           );
 
-        if (upsertMembershipError) {
-          console.error("❌ Error upserting user_memberships on checkout.session.completed:", upsertMembershipError);
-          break;
+        if (membershipError) {
+          console.error("❌ Membership upsert error:", membershipError);
+          throw membershipError;
         }
 
-        // Actualizar membership_status en profiles
-        const { error: updateProfileError } = await supabase
+        // Sincronización con perfil
+        const { error: profileError } = await supabase
           .from("profiles")
           .update({
             membership_status: subscription.status,
@@ -91,207 +118,89 @@ export async function POST(req: NextRequest) {
           })
           .eq("id", userId);
 
-        if (updateProfileError) {
-          console.error("❌ Error updating profile membership_status on checkout.session.completed:", updateProfileError);
-          break;
+        if (profileError) {
+          console.error("❌ Profile update error:", profileError);
+          throw profileError;
         }
 
-        console.log("✅ Membership activated/updated via checkout.session.completed for user:", userId);
+        console.log("✅ Membership ACTIVATED:", userId);
         break;
       }
 
       /**
-       * ==========================
-       * RENOVACIÓN / PAGO EXITOSO (invoice.payment_succeeded, invoice.paid)
-       * ==========================
-       * Se activa cuando una factura se paga exitosamente (renovación de suscripción).
-       * Actualiza la membresía del usuario, su perfil y registra el pago en el historial.
-       * También envía un email de confirmación de renovación.
+       * ============================================================
+       * 2️⃣ RENOVACIÓN EXITOSA
+       * ============================================================
        */
-      case "invoice.payment_succeeded":
-      case "invoice.paid": {
+      case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
 
-        // 1️⃣ Ignorar la primera factura de creación de suscripción (ya manejada por checkout.session.completed)
-        if (invoice.billing_reason === "subscription_create") {
-          console.log("⏩ [INVOICE] Primera factura de creación de suscripción — skipping");
+        if (
+          invoice.billing_reason === "subscription_create" ||
+          !invoice.subscription
+        ) {
           break;
         }
 
-        // 2️⃣ Asegurarse de que haya un ID de suscripción válido
-        if (!invoice.subscription || typeof invoice.subscription !== "string") {
-          console.log("⏩ [INVOICE] No hay subscription_id válido en la factura — skipping");
-          break;
-        }
+        const subscription = await stripe.subscriptions.retrieve(
+          invoice.subscription as string
+        );
 
-        try {
-          // 3️⃣ Recuperar la suscripción desde Stripe (fuente única de verdad)
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-          const userId = subscription.metadata?.user_id;
-
-          if (!userId) {
-            console.error("❌ [INVOICE] Falta user_id en los metadatos de la suscripción para invoice.payment_succeeded");
-            break;
-          }
-
-          const now = new Date().toISOString();
-
-          // 4️⃣ Actualizar user_memberships (solo renovación - NO UPSERT)
-          const { data: updatedMembership, error: membershipUpdateError } = await supabase
-            .from("user_memberships")
-            .update({
-              status: subscription.status,
-              start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-              end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
-              updated_at: now,
-            })
-            .eq("stripe_subscription_id", subscription.id)
-            .select()
-            .single();
-
-          if (membershipUpdateError) {
-            console.error("❌ [INVOICE] Error actualizando user_memberships:", membershipUpdateError);
-            break;
-          }
-
-          console.log("✅ [INVOICE] Membresía renovada en user_memberships para user:", userId);
-
-          // 5️⃣ Sincronizar membership_status en profiles
-          const { error: profileUpdateError } = await supabase
-            .from("profiles")
-            .update({
-              membership_status: subscription.status,
-              updated_at: now,
-            })
-            .eq("id", userId);
-
-          if (profileUpdateError) {
-            console.error("❌ [INVOICE] Error actualizando profile membership_status:", profileUpdateError);
-            break;
-          }
-
-          console.log("✅ [INVOICE] Profile membership_status actualizado para user:", userId);
-
-          // 6️⃣ Registrar pago en payment_history (idempotente por stripe_invoice_id)
-          const { error: paymentHistoryError } = await supabase
-            .from("payment_history")
-            .upsert(
-              {
-                user_id: userId,
-                stripe_invoice_id: invoice.id,
-                stripe_subscription_id: subscription.id,
-                amount: invoice.amount_paid !== null ? invoice.amount_paid / 100 : 0, // Convertir a decimal
-                currency: invoice.currency,
-                status: "paid",
-                description: `Renovación de membresía ${subscription.metadata?.membership_type || ""}`,
-                payment_date: invoice.status_transitions?.paid_at
-                  ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
-                  : now,
-                created_at: new Date(invoice.created * 1000).toISOString(),
-              },
-              { onConflict: "stripe_invoice_id" }
-            );
-
-          if (paymentHistoryError) {
-            console.error("❌ [INVOICE] Error registrando pago en payment_history:", paymentHistoryError);
-            break;
-          }
-
-          console.log("✅ [INVOICE] Pago registrado en payment_history para user:", userId);
-
-          // 7️⃣ Obtener perfil para enviar emails
-          const { data: profile, error: profileFetchError } = await supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("id", userId)
-            .maybeSingle();
-
-          if (profileFetchError) {
-            console.error("❌ [INVOICE] Error obteniendo perfil para email:", profileFetchError);
-          }
-
-          // 8️⃣ Enviar email al usuario si el perfil y email existen
-          if (profile?.email) {
-            const membershipNames: Record<string, string> = {
-              petite: "Petite",
-              essentiel: "L'Essentiel",
-              signature: "Signature",
-              prive: "Privé",
-            };
-
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-email`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: profile.email,
-                subject: "Tu membresía Semzo Privé ha sido renovada",
-                html: `
-                  <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-                    <h2>Membresía Renovada</h2>
-                    <p>Hola ${profile.full_name || ""},</p>
-                    <p>Tu membresía <strong>${
-                      membershipNames[updatedMembership.membership_type] ||
-                      updatedMembership.membership_type
-                    }</strong> ha sido renovada correctamente.</p>
-                    <p><strong>Monto:</strong> €${(invoice.amount_paid !== null ? invoice.amount_paid / 100 : 0).toFixed(2)}</p>
-                    <p><strong>Válida hasta:</strong> ${new Date(
-                      subscription.current_period_end * 1000
-                    ).toLocaleDateString("es-ES")}</p>
-                    ${invoice.invoice_pdf ? `<p><a href="${invoice.invoice_pdf}">Descargar factura</a></p>` : ""}
-                  </div>
-                `,
-              }),
-            }).catch((emailError) => {
-              console.error("❌ [INVOICE] Error enviando email de renovación:", emailError);
-            });
-          }
-
-          console.log("✅ [INVOICE] Flujo de renovación completado para user:", userId);
-        } catch (error: any) {
-          console.error("❌ [INVOICE] Error en el flujo de renovación:", error?.message);
-        }
-        break;
-      }
-
-      /**
-       * ==========================
-       * ACTUALIZACIÓN DE SUSCRIPCIÓN (customer.subscription.updated)
-       * ==========================
-       * Se activa cuando una suscripción cambia de estado (ej. de 'active' a 'past_due', o cambio de plan).
-       * Actualiza el estado de la membresía del usuario y su perfil.
-       */
-      case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.user_id;
 
         if (!userId) {
-          console.error("❌ Missing user_id in subscription metadata for customer.subscription.updated");
+          console.error("❌ Missing user_id in renewal metadata");
           break;
         }
 
-        const now = new Date().toISOString();
-
-        // Actualizar user_memberships
-        const { error: membershipUpdateError } = await supabase
+        // Actualizar membresía
+        const { error: renewalError } = await supabase
           .from("user_memberships")
           .update({
             status: subscription.status,
-            membership_type: subscription.metadata?.membership_type || "petite",
-            start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-            end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
+            start_date: new Date(
+              subscription.current_period_start * 1000
+            ).toISOString(),
+            end_date: new Date(
+              subscription.current_period_end * 1000
+            ).toISOString(),
+            failed_payment_count: 0,
+            dunning_status: null,
             updated_at: now,
           })
           .eq("stripe_subscription_id", subscription.id);
 
-        if (membershipUpdateError) {
-          console.error("❌ Error actualizando user_memberships on customer.subscription.updated:", membershipUpdateError);
-          break;
+        if (renewalError) {
+          console.error("❌ Renewal update error:", renewalError);
+          throw renewalError;
         }
 
-        // Actualizar membership_status en profiles
-        const { error: profileUpdateError } = await supabase
+        // Registrar pago
+        const { error: paymentError } = await supabase
+          .from("payment_history")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_invoice_id: invoice.id,
+              stripe_subscription_id: subscription.id,
+              amount: invoice.amount_paid
+                ? invoice.amount_paid / 100
+                : 0,
+              currency: invoice.currency,
+              status: "paid",
+              payment_date: now,
+              created_at: now,
+            },
+            { onConflict: "stripe_invoice_id" }
+          );
+
+        if (paymentError) {
+          console.error("❌ Payment history error:", paymentError);
+          throw paymentError;
+        }
+
+        // Sincronizar profile
+        await supabase
           .from("profiles")
           .update({
             membership_status: subscription.status,
@@ -299,63 +208,43 @@ export async function POST(req: NextRequest) {
           })
           .eq("id", userId);
 
-        if (profileUpdateError) {
-          console.error("❌ Error actualizando profile membership_status on customer.subscription.updated:", profileUpdateError);
-          break;
-        }
-
-        console.log("✅ Membership updated via customer.subscription.updated for user:", userId);
+        console.log("✅ Membership RENEWED:", userId);
         break;
       }
 
       /**
-       * ==========================
-       * CANCELACIÓN (customer.subscription.deleted)
-       * ==========================
-       * Se activa cuando una suscripción es cancelada o eliminada.
-       * Actualiza el estado de la membresía del usuario y su perfil a 'cancelled'.
+       * ============================================================
+       * 3️⃣ CANCELACIÓN O CAMBIO DE ESTADO
+       * ============================================================
        */
+      case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.user_id;
 
-        if (!userId) {
-          console.error("❌ Missing user_id in subscription metadata for customer.subscription.deleted");
-          break;
-        }
+        if (!userId) break;
 
-        const now = new Date().toISOString();
-
-        // Actualizar user_memberships a 'cancelled'
-        const { error: membershipUpdateError } = await supabase
+        await supabase
           .from("user_memberships")
           .update({
-            status: "cancelled",
-            cancel_at_period_end: false, // La suscripción ya está cancelada
+            status: subscription.status,
+            membership_type:
+              subscription.metadata?.membership_type || "petite",
             updated_at: now,
           })
           .eq("stripe_subscription_id", subscription.id);
 
-        if (membershipUpdateError) {
-          console.error("❌ Error actualizando user_memberships on customer.subscription.deleted:", membershipUpdateError);
-          break;
-        }
-
-        // Actualizar membership_status en profiles a 'cancelled'
-        const { error: profileUpdateError } = await supabase
+        await supabase
           .from("profiles")
           .update({
-            membership_status: "cancelled",
+            membership_status: subscription.status,
             updated_at: now,
           })
           .eq("id", userId);
 
-        if (profileUpdateError) {
-          console.error("❌ Error actualizando profile membership_status on customer.subscription.deleted:", profileUpdateError);
-          break;
-        }
-
-        console.log("✅ Membership cancelled via customer.subscription.deleted for user:", userId);
+        console.log(
+          `ℹ️ Subscription status updated (${event.type}) for: ${userId}`
+        );
         break;
       }
 
@@ -366,6 +255,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Webhook handler failed" },
+      { status: 500 }
+    );
   }
 }
