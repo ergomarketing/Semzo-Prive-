@@ -11,7 +11,7 @@ export default function HeroSection() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/prada-hero-street.jpeg"
+          src="/images/hero-luxury-bags-flatlay.jpeg"
           alt="Bolsos de lujo de diseñador"
           fill
           className="object-cover object-center"
