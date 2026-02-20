@@ -11,7 +11,7 @@ export default function HeroSection() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/prada-hero-street.jpeg"
+          src="/images/hero-luxury-bags-flatlay.jpeg"
           alt="Bolsos de lujo de diseñador"
           fill
           className="object-cover object-center"
@@ -42,20 +42,6 @@ export default function HeroSection() {
             <p className="text-white/90 text-lg md:text-xl leading-relaxed font-light max-w-2xl mx-auto lg:mx-0">
               Accede a bolsos de las marcas más exclusivas del mundo. Hermès, Chanel, Louis Vuitton y más.
             </p>
-
-            {/* Sello de autenticidad */}
-            <div className="flex items-center justify-center lg:justify-start">
-              <div className="flex items-center space-x-3 p-4 bg-white/90 backdrop-blur-sm rounded-lg border border-white/20 w-fit">
-                <div className="relative">
-                  <Shield className="h-6 w-6 md:h-8 md:w-8 text-indigo-dark" />
-                  <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-600 absolute -top-1 -right-1" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">100% Autenticidad</p>
-                  <p className="text-xs text-slate-600">Garantizada</p>
-                </div>
-              </div>
-            </div>
 
             {/* Botones */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-6">

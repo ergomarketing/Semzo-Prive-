@@ -113,8 +113,9 @@ export default function Footer() {
           }}
         >
           <div className="text-sm text-slate-500">
-            © {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de artículos
-            de lujo.
+            © {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de
+            lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar
+            autenticidad.
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a
