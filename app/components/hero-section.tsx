@@ -28,7 +28,7 @@ export default function HeroSection() {
           <div className="space-y-8 md:space-y-12 text-center lg:text-left">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/80 mb-4 md:mb-6 font-medium">
-                Membresía exclusiva
+                Membresías
               </p>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-[1.1] tracking-tight">
                 Tu puerta de acceso al
