@@ -4,12 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-/**
- * ============================================================
- * CONFIGURACIÓN
- * ============================================================
- */
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
 });
@@ -22,39 +16,35 @@ const supabase = createClient(
 );
 
 /**
- * Helper seguro para convertir epoch de Stripe a ISO string.
- * Stripe puede devolver null/undefined en current_period_start/end
- * cuando la suscripción está en estado incomplete o recién creada.
- * Sin esta protección: new Date(undefined * 1000) = Invalid Date → RangeError
+ * ============================================================
+ * SAFE TIMESTAMP — elimina definitivamente RangeError
+ * ============================================================
  */
-function safeTimestamp(epoch: number | null | undefined): string {
-  if (epoch === null || epoch === undefined || isNaN(epoch)) {
+function safeTimestamp(epoch?: number | null): string {
+  if (!epoch || typeof epoch !== "number") {
     return new Date().toISOString();
   }
-  const d = new Date(epoch * 1000);
-  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+
+  const date = new Date(epoch * 1000);
+  return isNaN(date.getTime())
+    ? new Date().toISOString()
+    : date.toISOString();
 }
 
 /**
  * ============================================================
- * WEBHOOK HANDLER
+ * WEBHOOK
  * ============================================================
  */
-
 export async function POST(req: NextRequest) {
   let event: Stripe.Event;
 
   try {
     const body = await req.text();
     const signature = req.headers.get("stripe-signature")!;
-
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      endpointSecret
-    );
+    event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
   } catch (err: any) {
-    console.error("❌ Invalid webhook signature:", err.message);
+    console.error("❌ Invalid signature:", err.message);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -65,7 +55,7 @@ export async function POST(req: NextRequest) {
 
       /**
        * ============================================================
-       * 1️⃣ ACTIVACIÓN INICIAL
+       * 1️⃣ ACTIVACIÓN INICIAL — ÚNICO PUNTO DE CREACIÓN
        * ============================================================
        */
       case "checkout.session.completed": {
@@ -76,7 +66,6 @@ export async function POST(req: NextRequest) {
           session.payment_status !== "paid" ||
           !session.subscription
         ) {
-          console.log("⏩ Checkout no válido para activación — skipping");
           break;
         }
 
@@ -93,7 +82,7 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const { error: membershipError } = await supabase
+        await supabase
           .from("user_memberships")
           .upsert(
             {
@@ -102,21 +91,16 @@ export async function POST(req: NextRequest) {
               stripe_subscription_id: subscription.id,
               membership_type: membershipType,
               status: subscription.status,
-              start_date: safeTimestamp(subscription.current_period_start),   // CORREGIDO
-              end_date: safeTimestamp(subscription.current_period_end),       // CORREGIDO
+              start_date: safeTimestamp(subscription.current_period_start),
+              end_date: safeTimestamp(subscription.current_period_end),
               failed_payment_count: 0,
               dunning_status: null,
               updated_at: now,
             },
-            { onConflict: "user_id" }
+            { onConflict: "stripe_subscription_id" }
           );
 
-        if (membershipError) {
-          console.error("❌ Membership upsert error:", membershipError);
-          throw membershipError;
-        }
-
-        const { error: profileError } = await supabase
+        await supabase
           .from("profiles")
           .update({
             membership_status: subscription.status,
@@ -124,18 +108,13 @@ export async function POST(req: NextRequest) {
           })
           .eq("id", userId);
 
-        if (profileError) {
-          console.error("❌ Profile update error:", profileError);
-          throw profileError;
-        }
-
         console.log("✅ Membership ACTIVATED:", userId);
         break;
       }
 
       /**
        * ============================================================
-       * 2️⃣ RENOVACIÓN EXITOSA
+       * 2️⃣ RENOVACIÓN EXITOSA — NO CREA, SOLO ACTUALIZA
        * ============================================================
        */
       case "invoice.payment_succeeded": {
@@ -148,41 +127,43 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const subscription = await stripe.subscriptions.retrieve(
-          invoice.subscription as string
-        );
+        const subscriptionId = invoice.subscription as string;
 
-        const userId = subscription.metadata?.user_id;
+        // 🔒 Resolver user_id desde DB (NO desde metadata)
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("user_id")
+          .eq("stripe_subscription_id", subscriptionId)
+          .single();
 
-        if (!userId) {
-          console.error("❌ Missing user_id in renewal metadata");
+        if (!membership?.user_id) {
+          console.error("❌ Membership not found for renewal");
           break;
         }
 
-        const { error: renewalError } = await supabase
+        const subscription = await stripe.subscriptions.retrieve(
+          subscriptionId
+        );
+
+        await supabase
           .from("user_memberships")
           .update({
             status: subscription.status,
-            start_date: safeTimestamp(subscription.current_period_start),   // CORREGIDO
-            end_date: safeTimestamp(subscription.current_period_end),       // CORREGIDO
+            start_date: safeTimestamp(subscription.current_period_start),
+            end_date: safeTimestamp(subscription.current_period_end),
             failed_payment_count: 0,
             dunning_status: null,
             updated_at: now,
           })
-          .eq("stripe_subscription_id", subscription.id);
+          .eq("stripe_subscription_id", subscriptionId);
 
-        if (renewalError) {
-          console.error("❌ Renewal update error:", renewalError);
-          throw renewalError;
-        }
-
-        const { error: paymentError } = await supabase
+        await supabase
           .from("payment_history")
           .upsert(
             {
-              user_id: userId,
+              user_id: membership.user_id,
               stripe_invoice_id: invoice.id,
-              stripe_subscription_id: subscription.id,
+              stripe_subscription_id: subscriptionId,
               amount: invoice.amount_paid
                 ? invoice.amount_paid / 100
                 : 0,
@@ -194,34 +175,34 @@ export async function POST(req: NextRequest) {
             { onConflict: "stripe_invoice_id" }
           );
 
-        if (paymentError) {
-          console.error("❌ Payment history error:", paymentError);
-          throw paymentError;
-        }
-
         await supabase
           .from("profiles")
           .update({
             membership_status: subscription.status,
             updated_at: now,
           })
-          .eq("id", userId);
+          .eq("id", membership.user_id);
 
-        console.log("✅ Membership RENEWED:", userId);
+        console.log("✅ Membership RENEWED:", membership.user_id);
         break;
       }
 
       /**
        * ============================================================
-       * 3️⃣ CANCELACIÓN O CAMBIO DE ESTADO
+       * 3️⃣ CAMBIO DE ESTADO / CANCELACIÓN
        * ============================================================
        */
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.user_id;
 
-        if (!userId) break;
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("user_id")
+          .eq("stripe_subscription_id", subscription.id)
+          .single();
+
+        if (!membership?.user_id) break;
 
         await supabase
           .from("user_memberships")
@@ -239,19 +220,18 @@ export async function POST(req: NextRequest) {
             membership_status: subscription.status,
             updated_at: now,
           })
-          .eq("id", userId);
+          .eq("id", membership.user_id);
 
-        console.log(
-          `ℹ️ Subscription status updated (${event.type}) for: ${userId}`
-        );
+        console.log("ℹ️ Subscription status updated:", membership.user_id);
         break;
       }
 
       default:
-        console.log("ℹ️ Unhandled event type:", event.type);
+        console.log("ℹ️ Unhandled event:", event.type);
     }
 
     return NextResponse.json({ received: true });
+
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
     return NextResponse.json(
