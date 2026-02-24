@@ -14,8 +14,8 @@ const plans = [
     priceQuarterly: "159€",
     quarterlyDiscount: "15%",
     description: "Perfecto para comenzar tu experiencia de lujo",
-    image: "/images/louis-vuitton-lessentiel.jpeg",
-    imageAlt: "Louis Vuitton - Elegancia urbana para la membresía L'Essentiel",
+    image: "/images/membership-essentiel.jpeg",
+    imageAlt: "Jacquemus - Elegancia minimalista para la membresía L'Essentiel",
     brand: "Louis Vuitton",
     brandDescription: "Iconos atemporales",
     features: [
@@ -34,8 +34,8 @@ const plans = [
     priceQuarterly: "329€",
     quarterlyDiscount: "15%",
     description: "La elección favorita de nuestras clientas",
-    image: "/images/chanel-signature.jpeg",
-    imageAlt: "Chanel - Elegancia parisina para la membresía Signature",
+    image: "/images/membership-signature.jpg",
+    imageAlt: "Gucci - Lifestyle premium para la membresía Signature",
     brand: "Chanel",
     brandDescription: "Elegancia parisina",
     features: [
@@ -55,8 +55,8 @@ const plans = [
     priceQuarterly: "479€",
     quarterlyDiscount: "15%",
     description: "La experiencia de lujo definitiva",
-    image: "/images/hermes-prive.jpeg",
-    imageAlt: "Hermès - Lujo artesanal para la membresía Privé",
+    image: "/images/membership-prive.jpg",
+    imageAlt: "Louis Vuitton Fornasetti - Diseño editorial para la membresía Privé",
     brand: "Hermès",
     brandDescription: "Lujo artesanal",
     features: [

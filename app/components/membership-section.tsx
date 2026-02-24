@@ -15,8 +15,8 @@ const plans = [
     description: "Favoritos del día a día",
     subtitle:
       "¿No estás listo para comprometerte? Los miembros de petite pueden pedir prestada una bolsa por una semana y ampliar semanalmente hasta 3 meses.",
-    image: "/images/petite-membership.jpg",
-    imageAlt: "Membresía Petite - Flexibilidad semanal",
+    image: "/images/membership-petite.jpg",
+    imageAlt: "Colección de bolsos de lujo - Membresía Petite",
     brand: "Flexible",
     brandLabel: "Petite",
     features: [
@@ -35,8 +35,8 @@ const plans = [
     priceQuarterly: "142€",
     quarterlyDiscount: "20%",
     description: "La introducción perfecta al mundo de los bolsos de lujo.",
-    image: "/images/louis-vuitton-essentiel-new.jpg",
-    imageAlt: "Louis Vuitton - Elegancia natural para la membresía L'Essentiel",
+    image: "/images/membership-essentiel.jpeg",
+    imageAlt: "Jacquemus - Elegancia minimalista para la membresía L'Essentiel",
     brand: "Valentino",
     brandLabel: "L'Essentiel",
     features: ["1 bolso por mes", "Envío gratuito", "Seguro incluido", "Atención al cliente prioritaria"],
@@ -69,8 +69,8 @@ const plans = [
     priceQuarterly: "453€",
     quarterlyDiscount: "20%",
     description: "La experiencia definitiva para verdaderas conocedoras.",
-    image: "/images/chanel-prive-pink.jpg",
-    imageAlt: "Chanel - Elegancia rosa para la membresía Privé",
+    image: "/images/membership-prive.jpg",
+    imageAlt: "Louis Vuitton Fornasetti - Diseño editorial para la membresía Privé",
     brand: "Chanel",
     brandLabel: "Quilted Bag",
     features: [
