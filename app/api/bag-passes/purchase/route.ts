@@ -80,28 +80,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Perfil de usuario no encontrado" }, { status: 404 })
     }
 
-    // VALIDACIÓN OBLIGATORIA: Fuente única de verdad user_memberships
-    const { data: userMembership } = await supabase
+    const { data: membership } = await supabase
       .from("user_memberships")
-      .select("status, membership_type")
+      .select("membership_type, status")
       .eq("user_id", finalUserId)
+      .eq("status", "active")
       .maybeSingle()
 
-    // Validación exclusiva desde user_memberships.status
-    const hasActiveMembership = userMembership?.status === "active"
-
-    const effectiveMembershipType = userMembership?.membership_type
-
-    console.log("[v0] User membership check:", {
-      userMembership: userMembership?.status,
-      hasActive: hasActiveMembership,
-      effectiveType: effectiveMembershipType,
-    })
-
-    // REGLA INNEGOCIABLE: No se pueden comprar pases sin membresía activa
-    if (!hasActiveMembership) {
+    if (!membership) {
       return NextResponse.json(
-        { error: "Necesitas una membresía activa para comprar pases" }, 
+        { error: "Necesitas una membresía activa para comprar pases" },
+        { status: 403 }
+      )
+    }
+
+    if (membership.membership_type !== "petite") {
+      return NextResponse.json(
+        { error: "Los pases solo están disponibles para la membresía Petite" },
         { status: 403 }
       )
     }
