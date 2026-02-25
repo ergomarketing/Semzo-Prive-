@@ -198,17 +198,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
     }
 
-    // Check membership_intents first (source of truth)
-    const { data: activeIntent } = await supabase
-      .from("membership_intents")
-      .select("id, membership_type, status, activated_at, created_at")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    // Check user_memberships as secondary source
+    // Fuente única de verdad: user_memberships
     const { data: userMembershipRecord } = await supabase
       .from("user_memberships")
       .select("membership_type, status, start_date")
@@ -226,13 +216,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
     }
 
-    // Determine if user can rent: ONLY from membership_intents or user_memberships
-    const canRent =
-      activeIntent?.status === "active" ||
-      userMembershipRecord?.status === "active"
+    // Validación exclusiva desde user_memberships.status
+    const canRent = userMembershipRecord?.status === "active"
 
-    const effectivePlan =
-      activeIntent?.membership_type || userMembershipRecord?.membership_type || "free"
+    const effectivePlan = userMembershipRecord?.membership_type || "free"
 
     if (!canRent) {
       console.log("[v0] User cannot rent - no active membership found")

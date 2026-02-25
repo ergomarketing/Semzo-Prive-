@@ -80,35 +80,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Perfil de usuario no encontrado" }, { status: 404 })
     }
 
-    // VALIDACIÓN OBLIGATORIA: Verificar membresía activa
-    // Check membership_intents (source of truth)
-    const { data: activeIntent } = await supabase
-      .from("membership_intents")
-      .select("id, status, membership_type")
-      .eq("user_id", finalUserId)
-      .in("status", ["active", "paid_pending_verification"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    // Check user_memberships as secondary source
+    // VALIDACIÓN OBLIGATORIA: Fuente única de verdad user_memberships
     const { data: userMembership } = await supabase
       .from("user_memberships")
       .select("status, membership_type")
       .eq("user_id", finalUserId)
       .maybeSingle()
 
-    // Determinar si tiene membresía activa
-    const hasActiveMembership =
-      activeIntent?.status === "active" ||
-      activeIntent?.status === "paid_pending_verification" ||
-      userMembership?.status === "active"
+    // Validación exclusiva desde user_memberships.status
+    const hasActiveMembership = userMembership?.status === "active"
 
-    const effectiveMembershipType =
-      activeIntent?.membership_type || userMembership?.membership_type
+    const effectiveMembershipType = userMembership?.membership_type
 
     console.log("[v0] User membership check:", {
-      intent: activeIntent?.status,
       userMembership: userMembership?.status,
       hasActive: hasActiveMembership,
       effectiveType: effectiveMembershipType,
