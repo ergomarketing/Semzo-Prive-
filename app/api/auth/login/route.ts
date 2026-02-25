@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
         first_name: data.user.user_metadata?.first_name || "",
         last_name: data.user.user_metadata?.last_name || "",
         phone: data.user.user_metadata?.phone || "",
-        membership_status: "free",
         is_active: true,
         email_confirmed: true,
       })
@@ -94,6 +93,14 @@ export async function POST(request: NextRequest) {
       console.log("[LOGIN] ✅ Perfil encontrado:", profile.email)
     }
 
+    // Fuente única de verdad: user_memberships
+    const { data: activeMembership } = await supabase
+      .from("user_memberships")
+      .select("membership_type, status")
+      .eq("user_id", data.user.id)
+      .eq("status", "active")
+      .maybeSingle()
+
     loginLimiter.reset(ip)
 
     return NextResponse.json({
@@ -104,7 +111,8 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
         firstName: data.user.user_metadata?.first_name || "",
         lastName: data.user.user_metadata?.last_name || "",
-        membershipStatus: profile?.membership_status || "free",
+        membershipStatus: activeMembership?.status || "free",
+        membershipType: activeMembership?.membership_type || null,
       },
       session: data.session,
     })
