@@ -124,10 +124,7 @@ export async function POST(request: NextRequest) {
     // Stripe no permite customer + customer_email juntos
     // Si ya tenemos customer_id, usamos customer (Stripe usa el email del customer)
     // Si el customer no tiene email (SMS user), Stripe lo pedira en el checkout
-    const requiresIdentityFlow = profile?.auth_method === "sms"
-    const successUrl = requiresIdentityFlow
-      ? `${baseUrl}/dashboard/membresia/status?session_id={CHECKOUT_SESSION_ID}`
-      : `${baseUrl}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+    const successUrl = `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`
 
     const commonMetadata = {
       intent_id: intentId,
