@@ -15,29 +15,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// CORRECCION 1: Protege contra epoch null/undefined devuelto por Stripe
+// Protege contra epoch null/undefined devuelto por Stripe
 function safeTimestamp(epoch: number | null | undefined): string {
   if (epoch === null || epoch === undefined || isNaN(epoch)) {
     return new Date().toISOString();
   }
   const d = new Date(epoch * 1000);
   return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-}
-
-/**
- * ============================================================
- * SAFE TIMESTAMP — elimina definitivamente RangeError
- * ============================================================
- */
-function safeTimestamp(epoch?: number | null): string {
-  if (!epoch || typeof epoch !== "number") {
-    return new Date().toISOString();
-  }
-
-  const date = new Date(epoch * 1000);
-  return isNaN(date.getTime())
-    ? new Date().toISOString()
-    : date.toISOString();
 }
 
 /**
