@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/app/lib/supabase/server"
 import Stripe from "stripe"
-import { activateMembership } from "../activate/orchestrator"
+import { syncMembershipFromStripe } from "../activate/orchestrator"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
@@ -125,12 +125,22 @@ export async function POST(request: Request) {
       status: "paid_pending_verification"
     })
 
-    const result = await activateMembership({
-      user_id: user.id,
-      intent_id: intent.id,
-      verification_session_id: intent.stripe_verification_session_id,
-      profile_data: null
+    // Obtener subscription de Stripe para sincronizar
+    if (!intent.stripe_payment_intent_id) {
+      return NextResponse.json({ error: "No subscription ID found" }, { status: 500 })
+    }
+
+    const subscription = await stripe.subscriptions.list({
+      customer: intent.stripe_customer_id,
+      status: "active",
+      limit: 1,
     })
+
+    if (!subscription.data.length) {
+      return NextResponse.json({ error: "No active subscription in Stripe" }, { status: 404 })
+    }
+
+    const result = await syncMembershipFromStripe(subscription.data[0])
 
     if (!result.success) {
       console.error("[v0] ❌ Reconcile: Orchestrator failed:", result.error)
