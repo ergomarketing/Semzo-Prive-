@@ -198,12 +198,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
     }
 
-    // Fuente única de verdad: user_memberships
-    const { data: userMembershipRecord } = await supabase
+    const { data: membership } = await supabase
       .from("user_memberships")
-      .select("membership_type, status, start_date")
+      .select("membership_type, status, end_date")
       .eq("user_id", userId)
+      .eq("status", "active")
       .maybeSingle()
+
+    if (!membership) {
+      return NextResponse.json(
+        {
+          error: "Tu membresía debe estar activa para realizar reservas.",
+          membership_status: "inactive",
+        },
+        { status: 403 }
+      )
+    }
+
+    const effectivePlan = membership.membership_type || "free"
 
     // Get profile for email only
     const { data: userProfile } = await supabase
@@ -215,29 +227,6 @@ export async function POST(request: NextRequest) {
     if (!userProfile) {
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
     }
-
-    // Validación exclusiva desde user_memberships.status
-    const canRent = userMembershipRecord?.status === "active"
-
-    const effectivePlan = userMembershipRecord?.membership_type || "free"
-
-    if (!canRent) {
-      console.log("[v0] User cannot rent - no active membership found")
-      return NextResponse.json(
-        {
-          error:
-            "Tu membresía debe estar activa para realizar reservas. Completa la verificación de identidad o contacta con soporte.",
-          membership_status: "inactive",
-        },
-        { status: 403 },
-      )
-    }
-
-    console.log("[v0] User has active membership:", {
-      plan: effectivePlan,
-      fromIntent: !!activeIntent,
-      fromUserMembership: !!userMembershipRecord,
-    })
 
     const { data: bag, error: bagError } = await supabase
       .from("bags")
