@@ -38,28 +38,12 @@ export async function GET() {
       .limit(1)
       .maybeSingle()
 
-    // Si no hay membresía activa, verificar si hay un intent paid_pending_verification
-    let pendingIntent = null
-    if (!activeMembership) {
-      const { data } = await supabase
-        .from("membership_intents")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "paid_pending_verification")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      
-      pendingIntent = data
-    }
+    // user_memberships es la UNICA fuente de verdad
+    const membershipType = activeMembership?.membership_type || null
+    const membershipStatus = activeMembership ? "active" : "inactive"
 
-    // IMPORTANTE: user_memberships es la ÚNICA fuente de verdad para membresías activas
-    // membership_intents solo se consulta para pending_verification
-    const membershipType = activeMembership?.membership_type || pendingIntent?.membership_type || null
-    const membershipStatus = activeMembership ? "active" : (pendingIntent ? "paid_pending_verification" : "inactive")
-    
-    // Determinar si requiere verificación de identidad
-    const needsVerification = !!pendingIntent && !activeMembership
+    // Identity se valida aparte desde profiles
+    const needsVerification = activeMembership && profile?.identity_verified === false
 
     // Calcular fechas de membresía
     let membershipStartedAt = null
@@ -196,7 +180,6 @@ export async function GET() {
         type: membershipType,
         status: isPetiteExpired ? "expired" : membershipStatus,
         needs_verification: needsVerification,
-        intent_id: pendingIntent?.id || null,
         started_at: membershipStartedAt,
         ends_at: membershipEndsAt,
         petite_passes_used: membershipType === "petite" ? usedPassesInPeriod : null,
