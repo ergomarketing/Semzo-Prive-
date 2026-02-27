@@ -58,34 +58,12 @@ export async function POST(req: NextRequest) {
           session.metadata?.user_id ||
           subscription.metadata?.user_id;
 
-        const intentId =
-          session.metadata?.intent_id ||
-          subscription.metadata?.intent_id;
-
-        if (!userId || !intentId) {
-          console.error("❌ Missing userId or intentId");
+        if (!userId) {
+          console.error("❌ Missing userId in metadata");
           break;
         }
 
-        // Buscar intent válido
-        const { data: intent, error: intentError } =
-          await supabaseAdmin
-            .from("membership_intents")
-            .select("*")
-            .eq("id", intentId)
-            .in("status", ["initiated", "paid_pending_verification"])
-            .single();
-
-        if (intentError || !intent) {
-          console.error("❌ Intent not found:", intentId);
-          break;
-        }
-
-        // Fechas seguras
-        const startDate = safeDate(subscription.current_period_start);
-        const endDate = safeDate(subscription.current_period_end);
-
-        // Activar membresía
+        // Activar membresía — fuente única: user_memberships
         const { error: memError } = await supabaseAdmin
           .from("user_memberships")
           .upsert(
@@ -93,68 +71,16 @@ export async function POST(req: NextRequest) {
               user_id: userId,
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
-              membership_type:
-                subscription.metadata?.membership_type ||
-                intent.membership_type,
-              status: subscription.status,
-              start_date: startDate,
-              end_date: endDate,
+              membership_type: subscription.metadata?.membership_type,
+              status: "active",
+              start_date: safeDate(subscription.current_period_start),
+              end_date: safeDate(subscription.current_period_end),
               updated_at: now,
             },
             { onConflict: "user_id" }
           );
 
         if (memError) throw memError;
-
-        // Sync perfil
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            membership_status: subscription.status,
-            updated_at: now,
-          })
-          .eq("id", userId);
-
-        /**
-         * Gift Card
-         */
-        if (intent.gift_card_id && intent.gift_card_applied_cents > 0) {
-          const { data: giftCard } = await supabaseAdmin
-            .from("gift_cards")
-            .select("balance_cents")
-            .eq("id", intent.gift_card_id)
-            .single();
-
-          if (giftCard) {
-            const newBalance = Math.max(
-              0,
-              giftCard.balance_cents -
-                intent.gift_card_applied_cents
-            );
-
-            await supabaseAdmin
-              .from("gift_cards")
-              .update({
-                balance_cents: newBalance,
-                last_used_at: now,
-                updated_at: now,
-              })
-              .eq("id", intent.gift_card_id);
-          }
-        }
-
-        // Actualizar intent (auditoría)
-        await supabaseAdmin
-          .from("membership_intents")
-          .update({
-            status: "active",
-            stripe_subscription_id: subscription.id,
-            stripe_customer_id: session.customer as string,
-            activated_at: now,
-            paid_at: now,
-            updated_at: now,
-          })
-          .eq("id", intent.id);
 
         console.log("✅ Activación completada:", userId);
         break;
@@ -224,14 +150,6 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("stripe_subscription_id", subscription.id);
-
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            membership_status: "canceled",
-            updated_at: now,
-          })
-          .eq("id", userId);
 
         console.log("⚠️ Suscripción cancelada:", userId);
         break;
