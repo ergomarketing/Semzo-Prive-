@@ -757,111 +757,130 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
               {/* Boton de pago - PASO 1: create-intent, PASO 2: Stripe Checkout */}
               <Button
-                onClick={async () => {
-                  setCheckoutLoading(true)
-                  try {
-                    // Validación crítica: verificar que el usuario existe
-                    if (!user || !user.id) {
-                      toast.error("Por favor, inicia sesión para continuar")
-                      setShowAuthModal(true)
-                      setCheckoutLoading(false)
-                      return
-                    }
+               onClick={async () => {
+  setCheckoutLoading(true)
 
-                    // Verificar que el perfil existe en la base de datos
-                    const supabase = getSupabaseBrowser()
-                    const { data: profileCheck, error: profileError } = await supabase
-                      .from("profiles")
-                      .select("id")
-                      .eq("id", user.id)
-                      .single()
+  try {
+    if (!user || !user.id) {
+      toast.error("Por favor, inicia sesión para continuar")
+      setShowAuthModal(true)
+      setCheckoutLoading(false)
+      return
+    }
 
-                    if (profileError || !profileCheck) {
-                      console.error("[v0] Profile not found:", profileError)
-                      toast.error("Error: Tu perfil no está registrado. Por favor, contacta soporte.")
-                      setCheckoutLoading(false)
-                      return
-                    }
+    const supabase = getSupabaseBrowser()
+    const { data: profileCheck, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single()
 
-                    const cycle = billingCycle || "monthly"
-                    const type = membershipType || "essentiel"
+    if (profileError || !profileCheck) {
+      toast.error("Error: Tu perfil no está registrado. Contacta soporte.")
+      setCheckoutLoading(false)
+      return
+    }
 
-                    console.log("[v0] PASO 1: Creating membership intent for user:", user.id)
-                    
-                    // PASO 1: Crear intent en DB ANTES de Stripe
-                    const intentRes = await fetch("/api/checkout/create-intent", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        userId: user.id,
-                        membershipType: type,
-                        billingCycle: cycle,
-                        amount: finalAmount,
-                        coupon: appliedCoupon,
-                        giftCard: appliedGiftCard,
-                      }),
-                    })
+    const cycle = billingCycle || "monthly"
+    const type = membershipType || "essentiel"
 
-                    if (!intentRes.ok) {
-                      const intentError = await intentRes.json()
-                      throw new Error(intentError.error || "Error al crear intent")
-                    }
+    const priceMap: Record<string, Record<string, string>> = {
+      petite: {
+        weekly: "price_1Sx92xKBSKEgBoTnoZwPvKI8",
+        monthly: "price_1Sx92xKBSKEgBoTnoZwPvKI8",
+      },
+      essentiel: {
+        monthly: "price_1RP4LyKBSKEgBoTnJQobCsjs",
+        quarterly: "price_1SxPFdKBSKEgBoTnUvzx5avc",
+      },
+      signature: {
+        monthly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
+        quarterly: "price_1SxPTWKBSKEgBoTnAw5WjZhI",
+      },
+      prive: {
+        monthly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
+        quarterly: "price_1SxOtWKBSKEgBoTnbuFozBm9",
+      },
+    }
 
-                    const { intentId } = await intentRes.json()
-                    console.log("[v0] Intent created:", intentId)
+    const priceId = priceMap[type]?.[cycle]
 
-                    const priceMap: Record<string, Record<string, string>> = {
-                      petite: {
-                        weekly: "price_1Sx92xKBSKEgBoTnoZwPvKI8",
-                        monthly: "price_1Sx92xKBSKEgBoTnoZwPvKI8",
-                      },
-                      essentiel: {
-                        monthly: "price_1RP4LyKBSKEgBoTnJQobCsjs",
-                        quarterly: "price_1SxPFdKBSKEgBoTnUvzx5avc",
-                      },
-                      signature: {
-                        monthly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
-                        quarterly: "price_1SxPTWKBSKEgBoTnAw5WjZhI",
-                      },
-                      prive: {
-                        monthly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
-                        quarterly: "price_1SxOtWKBSKEgBoTnbuFozBm9",
-                      },
-                    }
+    if (!priceId) {
+      toast.error("Plan no disponible. Contacta soporte.")
+      setCheckoutLoading(false)
+      return
+    }
 
-                    const priceId = priceMap[type]?.[cycle]
+    // 🔥 CASO 100% GIFT CARD (NO STRIPE CHECKOUT)
+    if (finalAmount <= 0.01 && appliedGiftCard) {
+      const directRes = await fetch("/api/memberships/purchase-with-gift-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          giftCardId: appliedGiftCard.id,
+          amountCents: Math.round(total * 100),
+          membershipType: type,
+          billingCycle: cycle,
+          stripeCustomerId: user.user_metadata?.stripe_customer_id || null,
+          stripePriceId: priceId,
+        }),
+      })
 
-                    if (!priceId) {
-                      toast.error("Plan no disponible. Contacta soporte.")
-                      return
-                    }
+      const directData = await directRes.json()
 
-                    console.log("[v0] PASO 2: Creating Stripe checkout with intent_id")
+      if (!directRes.ok) {
+        throw new Error(directData.error || "Error activando membresía")
+      }
 
-                    // PASO 2: Crear Stripe Checkout con intentId en metadata
-                    const res = await fetch("/api/stripe/create-subscription-checkout", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        priceId,
-                        membershipType: type,
-                        billingCycle: cycle,
-                        intentId,
-                      }),
-                    })
+      clearCart()
+      router.push("/post-checkout?giftcard=true")
+      return
+    }
 
-                    const data = await res.json()
-                    if (!res.ok) throw new Error(data.error || "Error al crear checkout")
+    // 🔥 FLUJO NORMAL (Stripe Checkout)
+    const intentRes = await fetch("/api/checkout/create-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        membershipType: type,
+        billingCycle: cycle,
+        amount: finalAmount,
+        coupon: appliedCoupon,
+        giftCard: appliedGiftCard,
+      }),
+    })
 
-                    console.log("[v0] Redirecting to Stripe:", data.url)
-                    window.location.href = data.url
-                  } catch (error: any) {
-                    console.error("[v0] Checkout error:", error)
-                    toast.error(error.message || "Error al procesar el pago")
-                  } finally {
-                    setCheckoutLoading(false)
-                  }
-                }}
+    if (!intentRes.ok) {
+      const intentError = await intentRes.json()
+      throw new Error(intentError.error || "Error al crear intent")
+    }
+
+    const { intentId } = await intentRes.json()
+
+    const res = await fetch("/api/stripe/create-subscription-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        priceId,
+        membershipType: type,
+        billingCycle: cycle,
+        intentId,
+      }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Error al crear checkout")
+
+    window.location.href = data.url
+  } catch (error: any) {
+    toast.error(error.message || "Error al procesar el pago")
+  } finally {
+    setCheckoutLoading(false)
+  }
+}}
+                
                 disabled={!termsAccepted || checkoutLoading}
                 className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6 text-base"
               >
