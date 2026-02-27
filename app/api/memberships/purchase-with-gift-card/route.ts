@@ -8,12 +8,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, amountCents, membershipType, billingCycle, stripeCustomerId, stripePriceId } = body
+    const {
+      userId,
+      giftCardId,
+      amountCents,
+      membershipType,
+      billingCycle,
+      stripeCustomerId,
+      stripePriceId,
+    } = body
 
     if (!userId) {
       return NextResponse.json({ error: "Usuario no autenticado" }, { status: 401 })
@@ -23,10 +33,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gift card y monto requeridos" }, { status: 400 })
     }
 
-    // Idempotency: verificar si ya fue consumida
+    // ✅ Verificar perfil real en DB
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single()
+
+    if (!profile) {
+      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 400 })
+    }
+
+    // ✅ Validar gift card
     const { data: giftCard } = await supabase
       .from("gift_cards")
-      .select("id, amount, status, code")
+      .select("id, amount, status")
       .eq("id", giftCardId)
       .single()
 
@@ -38,37 +59,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Saldo insuficiente en gift card" }, { status: 400 })
     }
 
-    // Consumir gift card via RPC atomico
-    const { data: rpcResult, error: rpcError } = await supabase.rpc("consume_gift_card_atomic", {
-      p_gift_card_id: giftCardId,
-      p_membership_intent_id: null,
-      p_amount: amountCents,
-    })
+    // ✅ Consumir gift card atómicamente
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      "consume_gift_card_atomic",
+      {
+        p_gift_card_id: giftCardId,
+        p_membership_intent_id: null,
+        p_amount: amountCents,
+      }
+    )
 
     if (rpcError || !rpcResult?.success) {
-      return NextResponse.json({ error: "Error procesando gift card: " + rpcError?.message }, { status: 500 })
+      return NextResponse.json(
+        { error: "Error procesando gift card: " + rpcError?.message },
+        { status: 500 }
+      )
     }
 
-    // Crear suscripcion en Stripe — el webhook se encargara de activar user_memberships
+    // ✅ Crear suscripción en Stripe con idempotencia real
     if (stripePriceId && stripeCustomerId) {
-      await stripe.subscriptions.create({
-        customer: stripeCustomerId,
-        items: [{ price: stripePriceId }],
-        metadata: {
-          user_id: userId,
-          membership_type: membershipType,
-          billing_cycle: billingCycle || "monthly",
-          gift_card_id: giftCardId,
-          service: "luxury_rental",
+      await stripe.subscriptions.create(
+        {
+          customer: stripeCustomerId,
+          items: [{ price: stripePriceId }],
+          metadata: {
+            user_id: userId,
+            membership_type: membershipType,
+            billing_cycle: billingCycle || "monthly",
+            gift_card_id: giftCardId,
+            service: "luxury_rental",
+          },
         },
-      })
+        {
+          idempotencyKey: `giftcard-${giftCardId}-${userId}`,
+        }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      message: "Gift card consumida. Suscripcion creada en Stripe.",
+      message: "Gift card consumida. Suscripción creada.",
     })
   } catch (error: any) {
-    return NextResponse.json({ error: "Error interno: " + (error.message || "desconocido") }, { status: 500 })
+    return NextResponse.json(
+      { error: "Error interno: " + (error.message || "desconocido") },
+      { status: 500 }
+    )
   }
 }
