@@ -15,11 +15,11 @@ export const env = {
   NEXT_PUBLIC_SUPABASE_URL: getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
 
-  get SUPABASE_SERVICE_KEY() {
+  get SUPABASE_SERVICE_ROLE_KEY() {
     if (typeof window !== "undefined") {
       return ""
     }
-    return process.env.SUPABASE_SERVICE_KEY || ""
+    return process.env.SUPABASE_SERVICE_ROLE_KEY || ""
   },
 
   // Site
@@ -76,8 +76,8 @@ export function validateServerEnv() {
   const clientValidation = validateClientEnv()
   const errors = [...clientValidation.errors]
 
-  if (!env.SUPABASE_SERVICE_KEY) {
-    errors.push("SUPABASE_SERVICE_KEY is missing")
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    errors.push("SUPABASE_SERVICE_ROLE_KEY is missing")
   }
 
   if (!env.EMAIL_API_KEY) {
@@ -96,7 +96,7 @@ export function debugEnv() {
   console.log("NEXT_PUBLIC_SUPABASE_URL:", env.NEXT_PUBLIC_SUPABASE_URL ? "SET" : "MISSING")
   console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "SET" : "MISSING")
   if (typeof window === "undefined") {
-    console.log("SUPABASE_SERVICE_KEY:", env.SUPABASE_SERVICE_KEY ? "SET" : "MISSING")
+    console.log("SUPABASE_SERVICE_ROLE_KEY:", env.SUPABASE_SERVICE_ROLE_KEY ? "SET" : "MISSING")
     console.log("EMAIL_API_KEY:", env.EMAIL_API_KEY ? "SET" : "MISSING")
   }
   console.log("=================")

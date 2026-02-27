@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 
 const supabase = createClient(
   process.env.SUPABASE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
 
 export async function POST(request: NextRequest) {

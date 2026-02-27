@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 // Supabase Admin Client (Service Role) para actualizar auth.users
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
     auth: {
       autoRefreshToken: false,

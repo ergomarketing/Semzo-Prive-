@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: true, message: "Email inválido" }, { status: 400 })
     }
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       cookies: {
         getAll() {
           return cookieStore.getAll()

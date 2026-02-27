@@ -3,7 +3,7 @@ export async function POST(request: Request) {
     const { email } = await request.json()
 
     const { createClient } = await import("@supabase/supabase-js")
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

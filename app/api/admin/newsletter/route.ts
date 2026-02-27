@@ -10,7 +10,7 @@ export async function GET() {
       process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL ||
       process.env.SUPABASE_SUPABASE_URL
 
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("[v0] ❌ Supabase configuration missing")
