@@ -1,13 +1,50 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+
+  reactStrictMode: true,
+  trailingSlash: false,
+
   typescript: {
     ignoreBuildErrors: true,
   },
+
   experimental: {
     workerThreads: false,
-    cpus: 1
+    cpus: 1,
   },
+
+  async redirects() {
+    return [
+      // www → non-www
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.semzoprive.com',
+          },
+        ],
+        destination: 'https://semzoprive.com/:path*',
+        permanent: true,
+      },
+
+      // Force HTTPS
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-forwarded-proto',
+            value: 'http',
+          },
+        ],
+        destination: 'https://semzoprive.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
@@ -23,6 +60,7 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
+          // Security
           {
             key: 'Content-Security-Policy',
             value: [
@@ -43,11 +81,22 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
-          }
+          },
+
+          // SEO hardening
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
         ]
       }
     ]
   },
+
   async rewrites() {
     return [
       {
@@ -60,72 +109,26 @@ const nextConfig = {
       },
     ]
   },
+
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'misc.stripe.com',
-        port: '',
-        pathname: '/stripe-copy-assets/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'avatars.githubusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.sanity.io',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'source.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.supabase.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.v0.dev',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.public.blob.vercel-storage.com',
-      },
+      { protocol: 'https', hostname: 'misc.stripe.com', pathname: '/stripe-copy-assets/**' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'avatars.githubusercontent.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'cdn.sanity.io', pathname: '/**' },
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'source.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' },
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: '**.supabase.com' },
+      { protocol: 'https', hostname: '**.v0.dev' },
+      { protocol: 'https', hostname: '**.public.blob.vercel-storage.com' },
     ],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
