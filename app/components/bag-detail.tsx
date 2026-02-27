@@ -431,54 +431,17 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         )
 
-        // Check membership_intents first (for gift card / verified payments)
-        const { data: activeIntent } = await supabase
-          .from("membership_intents")
-          .select("id, membership_type, status")
-          .eq("user_id", userId)
-          .in("status", ["active", "paid_pending_verification"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        // Check user_memberships
+        // Fuente única de verdad: user_memberships
         const { data: userMembershipData } = await supabase
           .from("user_memberships")
           .select("membership_type, status")
           .eq("user_id", userId)
+          .eq("status", "active")
           .maybeSingle()
 
-        // Check profiles as fallback
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("membership_plan, membership_status, subscription_end_date")
-          .eq("id", userId)
-          .single()
-
-        // Determine active status from all sources
-        let isActive = false
-        let membershipTier = null
-
-        // Priority: activeIntent (status=active) > user_memberships > profiles
-        // IMPORTANTE: paid_pending_verification NO puede reservar (necesita verificación)
-        if (activeIntent?.status === "active") {
-          isActive = true
-          membershipTier = activeIntent.membership_type
-        } else if (activeIntent?.status === "paid_pending_verification") {
-          // Membresía pagada pero necesita verificación - NO puede reservar
-          isActive = false
-          membershipTier = activeIntent.membership_type
-        } else if (userMembershipData?.status === "active") {
-          isActive = true
-          membershipTier = userMembershipData.membership_type
-        } else if (profile?.membership_status === "active") {
-          isActive = true
-          membershipTier = profile.membership_plan
-        }
-
         setUserMembership({
-          tier: membershipTier,
-          isActive: isActive,
+          tier: userMembershipData?.membership_type || null,
+          isActive: !!userMembershipData,
         })
       } catch (error) {
         console.error("[v0] Error in fetchUserMembership:", error)

@@ -21,24 +21,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/auth/login")
   }
 
-  // ÚNICA GUARDIA CENTRALIZADA - Source of truth: membership_intents
-  const { data: intent } = await supabase
-    .from("membership_intents")
-    .select("status")
-    .eq("user_id", user.id)
-    .in("status", ["paid_pending_verification"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  // REGLA SIMPLE: Si hay intent paid_pending_verification → /status
-  // Excepción: Ya estamos en /status, permitir acceso
-  const pathname = typeof window !== "undefined" ? window.location.pathname : ""
-  const isStatusPage = pathname.includes("/dashboard/membresia/status")
-
-  if (intent && !isStatusPage) {
-    redirect("/dashboard/membresia/status")
-  }
-
   return <DashboardLayoutClient user={user}>{children}</DashboardLayoutClient>
 }
