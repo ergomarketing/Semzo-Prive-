@@ -2,11 +2,11 @@ import { notFound } from "next/navigation"
 import BlogContent from "./BlogContent"
 import type { Metadata } from "next"
 
-// ISR: Revalidate every 5 minutes (300 seconds) - reduces function invocations
+// ISR optimizado
 export const revalidate = 300
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params: { slug: string }
 }
 
 interface BlogPost {
@@ -17,7 +17,7 @@ interface BlogPost {
   excerpt: string
   image?: string
   content: string
-  updatedAt?: string // Agregado campo opcional updatedAt
+  updatedAt?: string
 }
 
 async function getPost(slug: string): Promise<BlogPost | null> {
@@ -25,51 +25,63 @@ async function getPost(slug: string): Promise<BlogPost | null> {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/blog?slug=${slug}`,
       {
-        cache: "no-store",
-      },
+        next: { revalidate: 300 },
+      }
     )
 
-    if (!response.ok) {
-      console.error("[v0] Failed to fetch blog post:", response.status)
-      return null
-    }
-
-    const post = await response.json()
-    console.log("[v0] Blog post loaded:", slug, post ? "found" : "not found")
-    return post
-  } catch (error) {
-    console.error("[v0] Error fetching blog post:", error)
+    if (!response.ok) return null
+    return response.json()
+  } catch {
     return null
   }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params
+  const { slug } = params
   const post = await getPost(slug)
 
   if (!post) {
     return {
       title: "Artículo no encontrado | SEMZO Magazine",
       description: "El artículo que buscas no está disponible.",
+      robots: { index: false, follow: false },
     }
   }
 
-  const excerpt = post.excerpt?.substring(0, 160) || post.title
-  const imageUrl = post.image || "https://semzoprive.com/images/fendi-beige-hero.jpeg"
+  const url = `https://semzoprive.com/blog/${slug}`
+  const excerpt = post.excerpt?.substring(0, 155) || post.title
+  const imageUrl =
+    post.image || "https://semzoprive.com/images/hero-luxury-bags.jpeg"
 
   return {
     title: `${post.title} | SEMZO Magazine`,
     description: excerpt,
+
     alternates: {
-      canonical: `https://semzoprive.com/blog/${slug}`,
+      canonical: url,
     },
+
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-snippet": -1,
+        "max-image-preview": "large",
+        "max-video-preview": -1,
+      },
+    },
+
     openGraph: {
       type: "article",
       locale: "es_ES",
-      title: `${post.title} | SEMZO Magazine`,
-      description: excerpt,
-      url: `https://semzoprive.com/blog/${slug}`,
+      url,
       siteName: "Semzo Privé",
+      title: post.title,
+      description: excerpt,
+      publishedTime: post.date,
+      modifiedTime: post.updatedAt || post.date,
       images: [
         {
           url: imageUrl,
@@ -78,13 +90,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           alt: post.title,
         },
       ],
-      publishedTime: post.date,
-      modifiedTime: post.updatedAt || post.date,
-      authors: ["Semzo Privé"],
     },
+
     twitter: {
       card: "summary_large_image",
-      title: `${post.title} | SEMZO Magazine`,
+      title: post.title,
       description: excerpt,
       images: [imageUrl],
     },
@@ -92,12 +102,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
-  const { slug } = await params
+  const { slug } = params
   const post = await getPost(slug)
 
   if (!post) {
-    notFound()
+    notFound() // 🔥 Corrige Soft 404 real
   }
+
+  const url = `https://semzoprive.com/blog/${slug}`
 
   const blogPostingSchema = {
     "@context": "https://schema.org",
@@ -106,10 +118,14 @@ export default async function BlogPostPage({ params }: PageProps) {
     description: post.excerpt || post.title,
     image: post.image || "https://semzoprive.com/images/hero-luxury-bags.jpeg",
     datePublished: post.date,
-    dateModified: post.updatedAt || post.date, // Usa updatedAt si existe
-    inLanguage: "es-ES", // Agregado idioma español
+    dateModified: post.updatedAt || post.date,
+    inLanguage: "es-ES",
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
     author: {
-      "@type": "Organization", // Cambiado de Person a Organization
+      "@type": "Organization",
       name: "Semzo Privé",
     },
     publisher: {
@@ -120,15 +136,16 @@ export default async function BlogPostPage({ params }: PageProps) {
         url: "https://semzoprive.com/images/semzo-prive-logo.png",
       },
     },
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://semzoprive.com/blog/${slug}`,
-    },
   }
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingSchema) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(blogPostingSchema),
+        }}
+      />
       <BlogContent post={post} slug={slug} />
     </>
   )
