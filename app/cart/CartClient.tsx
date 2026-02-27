@@ -762,12 +762,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
   try {
     if (!user || !user.id) {
+     
       toast.error("Por favor, inicia sesión para continuar")
       setShowAuthModal(true)
       setCheckoutLoading(false)
       return
     }
-
+if (!termsAccepted) {
+  toast.error("Debes aceptar los Términos y Condiciones")
+  setCheckoutLoading(false)
+  return
+}
     const supabase = getSupabaseBrowser()
     const { data: profileCheck, error: profileError } = await supabase
       .from("profiles")
