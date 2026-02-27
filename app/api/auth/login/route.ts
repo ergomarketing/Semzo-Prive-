@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
         firstName: data.user.user_metadata?.first_name || "",
         lastName: data.user.user_metadata?.last_name || "",
-        membershipStatus: activeMembership?.status || "free",
-        membershipType: activeMembership?.membership_type || null,
+        membershipActive: !!activeMembership,
+        identityVerified: profile?.identity_verified === true,
       },
       session: data.session,
     })
