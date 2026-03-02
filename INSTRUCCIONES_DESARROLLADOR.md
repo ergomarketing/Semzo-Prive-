@@ -16,7 +16,13 @@ ADMIN_PASSWORD=tu_password_seguro_aqui
 
 # 🌐 ENVIRONMENT
 NODE_ENV=production
+
+# 🗄️ SUPABASE
+NEXT_PUBLIC_SUPABASE_URL=tu_url_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key_supabase
 \`\`\`
+
+Asegúrate de configurar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Estas variables son necesarias para que los usuarios puedan registrarse e iniciar sesión.
 
 ### 2️⃣ CONFIGURAR EMAIL (OPCIÓN A: RESEND - RECOMENDADO)
 1. Ir a [resend.com](https://resend.com)
