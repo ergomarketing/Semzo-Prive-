@@ -336,6 +336,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         }
 
         setAppliedGiftCard({
+          id: data.giftCard.id,
           code: giftCardCode.trim(),
           balance: balanceInEuros,
         })
@@ -785,6 +786,29 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
                     const cycle = billingCycle || "monthly"
                     const type = membershipType || "essentiel"
+
+                    // GIFT CARD 100% — no pasa por Stripe
+                    if (finalAmount === 0 && appliedGiftCard) {
+                      const gcResponse = await fetch("/api/memberships/purchase-with-gift-card", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          userId: user.id,
+                          giftCardId: appliedGiftCard.id,
+                          amountCents: Math.round(total * 100),
+                          membershipType: type,
+                          billingCycle: cycle,
+                          stripeCustomerId: null,
+                          stripePriceId: null,
+                        }),
+                      })
+                      const gcData = await gcResponse.json()
+                      if (!gcResponse.ok) throw new Error(gcData.error || "Error al procesar gift card")
+                      clearCart()
+                      toast.success("Membresía activada con Gift Card")
+                      router.push("/dashboard/membresia")
+                      return
+                    }
 
                     console.log("[v0] PASO 1: Creating membership intent for user:", user.id)
                     
