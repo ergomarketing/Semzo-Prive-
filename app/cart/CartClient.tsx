@@ -330,15 +330,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       const data = await response.json()
 
       if (data.valid) {
-        let balanceInEuros = data.balance
-        if (balanceInEuros > 1000) {
-          balanceInEuros = balanceInEuros / 100
-        }
-
         setAppliedGiftCard({
           id: data.giftCard.id,
           code: giftCardCode.trim(),
-          balance: balanceInEuros,
+          balance: data.balance,
         })
         setGiftCardCode("")
       } else {
@@ -796,10 +791,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                           userId: user.id,
                           giftCardId: appliedGiftCard.id,
                           amountCents: Math.round(total * 100),
-                          membershipType: type,
-                          billingCycle: cycle,
-                          stripeCustomerId: null,
-                          stripePriceId: null,
+                          membershipType: membershipType,
+                          billingCycle: billingCycle,
                         }),
                       })
                       const gcData = await gcResponse.json()
