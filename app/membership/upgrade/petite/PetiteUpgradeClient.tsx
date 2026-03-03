@@ -128,8 +128,8 @@ export default function PetiteUpgradeClient() {
               <div className="space-y-3 mb-6">
                 {["1 bolso por semana", "Envío gratuito", "Seguro incluido", "Sin compromiso"].map((f) => (
                   <div key={f} className="flex items-center">
-                    <Check className="w-5 h-5 text-green-600 mr-3 shrink-0" />
-                    <span>{f}</span>
+                    <Check className="w-5 h-5 mr-3 shrink-0" style={{ color: "#1a1a4b" }} />
+                    <span className="text-slate-700">{f}</span>
                   </div>
                 ))}
               </div>
@@ -141,7 +141,7 @@ export default function PetiteUpgradeClient() {
                   <span>{PRICE.toFixed(2)}€</span>
                 </div>
                 {appliedGiftCard && (
-                  <div className="flex justify-between text-green-700">
+                  <div className="flex justify-between" style={{ color: "#c084a0" }}>
                     <span>Gift Card ({appliedGiftCard.code})</span>
                     <span>-{Math.min(appliedGiftCard.balance, PRICE).toFixed(2)}€</span>
                   </div>
@@ -162,8 +162,8 @@ export default function PetiteUpgradeClient() {
                 ¿Tienes una Gift Card?
               </p>
               {appliedGiftCard ? (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                  <span className="text-sm text-green-800 font-medium">{appliedGiftCard.code} — {appliedGiftCard.balance.toFixed(2)}€ disponibles</span>
+                <div className="flex items-center justify-between rounded-lg px-4 py-3" style={{ backgroundColor: "#fff0f3", border: "1px solid #f4c4cc" }}>
+                  <span className="text-sm font-medium" style={{ color: "#1a1a4b" }}>{appliedGiftCard.code} — {appliedGiftCard.balance.toFixed(2)}€ disponibles</span>
                   <button onClick={() => setAppliedGiftCard(null)} className="text-slate-400 hover:text-slate-700 text-lg leading-none">×</button>
                 </div>
               ) : (
@@ -185,7 +185,8 @@ export default function PetiteUpgradeClient() {
 
           {/* Boton de pago */}
           <Button
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 h-12"
+            className="w-full text-white py-3 h-12"
+            style={{ backgroundColor: "#1a1a4b" }}
             onClick={handleCheckout}
             disabled={isProcessing}
           >
