@@ -55,14 +55,18 @@ export async function POST(request: Request) {
       })
     }
 
+    // amount en DB está en centimos — convertir a euros para el frontend
+    const rawAmount = giftCard.amount || giftCard.balance || giftCard.original_amount || 0
+    const balanceEuros = rawAmount / 100
+
     return NextResponse.json({
       valid: true,
-      balance: giftCard.amount || giftCard.balance || giftCard.original_amount,
+      balance: balanceEuros,
       giftCard: {
         id: giftCard.id,
         code: giftCard.code,
-        amount: giftCard.amount,
-        originalAmount: giftCard.original_amount,
+        amount: balanceEuros,
+        originalAmount: (giftCard.original_amount || rawAmount) / 100,
         currency: giftCard.currency,
         expiresAt: giftCard.expires_at,
       },
