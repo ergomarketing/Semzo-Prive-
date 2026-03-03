@@ -51,12 +51,13 @@ export async function POST(request: NextRequest) {
     if (Math.round(giftCard.amount * 100) < amountCents)
       return NextResponse.json({ error: "Saldo insuficiente" }, { status: 400 })
 
-    // Consumir gift card (firma correcta SIN membership_intent)
+    // RPC espera p_amount en EUROS (la DB almacena en euros)
+    const amountEuros = amountCents / 100
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "consume_gift_card_atomic",
       {
         p_gift_card_id: giftCardId,
-        p_amount: amountCents,
+        p_amount: amountEuros,
       }
     )
 
