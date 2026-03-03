@@ -833,20 +833,36 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         monthly: "price_1Sx92xKBSKEgBoTnoZwPvKI8",
                       },
                       essentiel: {
+                        weekly: "price_1RP4LyKBSKEgBoTnJQobCsjs",
                         monthly: "price_1RP4LyKBSKEgBoTnJQobCsjs",
                         quarterly: "price_1SxPFdKBSKEgBoTnUvzx5avc",
                       },
                       signature: {
+                        weekly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
                         monthly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
                         quarterly: "price_1SxPTWKBSKEgBoTnAw5WjZhI",
                       },
                       prive: {
+                        weekly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
                         monthly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
                         quarterly: "price_1SxOtWKBSKEgBoTnbuFozBm9",
                       },
                     }
 
-                    const priceId = priceMap[type]?.[cycle]
+                    // Para bag-pass: usar priceId del item si existe, o del mapa por tier
+                    const { bagPassItem: cartBagPass } = analyzeCartItems(items)
+                    let priceId: string | undefined
+
+                    if (cartBagPass) {
+                      // Bag-pass usa el mismo price que la membresía essentiel semanal por defecto
+                      // hasta que tengamos priceIds específicos de pases en Stripe
+                      const bagPassTierKey = cartBagPass.id.toLowerCase().includes("essentiel") ? "essentiel"
+                        : cartBagPass.id.toLowerCase().includes("premium") ? "signature"
+                        : "essentiel"
+                      priceId = priceMap[bagPassTierKey]?.["weekly"]
+                    } else {
+                      priceId = priceMap[type]?.[cycle]
+                    }
 
                     if (!priceId) {
                       toast.error("Plan no disponible. Contacta soporte.")

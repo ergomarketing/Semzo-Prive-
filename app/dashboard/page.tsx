@@ -24,14 +24,7 @@ export default function DashboardHome() {
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
-  // FASE 4: Detectar pending_identity_verification y abrir modal automáticamente
-  useEffect(() => {
-    if (data && data.flags?.needs_verification && !showIdentityModal) {
-      console.log("[v0] Dashboard detected pending identity verification - opening modal")
-      setMembershipTypeForVerification(data.membership?.type || "essentiel")
-      setShowIdentityModal(true)
-    }
-  }, [data, showIdentityModal])
+  // Verificación de identidad: se muestra solo cuando el usuario intenta reservar, NO al cargar el dashboard
 
   const loading = false; // Assuming loading is meant to be a boolean, you should replace this with the actual loading state if needed
   const getMembershipLabel = () => "Membership Label"; // Replace with actual function or state
