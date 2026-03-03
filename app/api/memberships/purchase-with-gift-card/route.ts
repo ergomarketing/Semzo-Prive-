@@ -77,11 +77,9 @@ export async function POST(request: NextRequest) {
         {
           user_id: userId,
           membership_type: membershipType,
-          billing_cycle: billingCycle,
           status: "active",
           start_date: now,
           end_date: endDate.toISOString(),
-          updated_at: now,
         },
         { onConflict: "user_id" }
       )
