@@ -57,9 +57,10 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    if (rpcError || !rpcResult?.success)
+    // El RPC devuelve boolean directamente (TRUE = éxito)
+    if (rpcError || rpcResult === false)
       return NextResponse.json(
-        { error: "Error consumiendo gift card: " + rpcError?.message },
+        { error: "Error consumiendo gift card: " + (rpcError?.message || "saldo insuficiente o gift card inválida") },
         { status: 500 }
       )
 
