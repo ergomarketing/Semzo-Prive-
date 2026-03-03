@@ -6,7 +6,7 @@ import { Check, Gift, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { createClient } from "@/app/lib/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 
 // Mapa central de priceIds — fuente de verdad para todos los planes
 const PRICE_MAP: Record<string, Record<string, string>> = {
