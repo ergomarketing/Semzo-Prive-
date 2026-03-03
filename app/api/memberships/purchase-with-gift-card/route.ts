@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
     if (!giftCardId || !amountCents)
       return NextResponse.json({ error: "Gift card y monto requeridos" }, { status: 400 })
 
+    if (!membershipType)
+      return NextResponse.json({ error: "Tipo de membresía requerido" }, { status: 400 })
+
     // Verificar perfil
     const { data: profile } = await supabase
       .from("profiles")
