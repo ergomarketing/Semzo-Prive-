@@ -101,6 +101,18 @@ export async function POST(req: NextRequest) {
           })
           .eq("id", userId);
 
+        // Marcar el intent como paid_pending_verification
+        // para que identity/create-session pueda encontrarlo
+        await supabase
+          .from("membership_intents")
+          .update({
+            status: "paid_pending_verification",
+            stripe_subscription_id: subscription.id,
+            updated_at: now,
+          })
+          .eq("user_id", userId)
+          .in("status", ["pending_payment", "pending", "created"]);
+
         console.log("✅ Membership ACTIVATED:", userId);
         break;
       }
