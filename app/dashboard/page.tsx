@@ -73,6 +73,13 @@ export default function DashboardHome() {
   const membershipLabel = getStatusLabel(membershipUIStatus)
   const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
 
+  // FIX 3: Modal de verificacion solo si profile esta cargado y identity_verified es exactamente false
+  // No se abre automaticamente — solo cuando el usuario hace click en el banner
+  const shouldShowModal =
+    profile !== null &&
+    profile !== undefined &&
+    profile?.identity_verified === false
+
   const userName =
     profile?.first_name && profile?.last_name
       ? `${profile.first_name.charAt(0).toUpperCase() + profile.first_name.slice(1)} ${profile.last_name.charAt(0).toUpperCase() + profile.last_name.slice(1)}`
@@ -113,14 +120,16 @@ export default function DashboardHome() {
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
             <strong>Acceso Limitado.</strong> Han pasado 7 días sin verificar tu identidad. Puedes ver el catálogo pero no realizar reservas.
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-4 bg-transparent"
-              onClick={() => setShowIdentityModal(true)}
-            >
-              Verificar Identidad
-            </Button>
+            {shouldShowModal && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-4 bg-transparent"
+                onClick={() => setShowIdentityModal(true)}
+              >
+                Verificar Identidad
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -221,7 +230,7 @@ export default function DashboardHome() {
             <ShoppingBag className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.active}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.active ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Reservas activas</p>
           </CardContent>
         </Card>
@@ -235,7 +244,7 @@ export default function DashboardHome() {
             <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.waitlist}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.waitlist ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Bolsos en espera</p>
           </CardContent>
         </Card>
@@ -246,7 +255,7 @@ export default function DashboardHome() {
             <Heart className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.wishlist}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.wishlist ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Favoritos guardados</p>
           </CardContent>
         </Card>
@@ -260,7 +269,7 @@ export default function DashboardHome() {
             <Gift className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{gift_cards.total_balance.toFixed(2)}€</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{(gift_cards?.total_balance ?? 0).toFixed(2)}€</div>
             <p className="text-xs text-slate-600 mt-1">Disponible para usar</p>
           </CardContent>
         </Card>
@@ -320,20 +329,18 @@ export default function DashboardHome() {
         </Card>
       </div>
 
-      {/* FASE 4: Identity Verification Modal */}
-      {user && (
+      {/* Modal verificacion: solo si profile cargado y identity_verified === false, y usuario hace click en boton del banner */}
+      {user && shouldShowModal && (
         <IdentityVerificationModal
           isOpen={showIdentityModal}
           onClose={() => setShowIdentityModal(false)}
           onVerificationComplete={(verified) => {
             if (verified) {
-              console.log("[v0] Identity verification completed successfully")
-              // Recargar datos del dashboard
               window.location.reload()
             }
           }}
           userId={user.id}
-          membershipType={membershipTypeForVerification}
+          membershipType={membership?.type ?? ""}
         />
       )}
     </div>
