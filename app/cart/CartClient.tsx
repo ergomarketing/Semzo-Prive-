@@ -137,7 +137,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         .from("profiles")
         .select("identity_verified, full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
         .eq("id", currentUser.id)
-        .single()
+     .maybeSingle() 
 
       const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.shipping_address
       setExtendedFormCompleted(!!hasExtendedData)

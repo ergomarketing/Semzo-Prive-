@@ -17,6 +17,7 @@ const inter = Inter({
   display: "swap",
   preload: true,
 })
+
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
@@ -26,56 +27,72 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://semzoprive.com"),
+
   title: {
     default: "Semzo Privé - Alquiler de Bolsos de Lujo por Suscripción",
     template: "%s | Semzo Privé",
   },
+
   description:
     "Accede a bolsos de lujo de Chanel, Dior, Louis Vuitton y más marcas exclusivas por suscripción. Desde 59€/mes. Envío gratis, seguro incluido y cambios ilimitados.",
+
   keywords: [
     "alquiler bolsos lujo",
     "bolsos lujo suscripción",
     "chanel alquiler",
     "dior alquiler",
     "louis vuitton alquiler",
-    "bolsos diseñador",
     "fashion rental",
     "luxury handbag rental",
   ],
+
   authors: [{ name: "Semzo Privé" }],
   creator: "Semzo Privé",
   publisher: "Semzo Privé",
+
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
+
+  alternates: {
+    canonical: "https://semzoprive.com",
+    languages: {
+      "es-ES": "https://semzoprive.com",
+    },
+  },
+
   openGraph: {
     type: "website",
     locale: "es_ES",
     url: "https://semzoprive.com",
+    siteName: "Semzo Privé",
     title: "Semzo Privé - Alquiler de Bolsos de Lujo por Suscripción",
     description:
-      "Accede a bolsos de lujo de Chanel, Dior, Louis Vuitton y más. Desde 59€/mes con envío gratis y seguro incluido.",
-    siteName: "Semzo Privé",
+      "Accede a bolsos de lujo de Chanel, Dior y más. Desde 59€/mes con envío gratis y seguro incluido.",
     images: [
       {
-        url: "/images/hero-luxury-bags.jpeg",
+        url: "https://semzoprive.com/images/hero-luxury-bags.jpeg",
         width: 1200,
         height: 630,
         alt: "Colección de bolsos de lujo Semzo Privé",
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
     title: "Semzo Privé - Alquiler de Bolsos de Lujo",
-    description: "Bolsos de lujo desde 59€/mes. Chanel, Dior, Louis Vuitton y más.",
-    images: ["/images/hero-luxury-bags.jpeg"],
+    description:
+      "Bolsos de lujo desde 59€/mes. Chanel, Dior, Louis Vuitton y más.",
+    images: ["https://semzoprive.com/images/hero-luxury-bags.jpeg"],
   },
+
   robots: {
     index: true,
     follow: true,
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
@@ -84,16 +101,15 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+
   verification: {
     google: "G-0BMNYQLWLZ",
     other: {
       "p:domain_verify": "a98e3be6d7a4e44ba4587bc1cdba9e61",
     },
   },
-  alternates: {
-    canonical: "https://semzoprive.com",
-  },
-  generator: "v0.dev",
+
+  category: "fashion",
 }
 
 export default function RootLayout({
@@ -101,25 +117,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Semzo Privé",
-    description: "Servicio de alquiler de bolsos de lujo por suscripción",
     url: "https://semzoprive.com",
     logo: "https://semzoprive.com/images/semzo-prive-logo.png",
-    image: "https://semzoprive.com/images/hero-luxury-bags.jpeg",
-    email: "mailbox@semzoprive.com",
-    sameAs: ["https://www.instagram.com/semzoprive", "https://www.tiktok.com/@semzoprive"],
+    sameAs: [
+      "https://www.instagram.com/semzoprive",
+      "https://www.tiktok.com/@semzoprive",
+    ],
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",
       email: "mailbox@semzoprive.com",
       availableLanguage: ["es", "en"],
-    },
-    address: {
-      "@type": "PostalAddress",
-      addressCountry: "ES",
     },
   }
 
@@ -128,7 +141,6 @@ export default function RootLayout({
     "@type": "WebSite",
     name: "Semzo Privé",
     url: "https://semzoprive.com",
-    description: "Alquiler de bolsos de lujo por suscripción",
     potentialAction: {
       "@type": "SearchAction",
       target: "https://semzoprive.com/catalog?search={search_term_string}",
@@ -136,28 +148,67 @@ export default function RootLayout({
     },
   }
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Inicio",
+        item: "https://semzoprive.com",
+      },
+    ],
+  }
+
   return (
     <html lang="es">
       <head>
+
+        {/* Preconnect Performance */}
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        />
 
+        {/* TikTok Pixel */}
         <TikTokPixel />
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-0BMNYQLWLZ" strategy="afterInteractive" />
+
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-0BMNYQLWLZ"
+          strategy="afterInteractive"
+        />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-0BMNYQLWLZ');
+            gtag('config', 'G-0BMNYQLWLZ', {
+              anonymize_ip: true,
+              send_page_view: true
+            });
           `}
         </Script>
 
-        <Script src="https://www.googletagmanager.com/gtag/js?id=AW-17660150279" strategy="afterInteractive" />
+        {/* Google Ads */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-17660150279"
+          strategy="afterInteractive"
+        />
         <Script id="google-ads" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
@@ -166,7 +217,9 @@ export default function RootLayout({
             gtag('config', 'AW-17660150279');
           `}
         </Script>
+
       </head>
+
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         <AuthProvider>
           <CartProvider>
