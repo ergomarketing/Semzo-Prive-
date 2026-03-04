@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { priceId, membershipType, billingCycle, intentId } = await request.json()
+    // priceId puede ser un ID de catalogo o undefined (bag-pass usa price_data dinamico)
+    // amountCents y productName se usan cuando no hay priceId fijo (bag-pass con saldo parcial)
+    const { priceId, membershipType, billingCycle, intentId, amountCents, productName } = await request.json()
 
     const supabase = await createClient()
 
@@ -62,14 +64,12 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // VALIDATION: Required fields
-    // membershipType es opcional: si no llega, es un pago único (bag-pass)
-    if (!priceId || !intentId) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, intentId })
+    // membershipType es opcional: sin el → pago unico (bag-pass)
+    // priceId OR amountCents son requeridos (bag-pass puede usar price_data dinamico)
+    if ((!priceId && !amountCents) || !intentId) {
+      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, amountCents, intentId })
       return NextResponse.json(
-        {
-          error: "Missing required fields",
-          details: "priceId and intentId are required",
-        },
+        { error: "Missing required fields", details: "priceId (o amountCents) e intentId son requeridos" },
         { status: 400 },
       )
     }
@@ -160,10 +160,26 @@ export async function POST(request: NextRequest) {
         }
       : {
           // Pago único (bag-pass u otro producto)
+          // Si priceId existe → usar price fijo catalogo
+          // Si no → usar price_data dinamico con amountCents
           mode: "payment",
           customer: stripeCustomerId,
           payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
-          line_items: [{ price: priceId, quantity: 1 }],
+          line_items: priceId
+            ? [{ price: priceId, quantity: 1 }]
+            : [
+                {
+                  price_data: {
+                    currency: "eur",
+                    product_data: {
+                      name: productName || "Pase de Bolso",
+                      description: "Acceso semanal a un bolso premium",
+                    },
+                    unit_amount: amountCents,
+                  },
+                  quantity: 1,
+                },
+              ],
           metadata: commonMetadata,
           payment_intent_data: {
             metadata: commonMetadata,

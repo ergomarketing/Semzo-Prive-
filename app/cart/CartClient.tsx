@@ -849,32 +849,32 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       },
                     }
 
-                    // Para bag-pass: usar priceId del item si existe, o del mapa por tier
                     const { bagPassItem: cartBagPass } = analyzeCartItems(items)
                     let priceId: string | undefined
 
-                    if (cartBagPass) {
-                      // Bag-pass usa el mismo price que la membresía essentiel semanal por defecto
-                      // hasta que tengamos priceIds específicos de pases en Stripe
-                      const bagPassTierKey = cartBagPass.id.toLowerCase().includes("essentiel") ? "essentiel"
-                        : cartBagPass.id.toLowerCase().includes("premium") ? "signature"
-                        : "essentiel"
-                      priceId = priceMap[bagPassTierKey]?.["weekly"]
-                    } else {
+                    if (!cartBagPass) {
+                      // Membresia normal: usar priceId de catalogo
                       priceId = priceMap[type]?.[cycle]
+                      if (!priceId) {
+                        toast.error("Plan no disponible. Contacta soporte.")
+                        return
+                      }
                     }
-
-                    if (!priceId) {
-                      toast.error("Plan no disponible. Contacta soporte.")
-                      return
-                    }
+                    // Bag-pass: NO usar priceId de catalogo → price_data dinamico en endpoint
 
                     console.log("[v0] PASO 2: Creating Stripe checkout with intent_id")
 
-                    // PASO 2: Crear Stripe Checkout con intentId en metadata
-                    // Para bag-pass no se envía membershipType → endpoint usa mode: "payment"
-                    const checkoutBody: Record<string, any> = { priceId, intentId }
-                    if (!cartBagPass) {
+                    // PASO 2: Crear Stripe Checkout
+                    // Membresía → priceId fijo + membershipType (mode: subscription)
+                    // Bag-pass → amountCents dinamico sin membershipType (mode: payment)
+                    const checkoutBody: Record<string, any> = { intentId }
+                    if (cartBagPass) {
+                      // Pago unico por el resto tras gift card: todos los tiers de pases
+                      checkoutBody.amountCents = Math.round(finalAmount * 100)
+                      checkoutBody.productName = cartBagPass.name || "Pase de Bolso"
+                      // Sin membershipType → endpoint usa mode: "payment"
+                    } else {
+                      checkoutBody.priceId = priceId
                       checkoutBody.membershipType = type
                       checkoutBody.billingCycle = cycle
                     }
