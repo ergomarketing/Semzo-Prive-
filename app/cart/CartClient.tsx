@@ -879,7 +879,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       checkoutBody.billingCycle = cycle
                     }
 
-                    const res = await fetch("/api/stripe/create-subscription-checkout", {
+                    // Bag-pass → endpoint de pago único
+                    // Membresía → endpoint de suscripción
+                    const checkoutEndpoint = cartBagPass
+                      ? "/api/stripe/create-payment-checkout"
+                      : "/api/stripe/create-subscription-checkout"
+
+                    const res = await fetch(checkoutEndpoint, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(checkoutBody),
