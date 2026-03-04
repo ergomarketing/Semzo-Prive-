@@ -104,34 +104,45 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* FASE 5: Banner para pending_identity_verification */}
-      {membership?.status === "pending_identity_verification" && (
-        <Alert className="mb-6 bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-900">
-            <strong>Verificación de identidad pendiente.</strong> Completa la verificación para desbloquear tu acceso completo.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* FALLBACK: Banner para limited_access (7+ días sin verificar) */}
-      {membership?.status === "limited_access" && (
-        <Alert className="mb-6 bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-900">
-            <strong>Acceso Limitado.</strong> Han pasado 7 días sin verificar tu identidad. Puedes ver el catálogo pero no realizar reservas.
-            {shouldShowModal && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-4 bg-transparent"
-                onClick={() => setShowIdentityModal(true)}
-              >
-                Verificar Identidad
-              </Button>
-            )}
-          </AlertDescription>
-        </Alert>
+      {/* Banner de verificacion de identidad: aparece para cualquier usuario no verificado */}
+      {shouldShowModal && membership?.status !== "cancelled" && (
+        <>
+          {membership?.status === "limited_access" ? (
+            <Alert className="mb-6 bg-red-50 border-red-200">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-900 flex items-center justify-between flex-wrap gap-2">
+                <span>
+                  <strong>Acceso Limitado.</strong> Han pasado 7 días sin verificar tu identidad. No puedes realizar reservas hasta completarla.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-red-400 text-red-900 hover:bg-red-100"
+                  onClick={() => setShowIdentityModal(true)}
+                >
+                  Verificar ahora
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="mb-6 bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900 flex items-center justify-between flex-wrap gap-2">
+                <span>
+                  <strong>Verificacion de identidad pendiente.</strong> Completa este paso para desbloquear las reservas de bolsos.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-amber-400 text-amber-900 hover:bg-amber-100"
+                  onClick={() => setShowIdentityModal(true)}
+                >
+                  Verificar ahora
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
       )}
 
       {/* Aviso no-bloqueante: SMS user sin email */}
