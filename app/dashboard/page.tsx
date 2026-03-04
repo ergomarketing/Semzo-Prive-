@@ -73,12 +73,13 @@ export default function DashboardHome() {
   const membershipLabel = getStatusLabel(membershipUIStatus)
   const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
 
-  // FIX 3: Modal de verificacion solo si profile esta cargado y identity_verified es exactamente false
-  // No se abre automaticamente — solo cuando el usuario hace click en el banner
+  // Modal solo si: profile cargado + identity_verified es exactamente false + tiene membresía activa
+  // Nunca se muestra a usuarios sin membresía ni compradores de pases
   const shouldShowModal =
     profile !== null &&
     profile !== undefined &&
-    profile?.identity_verified === false
+    profile?.identity_verified === false &&
+    membership?.status === "active"
 
   const userName =
     profile?.first_name && profile?.last_name

@@ -217,15 +217,26 @@ export async function POST(request: NextRequest) {
 
     const effectivePlan = membership.membership_type || "free"
 
-    // Get profile for email only
+    // Obtener perfil: email para notificaciones + identity_verified para proteccion backend
     const { data: userProfile } = await supabase
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, identity_verified")
       .eq("id", userId)
       .single()
 
     if (!userProfile) {
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
+    }
+
+    // PUNTO 7: Proteccion backend — bloquear reservas si identidad no verificada
+    if (userProfile.identity_verified === false) {
+      return NextResponse.json(
+        {
+          error: "Debes completar la verificación de identidad antes de realizar reservas.",
+          identity_verification_required: true,
+        },
+        { status: 403 }
+      )
     }
 
     const { data: bag, error: bagError } = await supabase
