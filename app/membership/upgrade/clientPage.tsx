@@ -10,6 +10,20 @@ import Head from "next/head"
 
 const plans = [
   {
+    id: "petite",
+    name: "Petite",
+    price: "19,99€",
+    description: "Favoritos del día a día. 1 bolso por semana, sin compromiso.",
+    image: "/images/jacquemus-le-chiquito.jpg",
+    imageAlt: "Jacquemus - Le Chiquito para la membresía Petite",
+    brand: "Jacquemus",
+    brandLabel: "Le Chiquito",
+    features: ["1 bolso por semana", "Envío gratuito", "Seguro incluido", "Sin compromiso"],
+    popular: false,
+    membershipKey: "petite",
+    priceSuffix: "/semana",
+  },
+  {
     id: "essentiel",
     name: "L'Essentiel",
     price: "59€",
@@ -142,7 +156,7 @@ export default function MembershipUpgradeClientPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
@@ -172,7 +186,7 @@ export default function MembershipUpgradeClientPage() {
 
                     <div className="mb-4">
                       <span className="font-serif text-5xl font-light text-slate-900">{plan.price}</span>
-                      <span className="text-lg text-slate-600 font-light">/mes</span>
+                      <span className="text-lg text-slate-600 font-light">{(plan as any).priceSuffix || "/mes"}</span>
                     </div>
 
                     <p className="text-slate-700 mb-6 font-light text-base leading-relaxed">{plan.description}</p>

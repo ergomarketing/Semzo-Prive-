@@ -24,21 +24,7 @@ export default function DashboardHome() {
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
-  // FASE 4: Detectar pending_identity_verification y abrir modal automáticamente
-  useEffect(() => {
-    if (data && data.flags?.needs_verification && !showIdentityModal) {
-      console.log("[v0] Dashboard detected pending identity verification - opening modal")
-      setMembershipTypeForVerification(data.membership?.type || "essentiel")
-      setShowIdentityModal(true)
-    }
-  }, [data, showIdentityModal])
-
-  const loading = false; // Assuming loading is meant to be a boolean, you should replace this with the actual loading state if needed
-  const getMembershipLabel = () => "Membership Label"; // Replace with actual function or state
-  const getMembershipDescription = () => "Membership Description"; // Replace with actual function or state
-  const counters = { reservations: 0, waitlist: 0, wishlist: 0 }; // Replace with actual data
-  const giftCardBalance = 0; // Replace with actual data
-  const membershipType = "public"; // Replace with actual data
+  // Verificación de identidad: se muestra solo cuando el usuario intenta reservar, NO al cargar el dashboard
 
   // ESTABILIDAD: No mostrar nada hasta que Auth termine de cargar
   if (authLoading || isLoading || !user) {
@@ -60,11 +46,39 @@ export default function DashboardHome() {
     )
   }
 
+  // Guard: data puede llegar null si el fetch falla silenciosamente
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
+
   const { profile, membership, gift_cards, reservations } = data
 
-  const membershipUIStatus = mapDBStatusToUI(membership.status)
+  // Guard: membership puede no existir si el usuario es nuevo
+  if (!membership) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>No tienes membresía activa. <a href="/catalog" className="underline">Ver planes disponibles</a></AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  const membershipUIStatus = mapDBStatusToUI(membership?.status)
   const membershipLabel = getStatusLabel(membershipUIStatus)
-  const membershipDescription = getStatusDescription(membershipUIStatus, membership.type)
+  const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
+
+  // FIX 3: Modal de verificacion solo si profile esta cargado y identity_verified es exactamente false
+  // No se abre automaticamente — solo cuando el usuario hace click en el banner
+  const shouldShowModal =
+    profile !== null &&
+    profile !== undefined &&
+    profile?.identity_verified === false
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -74,7 +88,7 @@ export default function DashboardHome() {
         : "Usuario"
 
   // FASE 5: Guard para cancelled - sin acceso
-  if (membership.status === "cancelled") {
+  if (membership?.status === "cancelled") {
     return (
       <div className="max-w-7xl mx-auto">
         <Alert variant="destructive">
@@ -91,7 +105,7 @@ export default function DashboardHome() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* FASE 5: Banner para pending_identity_verification */}
-      {membership.status === "pending_identity_verification" && (
+      {membership?.status === "pending_identity_verification" && (
         <Alert className="mb-6 bg-amber-50 border-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900">
@@ -101,25 +115,27 @@ export default function DashboardHome() {
       )}
 
       {/* FALLBACK: Banner para limited_access (7+ días sin verificar) */}
-      {membership.status === "limited_access" && (
+      {membership?.status === "limited_access" && (
         <Alert className="mb-6 bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
             <strong>Acceso Limitado.</strong> Han pasado 7 días sin verificar tu identidad. Puedes ver el catálogo pero no realizar reservas.
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-4 bg-transparent"
-              onClick={() => setShowIdentityModal(true)}
-            >
-              Verificar Identidad
-            </Button>
+            {shouldShowModal && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-4 bg-transparent"
+                onClick={() => setShowIdentityModal(true)}
+              >
+                Verificar Identidad
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
 
       {/* Aviso no-bloqueante: SMS user sin email */}
-      {data?.flags?.needs_email && membership.status === "active" && (
+      {data?.flags?.needs_email && membership?.status === "active" && (
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <AlertTriangle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
@@ -137,7 +153,7 @@ export default function DashboardHome() {
       )}
 
       {/* FASE 5: Banner para past_due */}
-      {membership.status === "past_due" && (
+      {membership?.status === "past_due" && (
         <Alert className="mb-6 bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
@@ -214,7 +230,7 @@ export default function DashboardHome() {
             <ShoppingBag className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.active}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.active ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Reservas activas</p>
           </CardContent>
         </Card>
@@ -228,7 +244,7 @@ export default function DashboardHome() {
             <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.waitlist}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.waitlist ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Bolsos en espera</p>
           </CardContent>
         </Card>
@@ -239,7 +255,7 @@ export default function DashboardHome() {
             <Heart className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations.wishlist}</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.wishlist ?? 0}</div>
             <p className="text-xs text-slate-600 mt-1">Favoritos guardados</p>
           </CardContent>
         </Card>
@@ -253,7 +269,7 @@ export default function DashboardHome() {
             <Gift className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{gift_cards.total_balance.toFixed(2)}€</div>
+            <div className="text-2xl font-serif font-bold text-indigo-dark">{(gift_cards?.total_balance ?? 0).toFixed(2)}€</div>
             <p className="text-xs text-slate-600 mt-1">Disponible para usar</p>
           </CardContent>
         </Card>
@@ -273,7 +289,7 @@ export default function DashboardHome() {
               <ShoppingBag className="h-4 w-4 mr-2" />
               Explorar Catálogo
             </Button>
-            {membership.type !== "prive" && (
+            {membership?.type !== "prive" && (
               <Button
                 onClick={() => router.push("/membership/upgrade")}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
@@ -313,20 +329,18 @@ export default function DashboardHome() {
         </Card>
       </div>
 
-      {/* FASE 4: Identity Verification Modal */}
-      {user && (
+      {/* Modal verificacion: solo si profile cargado y identity_verified === false, y usuario hace click en boton del banner */}
+      {user && shouldShowModal && (
         <IdentityVerificationModal
           isOpen={showIdentityModal}
           onClose={() => setShowIdentityModal(false)}
           onVerificationComplete={(verified) => {
             if (verified) {
-              console.log("[v0] Identity verification completed successfully")
-              // Recargar datos del dashboard
               window.location.reload()
             }
           }}
           userId={user.id}
-          membershipType={membershipTypeForVerification}
+          membershipType={membership?.type ?? ""}
         />
       )}
     </div>

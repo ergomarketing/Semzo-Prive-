@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { priceId, membershipType, billingCycle, intentId } = await request.json()
+    // priceId puede ser un ID de catalogo o undefined (bag-pass usa price_data dinamico)
+    // amountCents y productName se usan cuando no hay priceId fijo (bag-pass con saldo parcial)
+    const { priceId, membershipType, billingCycle, intentId, amountCents, productName } = await request.json()
 
     const supabase = await createClient()
 
@@ -62,16 +64,18 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // VALIDATION: Required fields
-    if (!priceId || !membershipType || !intentId) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
+    // membershipType es opcional: sin el → pago unico (bag-pass)
+    // priceId OR amountCents son requeridos (bag-pass puede usar price_data dinamico)
+    if ((!priceId && !amountCents) || !intentId) {
+      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, amountCents, intentId })
       return NextResponse.json(
-        {
-          error: "Missing required fields",
-          details: "priceId, membershipType and intentId are required",
-        },
+        { error: "Missing required fields", details: "priceId (o amountCents) e intentId son requeridos" },
         { status: 400 },
       )
     }
+
+    // Determinar modo: subscription si hay membershipType, payment si es bag-pass
+    const isSubscription = !!membershipType
 
     // STEP 1: Get email from profiles (NOT from Supabase Auth)
     // SMS users have null email in auth but may have real email in profiles
@@ -133,34 +137,59 @@ export async function POST(request: NextRequest) {
       billing_cycle: billingCycle || "monthly",
     }
 
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: "subscription",
-      customer: stripeCustomerId,
-      payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
-      payment_method_collection: "always",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      metadata: commonMetadata,
-      subscription_data: {
-        metadata: {
-          ...commonMetadata,
-          sepa_backup: customerEmail ? "true" : "false",
-          service: "luxury_rental",
-        },
-      },
-      success_url: successUrl,
-      cancel_url: `${baseUrl}/cart?canceled=true`,
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      customer_update: {
-        address: "auto",
-        name: "auto",
-      },
-    }
+    const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription
+      ? {
+          mode: "subscription",
+          customer: stripeCustomerId,
+          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          payment_method_collection: "always",
+          line_items: [{ price: priceId, quantity: 1 }],
+          metadata: commonMetadata,
+          subscription_data: {
+            metadata: {
+              ...commonMetadata,
+              sepa_backup: customerEmail ? "true" : "false",
+              service: "luxury_rental",
+            },
+          },
+          success_url: successUrl,
+          cancel_url: `${baseUrl}/cart?canceled=true`,
+          allow_promotion_codes: true,
+          billing_address_collection: "auto",
+          customer_update: { address: "auto", name: "auto" },
+        }
+      : {
+          // Pago único (bag-pass u otro producto)
+          // Si priceId existe → usar price fijo catalogo
+          // Si no → usar price_data dinamico con amountCents
+          mode: "payment",
+          customer: stripeCustomerId,
+          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          line_items: priceId
+            ? [{ price: priceId, quantity: 1 }]
+            : [
+                {
+                  price_data: {
+                    currency: "eur",
+                    product_data: {
+                      name: productName || "Pase de Bolso",
+                      description: "Acceso semanal a un bolso premium",
+                    },
+                    unit_amount: amountCents,
+                  },
+                  quantity: 1,
+                },
+              ],
+          metadata: commonMetadata,
+          payment_intent_data: {
+            metadata: commonMetadata,
+          },
+          success_url: successUrl,
+          cancel_url: `${baseUrl}/cart?canceled=true`,
+          allow_promotion_codes: true,
+          billing_address_collection: "auto",
+          customer_update: { address: "auto", name: "auto" },
+        }
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
 

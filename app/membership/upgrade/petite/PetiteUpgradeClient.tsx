@@ -5,20 +5,15 @@ import { createClient } from "@/utils/supabase/client"
 import MembershipUpgradeClient from "@/app/components/MembershipUpgradeClient"
 
 const PLAN = {
-  membershipType: "essentiel",
-  billingCycle: "monthly",
-  price: 59,
-  label: "La introducción perfecta al mundo de los bolsos de lujo.",
-  priceSuffix: "/mes",
-  features: [
-    "1 bolso por mes",
-    "Envío gratuito",
-    "Seguro incluido",
-    "Atención al cliente prioritaria",
-  ],
+  membershipType: "petite",
+  billingCycle: "weekly",
+  price: 19.99,
+  label: "Favoritos del día a día. Sin compromiso.",
+  priceSuffix: "/semana",
+  features: ["1 bolso por semana", "Envío gratuito", "Seguro incluido", "Sin compromiso"],
 }
 
-export default function EssentielUpgradeClient() {
+export default function PetiteUpgradeClient() {
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
