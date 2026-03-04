@@ -26,13 +26,6 @@ export default function DashboardHome() {
 
   // Verificación de identidad: se muestra solo cuando el usuario intenta reservar, NO al cargar el dashboard
 
-  const loading = false; // Assuming loading is meant to be a boolean, you should replace this with the actual loading state if needed
-  const getMembershipLabel = () => "Membership Label"; // Replace with actual function or state
-  const getMembershipDescription = () => "Membership Description"; // Replace with actual function or state
-  const counters = { reservations: 0, waitlist: 0, wishlist: 0 }; // Replace with actual data
-  const giftCardBalance = 0; // Replace with actual data
-  const membershipType = "public"; // Replace with actual data
-
   // ESTABILIDAD: No mostrar nada hasta que Auth termine de cargar
   if (authLoading || isLoading || !user) {
     return (
@@ -53,11 +46,32 @@ export default function DashboardHome() {
     )
   }
 
+  // Guard: data puede llegar null si el fetch falla silenciosamente
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
+
   const { profile, membership, gift_cards, reservations } = data
 
-  const membershipUIStatus = mapDBStatusToUI(membership.status)
+  // Guard: membership puede no existir si el usuario es nuevo
+  if (!membership) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>No tienes membresía activa. <a href="/catalog" className="underline">Ver planes disponibles</a></AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  const membershipUIStatus = mapDBStatusToUI(membership?.status)
   const membershipLabel = getStatusLabel(membershipUIStatus)
-  const membershipDescription = getStatusDescription(membershipUIStatus, membership.type)
+  const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -67,7 +81,7 @@ export default function DashboardHome() {
         : "Usuario"
 
   // FASE 5: Guard para cancelled - sin acceso
-  if (membership.status === "cancelled") {
+  if (membership?.status === "cancelled") {
     return (
       <div className="max-w-7xl mx-auto">
         <Alert variant="destructive">
@@ -84,7 +98,7 @@ export default function DashboardHome() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* FASE 5: Banner para pending_identity_verification */}
-      {membership.status === "pending_identity_verification" && (
+      {membership?.status === "pending_identity_verification" && (
         <Alert className="mb-6 bg-amber-50 border-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900">
@@ -94,7 +108,7 @@ export default function DashboardHome() {
       )}
 
       {/* FALLBACK: Banner para limited_access (7+ días sin verificar) */}
-      {membership.status === "limited_access" && (
+      {membership?.status === "limited_access" && (
         <Alert className="mb-6 bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
@@ -112,7 +126,7 @@ export default function DashboardHome() {
       )}
 
       {/* Aviso no-bloqueante: SMS user sin email */}
-      {data?.flags?.needs_email && membership.status === "active" && (
+      {data?.flags?.needs_email && membership?.status === "active" && (
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <AlertTriangle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
@@ -130,7 +144,7 @@ export default function DashboardHome() {
       )}
 
       {/* FASE 5: Banner para past_due */}
-      {membership.status === "past_due" && (
+      {membership?.status === "past_due" && (
         <Alert className="mb-6 bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">
@@ -266,7 +280,7 @@ export default function DashboardHome() {
               <ShoppingBag className="h-4 w-4 mr-2" />
               Explorar Catálogo
             </Button>
-            {membership.type !== "prive" && (
+            {membership?.type !== "prive" && (
               <Button
                 onClick={() => router.push("/membership/upgrade")}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"

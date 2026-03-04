@@ -872,15 +872,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     console.log("[v0] PASO 2: Creating Stripe checkout with intent_id")
 
                     // PASO 2: Crear Stripe Checkout con intentId en metadata
+                    // Para bag-pass no se envía membershipType → endpoint usa mode: "payment"
+                    const checkoutBody: Record<string, any> = { priceId, intentId }
+                    if (!cartBagPass) {
+                      checkoutBody.membershipType = type
+                      checkoutBody.billingCycle = cycle
+                    }
+
                     const res = await fetch("/api/stripe/create-subscription-checkout", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        priceId,
-                        membershipType: type,
-                        billingCycle: cycle,
-                        intentId,
-                      }),
+                      body: JSON.stringify(checkoutBody),
                     })
 
                     const data = await res.json()

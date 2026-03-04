@@ -62,16 +62,20 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // VALIDATION: Required fields
-    if (!priceId || !membershipType || !intentId) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, membershipType, intentId })
+    // membershipType es opcional: si no llega, es un pago único (bag-pass)
+    if (!priceId || !intentId) {
+      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, intentId })
       return NextResponse.json(
         {
           error: "Missing required fields",
-          details: "priceId, membershipType and intentId are required",
+          details: "priceId and intentId are required",
         },
         { status: 400 },
       )
     }
+
+    // Determinar modo: subscription si hay membershipType, payment si es bag-pass
+    const isSubscription = !!membershipType
 
     // STEP 1: Get email from profiles (NOT from Supabase Auth)
     // SMS users have null email in auth but may have real email in profiles
@@ -133,34 +137,43 @@ export async function POST(request: NextRequest) {
       billing_cycle: billingCycle || "monthly",
     }
 
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: "subscription",
-      customer: stripeCustomerId,
-      payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
-      payment_method_collection: "always",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      metadata: commonMetadata,
-      subscription_data: {
-        metadata: {
-          ...commonMetadata,
-          sepa_backup: customerEmail ? "true" : "false",
-          service: "luxury_rental",
-        },
-      },
-      success_url: successUrl,
-      cancel_url: `${baseUrl}/cart?canceled=true`,
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      customer_update: {
-        address: "auto",
-        name: "auto",
-      },
-    }
+    const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription
+      ? {
+          mode: "subscription",
+          customer: stripeCustomerId,
+          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          payment_method_collection: "always",
+          line_items: [{ price: priceId, quantity: 1 }],
+          metadata: commonMetadata,
+          subscription_data: {
+            metadata: {
+              ...commonMetadata,
+              sepa_backup: customerEmail ? "true" : "false",
+              service: "luxury_rental",
+            },
+          },
+          success_url: successUrl,
+          cancel_url: `${baseUrl}/cart?canceled=true`,
+          allow_promotion_codes: true,
+          billing_address_collection: "auto",
+          customer_update: { address: "auto", name: "auto" },
+        }
+      : {
+          // Pago único (bag-pass u otro producto)
+          mode: "payment",
+          customer: stripeCustomerId,
+          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          line_items: [{ price: priceId, quantity: 1 }],
+          metadata: commonMetadata,
+          payment_intent_data: {
+            metadata: commonMetadata,
+          },
+          success_url: successUrl,
+          cancel_url: `${baseUrl}/cart?canceled=true`,
+          allow_promotion_codes: true,
+          billing_address_collection: "auto",
+          customer_update: { address: "auto", name: "auto" },
+        }
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
 
