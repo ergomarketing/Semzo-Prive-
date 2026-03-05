@@ -19,8 +19,19 @@ CREATE INDEX IF NOT EXISTS idx_stripe_events_processed_at
 --   c) reference_id es TEXT (acepta Stripe session IDs como cs_xxx, sub_xxx, etc.)
 --   d) Devuelve mensaje descriptivo para debugging
 
--- Primero aseguramos que reference_id en gift_card_transactions sea TEXT
--- (puede ser UUID o stripe ID según el contexto)
+-- Paso 1: Añadir reference_id si no existe
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'gift_card_transactions'
+       AND column_name = 'reference_id'
+  ) THEN
+    ALTER TABLE gift_card_transactions ADD COLUMN reference_id TEXT;
+  END IF;
+END $$;
+
+-- Paso 2: Convertir a TEXT si era UUID (acepta Stripe IDs como cs_xxx)
 DO $$
 BEGIN
   IF EXISTS (
@@ -33,7 +44,7 @@ BEGIN
   END IF;
 END $$;
 
--- Recrear constraint único si cambió el tipo
+-- Paso 3: Constraint único para idempotencia (solo si ambas columnas existen)
 DO $$
 BEGIN
   IF NOT EXISTS (
