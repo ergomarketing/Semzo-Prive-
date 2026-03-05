@@ -448,7 +448,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reservation: existingWithBag, message: "Reserva ya existente" })
     }
 
-    // LLAMADA ATÓMICA AL RPC: locks + creación de reserva
+    // LLAMADA ATÓMICA AL RPC: locks + creaci��n de reserva
     const passIdToConsume = passToUse?.id || usePassId
     
     console.log("[v0] Calling atomic RPC V3:", {
@@ -599,7 +599,6 @@ export async function POST(request: NextRequest) {
       const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
       const emailService = EmailServiceProduction.getInstance()
 
-      console.log("[v0] Sending user confirmation email to:", userProfile?.email)
       await emailService.sendReservationNotification({
         userEmail: userProfile?.email || "",
         userName: userProfile?.full_name || "Cliente",
@@ -607,7 +606,6 @@ export async function POST(request: NextRequest) {
         reservationDate: startDate.toLocaleDateString("es-ES"),
         reservationId: reservation.id,
       })
-      console.log("[v0] User confirmation email sent successfully")
     } catch (emailError) {
       console.error("[v0] FAILED to send user confirmation email:", emailError)
     }
