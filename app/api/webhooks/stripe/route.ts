@@ -101,6 +101,63 @@ export async function POST(req: NextRequest) {
           })
           .eq("id", userId);
 
+        // Marcar el intent como paid_pending_verification
+        // para que identity/create-session pueda encontrarlo
+        await supabase
+          .from("membership_intents")
+          .update({
+            status: "paid_pending_verification",
+            stripe_subscription_id: subscription.id,
+            updated_at: now,
+          })
+          .eq("user_id", userId)
+          .in("status", ["pending_payment", "pending", "created"]);
+
+        // EMAIL AL USUARIO: Membresía activada — pago confirmado
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", userId)
+          .single();
+
+        const membershipLabels: Record<string, string> = {
+          petite: "L'Essentiel",
+          essentiel: "L'Essentiel",
+          signature: "Signature",
+          prive: "Privé",
+        };
+        const membershipLabel = membershipLabels[membershipType] || membershipType;
+
+        if (userProfile?.email) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+          await fetch(`${siteUrl}/api/admin/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: userProfile.email,
+              subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
+              body: `
+                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                  <img src="${siteUrl}/logo.png" alt="Semzo Privé" style="height: 40px; margin-bottom: 24px;" />
+                  <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">¡Bienvenida, ${userProfile.full_name || ""}!</h1>
+                  <p style="color: #444; line-height: 1.6;">Tu pago ha sido confirmado y tu membresía <strong>${membershipLabel}</strong> está activa.</p>
+                  <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                    <p style="margin: 0; color: #1a1a4b; font-size: 15px;"><strong>Próximo paso:</strong> Completa la verificación de identidad para desbloquear el acceso completo al catálogo.</p>
+                  </div>
+                  <p style="color: #444; line-height: 1.6;">La verificación es rápida y solo toma unos minutos. Una vez completada, podrás reservar cualquier bolso de nuestra colección exclusiva.</p>
+                  <div style="margin: 32px 0;">
+                    <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                      IR A MI DASHBOARD
+                    </a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                  <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                </div>
+              `,
+            }),
+          }).catch(() => {}); // No bloquear el webhook si falla el email
+        }
+
         console.log("✅ Membership ACTIVATED:", userId);
         break;
       }
@@ -175,6 +232,42 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("id", membership.user_id);
+
+        // EMAIL AL USUARIO: Renovación confirmada
+        const { data: renewProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", membership.user_id)
+          .single();
+
+        if (renewProfile?.email) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+          const amount = invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : "—";
+          await fetch(`${siteUrl}/api/admin/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: renewProfile.email,
+              subject: "Renovación confirmada — Semzo Privé",
+              body: `
+                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                  <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Renovación confirmada</h1>
+                  <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente.</p>
+                  <div style="background: #f8f6f2; padding: 20px; border-radius: 4px; margin: 24px 0;">
+                    <p style="margin: 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
+                  </div>
+                  <div style="margin: 32px 0;">
+                    <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                      VER MI CUENTA
+                    </a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                  <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                </div>
+              `,
+            }),
+          }).catch(() => {});
+        }
 
         console.log("✅ Membership RENEWED:", membership.user_id);
         break;

@@ -23,26 +23,44 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Recuperar sesion desde Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
+    // --- MODO PAYMENT (pase de bolso) ---
+    // No tiene subscription, el pago fue único → redirigir directo al dashboard
+    if (session.mode === "payment") {
+      const userId = session.metadata?.user_id
+      if (!userId) return NextResponse.json({ status: "incomplete" })
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("identity_verified")
+        .eq("id", userId)
+        .single()
+
+      if (session.payment_status === "paid") {
+        return NextResponse.json({
+          status: "active",
+          identity_verified: profile?.identity_verified ?? true, // pases no requieren verificacion
+          mode: "payment",
+        })
+      }
+
+      return NextResponse.json({ status: "incomplete" })
+    }
+
+    // --- MODO SUBSCRIPTION (membresia) ---
     if (!session.subscription) {
       return NextResponse.json({ status: "incomplete" })
     }
 
-    // Obtener subscription
     const subscription = await stripe.subscriptions.retrieve(
       session.subscription as string
     )
 
-    // Sincronizar membership desde Stripe
     await syncMembershipFromStripe(subscription)
 
-    // Leer estado actual del usuario
     const userId = subscription.metadata?.user_id
-    if (!userId) {
-      return NextResponse.json({ status: "incomplete" })
-    }
+    if (!userId) return NextResponse.json({ status: "incomplete" })
 
     const { data: membership } = await supabase
       .from("user_memberships")
@@ -61,12 +79,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         status: "active",
         identity_verified: profile?.identity_verified ?? false,
+        mode: "subscription",
       })
     }
 
     return NextResponse.json({ status: "incomplete" })
   } catch (error: any) {
-    console.error("[v0] verify-session error:", error.message)
     return NextResponse.json({ error: "Failed to verify session" }, { status: 500 })
   }
 }

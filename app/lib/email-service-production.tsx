@@ -196,14 +196,6 @@ export class EmailServiceProduction {
     reservationDate: string
     reservationId?: string
   }): Promise<boolean> {
-    console.log("[v0] EmailServiceProduction.sendReservationNotification called with:", {
-      userEmail: data.userEmail,
-      userName: data.userName,
-      bagName: data.bagName,
-      adminEmail: this.adminEmail,
-    })
-
-    // Send notification to admin
     const adminEmailData: EmailData = {
       to: this.adminEmail,
       subject: `Nueva reserva: ${data.bagName}`,
@@ -211,7 +203,6 @@ export class EmailServiceProduction {
       text: `Nueva reserva de ${data.userName} para ${data.bagName}`,
     }
 
-    // Send confirmation to user
     const userEmailData: EmailData = {
       to: data.userEmail,
       subject: `Reserva confirmada: ${data.bagName} - Semzo Privé`,
@@ -219,18 +210,10 @@ export class EmailServiceProduction {
       text: `Tu reserva para ${data.bagName} ha sido confirmada.`,
     }
 
-    console.log("[v0] Sending admin email to mailbox@semzoprive.com...")
     const adminSent = await this.sendWithResend(adminEmailData)
-    console.log("[v0] Admin email result:", adminSent ? "SUCCESS" : "FAILED")
-
-    console.log("[v0] Sending user confirmation email to", data.userEmail, "...")
     const userSent = await this.sendWithResend(userEmailData)
-    console.log("[v0] User email result:", userSent ? "SUCCESS" : "FAILED")
 
-    const bothSent = adminSent && userSent
-    console.log("[v0] Overall email notification result:", bothSent ? "SUCCESS" : "PARTIAL/FAILED")
-
-    return bothSent
+    return adminSent && userSent
   }
 
   async sendCancellationNotification(data: {
@@ -240,12 +223,7 @@ export class EmailServiceProduction {
     reservationId: string
     cancellationDate: string
   }): Promise<boolean> {
-    console.log("[v0] EmailServiceProduction.sendCancellationNotification called with:", {
-      userEmail: data.userEmail,
-      userName: data.userName,
-      bagName: data.bagName,
-      adminEmail: this.adminEmail,
-    })
+
 
     // Send notification to admin
     const adminEmailData: EmailData = {
@@ -263,11 +241,7 @@ export class EmailServiceProduction {
       text: `Tu reserva para ${data.bagName} ha sido cancelada.`,
     }
 
-    console.log("[v0] Sending admin cancellation email to mailbox@semzoprive.com...")
     const adminSent = await this.sendWithResend(adminEmailData)
-    console.log("[v0] Admin cancellation email result:", adminSent ? "SUCCESS" : "FAILED")
-
-    console.log("[v0] Sending user cancellation email to", data.userEmail, "...")
     const userSent = await this.sendWithResend(userEmailData)
     console.log("[v0] User cancellation email result:", userSent ? "SUCCESS" : "FAILED")
 

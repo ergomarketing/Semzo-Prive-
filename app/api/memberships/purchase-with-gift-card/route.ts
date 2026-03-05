@@ -12,13 +12,10 @@ const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log("[v0] purchase-with-gift-card body:", JSON.stringify(body))
-
     const { userId, giftCardId, amountCents, membershipType, billingCycle } = body
 
     // 1. Validacion completa del body — todo debe existir
     if (!userId || !giftCardId || !amountCents || !membershipType || !billingCycle) {
-      console.log("[v0] purchase-with-gift-card missing fields:", { userId: !!userId, giftCardId: !!giftCardId, amountCents: !!amountCents, membershipType: !!membershipType, billingCycle: !!billingCycle })
       return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, amountCents, membershipType, billingCycle" }, { status: 400 })
     }
 
@@ -44,7 +41,6 @@ export async function POST(request: NextRequest) {
 
     // 4. Verificar saldo — amount en DB esta en EUROS, amountCents viene en centimos
     const amountEuros = amountCents / 100
-    console.log("[v0] gift card amount (euros):", giftCard.amount, "| requested (euros):", amountEuros)
 
     if (giftCard.amount < amountEuros) {
       return NextResponse.json({ error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` }, { status: 400 })
@@ -55,8 +51,6 @@ export async function POST(request: NextRequest) {
       p_gift_card_id: giftCardId,
       p_amount: amountEuros,
     })
-
-    console.log("[v0] RPC result:", rpcResult, "| error:", rpcError?.message)
 
     if (rpcError) {
       return NextResponse.json({ error: "Error procesando gift card: " + rpcError.message }, { status: 400 })
@@ -85,12 +79,8 @@ export async function POST(request: NextRequest) {
       )
 
     if (upsertError) {
-      console.error("[v0] upsert error:", upsertError)
-      // Gift card ya fue consumida — registrar el error pero no dejar al usuario sin membresia
       return NextResponse.json({ error: "Gift card consumida pero error activando membresía: " + upsertError.message }, { status: 500 })
     }
-
-    console.log("[v0] membership activated for user:", userId, "type:", membershipType)
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {

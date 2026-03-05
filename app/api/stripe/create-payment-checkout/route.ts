@@ -1,25 +1,63 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
+import { createClient } from "@/app/lib/supabase/server"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+export const dynamic = "force-dynamic"
 
-export async function POST(req: Request) {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
+
+export async function POST(req: NextRequest) {
   try {
-    const { amountCents, productName } = await req.json()
+    const { amountCents, productName, intentId } = await req.json()
 
-    if (!amountCents || !productName) {
-      return NextResponse.json({ error: "Faltan datos: amountCents y productName son requeridos" }, { status: 400 })
+    if (!amountCents || !productName || !intentId) {
+      return NextResponse.json(
+        { error: "Faltan campos requeridos: amountCents, productName, intentId" },
+        { status: 400 }
+      )
     }
 
     if (amountCents < 50) {
       return NextResponse.json({ error: "El importe mínimo es 0.50€" }, { status: 400 })
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzo-prive.vercel.app"
+    // Autenticacion: mismo patron que create-subscription-checkout
+    const supabase = await createClient()
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
 
-    const session = await stripe.checkout.sessions.create({
+    if (authError || !session) {
+      return NextResponse.json({ error: "Usuario no autenticado" }, { status: 401 })
+    }
+
+    const userId = session.user.id
+
+    // Obtener o crear customer de Stripe
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id, full_name, email")
+      .eq("id", userId)
+      .single()
+
+    let stripeCustomerId = profile?.stripe_customer_id
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: profile?.email || undefined,
+        name: profile?.full_name || undefined,
+        metadata: { supabase_user_id: userId },
+      })
+      stripeCustomerId = customer.id
+      await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
+    }
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+
+    const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"],
+      customer: stripeCustomerId,
+      payment_method_types: ["card"],  // sepa_debit solo es válido en mode: subscription
       line_items: [
         {
           price_data: {
@@ -33,13 +71,19 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/dashboard?pase=success`,
+      metadata: { intent_id: intentId, user_id: userId },
+      payment_intent_data: { metadata: { intent_id: intentId, user_id: userId } },
+      success_url: `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart?canceled=true`,
+      billing_address_collection: "auto",
+      customer_update: { address: "auto", name: "auto" },
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ sessionId: checkoutSession.id, url: checkoutSession.url })
   } catch (error: any) {
-    console.error("[create-payment-checkout] error:", error?.message)
-    return NextResponse.json({ error: "Error creando sesión de pago: " + error?.message }, { status: 500 })
+    return NextResponse.json(
+      { error: "Error creando sesión de pago: " + (error?.message || "Unknown error") },
+      { status: 500 }
+    )
   }
 }

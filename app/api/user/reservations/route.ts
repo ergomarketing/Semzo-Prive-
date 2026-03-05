@@ -217,15 +217,26 @@ export async function POST(request: NextRequest) {
 
     const effectivePlan = membership.membership_type || "free"
 
-    // Get profile for email only
+    // Obtener perfil: email para notificaciones + identity_verified para proteccion backend
     const { data: userProfile } = await supabase
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, identity_verified")
       .eq("id", userId)
       .single()
 
     if (!userProfile) {
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
+    }
+
+    // PUNTO 7: Proteccion backend — bloquear reservas si identidad no verificada
+    if (userProfile.identity_verified === false) {
+      return NextResponse.json(
+        {
+          error: "Debes completar la verificación de identidad antes de realizar reservas.",
+          identity_verification_required: true,
+        },
+        { status: 403 }
+      )
     }
 
     const { data: bag, error: bagError } = await supabase
@@ -437,7 +448,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reservation: existingWithBag, message: "Reserva ya existente" })
     }
 
-    // LLAMADA ATÓMICA AL RPC: locks + creación de reserva
+    // LLAMADA ATÓMICA AL RPC: locks + creaci��n de reserva
     const passIdToConsume = passToUse?.id || usePassId
     
     console.log("[v0] Calling atomic RPC V3:", {
@@ -588,7 +599,6 @@ export async function POST(request: NextRequest) {
       const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
       const emailService = EmailServiceProduction.getInstance()
 
-      console.log("[v0] Sending user confirmation email to:", userProfile?.email)
       await emailService.sendReservationNotification({
         userEmail: userProfile?.email || "",
         userName: userProfile?.full_name || "Cliente",
@@ -596,7 +606,6 @@ export async function POST(request: NextRequest) {
         reservationDate: startDate.toLocaleDateString("es-ES"),
         reservationId: reservation.id,
       })
-      console.log("[v0] User confirmation email sent successfully")
     } catch (emailError) {
       console.error("[v0] FAILED to send user confirmation email:", emailError)
     }
