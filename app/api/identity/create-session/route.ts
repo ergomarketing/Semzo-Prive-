@@ -29,42 +29,80 @@ export async function POST() {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 })
   }
 
+  // Buscar intent en cualquier estado post-pago válido
+  // El webhook puede no haber actualizado a "paid_pending_verification" aún
   const { data: intent } = await supabase
     .from("membership_intents")
-    .select("id, membership_type")
+    .select("id, membership_type, status")
     .eq("user_id", user.id)
-    .eq("status", "paid_pending_verification")
+    .in("status", [
+      "paid_pending_verification",
+      "pending_payment",
+      "completed",
+      "active",
+      "pending",
+      "created",
+    ])
     .order("created_at", { ascending: false })
     .limit(1)
     .single()
 
+  // Si no hay intent, verificar si tiene membresía activa directamente
   if (!intent) {
-    return NextResponse.json(
-      { error: "No hay membresía pendiente de verificación" },
-      { status: 400 }
-    )
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("id, membership_type")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: "No hay membresía pendiente de verificación" },
+        { status: 400 }
+      )
+    }
+
+    // Usar la membresía activa como fallback para crear la sesión de verificación
+    const fallbackIntent = { id: membership.id, membership_type: membership.membership_type }
+    return createVerificationSession(supabase, user.id, fallbackIntent)
   }
 
+  return createVerificationSession(supabase, user.id, intent)
+}
+
+async function createVerificationSession(
+  supabase: any,
+  userId: string,
+  intent: { id: string; membership_type: string }
+) {
+  // Reutilizar sesión pendiente si existe
   const { data: existing } = await supabase
     .from("identity_verifications")
     .select("stripe_verification_id, status")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("status", "pending")
     .maybeSingle()
 
   if (existing?.stripe_verification_id) {
-    const session = await stripe.identity.verificationSessions.retrieve(
-      existing.stripe_verification_id
-    )
-    if (session.url) {
-      return NextResponse.json({ url: session.url })
+    try {
+      const session = await stripe.identity.verificationSessions.retrieve(
+        existing.stripe_verification_id
+      )
+      if (session.url) {
+        return NextResponse.json({ url: session.url })
+      }
+    } catch {
+      // Sesion expirada o inválida — crear una nueva
     }
   }
 
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
     metadata: {
-      user_id: user.id,
+      user_id: userId,
       intent_id: intent.id,
       membership_type: intent.membership_type,
     },
@@ -72,7 +110,7 @@ export async function POST() {
 
   await supabase.from("identity_verifications").upsert(
     {
-      user_id: user.id,
+      user_id: userId,
       stripe_verification_id: session.id,
       status: "pending",
       membership_type: intent.membership_type,
@@ -80,7 +118,6 @@ export async function POST() {
     { onConflict: "user_id" }
   )
 
-  // Also update the membership_intent with the verification session ID
   await supabase
     .from("membership_intents")
     .update({

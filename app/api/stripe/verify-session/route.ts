@@ -28,23 +28,14 @@ export async function GET(req: NextRequest) {
     // --- MODO PAYMENT (pase de bolso) ---
     // No tiene subscription, el pago fue único → redirigir directo al dashboard
     if (session.mode === "payment") {
-      const userId = session.metadata?.user_id
-      if (!userId) return NextResponse.json({ status: "incomplete" })
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("identity_verified")
-        .eq("id", userId)
-        .single()
-
+      // Pases de bolso: sin verificacion de identidad — siempre directo al dashboard
       if (session.payment_status === "paid") {
         return NextResponse.json({
           status: "active",
-          identity_verified: profile?.identity_verified ?? true, // pases no requieren verificacion
+          identity_verified: true,
           mode: "payment",
         })
       }
-
       return NextResponse.json({ status: "incomplete" })
     }
 
