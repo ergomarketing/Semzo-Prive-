@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       if (session.payment_status === "paid") {
         return NextResponse.json({
           status: "active",
-          identity_verified: profile?.identity_verified ?? true, // pases no requieren verificacion
+          identity_verified: true, // pases no requieren verificacion de identidad — siempre directo al dashboard
           mode: "payment",
         })
       }
