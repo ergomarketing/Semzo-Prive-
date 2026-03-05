@@ -43,6 +43,23 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
+  // IDEMPOTENCIA: si este evento ya fue procesado, ignorar
+  const { data: alreadyProcessed } = await supabase
+    .from("stripe_processed_events")
+    .select("event_id")
+    .eq("event_id", event.id)
+    .maybeSingle();
+
+  if (alreadyProcessed) {
+    return NextResponse.json({ received: true, skipped: "already_processed" });
+  }
+
+  // Registrar el evento ANTES de procesarlo para evitar doble ejecución en retries simultáneos
+  await supabase.from("stripe_processed_events").insert({
+    event_id: event.id,
+    event_type: event.type,
+  }).throwOnError();
+
   try {
     switch (event.type) {
 
@@ -53,6 +70,33 @@ export async function POST(req: NextRequest) {
        */
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // --- PASE DE BOLSO (mode: payment) ---
+        if (session.mode === "payment" && session.payment_status === "paid") {
+          const giftCardId = session.metadata?.gift_card_id;
+          const userId = session.metadata?.user_id;
+
+          // Consumir gift card si había una aplicada parcialmente
+          // consume_gift_card_atomic v2: verifica saldo e idempotencia por session.id
+          if (giftCardId && userId) {
+            const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+            const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
+            const originalPriceEuros = originalPriceCents / 100;
+            const amountChargedEuros = (session.amount_total || 0) / 100;
+            const giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
+
+            if (giftCardConsumedEuros > 0) {
+              await supabase.rpc("consume_gift_card_atomic", {
+                p_gift_card_id: giftCardId,
+                p_amount: giftCardConsumedEuros,
+                p_user_id: userId,
+                p_reference_id: session.id,       // cs_xxx — idempotencia
+                p_reference_type: "bag_pass",
+              });
+            }
+          }
+          break;
+        }
 
         if (
           session.mode !== "subscription" ||
