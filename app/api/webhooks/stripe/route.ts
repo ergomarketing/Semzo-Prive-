@@ -54,6 +54,42 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        // --- PASE DE BOLSO (mode: payment) ---
+        if (session.mode === "payment" && session.payment_status === "paid") {
+          const giftCardId = session.metadata?.gift_card_id;
+          const userId = session.metadata?.user_id;
+
+          // Consumir gift card si había una aplicada parcialmente
+          if (giftCardId && userId) {
+            const { data: giftCard } = await supabase
+              .from("gift_cards")
+              .select("id, amount, status")
+              .eq("id", giftCardId)
+              .single();
+
+            if (giftCard && giftCard.status === "active") {
+              // El amountCents cobrado por Stripe = precio tras descuento
+              // El monto consumido de la gift card = precio original - cobrado
+              const amountChargedCents = session.amount_total || 0;
+              const amountChargedEuros = amountChargedCents / 100;
+
+              // Obtener precio original del line item
+              const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+              const originalPriceCents = lineItems.data[0]?.price?.unit_amount || amountChargedCents;
+              const originalPriceEuros = originalPriceCents / 100;
+              const giftCardConsumedEuros = Math.min(giftCard.amount, originalPriceEuros - amountChargedEuros);
+
+              if (giftCardConsumedEuros > 0) {
+                await supabase.rpc("consume_gift_card_atomic", {
+                  p_gift_card_id: giftCardId,
+                  p_amount: giftCardConsumedEuros,
+                });
+              }
+            }
+          }
+          break;
+        }
+
         if (
           session.mode !== "subscription" ||
           session.payment_status !== "paid" ||

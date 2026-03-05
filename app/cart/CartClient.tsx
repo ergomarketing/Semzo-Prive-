@@ -799,12 +799,11 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       if (!gcResponse.ok) throw new Error(gcData.error || "Error al procesar gift card")
                       clearCart()
                       toast.success("Membresía activada con Gift Card")
-                      router.push("/dashboard/membresia")
+                      // Redirigir a verificación de identidad — mismo flujo que membresía via Stripe
+                      router.push("/verify-identity")
                       return
                     }
 
-                    console.log("[v0] PASO 1: Creating membership intent for user:", user.id)
-                    
                     // PASO 1: Crear intent en DB ANTES de Stripe
                     const intentRes = await fetch("/api/checkout/create-intent", {
                       method: "POST",
@@ -825,7 +824,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     }
 
                     const { intentId } = await intentRes.json()
-                    console.log("[v0] Intent created:", intentId)
 
                     const priceMap: Record<string, Record<string, string>> = {
                       petite: {
@@ -862,17 +860,18 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     }
                     // Bag-pass: NO usar priceId de catalogo → price_data dinamico en endpoint
 
-                    console.log("[v0] PASO 2: Creating Stripe checkout with intent_id")
-
                     // PASO 2: Crear Stripe Checkout
                     // Membresía → priceId fijo + membershipType (mode: subscription)
                     // Bag-pass → amountCents dinamico sin membershipType (mode: payment)
                     const checkoutBody: Record<string, any> = { intentId }
                     if (cartBagPass) {
-                      // Pago unico por el resto tras gift card: todos los tiers de pases
                       checkoutBody.amountCents = Math.round(finalAmount * 100)
                       checkoutBody.productName = cartBagPass.name || "Pase de Bolso"
-                      // Sin membershipType → endpoint usa mode: "payment"
+                      // Pasar giftCardId para que el webhook lo consuma tras el pago
+                      if (appliedGiftCard) {
+                        checkoutBody.giftCardId = appliedGiftCard.id
+                        checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
+                      }
                     } else {
                       checkoutBody.priceId = priceId
                       checkoutBody.membershipType = type
@@ -894,7 +893,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     const data = await res.json()
                     if (!res.ok) throw new Error(data.error || "Error al crear checkout")
 
-                    console.log("[v0] Redirecting to Stripe:", data.url)
                     window.location.href = data.url
                   } catch (error: any) {
                     console.error("[v0] Checkout error:", error)

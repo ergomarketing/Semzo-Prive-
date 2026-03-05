@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06
 
 export async function POST(req: NextRequest) {
   try {
-    const { amountCents, productName, intentId } = await req.json()
+    const { amountCents, productName, intentId, giftCardId } = await req.json()
 
     if (!amountCents || !productName || !intentId) {
       return NextResponse.json(
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      metadata: { intent_id: intentId, user_id: userId },
-      payment_intent_data: { metadata: { intent_id: intentId, user_id: userId } },
+      metadata: { intent_id: intentId, user_id: userId, ...(giftCardId ? { gift_card_id: giftCardId } : {}) },
+      payment_intent_data: { metadata: { intent_id: intentId, user_id: userId, ...(giftCardId ? { gift_card_id: giftCardId } : {}) } },
       success_url: `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart?canceled=true`,
       billing_address_collection: "auto",

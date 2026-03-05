@@ -38,6 +38,7 @@ export default function CatalogSection() {
   const [wishlist, setWishlist] = useState<string[]>([])
   const [bags, setBags] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [userMembership, setUserMembership] = useState<string | null>(null)
   const { addItem } = useCart()
   const router = useRouter()
 
@@ -56,13 +57,6 @@ export default function CatalogSection() {
         if (error) throw error
 
         if (data) {
-          console.log(
-            "[v0] Bolsos cargados:",
-            data.map((b) => ({
-              name: b.name,
-              membership_type: b.membership_type,
-            })),
-          )
           setBags(data)
         }
       } catch (error) {
@@ -74,6 +68,31 @@ export default function CatalogSection() {
 
     loadBags()
   }, [supabase])
+
+  // Fetch de membresía UNA SOLA VEZ en el padre — evita N llamadas (una por BagCard)
+  useEffect(() => {
+    const loadUserMembership = async () => {
+      if (!user?.id || !supabase) return
+      try {
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("membership_type")
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("membership_type")
+          .eq("id", user.id)
+          .single()
+
+        setUserMembership((membership?.membership_type || profile?.membership_type || "free").toLowerCase())
+      } catch {
+        setUserMembership("free")
+      }
+    }
+    loadUserMembership()
+  }, [user?.id, supabase])
 
   useEffect(() => {
     const loadWishlist = async () => {
@@ -187,6 +206,7 @@ export default function CatalogSection() {
                   onToggleWishlist={toggleWishlist}
                   membershipTier={(bag.membership_type || "essentiel") as "essentiel" | "signature" | "prive"}
                   user={user}
+                  userMembership={userMembership}
                 />
               ))}
             </div>
@@ -202,6 +222,7 @@ export default function CatalogSection() {
                   onToggleWishlist={toggleWishlist}
                   membershipTier="essentiel"
                   user={user}
+                  userMembership={userMembership}
                 />
               ))}
             </div>
@@ -227,6 +248,7 @@ export default function CatalogSection() {
                   onToggleWishlist={toggleWishlist}
                   membershipTier="signature"
                   user={user}
+                  userMembership={userMembership}
                 />
               ))}
             </div>
@@ -252,6 +274,7 @@ export default function CatalogSection() {
                   onToggleWishlist={toggleWishlist}
                   membershipTier="prive"
                   user={user}
+                  userMembership={userMembership}
                 />
               ))}
             </div>
@@ -278,12 +301,14 @@ function BagCard({
   onToggleWishlist,
   membershipTier,
   user,
+  userMembership,
 }: {
   bag: any
   inWishlist: boolean
   onToggleWishlist: (id: string) => void
   membershipTier: "essentiel" | "signature" | "prive"
   user: any
+  userMembership: string | null
 }) {
   const [isAddingToWaitlist, setIsAddingToWaitlist] = useState(false)
   const [isInWaitlist, setIsInWaitlist] = useState(false)
@@ -292,7 +317,6 @@ function BagCard({
   const [showPassSelector, setShowPassSelector] = useState(false)
   const [availablePasses, setAvailablePasses] = useState<any[]>([])
   const [selectedPassId, setSelectedPassId] = useState<string | null>(null)
-  const [userMembership, setUserMembership] = useState<string | null>(null)
 
   const { toast } = useToast()
   const { addItem } = useCart()
@@ -301,28 +325,6 @@ function BagCard({
   const supabase = useMemo(() => getSupabaseBrowser(), [])
 
   const isAvailable = bag.status === "available"
-
-  useEffect(() => {
-    const loadUserMembership = async () => {
-      if (!user || !supabase) return
-
-      try {
-        const { data: membership } = await supabase
-          .from("user_memberships")
-          .select("membership_type")
-          .eq("user_id", user.id)
-          .maybeSingle()
-
-        const { data: profile } = await supabase.from("profiles").select("membership_type").eq("id", user.id).single()
-
-        setUserMembership((membership?.membership_type || profile?.membership_type || "free").toLowerCase())
-      } catch (error) {
-        console.error("[v0] Error loading user membership:", error)
-      }
-    }
-
-    loadUserMembership()
-  }, [user, supabase])
 
   useEffect(() => {
     const checkWaitlist = async () => {
