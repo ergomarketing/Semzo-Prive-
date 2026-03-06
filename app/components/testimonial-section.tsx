@@ -13,12 +13,12 @@ export default function TestimonialSection() {
               Lo que dicen nuestras clientas
             </h2>
 
-            <div className="w-full mt-6 rounded-sm overflow-hidden shadow-md">
+            <div className="w-full mt-6 rounded-sm overflow-hidden shadow-md bg-[#f8f6f3]" style={{height: "520px"}}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/cliente-satisfecha.png"
                 alt="Clienta con caja Semzo Privé"
-                className="w-full h-auto object-cover"
+                style={{width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top"}}
               />
             </div>
           </div>
