@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function CollectionSection() {
   const brands = [
@@ -46,14 +47,36 @@ export default function CollectionSection() {
           </div>
         </div>
 
-        {/* Galería editorial */}
-        <div className="relative aspect-[4/3] md:aspect-[16/9] bg-white rounded-lg flex items-center justify-center mb-12">
-          <div className="text-center p-6 md:p-8">
-            <div className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-rose-pastel/20 flex items-center justify-center">
-              <span className="text-2xl md:text-4xl text-indigo-dark">SP</span>
+        {/* Galería editorial — imagen lifestyle con overlay */}
+        <div className="relative aspect-[4/3] md:aspect-[16/9] overflow-hidden mb-12">
+          <Image
+            src="/images/hero-luxury-bags.jpg"
+            alt="Alquiler de bolsos de lujo — Semzo Privé"
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+          {/* Overlay degradado oscuro de izquierda a centro */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent" />
+
+          {/* Contenido editorial sobre la imagen */}
+          <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 lg:px-24">
+            <p className="text-xs uppercase tracking-widest text-white/70 mb-4 font-medium">
+              Descubre la colección
+            </p>
+            <h3 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light text-white leading-tight mb-4 max-w-lg">
+              Un armario curado de bolsos icónicos de las casas más influyentes del mundo.
+            </h3>
+            <p className="text-white/75 text-base md:text-lg font-light mb-8 max-w-md">
+              Accede a piezas excepcionales cuando tu vida lo necesite.
+            </p>
+            <div>
+              <Link href="/catalog">
+                <Button className="rounded-none px-8 py-5 text-xs uppercase tracking-widest font-medium bg-white text-indigo-dark hover:bg-rose-pastel hover:text-indigo-dark transition-all duration-300">
+                  Explorar bolsos
+                </Button>
+              </Link>
             </div>
-            <h3 className="text-lg md:text-xl font-serif text-slate-900 mb-2">Imagen Colección</h3>
-            <p className="text-sm text-slate-600">Colección de bolsos de lujo</p>
           </div>
         </div>
 
