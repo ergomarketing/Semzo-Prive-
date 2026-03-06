@@ -18,7 +18,7 @@ export default function TestimonialSection() {
               <img
                 src="/images/cliente-satisfecha.png"
                 alt="Clienta con caja Semzo Privé"
-                style={{width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center"}}
+                style={{width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 40%"}}
               />
             </div>
           </div>
