@@ -56,10 +56,10 @@ export default function ListaPrivadaClient() {
     <div className="relative min-h-screen">
       {/* Imagen de fondo con overlay */}
       <div
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+        className="fixed inset-0 -z-10 bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
       />
-      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/92" />
+      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/85" />
 
       <header className="border-b border-gray-200/60 bg-white/70 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
