@@ -91,7 +91,7 @@ export default function InvitacionClient() {
           </div>
 
           {/* CTA */}
-          <Link href="/membresias">
+          <Link href="/checkout">
             <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto">
               Activar Mi Membresía
             </Button>
