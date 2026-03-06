@@ -260,7 +260,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         price: `${option.bagPass.toFixed(2)}€`,
         billingCycle: option.billingCycle,
         description: `${bag.brand} ${bag.name}`,
-        image: bag.images[0],
+        image: bag.images?.[0] || bag.image || "/images/jacquemus-le-chiquito.jpg",
         brand: bag.brand,
         itemType: "bag-pass",
       }

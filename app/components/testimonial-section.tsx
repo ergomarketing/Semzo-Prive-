@@ -13,14 +13,13 @@ export default function TestimonialSection() {
               Lo que dicen nuestras clientas
             </h2>
 
-            <div className="relative aspect-[4/5] w-full max-w-sm mx-auto lg:max-w-none rounded-lg overflow-hidden bg-white/60 backdrop-blur-sm flex items-center justify-center">
-              <div className="text-center p-6 md:p-8">
-                <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-rose-pastel/20 flex items-center justify-center">
-                  <span className="text-2xl md:text-3xl lg:text-4xl text-indigo-dark">SP</span>
-                </div>
-                <h3 className="text-lg md:text-xl font-serif text-slate-900 mb-2">Imagen Testimonio</h3>
-                <p className="text-sm text-slate-600">Clienta satisfecha</p>
-              </div>
+            <div className="w-full mt-6 rounded-sm overflow-hidden shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/cliente-satisfecha.png"
+                alt="Clienta con caja Semzo Privé"
+                className="w-full h-auto object-cover"
+              />
             </div>
           </div>
 
