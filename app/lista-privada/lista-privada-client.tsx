@@ -150,14 +150,14 @@ export default function ListaPrivadaClient() {
           </div>
 
           {/* Bullets */}
-          <div className="space-y-4 text-left">
+          <div className="flex flex-col items-center space-y-4">
             {[
               "Bolsos de diseñador por suscripción",
-              "Desde 59€/mes",
+              "Desde 59€/mes · Sin permanencia",
               "Plazas limitadas en Marbella",
             ].map((item) => (
-              <div key={item} className="flex items-start gap-3">
-                <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
+              <div key={item} className="flex items-center gap-3">
+                <div className="h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
                 <p className="text-gray-700">{item}</p>
               </div>
             ))}
