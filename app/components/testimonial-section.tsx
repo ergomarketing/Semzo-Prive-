@@ -1,5 +1,3 @@
-import Image from "next/image"
-
 export default function TestimonialSection() {
   return (
     <section
@@ -15,14 +13,12 @@ export default function TestimonialSection() {
               Lo que dicen nuestras clientas
             </h2>
 
-            <div className="relative w-full h-[520px] lg:h-[640px] rounded-sm overflow-hidden shadow-md mt-6">
-              <Image
+            <div className="w-full mt-6 rounded-sm overflow-hidden shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/images/cliente-satisfecha.png"
                 alt="Clienta con caja Semzo Privé"
-                fill
-                className="object-cover object-center"
-                sizes="(max-width: 1024px) 100vw, 500px"
-                priority
+                className="w-full h-auto object-cover"
               />
             </div>
           </div>
