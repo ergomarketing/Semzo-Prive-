@@ -15,13 +15,14 @@ export default function TestimonialSection() {
               Lo que dicen nuestras clientas
             </h2>
 
-            <div className="relative aspect-[4/5] w-full max-w-sm mx-auto lg:max-w-none rounded-sm overflow-hidden shadow-md">
+            <div className="relative w-full h-[520px] lg:h-[640px] rounded-sm overflow-hidden shadow-md mt-6">
               <Image
                 src="/images/cliente-satisfecha.png"
                 alt="Clienta con caja Semzo Privé"
                 fill
-                className="object-cover object-top"
-                sizes="(max-width: 1024px) 384px, 480px"
+                className="object-cover object-center"
+                sizes="(max-width: 1024px) 100vw, 500px"
+                priority
               />
             </div>
           </div>
