@@ -13,14 +13,7 @@ export default function TestimonialSection() {
               Lo que dicen nuestras clientas
             </h2>
 
-            <div className="w-full mt-6 rounded-sm overflow-hidden shadow-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/cliente-satisfecha.png"
-                alt="Clienta con caja Semzo Privé"
-                className="w-full h-auto object-cover"
-              />
-            </div>
+
           </div>
 
           {/* Columna derecha */}
