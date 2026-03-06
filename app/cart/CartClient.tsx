@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect, useMemo } from "react"
-import { Info, Tag, Gift, Loader2, X, Check, Trash2, ArrowLeft, ShoppingBag, Shield, User } from "lucide-react"
+import { Info, Tag, Gift, Loader2, X, Check, Trash2, ArrowLeft, ShoppingBag, Shield } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { Checkbox } from "@/components/ui/checkbox"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
@@ -925,9 +925,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         {items.length > 0 && !user && (
           <Card className="mb-6 border-2 border-rose-pastel/30 shadow-lg">
             <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-nude flex items-center justify-center">
-                <User className="w-8 h-8 text-indigo-dark" />
-              </div>
+  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-nude flex items-center justify-center overflow-hidden">
+    <Image src="/images/sp-monogram-v2.png" alt="Semzo Privé" width={40} height={40} className="object-contain" />
+  </div>
               <h3 className="font-serif text-xl text-indigo-dark mb-2">Inicia sesión para continuar</h3>
               <p className="text-sm text-indigo-dark/70 mb-6">
                 Necesitas una cuenta para aplicar descuentos y completar tu compra
