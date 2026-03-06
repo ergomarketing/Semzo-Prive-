@@ -31,11 +31,9 @@ export default function HeroSection() {
                 Membresías
               </p>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-[1.1] tracking-tight">
-                Tu puerta de acceso al
+                Alquiler de bolsos de lujo
                 <br />
-                <span className="text-rose-pastel">armario de</span>
-                <br />
-                tus sueños
+                <span className="text-rose-pastel">mediante membresía</span>
               </h1>
             </div>
 
