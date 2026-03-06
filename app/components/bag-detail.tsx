@@ -165,7 +165,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   }
 
   const membershipImages: Record<string, string> = {
-    petite: "/images/membership-petite.jpg",
+    petite: "/images/jacquemus-le-chiquito.jpg",
     essentiel: "/images/louis-vuitton-essentiel-new.jpg",
     signature: "/images/dior-lady-bag.jpg",
     prive: "/images/chanel-prive-pink.jpg",
