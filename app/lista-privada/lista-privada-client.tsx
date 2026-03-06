@@ -53,11 +53,18 @@ export default function ListaPrivadaClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+    <div className="relative min-h-screen">
+      {/* Imagen de fondo con overlay */}
+      <div
+        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
+      />
+      <div className="fixed inset-0 -z-10 bg-[#f5f2ee]/80" />
+
+      <header className="border-b border-gray-200/60 bg-white/70 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="text-2xl font-serif text-[#1a1a4b]">
-            SEMZO PRIVÉ
+            Semzo Privé
           </Link>
         </div>
       </header>
