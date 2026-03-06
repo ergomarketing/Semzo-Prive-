@@ -4,7 +4,7 @@ import { useEffect } from "react"
 
 export default function CheckoutPage() {
   useEffect(() => {
-    window.location.href = "/membership-signup"
+    window.location.href = "/#membresias"
   }, [])
 
   return null
