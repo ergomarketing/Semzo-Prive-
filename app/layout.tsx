@@ -140,6 +140,17 @@ export default function RootLayout({
       email: "mailbox@semzoprive.com",
       availableLanguage: ["es", "en"],
     },
+    knowsAbout: [
+      "alquiler de bolsos de lujo",
+      "bolsos de diseñador",
+      "suscripción de bolsos",
+      "club de bolsos de lujo",
+      "moda sostenible",
+      "Chanel",
+      "Dior",
+      "Louis Vuitton",
+      "Hermès",
+    ],
   }
 
   const websiteSchema = {
