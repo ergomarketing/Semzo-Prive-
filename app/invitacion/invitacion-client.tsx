@@ -17,12 +17,17 @@ export default function InvitacionClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header minimalista */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+    <div className="relative min-h-screen">
+      <div
+        className="fixed inset-0 -z-10 bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
+      />
+      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/85" />
+
+      <header className="border-b border-gray-200/60 bg-white/70 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="text-2xl font-serif text-[#1a1a4b]">
-            SEMZO PRIVÉ
+            Semzo Privé
           </Link>
         </div>
       </header>
@@ -91,7 +96,7 @@ export default function InvitacionClient() {
           </div>
 
           {/* CTA */}
-          <Link href="/membresias">
+          <Link href="/#membresias">
             <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto">
               Activar Mi Membresía
             </Button>
@@ -107,7 +112,7 @@ export default function InvitacionClient() {
       </main>
 
       {/* Footer minimalista */}
-      <footer className="border-t border-gray-200 py-8">
+      <footer className="border-t border-gray-200/60 bg-white/70 backdrop-blur-sm py-8">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
           <p>© 2026 Semzo Privé. Todos los derechos reservados.</p>
         </div>

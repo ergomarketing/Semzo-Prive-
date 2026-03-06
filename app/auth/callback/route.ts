@@ -30,23 +30,21 @@ export async function GET(request: NextRequest) {
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      console.log("[v0] Email confirmado exitosamente, user:", data.user?.id)
-
-      // Sincronizar profile después de confirmar email
+      // Marcar email como confirmado en profiles (no sobreescribir otros campos)
       if (data.user) {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.semzoprive.com'}/api/sync-profile`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              firstName: data.user.user_metadata?.first_name || '',
-              lastName: data.user.user_metadata?.last_name || '',
-              phone: data.user.user_metadata?.phone || null,
-            })
-          })
-          console.log("[v0] Profile synced after email confirmation")
+          const { createClient } = await import("@supabase/supabase-js")
+          const supabaseService = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            { auth: { persistSession: false } }
+          )
+          await supabaseService
+            .from("profiles")
+            .update({ email_confirmed: true, updated_at: new Date().toISOString() })
+            .eq("id", data.user.id)
         } catch (syncError) {
-          console.error("[v0] Profile sync error (non-blocking):", syncError)
+          // No bloquear el flujo si falla
         }
       }
 
@@ -54,12 +52,9 @@ export async function GET(request: NextRequest) {
       const returnUrl = cookieStore.get('checkout_return_url')?.value
 
       if (returnUrl) {
-        console.log("[v0] Returning to saved checkout URL:", returnUrl)
-        // Limpiar cookie
         cookieStore.delete('checkout_return_url')
         return NextResponse.redirect(new URL(returnUrl, request.url))
       } else if (origin === "checkout" && plan) {
-        console.log("[v0] Returning to checkout with plan:", plan)
         return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
       } else if (next) {
         return NextResponse.redirect(new URL(next, request.url))
@@ -68,7 +63,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL("/cart", request.url))
       }
     } else {
-      console.error("[v0] Error confirmando email:", error)
       return NextResponse.redirect(
         new URL(
           `/auth/error?message=${encodeURIComponent("Error al confirmar email. El enlace puede haber expirado.")}`,

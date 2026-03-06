@@ -84,14 +84,9 @@ export async function POST(request: Request) {
 
     try {
       const { adminNotifications } = await import("@/lib/admin-notifications")
-      await adminNotifications.notifyNewNewsletterSubscription({
-        email,
-        name,
-        preferences,
-      })
-      console.log("[v0] ✅ Admin notificado de nueva suscripción newsletter")
-    } catch (notifError) {
-      console.error("[v0] ❌ Error notificando admin:", notifError)
+      await adminNotifications.notifyNewNewsletterSubscription({ email, name, preferences })
+    } catch {
+      // No bloquear el flujo si falla el email
     }
 
     return NextResponse.json({
