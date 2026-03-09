@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
     const { userId, giftCardId, amountCents, billingCycle } = body
     const membershipType = (body.membershipType || "essentiel").toLowerCase()
 
-    // 1. Validar campos requeridos
-    if (!userId || !giftCardId || !membershipType || !billingCycle) {
+    // 1. Validar campos requeridos — membershipType ya tiene default
+    if (!userId || !giftCardId || !billingCycle) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos: userId, giftCardId, membershipType, billingCycle" },
+        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle" },
         { status: 400 }
       )
     }
@@ -38,12 +38,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // 3. Consumo atómico via RPC
-    // La RPC ejecuta en Postgres: UPDATE WHERE status='active' AND amount >= p_amount
-    // Si ninguna fila se actualiza → devuelve false (saldo insuficiente o inválida)
-    // No hay race condition posible — Postgres lock de fila garantiza atomicidad
-    const amountEuros = amountCents ? amountCents / 100 : 0
+    // 3. Obtener balance real de la gift card desde el backend — nunca confiar en el frontend
+    const { data: card, error: cardError } = await supabase
+      .from("gift_cards")
+      .select("balance")
+      .eq("id", giftCardId)
+      .single()
 
+    if (cardError || !card) {
+      return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
+    }
+
+    // 4. Calcular importe real a consumir — el backend es la fuente de verdad
+    const membershipPrices: Record<string, number> = {
+      petite: 19.99,
+      essentiel: 39.99,
+      signature: 79.99,
+      prive: 149.99,
+    }
+    const membershipPrice = membershipPrices[membershipType] || 0
+    const amountEuros = Math.min(card.balance, membershipPrice)
+
+    if (amountEuros <= 0) {
+      return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+    }
+
+    // 5. Consumo atómico via RPC — Postgres garantiza atomicidad, sin race condition
     const { data: consumed, error: rpcError } = await supabase.rpc("atomic_gift_card_consume", {
       p_gift_card_id: giftCardId,
       p_amount: amountEuros,
