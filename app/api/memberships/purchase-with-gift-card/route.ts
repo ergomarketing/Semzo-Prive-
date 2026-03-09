@@ -15,8 +15,11 @@ export async function POST(request: NextRequest) {
     const { userId, giftCardId, amountCents, billingCycle } = body
     const membershipType = (body.membershipType || "essentiel").toLowerCase()
 
+    console.log("[v0] GC body:", JSON.stringify({ userId: !!userId, giftCardId, amountCents, membershipType, billingCycle }))
+
     // 1. Validacion completa del body
     if (!userId || !giftCardId || !membershipType || !billingCycle) {
+      console.log("[v0] GC validation fail:", { userId: !!userId, giftCardId: !!giftCardId, membershipType, billingCycle })
       return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, membershipType, billingCycle" }, { status: 400 })
     }
 
@@ -54,8 +57,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (rpcError) {
+      console.log("[v0] RPC error:", rpcError.message, rpcError.code)
       return NextResponse.json({ error: "Error procesando gift card: " + rpcError.message }, { status: 400 })
     }
+
+    console.log("[v0] RPC result:", rpcResult)
 
     if (rpcResult === false) {
       return NextResponse.json({ error: "Gift card no pudo ser procesada (saldo insuficiente o inválida)" }, { status: 400 })
@@ -81,11 +87,13 @@ export async function POST(request: NextRequest) {
       )
 
     if (upsertError) {
+      console.log("[v0] upsert error:", upsertError.message, upsertError.code)
       return NextResponse.json({ error: "Gift card consumida pero error activando membresía: " + upsertError.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {
+    console.log("[v0] purchase-with-gift-card catch:", error.message)
     return NextResponse.json({ error: "Error inesperado: " + error.message }, { status: 500 })
   }
 }
