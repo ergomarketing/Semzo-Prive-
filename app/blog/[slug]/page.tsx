@@ -2,8 +2,8 @@ import { notFound } from "next/navigation"
 import BlogContent from "./BlogContent"
 import type { Metadata } from "next"
 
-// ISR optimizado - v3
-export const revalidate = 300
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 type PageProps = {
   params: Promise<{ slug: string }>
