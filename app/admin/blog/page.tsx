@@ -15,13 +15,15 @@ import Link from "next/link"
 import { ImageUploader } from "@/app/components/image-uploader"
 
 interface BlogPost {
+  id?: string
   slug: string
   title: string
-  date: string
+  created_at?: string
   author: string
   excerpt: string
-  image?: string
+  image_url?: string
   content?: string
+  published?: boolean
 }
 
 export default function AdminBlogPage() {
@@ -49,10 +51,10 @@ export default function AdminBlogPage() {
   const fetchPosts = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/blog")
+      const response = await fetch("/api/blog?all=true")
       if (response.ok) {
         const data = await response.json()
-        setPosts(data)
+        setPosts(Array.isArray(data) ? data : [])
       } else {
         setPosts([])
       }
@@ -82,12 +84,18 @@ export default function AdminBlogPage() {
 
     setEditing(true)
     try {
-      const response = await fetch(`/api/blog/edit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editingPost),
+      const response = await fetch(`/api/blog`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: editingPost.slug,
+          title: editingPost.title,
+          content: editingPost.content,
+          excerpt: editingPost.excerpt,
+          image_url: editingPost.image_url,
+          author: editingPost.author,
+          published: editingPost.published,
+        }),
       })
 
       if (response.ok) {
@@ -152,19 +160,18 @@ export default function AdminBlogPage() {
 
     setCreating(true)
     try {
-      const formData = new FormData()
-      formData.append("title", newPost.title)
-      formData.append("slug", newPost.slug)
-      formData.append("excerpt", newPost.excerpt)
-      formData.append("author", newPost.author)
-      formData.append("content", newPost.content)
-      if (newPost.image) {
-        formData.append("image", newPost.image)
-      }
-
       const response = await fetch("/api/blog", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newPost.title,
+          slug: newPost.slug,
+          excerpt: newPost.excerpt,
+          author: newPost.author,
+          content: newPost.content,
+          image_url: newPost.image,
+          published: true,
+        }),
       })
 
       if (response.ok) {
@@ -273,13 +280,16 @@ export default function AdminBlogPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-date">Fecha</Label>
-                  <Input
-                    id="edit-date"
-                    type="date"
-                    value={editingPost.date}
-                    onChange={(e) => setEditingPost({ ...editingPost, date: e.target.value })}
-                  />
+                  <Label htmlFor="edit-published">Estado</Label>
+                  <select
+                    id="edit-published"
+                    value={editingPost.published ? "true" : "false"}
+                    onChange={(e) => setEditingPost({ ...editingPost, published: e.target.value === "true" })}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="true">Publicado</option>
+                    <option value="false">Borrador</option>
+                  </select>
                 </div>
               </div>
 
@@ -295,10 +305,10 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <Label>Imagen Principal</Label>
-                {editingPost.image && (
+                {editingPost.image_url && (
                   <div className="mb-2">
                     <img
-                      src={editingPost.image || "/placeholder.svg"}
+                      src={editingPost.image_url || "/placeholder.svg"}
                       alt="Portada actual"
                       className="h-40 object-cover rounded-lg"
                     />
@@ -306,7 +316,7 @@ export default function AdminBlogPage() {
                 )}
                 <ImageUploader
                   label="Cambiar Imagen"
-                  onImageUploaded={(url) => setEditingPost({ ...editingPost, image: url })}
+                  onImageUploaded={(url) => setEditingPost({ ...editingPost, image_url: url })}
                 />
               </div>
 
@@ -367,20 +377,30 @@ export default function AdminBlogPage() {
                       className="flex justify-between items-center p-4 border rounded-lg bg-white hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-4 flex-1">
-                        {post.image && (
+                        {post.image_url && (
                           <img
-                            src={post.image || "/placeholder.svg"}
+                            src={post.image_url || "/placeholder.svg"}
                             alt={post.title}
                             className="w-16 h-16 object-cover rounded"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
                           />
                         )}
                         <FileText className="h-5 w-5 text-[#1a2c4e]" />
                         <div className="flex-1">
-                          <p className="font-medium text-[#1a2c4e]">{post.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-[#1a2c4e]">{post.title}</p>
+                            {post.published ? (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Publicado</span>
+                            ) : (
+                              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Borrador</span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500">
                             Slug: {post.slug} | Autor: {post.author}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">Fecha: {post.date}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Fecha: {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES") : "—"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex gap-2">

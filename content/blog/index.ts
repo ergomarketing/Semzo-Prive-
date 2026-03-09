@@ -1,6 +1,12 @@
 export const blogPosts: Record<string, string> = {
-  "como-alquilar-bolsos-lujo": `
-# Cómo alquilar bolsos de lujo en Semzo Privé
+  "como-alquilar-bolsos-lujo": `---
+slug: como-alquilar-bolsos-lujo
+title: Cómo alquilar bolsos de lujo en Semzo Privé
+date: 2026-03-01
+author: Semzo Privé
+excerpt: Descubre cómo acceder a bolsos de lujo como Chanel, Dior y Louis Vuitton mediante nuestro sistema de suscripción mensual.
+image: /images/hero-luxury-bags.jpg
+---
 
 Descubre cómo acceder a bolsos de lujo como Chanel, Dior y Louis Vuitton mediante nuestro sistema de suscripción mensual.
 
@@ -21,8 +27,14 @@ Descubre cómo acceder a bolsos de lujo como Chanel, Dior y Louis Vuitton median
 Explora nuestro catálogo y transforma tu estilo.
   `,
 
-  "por-que-alquilar-bolsos-es-inteligente": `
-# Por qué alquilar bolsos de lujo es una decisión inteligente
+  "por-que-alquilar-bolsos-es-inteligente": `---
+slug: por-que-alquilar-bolsos-es-inteligente
+title: Por qué alquilar bolsos de lujo es una decisión inteligente
+date: 2026-03-05
+author: Semzo Privé
+excerpt: El alquiler de bolsos premium permite acceder a piezas icónicas sin realizar una inversión inicial elevada.
+image: /images/lista-privada-bg.jpg
+---
 
 El alquiler de bolsos premium permite acceder a piezas icónicas sin realizar una inversión inicial elevada.
 

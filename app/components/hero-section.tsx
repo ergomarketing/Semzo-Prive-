@@ -28,19 +28,17 @@ export default function HeroSection() {
           <div className="space-y-8 md:space-y-12 text-center lg:text-left">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/80 mb-4 md:mb-6 font-medium">
-                Membresías
+                Alquiler de bolsos de lujo mediante membresía
               </p>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-[1.1] tracking-tight">
                 Tu puerta de acceso al
                 <br />
-                <span className="text-rose-pastel">armario de</span>
-                <br />
-                tus sueños
+                <span className="text-rose-pastel">armario de tus sueños</span>
               </h1>
             </div>
 
             <p className="text-white/90 text-lg md:text-xl leading-relaxed font-light max-w-2xl mx-auto lg:mx-0">
-              Accede a bolsos de las marcas más exclusivas del mundo. Hermès, Chanel, Louis Vuitton y más.
+              Accede a bolsos Hermès, Chanel, Louis Vuitton y más marcas exclusivas en Madrid y Marbella.
             </p>
 
             {/* Botones */}

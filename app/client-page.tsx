@@ -9,6 +9,8 @@ import HowItWorks from "./components/how-it-works"
 import TestimonialSection from "./components/testimonial-section"
 import MagazineSection from "./components/magazine-section"
 import CTASection from "./components/cta-section"
+import SEOBlock from "./components/seo-block"
+import MarqueeBanner from "./components/marquee-banner"
 
 export default function ClientHomePage() {
   const router = useRouter()
@@ -34,6 +36,7 @@ export default function ClientHomePage() {
   return (
     <main className="min-h-screen">
       <HeroSection />
+      <MarqueeBanner />
       <div id="coleccion">
         <CollectionSection />
       </div>
@@ -49,6 +52,7 @@ export default function ClientHomePage() {
       <div id="magazine">
         <MagazineSection />
       </div>
+      <SEOBlock />
       <CTASection />
     </main>
   )

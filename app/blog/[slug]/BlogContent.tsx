@@ -80,9 +80,9 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
     <main className="min-h-screen bg-white">
         {/* Hero Image */}
         <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-indigo-dark">
-          {post.image && (
+          {post.image_url && (
             <Image
-              src={post.image || "/placeholder.svg"}
+              src={post.image_url || "/placeholder.svg"}
               alt={post.title}
               fill
               sizes="100vw"
@@ -104,11 +104,11 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
               <div className="flex flex-wrap items-center gap-4 text-white/80">
                 <span className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  {new Date(post.date).toLocaleDateString("es-ES", {
+                  {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
-                  })}
+                  }) : "—"}
                 </span>
                 <span className="flex items-center gap-2">
                   <User className="h-4 w-4" />
