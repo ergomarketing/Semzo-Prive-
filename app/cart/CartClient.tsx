@@ -173,7 +173,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           .from("profiles")
           .select("identity_verified, full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
           .eq("id", session.user.id)
-          .single()
+          .maybeSingle()
 
         const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.shipping_address
         setExtendedFormCompleted(!!hasExtendedData)
@@ -479,7 +479,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
             <Button onClick={() => router.push("/catalog")} className="mt-6 bg-[#2D2A45] hover:bg-[#2D2A45]/90">
-              Explorar Cat������logo
+              Explorar Cat��������logo
             </Button>
           </div>
         </div>
@@ -770,7 +770,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       .from("profiles")
                       .select("id")
                       .eq("id", user.id)
-                      .single()
+                      .maybeSingle()
 
                     if (profileError || !profileCheck) {
                       console.error("[v0] Profile not found:", profileError)
@@ -786,20 +786,18 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     if (finalAmount === 0 && appliedGiftCard) {
                       const resolvedType = membershipType || type
                       const resolvedCycle = billingCycle || cycle
-                      console.log("[v0] GC purchase payload:", { userId: user.id, giftCardId: appliedGiftCard.id, amountCents: Math.round(total * 100), membershipType: resolvedType, billingCycle: resolvedCycle })
                       const gcResponse = await fetch("/api/memberships/purchase-with-gift-card", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           userId: user.id,
                           giftCardId: appliedGiftCard.id,
-                          amountCents: Math.round(total * 100),
+                          amountCents: Math.round(Math.min(appliedGiftCard.balance, total) * 100),
                           membershipType: resolvedType,
                           billingCycle: resolvedCycle,
                         }),
                       })
                       const gcData = await gcResponse.json()
-                      console.log("[v0] GC response:", gcResponse.status, JSON.stringify(gcData))
                       if (!gcResponse.ok) throw new Error(gcData.error || "Error al procesar gift card")
                       clearCart()
                       toast.success("Membresía activada con Gift Card")
@@ -905,7 +903,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     setCheckoutLoading(false)
                   }
                 }}
-                disabled={!termsAccepted || checkoutLoading}
+                  disabled={!termsAccepted || checkoutLoading || !user}
                 className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6 text-base"
               >
                 {checkoutLoading ? (
