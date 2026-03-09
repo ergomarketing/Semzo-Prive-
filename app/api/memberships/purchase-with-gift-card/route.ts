@@ -12,19 +12,16 @@ const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, amountCents, membershipType, billingCycle } = body
+    const { userId, giftCardId, amountCents, billingCycle } = body
+    const membershipType = (body.membershipType || "essentiel").toLowerCase()
 
-    console.log("[v0] purchase-with-gift-card body:", JSON.stringify({ userId, giftCardId, amountCents, membershipType, billingCycle }))
-
-    // 1. Validacion completa del body — todo debe existir
-    if (!userId || !giftCardId || amountCents === undefined || amountCents === null || !membershipType || !billingCycle) {
-      console.log("[v0] Validacion fallida:", { userId: !!userId, giftCardId: !!giftCardId, amountCents, membershipType, billingCycle })
-      return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, amountCents, membershipType, billingCycle" }, { status: 400 })
+    // 1. Validacion completa del body
+    if (!userId || !giftCardId || !membershipType || !billingCycle) {
+      return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, membershipType, billingCycle" }, { status: 400 })
     }
 
-    // 2. Validar que membershipType sea un valor aceptado por la DB
-    if (!VALID_MEMBERSHIP_TYPES.includes(membershipType)) {
-      console.log("[v0] membershipType invalido:", membershipType)
+    // 2. Validar membershipType
+    if (!VALID_MEMBERSHIP_TYPES.includes(membershipType as any)) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
@@ -36,22 +33,17 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (gcError || !giftCard) {
-      console.log("[v0] Gift card no encontrada:", gcError?.message, "giftCardId:", giftCardId)
       return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
     }
 
-    console.log("[v0] Gift card encontrada:", JSON.stringify(giftCard))
-
     if (giftCard.status !== "active") {
-      console.log("[v0] Gift card status invalido:", giftCard.status)
       return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
     }
 
-    // 4. Verificar saldo — amount en DB esta en EUROS, amountCents viene en centimos
-    const amountEuros = amountCents / 100
-    console.log("[v0] Verificando saldo: disponible", giftCard.amount, "requerido", amountEuros)
+    // 4. Verificar saldo — amount en DB en EUROS, amountCents en centimos
+    const amountEuros = amountCents ? amountCents / 100 : 0
 
-    if (giftCard.amount < amountEuros) {
+    if (amountEuros > 0 && giftCard.amount < amountEuros) {
       return NextResponse.json({ error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` }, { status: 400 })
     }
 
@@ -62,11 +54,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (rpcError) {
-      console.log("[v0] RPC error:", rpcError)
       return NextResponse.json({ error: "Error procesando gift card: " + rpcError.message }, { status: 400 })
     }
-
-    console.log("[v0] RPC result:", rpcResult)
 
     if (rpcResult === false) {
       return NextResponse.json({ error: "Gift card no pudo ser procesada (saldo insuficiente o inválida)" }, { status: 400 })
@@ -83,6 +72,7 @@ export async function POST(request: NextRequest) {
         {
           user_id: userId,
           membership_type: membershipType,
+          billing_cycle: billingCycle,
           status: "active",
           start_date: now,
           end_date: endDate.toISOString(),
@@ -91,13 +81,11 @@ export async function POST(request: NextRequest) {
       )
 
     if (upsertError) {
-      console.log("[v0] upsert error:", upsertError)
       return NextResponse.json({ error: "Gift card consumida pero error activando membresía: " + upsertError.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {
-    console.error("[v0] purchase-with-gift-card error:", error)
     return NextResponse.json({ error: "Error inesperado: " + error.message }, { status: 500 })
   }
 }

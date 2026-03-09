@@ -479,7 +479,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
             <Button onClick={() => router.push("/catalog")} className="mt-6 bg-[#2D2A45] hover:bg-[#2D2A45]/90">
-              Explorar Cat����logo
+              Explorar Cat������logo
             </Button>
           </div>
         </div>
@@ -510,11 +510,11 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                 <CardContent className="p-6">
                   <div className="flex items-start gap-6">
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-rose-nude">
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={item.image || "/images/jacquemus-le-chiquito.jpg"}
                         alt={item.name}
-                        fill
-                        className="object-cover"
+                        className="object-cover w-full h-full"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement
                           target.src = "/images/jacquemus-le-chiquito.jpg"
