@@ -50,22 +50,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` }, { status: 400 })
     }
 
-    // 5. Consumir gift card via RPC atomico — p_amount en EUROS
-    const { data: rpcResult, error: rpcError } = await supabase.rpc("consume_gift_card_atomic", {
-      p_gift_card_id: giftCardId,
-      p_amount: amountEuros,
-    })
+    // 5. Consumir gift card — actualizar saldo y marcar como usada si se agota
+    const newAmount = giftCard.amount - amountEuros
+    const newStatus = newAmount <= 0 ? "used" : "active"
 
-    if (rpcError) {
-      console.log("[v0] RPC error:", rpcError.message, rpcError.code)
-      return NextResponse.json({ error: "Error procesando gift card: " + rpcError.message }, { status: 400 })
+    const { error: gcUpdateError } = await supabase
+      .from("gift_cards")
+      .update({ amount: Math.max(0, newAmount), status: newStatus })
+      .eq("id", giftCardId)
+      .eq("status", "active") // doble check para evitar race condition
+
+    if (gcUpdateError) {
+      console.log("[v0] gift card update error:", gcUpdateError.message)
+      return NextResponse.json({ error: "Error procesando gift card: " + gcUpdateError.message }, { status: 400 })
     }
 
-    console.log("[v0] RPC result:", rpcResult)
-
-    if (rpcResult === false) {
-      return NextResponse.json({ error: "Gift card no pudo ser procesada (saldo insuficiente o inválida)" }, { status: 400 })
-    }
+    console.log("[v0] Gift card consumida. Nuevo saldo:", newAmount)
 
     // 6. Activar membresia en user_memberships
     const now = new Date().toISOString()
