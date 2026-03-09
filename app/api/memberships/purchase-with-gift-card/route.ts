@@ -36,15 +36,20 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (gcError || !giftCard) {
+      console.log("[v0] Gift card no encontrada:", gcError?.message, "giftCardId:", giftCardId)
       return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
     }
 
+    console.log("[v0] Gift card encontrada:", JSON.stringify(giftCard))
+
     if (giftCard.status !== "active") {
+      console.log("[v0] Gift card status invalido:", giftCard.status)
       return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
     }
 
     // 4. Verificar saldo — amount en DB esta en EUROS, amountCents viene en centimos
     const amountEuros = amountCents / 100
+    console.log("[v0] Verificando saldo: disponible", giftCard.amount, "requerido", amountEuros)
 
     if (giftCard.amount < amountEuros) {
       return NextResponse.json({ error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` }, { status: 400 })
