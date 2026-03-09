@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const { userId, giftCardId, amountCents, membershipType, billingCycle } = body
 
     // 1. Validacion completa del body — todo debe existir
-    if (!userId || !giftCardId || !amountCents || !membershipType || !billingCycle) {
+    if (!userId || !giftCardId || amountCents === undefined || amountCents === null || !membershipType || !billingCycle) {
       return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, amountCents, membershipType, billingCycle" }, { status: 400 })
     }
 
