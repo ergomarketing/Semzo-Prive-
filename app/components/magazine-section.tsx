@@ -7,11 +7,12 @@ import { Calendar, User, ChevronLeft, ChevronRight } from "lucide-react"
 interface BlogPost {
   slug: string
   title: string
-  date: string
+  created_at?: string
   author: string
   excerpt: string
-  image?: string
+  image_url?: string
   content: string
+  published?: boolean
 }
 
 export default function MagazineSection() {
@@ -143,7 +144,7 @@ export default function MagazineSection() {
                       <div className="relative aspect-[3/4] w-full overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={post.image || "/placeholder.svg?height=800&width=600"}
+                          src={post.image_url || "/placeholder.svg?height=800&width=600"}
                           alt={post.title}
                           onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg?height=800&width=600" }}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -161,10 +162,10 @@ export default function MagazineSection() {
                         <div className="flex items-center gap-3 text-xs text-indigo-dark/50">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {new Date(post.date).toLocaleDateString("es-ES", {
+                            {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES", {
                               day: "numeric",
                               month: "short",
-                            })}
+                            }) : "—"}
                           </span>
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />

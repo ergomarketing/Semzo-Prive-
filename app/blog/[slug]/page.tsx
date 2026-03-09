@@ -12,12 +12,13 @@ interface PageProps {
 interface BlogPost {
   slug: string
   title: string
-  date: string
+  created_at?: string
+  updated_at?: string
   author: string
   excerpt: string
-  image?: string
+  image_url?: string
   content: string
-  updatedAt?: string
+  published?: boolean
 }
 
 async function getPost(slug: string): Promise<BlogPost | null> {
@@ -51,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = `https://semzoprive.com/blog/${slug}`
   const excerpt = post.excerpt?.substring(0, 155) || post.title
   const imageUrl =
-    post.image || "https://semzoprive.com/images/hero-luxury-bags.jpeg"
+    post.image_url || "https://semzoprive.com/images/hero-luxury-bags.jpeg"
 
   return {
     title: `${post.title} | SEMZO Magazine`,
@@ -80,8 +81,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: "Semzo Privé",
       title: post.title,
       description: excerpt,
-      publishedTime: post.date,
-      modifiedTime: post.updatedAt || post.date,
+      publishedTime: post.created_at,
+      modifiedTime: post.updated_at || post.created_at,
       images: [
         {
           url: imageUrl,
@@ -116,9 +117,9 @@ export default async function BlogPostPage({ params }: PageProps) {
     "@type": "BlogPosting",
     headline: post.title,
     description: post.excerpt || post.title,
-    image: post.image || "https://semzoprive.com/images/hero-luxury-bags.jpeg",
-    datePublished: post.date,
-    dateModified: post.updatedAt || post.date,
+      image: post.image_url || "https://semzoprive.com/images/hero-luxury-bags.jpeg",
+      datePublished: post.created_at,
+      dateModified: post.updated_at || post.created_at,
     inLanguage: "es-ES",
     mainEntityOfPage: {
       "@type": "WebPage",

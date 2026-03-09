@@ -115,7 +115,7 @@ export default async function BlogPage() {
                       {/* Image container with aspect-ratio */}
                       <div className="relative aspect-[3/4] w-full overflow-hidden">
                         <Image
-                          src={post.image || "/placeholder.svg?height=800&width=600"}
+                          src={post.image_url || "/placeholder.svg?height=800&width=600"}
                           alt={post.title}
                           fill
                           sizes="(max-width: 768px) 85vw, (max-width: 1024px) 45vw, 30vw"
@@ -133,10 +133,10 @@ export default async function BlogPage() {
                         <div className="flex items-center gap-3 text-xs text-indigo-dark/50">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {new Date(post.date).toLocaleDateString("es-ES", {
+                            {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES", {
                               day: "numeric",
                               month: "short",
-                            })}
+                            }) : "—"}
                           </span>
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />

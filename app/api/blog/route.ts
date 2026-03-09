@@ -1,101 +1,86 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { listPosts, getPost, parseFrontmatter } from "@/lib/blog-storage"
+import { listPosts, getPost, createPost, deletePost, listAllPosts } from "@/lib/blog-supabase"
 
 export const dynamic = "force-dynamic"
 
-// GET - List all blog posts or get a single post by slug
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
+    const all = searchParams.get("all") === "true"
 
     if (slug) {
       const post = await getPost(slug)
-      return NextResponse.json(post, {
-        headers: {
-          "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-        },
-      })
+      if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 })
+      return NextResponse.json(post)
     }
 
-    const posts = await listPosts()
-    return NextResponse.json(posts, {
-      headers: {
-        "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-      },
-    })
+    const posts = all ? await listAllPosts() : await listPosts()
+    return NextResponse.json(posts)
   } catch (error) {
     console.error("[v0] Error fetching blog posts:", error)
     return NextResponse.json({ error: "Error fetching posts" }, { status: 500 })
   }
 }
 
-// POST - Create a new blog post
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get("file") as File | null
-    const directContent = formData.get("content") as string | null
-    const directTitle = formData.get("title") as string | null
-    const directSlug = formData.get("slug") as string | null
-    const directExcerpt = formData.get("excerpt") as string | null
-    const directAuthor = formData.get("author") as string | null
-    const directImage = formData.get("image") as string | null
+    const body = await request.json()
+    const { title, slug, content, excerpt, image_url, author, published } = body
 
-    let content: string
-    let slug: string
-
-    if (file) {
-      // Handle file upload
-      content = await file.text()
-      const { metadata } = parseFrontmatter(content)
-      slug = metadata.slug || file.name.replace(".md", "").toLowerCase().replace(/\s+/g, "-")
-    } else if (directContent && directTitle && directSlug) {
-      const frontmatter = `---
-title: "${directTitle}"
-date: "${new Date().toISOString().split("T")[0]}"
-author: "${directAuthor || "Semzo Privé"}"
-excerpt: "${directExcerpt || directContent.substring(0, 150)}"
-slug: "${directSlug}"
-${directImage ? `image: "${directImage}"` : ""}
----
-
-${directContent}`
-      content = frontmatter
-      slug = directSlug
-    } else {
-      return NextResponse.json({ error: "Missing file or content" }, { status: 400 })
+    if (!title || !slug || !content) {
+      return NextResponse.json({ error: "title, slug y content son obligatorios" }, { status: 400 })
     }
 
-    const { createPost } = await import("@/lib/blog-storage")
-    const result = await createPost(slug, content)
+    const result = await createPost({
+      title,
+      slug,
+      content,
+      excerpt: excerpt || content.substring(0, 150),
+      image_url: image_url || "",
+      author: author || "Semzo Privé",
+      published: published ?? false,
+    })
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      slug,
-      url: result.url,
-    })
+    return NextResponse.json({ success: true, data: result.data })
   } catch (error) {
-    console.error("Error creating blog post:", error)
+    console.error("[v0] Error creando post:", error)
     return NextResponse.json({ error: "Error creating post" }, { status: 500 })
   }
 }
 
-// DELETE - Delete a blog post
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { slug, ...updates } = body
+
+    if (!slug) return NextResponse.json({ error: "Slug requerido" }, { status: 400 })
+
+    const { updatePost } = await import("@/lib/blog-supabase")
+    const result = await updatePost(slug, updates)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[v0] Error actualizando post:", error)
+    return NextResponse.json({ error: "Error updating post" }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
 
-    if (!slug) {
-      return NextResponse.json({ error: "Slug required" }, { status: 400 })
-    }
+    if (!slug) return NextResponse.json({ error: "Slug requerido" }, { status: 400 })
 
-    const { deletePost } = await import("@/lib/blog-storage")
     const result = await deletePost(slug)
 
     if (!result.success) {
@@ -104,7 +89,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error deleting blog post:", error)
+    console.error("[v0] Error eliminando post:", error)
     return NextResponse.json({ error: "Error deleting post" }, { status: 500 })
   }
 }

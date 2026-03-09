@@ -1,11 +1,14 @@
 export interface BlogPost {
+  id?: string
   slug: string
   title: string
-  date: string
+  created_at?: string
+  updated_at?: string
   author: string
   excerpt: string
-  image?: string
+  image_url?: string
   content: string
+  published?: boolean
 }
 
 // Default posts when no posts exist in blob storage
