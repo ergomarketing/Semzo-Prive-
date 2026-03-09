@@ -24,9 +24,7 @@ export default function MagazineSection() {
   useEffect(() => {
     async function fetchPosts() {
       try {
-        const response = await fetch("/api/blog", {
-          next: { revalidate: 604800 }, // Cache for 7 days (1-2 posts/week)
-        })
+        const response = await fetch("/api/blog", { cache: "no-store" })
 
         if (!response.ok) {
           setPosts([])
@@ -143,12 +141,13 @@ export default function MagazineSection() {
                   >
                     <div className="flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
                       <div className="relative aspect-[3/4] w-full overflow-hidden">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={post.image || "/placeholder.svg?height=800&width=600"}
                           alt={post.title}
-                          fill
-                          sizes="(max-width: 768px) 85vw, (max-width: 1024px) 45vw, 30vw"
-                          className="object-cover w-full h-full group-hover/card:scale-105 transition-transform duration-500"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg?height=800&width=600" }}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          className="group-hover/card:scale-105 transition-transform duration-500"
                         />
                       </div>
 

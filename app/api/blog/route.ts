@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { listPosts, getPost, parseFrontmatter } from "@/lib/blog-storage"
 
-// Cache GET requests for 7 days (posts published 1-2x/week)
-export const revalidate = 604800
+export const dynamic = "force-dynamic"
 
 // GET - List all blog posts or get a single post by slug
 export async function GET(request: NextRequest) {
