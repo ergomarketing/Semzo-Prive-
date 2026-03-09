@@ -1,8 +1,10 @@
 -- RPC atómica para consumir gift card
+-- amount en DB está en CÉNTIMOS (ej: 20000 = 200€)
+-- p_amount también debe pasarse en CÉNTIMOS
 -- Postgres garantiza atomicidad: no hay race condition, no hay saldo negativo
 CREATE OR REPLACE FUNCTION public.atomic_gift_card_consume(
   p_gift_card_id UUID,
-  p_amount NUMERIC
+  p_amount INTEGER
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -22,7 +24,6 @@ BEGIN
 
   GET DIAGNOSTICS v_rows_updated = ROW_COUNT;
 
-  -- Si no se actualizó ninguna fila: gift card no válida o saldo insuficiente
   RETURN v_rows_updated > 0;
 END;
 $$;

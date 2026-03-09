@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // 3. Obtener balance real de la gift card desde el backend — nunca confiar en el frontend
+    // 3. Obtener saldo real de la gift card — columna "amount" en céntimos
     const { data: card, error: cardError } = await supabase
       .from("gift_cards")
-      .select("balance")
+      .select("amount, status")
       .eq("id", giftCardId)
       .single()
 
@@ -49,24 +49,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
     }
 
-    // 4. Calcular importe real a consumir — el backend es la fuente de verdad
-    const membershipPrices: Record<string, number> = {
-      petite: 19.99,
-      essentiel: 39.99,
-      signature: 79.99,
-      prive: 149.99,
+    if (card.status !== "active") {
+      return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
     }
-    const membershipPrice = membershipPrices[membershipType] || 0
-    const amountEuros = Math.min(card.balance, membershipPrice)
 
-    if (amountEuros <= 0) {
+    // 4. Calcular importe a consumir — amount en DB está en céntimos
+    const membershipPricesCents: Record<string, number> = {
+      petite: 1999,
+      essentiel: 3999,
+      signature: 7999,
+      prive: 14999,
+    }
+    const membershipPriceCents = membershipPricesCents[membershipType] || 0
+    // consumir el mínimo entre saldo disponible y precio de la membresía
+    const amountToCConsumeCents = Math.min(card.amount, membershipPriceCents)
+
+    if (amountToCConsumeCents <= 0) {
       return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
     }
 
-    // 5. Consumo atómico via RPC — Postgres garantiza atomicidad, sin race condition
+    // 5. Consumo atómico via RPC — p_amount en céntimos, Postgres garantiza atomicidad
     const { data: consumed, error: rpcError } = await supabase.rpc("atomic_gift_card_consume", {
       p_gift_card_id: giftCardId,
-      p_amount: amountEuros,
+      p_amount: amountToCConsumeCents,
     })
 
     if (rpcError) {
