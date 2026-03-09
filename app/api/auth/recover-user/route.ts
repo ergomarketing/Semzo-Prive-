@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabaseAdmin = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       cookies: {
         get(name: string) {

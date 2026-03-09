@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const { email, name, phone, preferences } = await request.json()
 
     if (!email || !email.includes("@")) {
