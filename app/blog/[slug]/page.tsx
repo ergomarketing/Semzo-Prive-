@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import BlogContent from "./BlogContent"
 import type { Metadata } from "next"
 
-// ISR optimizado
+// ISR optimizado - v2
 export const revalidate = 300
 
 type PageProps = {
