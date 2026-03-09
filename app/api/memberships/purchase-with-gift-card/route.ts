@@ -9,18 +9,28 @@ const supabase = createClient(
 
 const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as const
 
+function calcEndDate(billingCycle: string): string {
+  const end = new Date()
+  if (billingCycle === "weekly") {
+    end.setDate(end.getDate() + 7)
+  } else {
+    end.setMonth(end.getMonth() + 1)
+  }
+  return end.toISOString()
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { userId, giftCardId, amountCents, billingCycle } = body
     const membershipType = (body.membershipType || "essentiel").toLowerCase()
 
-    console.log("[v0] GC body:", JSON.stringify({ userId: !!userId, giftCardId, amountCents, membershipType, billingCycle }))
-
-    // 1. Validacion completa del body
+    // 1. Validar campos requeridos
     if (!userId || !giftCardId || !membershipType || !billingCycle) {
-      console.log("[v0] GC validation fail:", { userId: !!userId, giftCardId: !!giftCardId, membershipType, billingCycle })
-      return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, membershipType, billingCycle" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Faltan campos requeridos: userId, giftCardId, membershipType, billingCycle" },
+        { status: 400 }
+      )
     }
 
     // 2. Validar membershipType
@@ -28,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // 3. Obtener gift card — verificar que existe y esta activa
+    // 3. Obtener gift card
     const { data: giftCard, error: gcError } = await supabase
       .from("gift_cards")
       .select("id, amount, status")
@@ -43,34 +53,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
     }
 
-    // 4. Verificar saldo — amount en DB en EUROS, amountCents en centimos
+    // 4. Verificar saldo
     const amountEuros = amountCents ? amountCents / 100 : 0
 
     if (amountEuros > 0 && giftCard.amount < amountEuros) {
-      return NextResponse.json({ error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` }, { status: 400 })
+      return NextResponse.json(
+        { error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` },
+        { status: 400 }
+      )
     }
 
-    // 5. Consumir gift card — actualizar saldo y marcar como usada si se agota
-    const newAmount = giftCard.amount - amountEuros
+    // 5. Consumir gift card — actualizar saldo
+    const newAmount = Math.max(0, giftCard.amount - amountEuros)
     const newStatus = newAmount <= 0 ? "used" : "active"
 
     const { error: gcUpdateError } = await supabase
       .from("gift_cards")
-      .update({ amount: Math.max(0, newAmount), status: newStatus })
+      .update({ amount: newAmount, status: newStatus })
       .eq("id", giftCardId)
-      .eq("status", "active") // doble check para evitar race condition
+      .eq("status", "active")
 
     if (gcUpdateError) {
-      console.log("[v0] gift card update error:", gcUpdateError.message)
-      return NextResponse.json({ error: "Error procesando gift card: " + gcUpdateError.message }, { status: 400 })
+      return NextResponse.json(
+        { error: "Error procesando gift card: " + gcUpdateError.message },
+        { status: 400 }
+      )
     }
 
-    console.log("[v0] Gift card consumida. Nuevo saldo:", newAmount)
-
-    // 6. Activar membresia en user_memberships
+    // 6. Activar membresía
     const now = new Date().toISOString()
-    const endDate = new Date()
-    endDate.setMonth(endDate.getMonth() + 1)
+    const endDate = calcEndDate(billingCycle)
 
     const { error: upsertError } = await supabase
       .from("user_memberships")
@@ -81,19 +93,20 @@ export async function POST(request: NextRequest) {
           billing_cycle: billingCycle,
           status: "active",
           start_date: now,
-          end_date: endDate.toISOString(),
+          end_date: endDate,
         },
         { onConflict: "user_id" }
       )
 
     if (upsertError) {
-      console.log("[v0] upsert error:", upsertError.message, upsertError.code)
-      return NextResponse.json({ error: "Gift card consumida pero error activando membresía: " + upsertError.message }, { status: 500 })
+      return NextResponse.json(
+        { error: "Gift card consumida pero error activando membresía: " + upsertError.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {
-    console.log("[v0] purchase-with-gift-card catch:", error.message)
     return NextResponse.json({ error: "Error inesperado: " + error.message }, { status: 500 })
   }
 }
