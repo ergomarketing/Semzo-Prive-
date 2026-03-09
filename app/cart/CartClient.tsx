@@ -479,7 +479,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
             <Button onClick={() => router.push("/catalog")} className="mt-6 bg-[#2D2A45] hover:bg-[#2D2A45]/90">
-              Explorar Catálogo
+              Explorar Cat��logo
             </Button>
           </div>
         </div>
@@ -784,6 +784,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
                     // GIFT CARD 100% — no pasa por Stripe
                     if (finalAmount === 0 && appliedGiftCard) {
+                      const resolvedType = membershipType || type
+                      const resolvedCycle = billingCycle || cycle
+                      console.log("[v0] GC purchase payload:", { userId: user.id, giftCardId: appliedGiftCard.id, amountCents: Math.round(total * 100), membershipType: resolvedType, billingCycle: resolvedCycle })
                       const gcResponse = await fetch("/api/memberships/purchase-with-gift-card", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -791,8 +794,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                           userId: user.id,
                           giftCardId: appliedGiftCard.id,
                           amountCents: Math.round(total * 100),
-                          membershipType: membershipType,
-                          billingCycle: billingCycle,
+                          membershipType: resolvedType,
+                          billingCycle: resolvedCycle,
                         }),
                       })
                       const gcData = await gcResponse.json()

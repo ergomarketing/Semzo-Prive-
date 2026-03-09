@@ -5,7 +5,7 @@ import type { Metadata } from "next"
 // ISR optimizado
 export const revalidate = 300
 
-interface PageProps {
+type PageProps = {
   params: Promise<{ slug: string }>
 }
 
