@@ -6,7 +6,7 @@ import type { Metadata } from "next"
 export const revalidate = 300
 
 interface PageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 interface BlogPost {
@@ -37,7 +37,7 @@ async function getPost(slug: string): Promise<BlogPost | null> {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = params
+  const { slug } = await params
   const post = await getPost(slug)
 
   if (!post) {
@@ -102,7 +102,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
-  const { slug } = params
+  const { slug } = await params
   const post = await getPost(slug)
 
   if (!post) {
