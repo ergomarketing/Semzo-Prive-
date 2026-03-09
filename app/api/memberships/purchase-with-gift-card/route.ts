@@ -38,49 +38,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // 3. Obtener gift card
-    const { data: giftCard, error: gcError } = await supabase
-      .from("gift_cards")
-      .select("id, amount, status")
-      .eq("id", giftCardId)
-      .single()
-
-    if (gcError || !giftCard) {
-      return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
-    }
-
-    if (giftCard.status !== "active") {
-      return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
-    }
-
-    // 4. Verificar saldo
+    // 3. Consumo atómico via RPC
+    // La RPC ejecuta en Postgres: UPDATE WHERE status='active' AND amount >= p_amount
+    // Si ninguna fila se actualiza → devuelve false (saldo insuficiente o inválida)
+    // No hay race condition posible — Postgres lock de fila garantiza atomicidad
     const amountEuros = amountCents ? amountCents / 100 : 0
 
-    if (amountEuros > 0 && giftCard.amount < amountEuros) {
+    const { data: consumed, error: rpcError } = await supabase.rpc("atomic_gift_card_consume", {
+      p_gift_card_id: giftCardId,
+      p_amount: amountEuros,
+    })
+
+    if (rpcError) {
       return NextResponse.json(
-        { error: `Saldo insuficiente. Disponible: ${giftCard.amount}€, requerido: ${amountEuros}€` },
+        { error: "Error procesando gift card: " + rpcError.message },
         { status: 400 }
       )
     }
 
-    // 5. Consumir gift card — actualizar saldo
-    const newAmount = Math.max(0, giftCard.amount - amountEuros)
-    const newStatus = newAmount <= 0 ? "used" : "active"
-
-    const { error: gcUpdateError } = await supabase
-      .from("gift_cards")
-      .update({ amount: newAmount, status: newStatus })
-      .eq("id", giftCardId)
-      .eq("status", "active")
-
-    if (gcUpdateError) {
+    if (consumed === false) {
       return NextResponse.json(
-        { error: "Error procesando gift card: " + gcUpdateError.message },
+        { error: "Gift card no válida, ya utilizada o saldo insuficiente" },
         { status: 400 }
       )
     }
 
-    // 6. Activar membresía
+    // 4. Activar membresía
     const now = new Date().toISOString()
     const endDate = calcEndDate(billingCycle)
 
