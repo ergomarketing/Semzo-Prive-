@@ -9,23 +9,12 @@ const supabase = createClient(
 
 const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as const
 
-function calcEndDate(billingCycle: string): string {
-  const end = new Date()
-  if (billingCycle === "weekly") {
-    end.setDate(end.getDate() + 7)
-  } else {
-    end.setMonth(end.getMonth() + 1)
-  }
-  return end.toISOString()
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, amountCents, billingCycle } = body
+    const { userId, giftCardId, billingCycle } = body
     const membershipType = (body.membershipType || "essentiel").toLowerCase()
 
-    // 1. Validar campos requeridos — membershipType ya tiene default
     if (!userId || !giftCardId || !billingCycle) {
       return NextResponse.json(
         { error: "Faltan campos requeridos: userId, giftCardId, billingCycle" },
@@ -33,84 +22,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Validar membershipType
     if (!VALID_MEMBERSHIP_TYPES.includes(membershipType as any)) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // 3. Obtener saldo real de la gift card — columna "amount" en céntimos
-    const { data: card, error: cardError } = await supabase
-      .from("gift_cards")
-      .select("amount, status")
-      .eq("id", giftCardId)
-      .single()
-
-    if (cardError || !card) {
-      return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
+    // Una sola RPC transaccional — gift card y membresía en la misma transacción Postgres
+    // Si la membresía falla, el saldo NO se descuenta
+    const membershipPrices: Record<string, number> = {
+      petite: 19.99,
+      essentiel: 39.99,
+      signature: 79.99,
+      prive: 149.99,
     }
+    const amountEuros = membershipPrices[membershipType] || 0
 
-    if (card.status !== "active") {
-      return NextResponse.json({ error: "Gift card inválida o ya utilizada" }, { status: 400 })
-    }
-
-    // 4. Calcular importe a consumir — amount en DB está en céntimos
-    const membershipPricesCents: Record<string, number> = {
-      petite: 1999,
-      essentiel: 3999,
-      signature: 7999,
-      prive: 14999,
-    }
-    const membershipPriceCents = membershipPricesCents[membershipType] || 0
-    // consumir el mínimo entre saldo disponible y precio de la membresía
-    const amountToCConsumeCents = Math.min(card.amount, membershipPriceCents)
-
-    if (amountToCConsumeCents <= 0) {
-      return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
-    }
-
-    // 5. Consumo atómico via RPC — p_amount en céntimos, Postgres garantiza atomicidad
-    const { data: consumed, error: rpcError } = await supabase.rpc("atomic_gift_card_consume", {
+    const { error } = await supabase.rpc("purchase_membership_with_gift_card", {
+      p_user_id: userId,
       p_gift_card_id: giftCardId,
-      p_amount: amountToCConsumeCents,
+      p_membership_type: membershipType,
+      p_billing_cycle: billingCycle,
+      p_amount: amountEuros,
     })
 
-    if (rpcError) {
-      return NextResponse.json(
-        { error: "Error procesando gift card: " + rpcError.message },
-        { status: 400 }
-      )
-    }
-
-    if (consumed === false) {
-      return NextResponse.json(
-        { error: "Gift card no válida, ya utilizada o saldo insuficiente" },
-        { status: 400 }
-      )
-    }
-
-    // 4. Activar membresía
-    const now = new Date().toISOString()
-    const endDate = calcEndDate(billingCycle)
-
-    const { error: upsertError } = await supabase
-      .from("user_memberships")
-      .upsert(
-        {
-          user_id: userId,
-          membership_type: membershipType,
-          billing_cycle: billingCycle,
-          status: "active",
-          start_date: now,
-          end_date: endDate,
-        },
-        { onConflict: "user_id" }
-      )
-
-    if (upsertError) {
-      return NextResponse.json(
-        { error: "Gift card consumida pero error activando membresía: " + upsertError.message },
-        { status: 500 }
-      )
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
