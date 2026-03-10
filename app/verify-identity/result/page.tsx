@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 
 type VerificationStatus = "loading" | "approved" | "pending" | "rejected" | "error"
 
@@ -20,23 +19,18 @@ export default function VerifyIdentityResultPage() {
       }
 
       try {
-        const supabase = createClient()
-        const { data: verification } = await supabase
-          .from("identity_verifications")
-          .select("status")
-          .eq("stripe_verification_id", sessionId)
-          .maybeSingle()
+        const res = await fetch(`/api/identity/check-status?sessionId=${sessionId}`)
+        const data = await res.json()
 
-        if (!verification) {
-          // Stripe aún no procesó el webhook — mostrar como pendiente
+        if (!data.status) {
           setStatus("pending")
           return
         }
 
-        if (verification.status === "verified") {
+        if (data.status === "verified") {
           setStatus("approved")
           setTimeout(() => router.push("/dashboard/membresia"), 3000)
-        } else if (verification.status === "requires_input" || verification.status === "canceled") {
+        } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
         } else {
           setStatus("pending")
