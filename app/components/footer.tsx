@@ -155,7 +155,7 @@ export default function Footer() {
             backgroundColor: "rgba(255, 240, 243, 0.2)",
           }}
         >
-          <div className="text-sm text-slate-500 max-w-5xl">
+          <div className="text-sm text-slate-500 max-w-5xl whitespace-nowrap overflow-hidden text-ellipsis">
             © {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.
           </div>
         </div>
