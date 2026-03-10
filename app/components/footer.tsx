@@ -155,8 +155,25 @@ export default function Footer() {
             backgroundColor: "rgba(255, 240, 243, 0.2)",
           }}
         >
-          <div className="text-sm text-slate-500 max-w-5xl">
-            © {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.
+          <div className="w-full overflow-hidden">
+            <style>{`
+              @keyframes marquee {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              .marquee-track {
+                display: flex;
+                width: max-content;
+                animation: marquee 28s linear infinite;
+              }
+              .marquee-track:hover {
+                animation-play-state: paused;
+              }
+            `}</style>
+            <div className="marquee-track text-sm text-slate-500 whitespace-nowrap">
+              <span className="pr-16">© {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.</span>
+              <span className="pr-16">© {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.</span>
+            </div>
           </div>
         </div>
       </div>
