@@ -99,8 +99,12 @@ async function createVerificationSession(
     }
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
+    return_url: `${appUrl}/verify-identity/result?session_id={VERIFICATION_SESSION_ID}`,
     metadata: {
       user_id: userId,
       intent_id: intent.id,
