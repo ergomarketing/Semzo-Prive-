@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server"
+import { createClient as createBrowserClient } from "@supabase/supabase-js"
 
 export interface BlogPost {
   id?: string
@@ -14,7 +15,12 @@ export interface BlogPost {
 }
 
 export async function listPosts(): Promise<BlogPost[]> {
-  const supabase = await createClient()
+  // Use anon client for public reads - server client requires auth context
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  
   const { data, error } = await supabase
     .from("blog_posts")
     .select("*")
@@ -43,7 +49,10 @@ export async function listAllPosts(): Promise<BlogPost[]> {
 }
 
 export async function getPost(slug: string): Promise<BlogPost | null> {
-  const supabase = await createClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { data, error } = await supabase
     .from("blog_posts")
     .select("*")

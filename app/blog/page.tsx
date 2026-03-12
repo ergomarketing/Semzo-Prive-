@@ -5,36 +5,9 @@ import { Calendar, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 import { BlogScrollContainer } from "./blog-scroll-container"
+import { listPosts, type BlogPost } from "@/lib/blog-supabase"
 
-// ISR: Revalidate every 7 days (604800 seconds) - posts published 1-2x/week
-export const revalidate = 604800
-
-interface BlogPost {
-  slug: string
-  title: string
-  date: string
-  author: string
-  excerpt: string
-  image?: string
-  content: string
-}
-
-async function getPosts(): Promise<BlogPost[]> {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/blog`, {
-      next: { revalidate: 604800 }, // Cache for 7 days (1-2 posts/week)
-    })
-
-    if (!response.ok) {
-      return []
-    }
-
-    const posts = await response.json()
-    return posts
-  } catch {
-    return []
-  }
-}
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "SEMZO Magazine | Lujo consciente, moda y estilo",
@@ -67,7 +40,7 @@ export const metadata: Metadata = {
 }
 
 export default async function BlogPage() {
-  const posts = await getPosts()
+  const posts = await listPosts()
 
   return (
     <main className="min-h-screen bg-white">

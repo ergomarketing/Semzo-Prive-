@@ -95,6 +95,7 @@ export default function AdminBlogPage() {
           image_url: editingPost.image_url,
           author: editingPost.author,
           published: editingPost.published,
+          created_at: editingPost.created_at,
         }),
       })
 
@@ -270,13 +271,22 @@ export default function AdminBlogPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-author">Autor</Label>
                   <Input
                     id="edit-author"
                     value={editingPost.author}
                     onChange={(e) => setEditingPost({ ...editingPost, author: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Fecha de publicación</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editingPost.created_at ? new Date(editingPost.created_at).toISOString().split("T")[0] : ""}
+                    onChange={(e) => setEditingPost({ ...editingPost, created_at: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
