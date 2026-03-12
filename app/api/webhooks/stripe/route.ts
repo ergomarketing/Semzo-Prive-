@@ -163,7 +163,8 @@ export async function POST(req: NextRequest) {
           .from("membership_intents")
           .select("id")
           .eq("user_id", userId)
-          .in("status", ["pending_payment", "pending", "created"])
+          .in("status", ["initiated", "pending_payment", "pending", "created"])
+          .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
@@ -173,16 +174,22 @@ export async function POST(req: NextRequest) {
             .update({
               status: "paid_pending_verification",
               stripe_subscription_id: subscription.id,
+              paid_at: now,
               updated_at: now,
             })
             .eq("id", existingIntent.id);
         } else {
-          // Crear intent si no existía (flujo email sin intent previo)
+          // Crear intent si no existía — incluir todos los campos NOT NULL
           await supabase.from("membership_intents").insert({
             user_id: userId,
             membership_type: membershipType,
+            billing_cycle: "monthly",
+            amount_cents: 0,
+            original_amount_cents: 0,
             status: "paid_pending_verification",
             stripe_subscription_id: subscription.id,
+            initiated_at: now,
+            paid_at: now,
             created_at: now,
             updated_at: now,
           });

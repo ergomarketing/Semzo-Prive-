@@ -91,12 +91,12 @@ export async function POST(request: NextRequest) {
     let intentId = clientIntentId
 
     if (!intentId) {
-      // Buscar intent existente en estado válido
+      // Buscar intent existente en estado válido — incluye "initiated" (creado en create-intent)
       const { data: existingIntent } = await supabase
         .from("membership_intents")
         .select("id")
         .eq("user_id", userId)
-        .in("status", ["pending_payment", "pending", "created"])
+        .in("status", ["initiated", "pending_payment", "pending", "created"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -104,22 +104,26 @@ export async function POST(request: NextRequest) {
       if (existingIntent?.id) {
         intentId = existingIntent.id
       } else {
-        // Crear un nuevo intent si no hay ninguno
+        // Fallback: crear intent si no hay ninguno (e.g. flujo directo sin create-intent)
+        const now = new Date().toISOString()
         const { data: newIntent, error: intentError } = await supabase
           .from("membership_intents")
           .insert({
             user_id: userId,
             membership_type: membershipType || "essentiel",
-            status: "pending_payment",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            billing_cycle: billingCycle || "monthly",
+            amount_cents: amountCents || 0,
+            original_amount_cents: amountCents || 0,
+            status: "initiated",
+            initiated_at: now,
+            created_at: now,
+            updated_at: now,
           })
           .select("id")
           .single()
 
         if (intentError || !newIntent) {
           console.error("[SUBSCRIPTION CHECKOUT] Failed to create intent:", intentError)
-          // Continuar sin intentId — el webhook lo maneja
           intentId = "no_intent"
         } else {
           intentId = newIntent.id
@@ -210,6 +214,18 @@ export async function POST(request: NextRequest) {
         }
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
+
+    // Actualizar el intent con el session_id y status pending_payment
+    if (intentId && intentId !== "no_intent") {
+      await supabase
+        .from("membership_intents")
+        .update({
+          status: "pending_payment",
+          stripe_setup_intent_id: checkoutSession.id, // reutilizamos este campo para el session_id
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", intentId)
+    }
 
     return NextResponse.json({
       sessionId: checkoutSession.id,
