@@ -111,13 +111,23 @@ export async function POST(req: NextRequest) {
           session.subscription as string
         );
 
-        const userId = subscription.metadata?.user_id;
+        // user_id puede estar en subscription.metadata o en session.metadata
+        let userId: string | undefined =
+          subscription.metadata?.user_id ||
+          session.metadata?.user_id;
         const membershipType =
-          subscription.metadata?.membership_type || "petite";
+          subscription.metadata?.membership_type ||
+          session.metadata?.membership_type ||
+          "essentiel";
 
         if (!userId) {
-          console.error("❌ Missing user_id in subscription metadata");
-          break;
+          console.error("❌ Missing user_id in subscription/session metadata — fallback to customer metadata");
+          const customerId = session.customer as string;
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer.deleted) { break; }
+          const supabaseUserId = (customer as Stripe.Customer).metadata?.supabase_user_id;
+          if (!supabaseUserId) { break; }
+          userId = supabaseUserId;
         }
 
         await supabase
@@ -148,15 +158,35 @@ export async function POST(req: NextRequest) {
 
         // Marcar el intent como paid_pending_verification
         // para que identity/create-session pueda encontrarlo
-        await supabase
+        // Si no existe intent previo, crear uno ahora
+        const { data: existingIntent } = await supabase
           .from("membership_intents")
-          .update({
+          .select("id")
+          .eq("user_id", userId)
+          .in("status", ["pending_payment", "pending", "created"])
+          .limit(1)
+          .maybeSingle();
+
+        if (existingIntent?.id) {
+          await supabase
+            .from("membership_intents")
+            .update({
+              status: "paid_pending_verification",
+              stripe_subscription_id: subscription.id,
+              updated_at: now,
+            })
+            .eq("id", existingIntent.id);
+        } else {
+          // Crear intent si no existía (flujo email sin intent previo)
+          await supabase.from("membership_intents").insert({
+            user_id: userId,
+            membership_type: membershipType,
             status: "paid_pending_verification",
             stripe_subscription_id: subscription.id,
+            created_at: now,
             updated_at: now,
-          })
-          .eq("user_id", userId)
-          .in("status", ["pending_payment", "pending", "created"]);
+          });
+        }
 
         // EMAIL AL USUARIO: Membresía activada — pago confirmado
         const { data: userProfile } = await supabase
