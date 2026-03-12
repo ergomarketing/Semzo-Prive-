@@ -215,13 +215,13 @@ export async function POST(request: NextRequest) {
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
 
-    // Actualizar el intent con el session_id y status pending_payment
+    // Actualizar el intent con el checkout_session_id y cambiar status a pending_payment
     if (intentId && intentId !== "no_intent") {
       await supabase
         .from("membership_intents")
         .update({
           status: "pending_payment",
-          stripe_setup_intent_id: checkoutSession.id, // reutilizamos este campo para el session_id
+          stripe_checkout_session_id: checkoutSession.id,
           updated_at: new Date().toISOString(),
         })
         .eq("id", intentId)
