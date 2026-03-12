@@ -94,6 +94,17 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" })
 
+    // Notificar al admin del nuevo registro
+    try {
+      const { adminNotifications } = await import("@/lib/admin-notifications")
+      await adminNotifications.notifyNewUserRegistration({
+        userName: fullName || email.toLowerCase().trim(),
+        userEmail: email.toLowerCase().trim(),
+      })
+    } catch (notifError) {
+      // No bloquear el registro si falla la notificación
+    }
+
     return NextResponse.json({
       success: true,
       message: !authData.session 

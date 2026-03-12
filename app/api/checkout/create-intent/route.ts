@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { adminNotifications } from "@/lib/admin-notifications"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -111,14 +110,6 @@ export async function POST(request: NextRequest) {
       amount_cents: finalAmountCents,
       gift_card_id: resolvedGiftCardId,
     })
-
-    if (userProfile) {
-      adminNotifications.notifyNewUserRegistration({
-        userName: userProfile.full_name || "Nuevo Usuario",
-        userEmail: userProfile.email || "email@desconocido.com",
-        membershipPlan: membershipType,
-      }).catch(() => {})
-    }
 
     return NextResponse.json({
       intentId: intent.id,

@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { adminNotifications } from "@/lib/admin-notifications"
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,16 +50,6 @@ export async function GET(request: NextRequest) {
         email: data.user.email,
       })
 
-      try {
-        await adminNotifications.notifyNewUserRegistration({
-          userName: data.user.user_metadata?.display_name || data.user.email?.split("@")[0] || "Usuario",
-          userEmail: data.user.email || "",
-        })
-        console.log("[v0] ✅ Admin notification sent for new user")
-      } catch (notifError) {
-        console.error("[v0] ⚠️ Failed to send admin notification:", notifError)
-      }
-
       const successUrl = new URL("/dashboard/membresia/status", origin)
       return NextResponse.redirect(successUrl)
     }
@@ -87,16 +76,6 @@ export async function GET(request: NextRequest) {
       userId: data.user.id,
       email: data.user.email,
     })
-
-    try {
-      await adminNotifications.notifyNewUserRegistration({
-        userName: data.user.user_metadata?.display_name || data.user.email?.split("@")[0] || "Usuario",
-        userEmail: data.user.email || "",
-      })
-      console.log("[v0] ✅ Admin notification sent for new user")
-    } catch (notifError) {
-      console.error("[v0] ⚠️ Failed to send admin notification:", notifError)
-    }
 
     const successUrl = new URL("/dashboard/membresia/status", origin)
     return NextResponse.redirect(successUrl)

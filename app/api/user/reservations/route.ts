@@ -448,7 +448,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reservation: existingWithBag, message: "Reserva ya existente" })
     }
 
-    // LLAMADA ATÓMICA AL RPC: locks + creaci��n de reserva
+    // LLAMADA ATÓMICA AL RPC: locks + creaci����n de reserva
     const passIdToConsume = passToUse?.id || usePassId
     
     console.log("[v0] Calling atomic RPC V3:", {
@@ -572,7 +572,7 @@ export async function POST(request: NextRequest) {
           <h3 style="color: #1a1a4b; margin-top: 0;">Información del Cliente</h3>
           <p><strong>Nombre:</strong> ${userProfile?.full_name || "N/A"}</p>
           <p><strong>Email:</strong> ${userProfile?.email || "N/A"}</p>
-          <p><strong>Membresía:</strong> <span style="background: #1a1a4b; color: white; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">${userProfile.membership_plan}</span></p>
+          <p><strong>Membresía:</strong> <span style="background: #1a1a4b; color: white; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">${effectivePlan}</span></p>
           
           <h3 style="color: #1a1a4b;">Detalles de la Reserva</h3>
           <p><strong>ID Reserva:</strong> ${reservation.id}</p>
@@ -595,16 +595,36 @@ export async function POST(request: NextRequest) {
       console.error("[v0] FAILED to send admin notification:", adminEmailError)
     }
 
+    // Enviar confirmación al usuario (el admin ya fue notificado arriba con notifyAdmin)
     try {
       const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
       const emailService = EmailServiceProduction.getInstance()
 
-      await emailService.sendReservationNotification({
-        userEmail: userProfile?.email || "",
-        userName: userProfile?.full_name || "Cliente",
-        bagName: `${bag.brand} ${bag.name}`,
-        reservationDate: startDate.toLocaleDateString("es-ES"),
-        reservationId: reservation.id,
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
+
+      await emailService.sendWithResend({
+        to: userProfile?.email || "",
+        subject: `Reserva confirmada: ${bag.brand} ${bag.name} — Semzo Privé`,
+        html: `
+          <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+            <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Reserva confirmada</h1>
+            <p style="color: #444; line-height: 1.6;">Hola ${userProfile?.full_name || ""},</p>
+            <p style="color: #444; line-height: 1.6;">Tu reserva ha sido confirmada con éxito.</p>
+            <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+              <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Bolso:</strong> ${bag.brand} ${bag.name}</p>
+              <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Fecha de inicio:</strong> ${startDate.toLocaleDateString("es-ES")}</p>
+              <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Fecha de devolución:</strong> ${endDate.toLocaleDateString("es-ES")}</p>
+              <p style="margin: 0; color: #1a1a4b;"><strong>ID de reserva:</strong> ${reservation.id}</p>
+            </div>
+            <div style="margin: 32px 0;">
+              <a href="${siteUrl}/dashboard/reservas" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                VER MIS RESERVAS
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+            <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+          </div>
+        `,
       })
     } catch (emailError) {
       console.error("[v0] FAILED to send user confirmation email:", emailError)
