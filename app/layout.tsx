@@ -2,10 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
 import Script from "next/script"
-import dynamic from "next/dynamic"
 import "./globals.css"
-
-const TikTokPixel = dynamic(() => import("@/components/TikTokPixel"), { ssr: false })
+import TikTokPixelLoader from "@/components/TikTokPixelLoader"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
 import CookieConsent from "./components/cookie-consent"
@@ -239,7 +237,7 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <TikTokPixel />
+        <TikTokPixelLoader />
         <AuthProvider>
           <CartProvider>
             <Navbar />
