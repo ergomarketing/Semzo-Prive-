@@ -46,6 +46,17 @@ export async function syncMembershipFromStripe(
 
   const status = mapStripeStatus(subscription.status)
 
+  // Derivar billing_cycle: Petite siempre es weekly, el resto monthly
+  const billingCycle: string =
+    subscription.metadata?.billing_cycle ||
+    (membershipType === "petite" ? "weekly" : "monthly")
+
+  const startDate = new Date(subscription.current_period_start * 1000)
+  const endDate =
+    billingCycle === "weekly"
+      ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+      : new Date(subscription.current_period_end * 1000)
+
   const { error } = await supabase
     .from("user_memberships")
     .upsert(
@@ -53,8 +64,10 @@ export async function syncMembershipFromStripe(
         user_id: userId,
         stripe_subscription_id: subscription.id,
         membership_type: membershipType,
+        billing_cycle: billingCycle,
         status,
-        end_date: safeTimestamp(subscription.current_period_end),
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" }

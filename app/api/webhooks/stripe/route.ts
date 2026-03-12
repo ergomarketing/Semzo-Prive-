@@ -130,6 +130,18 @@ export async function POST(req: NextRequest) {
           userId = supabaseUserId;
         }
 
+        // Derivar billing_cycle desde metadatos o desde el precio de Stripe
+        const billingCycle: string =
+          subscription.metadata?.billing_cycle ||
+          session.metadata?.billing_cycle ||
+          (membershipType === "petite" ? "weekly" : "monthly");
+
+        const startDate = new Date(subscription.current_period_start * 1000);
+        const endDate =
+          billingCycle === "weekly"
+            ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+            : new Date(subscription.current_period_end * 1000);
+
         await supabase
           .from("user_memberships")
           .upsert(
@@ -138,9 +150,10 @@ export async function POST(req: NextRequest) {
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
               membership_type: membershipType,
+              billing_cycle: billingCycle,
               status: subscription.status,
-              start_date: safeTimestamp(subscription.current_period_start),
-              end_date: safeTimestamp(subscription.current_period_end),
+              start_date: startDate.toISOString(),
+              end_date: endDate.toISOString(),
               failed_payment_count: 0,
               dunning_status: null,
               updated_at: now,
@@ -276,7 +289,7 @@ export async function POST(req: NextRequest) {
         // 🔒 Resolver user_id desde DB (NO desde metadata)
         const { data: membership } = await supabase
           .from("user_memberships")
-          .select("user_id")
+          .select("user_id, billing_cycle, membership_type")
           .eq("stripe_subscription_id", subscriptionId)
           .single();
 
@@ -289,12 +302,25 @@ export async function POST(req: NextRequest) {
           subscriptionId
         );
 
+        // Recalcular end_date según billing_cycle guardado
+        const renewalBillingCycle: string =
+          subscription.metadata?.billing_cycle ||
+          membership?.billing_cycle ||
+          (membership?.membership_type === "petite" ? "weekly" : "monthly");
+
+        const renewalStart = new Date(subscription.current_period_start * 1000);
+        const renewalEnd =
+          renewalBillingCycle === "weekly"
+            ? new Date(renewalStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+            : new Date(subscription.current_period_end * 1000);
+
         await supabase
           .from("user_memberships")
           .update({
             status: subscription.status,
-            start_date: safeTimestamp(subscription.current_period_start),
-            end_date: safeTimestamp(subscription.current_period_end),
+            billing_cycle: renewalBillingCycle,
+            start_date: renewalStart.toISOString(),
+            end_date: renewalEnd.toISOString(),
             failed_payment_count: 0,
             dunning_status: null,
             updated_at: now,
