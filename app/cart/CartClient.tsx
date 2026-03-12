@@ -811,7 +811,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        userId: user.id,
                         membershipType: type,
                         billingCycle: cycle,
                         amount: finalAmount,
