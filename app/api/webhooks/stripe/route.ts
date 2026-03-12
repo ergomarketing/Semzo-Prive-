@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { EmailServiceProduction } from "@/app/lib/email-service-production";
 
 export const dynamic = "force-dynamic";
 
@@ -110,13 +111,23 @@ export async function POST(req: NextRequest) {
           session.subscription as string
         );
 
-        const userId = subscription.metadata?.user_id;
+        // user_id puede estar en subscription.metadata o en session.metadata
+        let userId: string | undefined =
+          subscription.metadata?.user_id ||
+          session.metadata?.user_id;
         const membershipType =
-          subscription.metadata?.membership_type || "petite";
+          subscription.metadata?.membership_type ||
+          session.metadata?.membership_type ||
+          "essentiel";
 
         if (!userId) {
-          console.error("❌ Missing user_id in subscription metadata");
-          break;
+          console.error("❌ Missing user_id in subscription/session metadata — fallback to customer metadata");
+          const customerId = session.customer as string;
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer.deleted) { break; }
+          const supabaseUserId = (customer as Stripe.Customer).metadata?.supabase_user_id;
+          if (!supabaseUserId) { break; }
+          userId = supabaseUserId;
         }
 
         await supabase
@@ -147,15 +158,35 @@ export async function POST(req: NextRequest) {
 
         // Marcar el intent como paid_pending_verification
         // para que identity/create-session pueda encontrarlo
-        await supabase
+        // Si no existe intent previo, crear uno ahora
+        const { data: existingIntent } = await supabase
           .from("membership_intents")
-          .update({
+          .select("id")
+          .eq("user_id", userId)
+          .in("status", ["pending_payment", "pending", "created"])
+          .limit(1)
+          .maybeSingle();
+
+        if (existingIntent?.id) {
+          await supabase
+            .from("membership_intents")
+            .update({
+              status: "paid_pending_verification",
+              stripe_subscription_id: subscription.id,
+              updated_at: now,
+            })
+            .eq("id", existingIntent.id);
+        } else {
+          // Crear intent si no existía (flujo email sin intent previo)
+          await supabase.from("membership_intents").insert({
+            user_id: userId,
+            membership_type: membershipType,
             status: "paid_pending_verification",
             stripe_subscription_id: subscription.id,
+            created_at: now,
             updated_at: now,
-          })
-          .eq("user_id", userId)
-          .in("status", ["pending_payment", "pending", "created"]);
+          });
+        }
 
         // EMAIL AL USUARIO: Membresía activada — pago confirmado
         const { data: userProfile } = await supabase
@@ -174,32 +205,44 @@ export async function POST(req: NextRequest) {
 
         if (userProfile?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
-          await fetch(`${siteUrl}/api/admin/send-email`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: userProfile.email,
-              subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
-              body: `
-                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                  <img src="${siteUrl}/logo.png" alt="Semzo Privé" style="height: 40px; margin-bottom: 24px;" />
-                  <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">¡Bienvenida, ${userProfile.full_name || ""}!</h1>
-                  <p style="color: #444; line-height: 1.6;">Tu pago ha sido confirmado y tu membresía <strong>${membershipLabel}</strong> está activa.</p>
-                  <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
-                    <p style="margin: 0; color: #1a1a4b; font-size: 15px;"><strong>Próximo paso:</strong> Completa la verificación de identidad para desbloquear el acceso completo al catálogo.</p>
-                  </div>
-                  <p style="color: #444; line-height: 1.6;">La verificación es rápida y solo toma unos minutos. Una vez completada, podrás reservar cualquier bolso de nuestra colección exclusiva.</p>
-                  <div style="margin: 32px 0;">
-                    <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                      IR A MI DASHBOARD
-                    </a>
-                  </div>
-                  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                  <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+          const emailService = EmailServiceProduction.getInstance();
+          await emailService.sendWithResend({
+            to: userProfile.email,
+            subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
+            html: `
+              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">¡Bienvenida, ${userProfile.full_name || ""}!</h1>
+                <p style="color: #444; line-height: 1.6;">Tu pago ha sido confirmado y tu membresía <strong>${membershipLabel}</strong> está activa.</p>
+                <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                  <p style="margin: 0; color: #1a1a4b; font-size: 15px;"><strong>Próximo paso:</strong> Completa la verificación de identidad para desbloquear el acceso completo al catálogo.</p>
                 </div>
-              `,
-            }),
+                <p style="color: #444; line-height: 1.6;">La verificación es rápida y solo toma unos minutos. Una vez completada, podrás reservar cualquier bolso de nuestra colección exclusiva.</p>
+                <div style="margin: 32px 0;">
+                  <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                    IR A MI DASHBOARD
+                  </a>
+                </div>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+              </div>
+            `,
           }).catch(() => {}); // No bloquear el webhook si falla el email
+
+          // Notificar al admin de nueva membresía activada
+          await emailService.sendWithResend({
+            to: "mailbox@semzoprive.com",
+            subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1a1a4b;">Nueva membresía activada</h2>
+                <p><strong>Nombre:</strong> ${userProfile.full_name || "N/A"}</p>
+                <p><strong>Email:</strong> ${userProfile.email}</p>
+                <p><strong>Plan:</strong> ${membershipLabel}</p>
+                <p><strong>Suscripción Stripe:</strong> ${subscription.id}</p>
+                <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+              </div>
+            `,
+          }).catch(() => {});
         }
 
         console.log("✅ Membership ACTIVATED:", userId);
@@ -287,29 +330,26 @@ export async function POST(req: NextRequest) {
         if (renewProfile?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
           const amount = invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : "—";
-          await fetch(`${siteUrl}/api/admin/send-email`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: renewProfile.email,
-              subject: "Renovación confirmada — Semzo Privé",
-              body: `
-                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                  <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Renovación confirmada</h1>
-                  <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente.</p>
-                  <div style="background: #f8f6f2; padding: 20px; border-radius: 4px; margin: 24px 0;">
-                    <p style="margin: 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
-                  </div>
-                  <div style="margin: 32px 0;">
-                    <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                      VER MI CUENTA
-                    </a>
-                  </div>
-                  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                  <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+          const emailService = EmailServiceProduction.getInstance();
+          await emailService.sendWithResend({
+            to: renewProfile.email,
+            subject: "Renovación confirmada — Semzo Privé",
+            html: `
+              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Renovación confirmada</h1>
+                <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente.</p>
+                <div style="background: #f8f6f2; padding: 20px; border-radius: 4px; margin: 24px 0;">
+                  <p style="margin: 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
                 </div>
-              `,
-            }),
+                <div style="margin: 32px 0;">
+                  <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                    VER MI CUENTA
+                  </a>
+                </div>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+              </div>
+            `,
           }).catch(() => {});
         }
 
@@ -353,6 +393,117 @@ export async function POST(req: NextRequest) {
           .eq("id", membership.user_id);
 
         console.log("ℹ️ Subscription status updated:", membership.user_id);
+        break;
+      }
+
+      /**
+       * ============================================================
+       * 4️⃣ IDENTITY VERIFICATION — STRIPE IDENTITY WEBHOOK
+       * ============================================================
+       */
+      case "identity.verification_session.verified": {
+        const vs = event.data.object as Stripe.Identity.VerificationSession;
+        const userId = vs.metadata?.user_id;
+        if (!userId) break;
+
+        const now2 = new Date().toISOString();
+
+        await supabase
+          .from("identity_verifications")
+          .update({ status: "verified", verified_at: now2, updated_at: now2 })
+          .eq("stripe_verification_id", vs.id);
+
+        await supabase
+          .from("profiles")
+          .update({ identity_verified: true, identity_verified_at: now2, updated_at: now2 })
+          .eq("id", userId);
+
+        // Activar membresía si hay intent pagado pendiente
+        const { data: pendingIntent } = await supabase
+          .from("membership_intents")
+          .select("id, membership_type, stripe_subscription_id")
+          .eq("user_id", userId)
+          .in("status", ["paid_pending_verification", "pending_payment"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingIntent?.stripe_subscription_id) {
+          await supabase
+            .from("user_memberships")
+            .upsert(
+              {
+                user_id: userId,
+                membership_type: pendingIntent.membership_type,
+                status: "active",
+                stripe_subscription_id: pendingIntent.stripe_subscription_id,
+                identity_verified: true,
+                updated_at: now2,
+              },
+              { onConflict: "stripe_subscription_id" }
+            );
+
+          await supabase
+            .from("profiles")
+            .update({ membership_status: "active", membership_type: pendingIntent.membership_type, updated_at: now2 })
+            .eq("id", userId);
+
+          await supabase
+            .from("membership_intents")
+            .update({ status: "active", updated_at: now2 })
+            .eq("id", pendingIntent.id);
+
+          // Email de acceso completo
+          const { data: identityProfile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", userId)
+            .single();
+
+          if (identityProfile?.email) {
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+            const membershipLabels: Record<string, string> = {
+              petite: "L'Essentiel", essentiel: "L'Essentiel", signature: "Signature", prive: "Privé",
+            };
+            const label = membershipLabels[pendingIntent.membership_type] || pendingIntent.membership_type;
+            await EmailServiceProduction.getInstance().sendWithResend({
+              to: identityProfile.email,
+              subject: `Acceso completo desbloqueado — Semzo Privé`,
+              html: `
+                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                  <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">Bienvenida al club, ${identityProfile.full_name?.split(" ")[0] || ""}.</h1>
+                  <p style="color: #444; line-height: 1.7;">Tu identidad ha sido verificada y tu membresía <strong>${label}</strong> está completamente activa.</p>
+                  <p style="color: #444; line-height: 1.7;">Ya puedes acceder al catálogo completo y realizar tus primeras reservas.</p>
+                  <div style="margin: 32px 0;">
+                    <a href="${siteUrl}/catalog" style="background: #1a1a4b; color: white; padding: 14px 32px; text-decoration: none; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase;">
+                      Ver el catálogo
+                    </a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #e8e4df; margin: 32px 0;" />
+                  <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                </div>
+              `,
+            }).catch(() => {});
+          }
+        }
+
+        console.log("✅ Identity VERIFIED for user:", userId);
+        break;
+      }
+
+      case "identity.verification_session.requires_input": {
+        const vs = event.data.object as Stripe.Identity.VerificationSession;
+        const userId = vs.metadata?.user_id;
+        if (!userId) break;
+
+        const now3 = new Date().toISOString();
+
+        await supabase
+          .from("identity_verifications")
+          .update({ status: "requires_input", updated_at: now3 })
+          .eq("stripe_verification_id", vs.id);
+
+        console.log("⚠️ Identity requires_input for user:", userId);
         break;
       }
 

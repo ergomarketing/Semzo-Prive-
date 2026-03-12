@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@/app/lib/supabase/server"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 // CRITICAL: No cache - authenticated mutation endpoint
 export const dynamic = "force-dynamic"
@@ -24,116 +25,139 @@ const stripe = new Stripe(stripeSecretKey || "", {
  * 4. NO usar PaymentIntent
  */
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  console.log("🔄 [SUBSCRIPTION CHECKOUT] Iniciando...", new Date().toISOString())
-
   try {
     if (!stripeSecretKey) {
-      console.error("❌ STRIPE_SECRET_KEY no configurada")
       return NextResponse.json(
-        {
-          error: "Configuración de Stripe incompleta",
-          details: "STRIPE_SECRET_KEY no está configurada",
-        },
+        { error: "Configuración de Stripe incompleta" },
         { status: 500 },
       )
     }
 
-    // priceId puede ser un ID de catalogo o undefined (bag-pass usa price_data dinamico)
-    // amountCents y productName se usan cuando no hay priceId fijo (bag-pass con saldo parcial)
-    const { priceId, membershipType, billingCycle, intentId, amountCents, productName } = await request.json()
-
-    const supabase = await createClient()
-
-    // VALIDATION: Get authenticated session (works for SMS + email users)
+    const body = await request.json()
     const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession()
+      priceId,
+      membershipType,
+      billingCycle,
+      intentId: clientIntentId,
+      amountCents,
+      productName,
+    } = body
 
-    if (authError || !session) {
+    // VALIDATION: Required fields — priceId OR amountCents son suficientes
+    if (!priceId && !amountCents) {
       return NextResponse.json(
-        {
-          error: "Authentication required",
-          details: "User must be logged in to create subscription",
-        },
-        { status: 401 },
-      )
-    }
-
-    const userId = session.user.id
-
-    // VALIDATION: Required fields
-    // membershipType es opcional: sin el → pago unico (bag-pass)
-    // priceId OR amountCents son requeridos (bag-pass puede usar price_data dinamico)
-    if ((!priceId && !amountCents) || !intentId) {
-      console.error("[SUBSCRIPTION CHECKOUT] Missing required fields", { priceId, amountCents, intentId })
-      return NextResponse.json(
-        { error: "Missing required fields", details: "priceId (o amountCents) e intentId son requeridos" },
+        { error: "Missing required fields", details: "priceId o amountCents son requeridos" },
         { status: 400 },
       )
     }
 
-    // Determinar modo: subscription si hay membershipType, payment si es bag-pass
-    const isSubscription = !!membershipType
+    // Autenticar usuario con cookies SSR
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {},
+        },
+      }
+    )
 
-    // STEP 1: Get email from profiles (NOT from Supabase Auth)
-    // SMS users have null email in auth but may have real email in profiles
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Authentication required", details: "User must be logged in" },
+        { status: 401 },
+      )
+    }
+
+    const userId = user.id
+
+    // Obtener perfil para email y stripe_customer_id
     const { data: profile } = await supabase
       .from("profiles")
       .select("stripe_customer_id, full_name, email, auth_method")
       .eq("id", userId)
       .single()
 
-    let customerEmail: string | undefined = undefined
+    const customerEmail: string | undefined = profile?.email || undefined
 
-    if (profile?.email) {
-      customerEmail = profile.email
+    // Determinar o crear el intent_id
+    let intentId = clientIntentId
+
+    if (!intentId) {
+      // Buscar intent existente en estado válido
+      const { data: existingIntent } = await supabase
+        .from("membership_intents")
+        .select("id")
+        .eq("user_id", userId)
+        .in("status", ["pending_payment", "pending", "created"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existingIntent?.id) {
+        intentId = existingIntent.id
+      } else {
+        // Crear un nuevo intent si no hay ninguno
+        const { data: newIntent, error: intentError } = await supabase
+          .from("membership_intents")
+          .insert({
+            user_id: userId,
+            membership_type: membershipType || "essentiel",
+            status: "pending_payment",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single()
+
+        if (intentError || !newIntent) {
+          console.error("[SUBSCRIPTION CHECKOUT] Failed to create intent:", intentError)
+          // Continuar sin intentId — el webhook lo maneja
+          intentId = "no_intent"
+        } else {
+          intentId = newIntent.id
+        }
+      }
     }
 
-    console.log("[SUBSCRIPTION CHECKOUT] Creating for:", {
-      userId,
-      hasEmail: !!customerEmail,
-      membershipType,
-      billingCycle,
-      priceId,
-      intentId,
-    })
-
-    // STEP 2: Get or create Stripe customer
+    // Get or create Stripe customer
     let stripeCustomerId = profile?.stripe_customer_id
 
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
         email: customerEmail,
         name: profile?.full_name || undefined,
-        metadata: {
-          supabase_user_id: userId,
-        },
+        metadata: { supabase_user_id: userId },
       })
       stripeCustomerId = customer.id
 
-      await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
-
-      console.log("[SUBSCRIPTION CHECKOUT] Created Stripe customer:", stripeCustomerId)
-    } else {
-      console.log("[SUBSCRIPTION CHECKOUT] Using existing Stripe customer:", stripeCustomerId)
+      await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq("id", userId)
     }
 
-    // STEP 3: Create Checkout Session in subscription mode
+    // Determinar modo: subscription si hay membershipType, payment para pases
+    const isSubscription = !!membershipType
+
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 
-    // Stripe no permite customer + customer_email juntos
-    // Si ya tenemos customer_id, usamos customer (Stripe usa el email del customer)
-    // Si el customer no tiene email (SMS user), Stripe lo pedira en el checkout
     const successUrl = `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${baseUrl}/cart?canceled=true`
 
     const commonMetadata = {
       intent_id: intentId,
       user_id: userId,
-      membership_type: membershipType,
+      membership_type: membershipType || "",
       billing_cycle: billingCycle || "monthly",
     }
 
@@ -148,20 +172,16 @@ export async function POST(request: NextRequest) {
           subscription_data: {
             metadata: {
               ...commonMetadata,
-              sepa_backup: customerEmail ? "true" : "false",
               service: "luxury_rental",
             },
           },
           success_url: successUrl,
-          cancel_url: `${baseUrl}/cart?canceled=true`,
+          cancel_url: cancelUrl,
           allow_promotion_codes: true,
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
       : {
-          // Pago único (bag-pass u otro producto)
-          // Si priceId existe → usar price fijo catalogo
-          // Si no → usar price_data dinamico con amountCents
           mode: "payment",
           customer: stripeCustomerId,
           payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
@@ -181,23 +201,15 @@ export async function POST(request: NextRequest) {
                 },
               ],
           metadata: commonMetadata,
-          payment_intent_data: {
-            metadata: commonMetadata,
-          },
+          payment_intent_data: { metadata: commonMetadata },
           success_url: successUrl,
-          cancel_url: `${baseUrl}/cart?canceled=true`,
+          cancel_url: cancelUrl,
           allow_promotion_codes: true,
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
-
-    console.log("[SUBSCRIPTION CHECKOUT] ✅ Checkout session created:", {
-      sessionId: checkoutSession.id,
-      url: checkoutSession.url,
-      duration: `${Date.now() - startTime}ms`,
-    })
 
     return NextResponse.json({
       sessionId: checkoutSession.id,
@@ -208,7 +220,6 @@ export async function POST(request: NextRequest) {
       message: error?.message,
       type: error?.type,
       code: error?.code,
-      stack: error?.stack,
     })
 
     return NextResponse.json(

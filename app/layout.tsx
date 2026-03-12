@@ -201,8 +201,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
         />
 
-        {/* TikTok Pixel */}
-        <TikTokPixel />
+        {/* TikTok Pixel - loaded in body via dynamic import to avoid chunk errors */}
 
         {/* Google Analytics */}
         <Script
@@ -238,6 +237,7 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        <TikTokPixel />
         <AuthProvider>
           <CartProvider>
             <Navbar />

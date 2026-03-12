@@ -194,20 +194,38 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (status === "cancelled" && currentReservation.bag_id) {
       await supabase.from("bags").update({ status: "available" }).eq("id", currentReservation.bag_id)
 
+      // Enviar confirmación de cancelación al usuario
       try {
-        console.log("[API] Sending cancellation email notification...")
+        console.log("[API] Sending cancellation email to user...")
         const emailService = EmailServiceProduction.getInstance()
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
-        await emailService.sendCancellationNotification({
-          userEmail: currentReservation.profiles?.email || "",
-          userName: currentReservation.profiles?.full_name || "Usuario",
-          bagName: currentReservation.bags?.name || "Bolso",
-          reservationId: reservationId,
-          cancellationDate: new Date().toISOString(),
+        await emailService.sendWithResend({
+          to: currentReservation.profiles?.email || "",
+          subject: `Reserva cancelada: ${currentReservation.bags?.brand || ""} ${currentReservation.bags?.name || "Bolso"} — Semzo Privé`,
+          html: `
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+              <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Reserva cancelada</h1>
+              <p style="color: #444; line-height: 1.6;">Hola ${currentReservation.profiles?.full_name || ""},</p>
+              <p style="color: #444; line-height: 1.6;">Tu reserva ha sido cancelada correctamente.</p>
+              <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Bolso:</strong> ${currentReservation.bags?.brand || ""} ${currentReservation.bags?.name || ""}</p>
+                <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>ID de reserva:</strong> ${reservationId}</p>
+                <p style="margin: 0; color: #1a1a4b;"><strong>Fecha de cancelación:</strong> ${new Date().toLocaleDateString("es-ES")}</p>
+              </div>
+              <div style="margin: 32px 0;">
+                <a href="${siteUrl}/dashboard/reservas" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                  VER MIS RESERVAS
+                </a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+              <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+            </div>
+          `,
         })
-        console.log("[API] Cancellation email sent successfully")
+        console.log("[API] Cancellation email sent to user successfully")
       } catch (emailError) {
-        console.error("[API] Error sending cancellation email:", emailError)
+        console.error("[API] Error sending cancellation email to user:", emailError)
       }
 
       try {
@@ -243,6 +261,48 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         console.log("[API] Admin notified of status change")
       } catch (notifError) {
         console.error("[API] Error notifying admin of status change:", notifError)
+      }
+
+      // Notificar al usuario del cambio de estado
+      if (currentReservation.profiles?.email && ["confirmed", "active", "completed"].includes(status)) {
+        try {
+          const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
+          const emailService = EmailServiceProduction.getInstance()
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
+
+          const statusLabels: Record<string, string> = {
+            confirmed: "Confirmada",
+            active: "Activa — en camino",
+            completed: "Completada",
+          }
+          const statusLabel = statusLabels[status] || status
+
+          await emailService.sendWithResend({
+            to: currentReservation.profiles.email,
+            subject: `Estado de tu reserva actualizado: ${statusLabel} — Semzo Privé`,
+            html: `
+              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Tu reserva ha sido actualizada</h1>
+                <p style="color: #444; line-height: 1.6;">Hola ${currentReservation.profiles?.full_name || ""},</p>
+                <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                  <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Bolso:</strong> ${currentReservation.bags?.brand || ""} ${currentReservation.bags?.name || ""}</p>
+                  <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Nuevo estado:</strong> ${statusLabel}</p>
+                  <p style="margin: 0; color: #1a1a4b;"><strong>ID de reserva:</strong> ${reservationId}</p>
+                </div>
+                <div style="margin: 32px 0;">
+                  <a href="${siteUrl}/dashboard/reservas" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                    VER MIS RESERVAS
+                  </a>
+                </div>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+              </div>
+            `,
+          })
+          console.log("[API] User notified of status change")
+        } catch (userEmailError) {
+          console.error("[API] Error notifying user of status change:", userEmailError)
+        }
       }
     }
 

@@ -3,7 +3,7 @@ const FROM = "Semzo Privé <noreply@semzoprive.com>"
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "hola@semzoprive.com"
 
 async function sendEmail(to: string, subject: string, html: string) {
-  const key = process.env.EMAIL_API_KEY
+  const key = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
   if (!key) return
 
   await fetch(RESEND_API, {
@@ -17,6 +17,30 @@ async function sendEmail(to: string, subject: string, html: string) {
 }
 
 export const adminNotifications = {
+  async notifyNewUserRegistration({
+    userName,
+    userEmail,
+    membershipPlan,
+  }: {
+    userName: string
+    userEmail: string
+    membershipPlan?: string
+  }) {
+    await sendEmail(
+      ADMIN_EMAIL,
+      `Nuevo usuario registrado — ${userName}`,
+      `
+        <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#1a1a4b">
+          <h2 style="border-bottom:1px solid #e5e7eb;padding-bottom:12px">Nuevo Usuario Registrado</h2>
+          <p><strong>Nombre:</strong> ${userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${userEmail}" style="color:#1a1a4b">${userEmail}</a></p>
+          ${membershipPlan ? `<p><strong>Plan:</strong> ${membershipPlan}</p>` : ""}
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" })}</p>
+        </div>
+      `
+    )
+  },
+
   async notifyNewNewsletterSubscription({
     email,
     name,
