@@ -396,6 +396,117 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      /**
+       * ============================================================
+       * 4️⃣ IDENTITY VERIFICATION — STRIPE IDENTITY WEBHOOK
+       * ============================================================
+       */
+      case "identity.verification_session.verified": {
+        const vs = event.data.object as Stripe.Identity.VerificationSession;
+        const userId = vs.metadata?.user_id;
+        if (!userId) break;
+
+        const now2 = new Date().toISOString();
+
+        await supabase
+          .from("identity_verifications")
+          .update({ status: "verified", verified_at: now2, updated_at: now2 })
+          .eq("stripe_verification_id", vs.id);
+
+        await supabase
+          .from("profiles")
+          .update({ identity_verified: true, identity_verified_at: now2, updated_at: now2 })
+          .eq("id", userId);
+
+        // Activar membresía si hay intent pagado pendiente
+        const { data: pendingIntent } = await supabase
+          .from("membership_intents")
+          .select("id, membership_type, stripe_subscription_id")
+          .eq("user_id", userId)
+          .in("status", ["paid_pending_verification", "pending_payment"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingIntent?.stripe_subscription_id) {
+          await supabase
+            .from("user_memberships")
+            .upsert(
+              {
+                user_id: userId,
+                membership_type: pendingIntent.membership_type,
+                status: "active",
+                stripe_subscription_id: pendingIntent.stripe_subscription_id,
+                identity_verified: true,
+                updated_at: now2,
+              },
+              { onConflict: "stripe_subscription_id" }
+            );
+
+          await supabase
+            .from("profiles")
+            .update({ membership_status: "active", membership_type: pendingIntent.membership_type, updated_at: now2 })
+            .eq("id", userId);
+
+          await supabase
+            .from("membership_intents")
+            .update({ status: "active", updated_at: now2 })
+            .eq("id", pendingIntent.id);
+
+          // Email de acceso completo
+          const { data: identityProfile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", userId)
+            .single();
+
+          if (identityProfile?.email) {
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+            const membershipLabels: Record<string, string> = {
+              petite: "L'Essentiel", essentiel: "L'Essentiel", signature: "Signature", prive: "Privé",
+            };
+            const label = membershipLabels[pendingIntent.membership_type] || pendingIntent.membership_type;
+            await EmailServiceProduction.getInstance().sendWithResend({
+              to: identityProfile.email,
+              subject: `Acceso completo desbloqueado — Semzo Privé`,
+              html: `
+                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                  <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">Bienvenida al club, ${identityProfile.full_name?.split(" ")[0] || ""}.</h1>
+                  <p style="color: #444; line-height: 1.7;">Tu identidad ha sido verificada y tu membresía <strong>${label}</strong> está completamente activa.</p>
+                  <p style="color: #444; line-height: 1.7;">Ya puedes acceder al catálogo completo y realizar tus primeras reservas.</p>
+                  <div style="margin: 32px 0;">
+                    <a href="${siteUrl}/catalog" style="background: #1a1a4b; color: white; padding: 14px 32px; text-decoration: none; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase;">
+                      Ver el catálogo
+                    </a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #e8e4df; margin: 32px 0;" />
+                  <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                </div>
+              `,
+            }).catch(() => {});
+          }
+        }
+
+        console.log("✅ Identity VERIFIED for user:", userId);
+        break;
+      }
+
+      case "identity.verification_session.requires_input": {
+        const vs = event.data.object as Stripe.Identity.VerificationSession;
+        const userId = vs.metadata?.user_id;
+        if (!userId) break;
+
+        const now3 = new Date().toISOString();
+
+        await supabase
+          .from("identity_verifications")
+          .update({ status: "requires_input", updated_at: now3 })
+          .eq("stripe_verification_id", vs.id);
+
+        console.log("⚠️ Identity requires_input for user:", userId);
+        break;
+      }
+
       default:
         console.log("ℹ️ Unhandled event:", event.type);
     }
