@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { logAudit } from "@/lib/fraud-gate"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -45,12 +46,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    await processWebhookAsync(event, session)
+    // Procesar de forma no bloqueante para responder 200 inmediatamente a Stripe
+    // Esto evita reintentos por timeout
+    processWebhookAsync(event, session).catch((err) => {
+      console.error("[v0] Background processing error:", err)
+    })
 
+    // Responder 200 inmediatamente para que Stripe no reintente
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (error: any) {
     console.error("[v0] Critical error in webhook handler:", error)
-    return NextResponse.json({ error: "critical_error" }, { status: 500 })
+    // Incluso en error crítico, devolver 200 para evitar reintentos infinitos
+    // El error ya está logueado y se puede investigar
+    return NextResponse.json({ received: true, error: "logged" }, { status: 200 })
   }
 }
 
