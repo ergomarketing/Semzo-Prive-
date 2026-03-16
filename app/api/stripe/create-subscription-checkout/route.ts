@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       ? {
           mode: "subscription",
           customer: stripeCustomerId,
-          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          payment_method_types: ["card"],
           payment_method_collection: "always",
           line_items: [{ price: priceId, quantity: 1 }],
           metadata: commonMetadata,
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       : {
           mode: "payment",
           customer: stripeCustomerId,
-          payment_method_types: customerEmail ? ["card", "sepa_debit"] : ["card"],
+          payment_method_types: ["card"],
           line_items: priceId
             ? [{ price: priceId, quantity: 1 }]
             : [
