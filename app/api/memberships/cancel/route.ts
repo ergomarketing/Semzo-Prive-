@@ -3,8 +3,6 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
-
 export async function POST() {
   try {
     const cookieStore = await cookies()
@@ -28,8 +26,9 @@ export async function POST() {
 
     let cancelDate = ""
 
-    if (membership.stripe_subscription_id) {
+    if (membership.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
       // Suscripción Stripe — cancelar al final del período
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
       const subscription = await stripe.subscriptions.update(membership.stripe_subscription_id, {
         cancel_at_period_end: true,
       })

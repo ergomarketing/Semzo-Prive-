@@ -342,21 +342,21 @@ export default function MembresiaPage() {
                         variant="outline"
                         onClick={() => setShowCancelConfirm(true)}
                         disabled={!!actionLoading}
-                        className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                        className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
                         Cancelar membresía
                       </Button>
                     ) : (
-                      <div className="border border-red-200 rounded-lg p-4 bg-red-50 space-y-3">
-                        <p className="text-sm text-red-700 font-medium">
+                      <div className="border border-indigo-dark/20 rounded-lg p-4 bg-rose-nude/30 space-y-3">
+                        <p className="text-sm text-indigo-dark font-medium">
                           ¿Segura que quieres cancelar? Mantendrás el acceso hasta el final del período actual.
                         </p>
                         <div className="flex gap-2">
                           <Button
                             onClick={() => handleMembershipAction("cancel")}
                             disabled={!!actionLoading}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm"
+                            className="flex-1 bg-indigo-dark hover:bg-indigo-dark/90 text-white text-sm"
                           >
                             {actionLoading === "cancel" ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
