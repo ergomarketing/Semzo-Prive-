@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Gift, Check, Sparkles } from "lucide-react"
-import { loadStripe } from "@stripe/stripe-js"
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
+import { getStripePromise } from "@/lib/stripe-client"
 import { toast } from "sonner"
 import Link from "next/link"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise = getStripePromise()
 
 const PRESET_AMOUNTS = [50, 100, 150, 200, 300, 500]
 

@@ -81,7 +81,7 @@ export default function Navbar() {
               alt="Semzo Privé Monogram"
               width={40}
               height={50}
-              className="w-8 h-10 sm:w-10 sm:h-12 mx-1 sm:mx-2 object-contain"
+              className="mx-1 sm:mx-2 object-contain"
               priority
             />
             <span

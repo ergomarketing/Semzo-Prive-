@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { logAudit } from "@/lib/fraud-gate"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -45,12 +46,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    await processWebhookAsync(event, session)
+    // Procesar de forma no bloqueante para responder 200 inmediatamente a Stripe
+    // Esto evita reintentos por timeout
+    processWebhookAsync(event, session).catch((err) => {
+      console.error("[v0] Background processing error:", err)
+    })
 
+    // Responder 200 inmediatamente para que Stripe no reintente
     return NextResponse.json({ received: true }, { status: 200 })
   } catch (error: any) {
     console.error("[v0] Critical error in webhook handler:", error)
-    return NextResponse.json({ error: "critical_error" }, { status: 500 })
+    // Incluso en error crítico, devolver 200 para evitar reintentos infinitos
+    // El error ya está logueado y se puede investigar
+    return NextResponse.json({ received: true, error: "logged" }, { status: 200 })
   }
 }
 
@@ -173,30 +181,27 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
 
         if (userProfile?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
-          await fetch(`${siteUrl}/api/admin/send-email`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: userProfile.email,
-              subject: "Identidad verificada — Acceso completo desbloqueado · Semzo Privé",
-              body: `
-                <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                  <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Tu identidad ha sido verificada</h1>
-                  <p style="color: #444; line-height: 1.6;">Hola ${userProfile.full_name || ""},</p>
-                  <p style="color: #444; line-height: 1.6;">Tu verificación de identidad ha sido completada con éxito. Ya tienes acceso completo al catálogo exclusivo de Semzo Privé.</p>
-                  <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
-                    <p style="margin: 0; color: #1a1a4b;"><strong>Ya puedes reservar tus bolsos favoritos</strong></p>
-                  </div>
-                  <div style="margin: 32px 0;">
-                    <a href="${siteUrl}/catalog" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                      EXPLORAR CATÁLOGO
-                    </a>
-                  </div>
-                  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                  <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+          const emailService = EmailServiceProduction.getInstance()
+          await emailService.sendWithResend({
+            to: userProfile.email,
+            subject: "Identidad verificada — Acceso completo desbloqueado · Semzo Privé",
+            html: `
+              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Tu identidad ha sido verificada</h1>
+                <p style="color: #444; line-height: 1.6;">Hola ${userProfile.full_name || ""},</p>
+                <p style="color: #444; line-height: 1.6;">Tu verificación de identidad ha sido completada con éxito. Ya tienes acceso completo al catálogo exclusivo de Semzo Privé.</p>
+                <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                  <p style="margin: 0; color: #1a1a4b;"><strong>Ya puedes reservar tus bolsos favoritos</strong></p>
                 </div>
-              `,
-            }),
+                <div style="margin: 32px 0;">
+                  <a href="${siteUrl}/catalog" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                    EXPLORAR CATÁLOGO
+                  </a>
+                </div>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+              </div>
+            `,
           }).catch(() => {})
         }
 

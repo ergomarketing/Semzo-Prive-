@@ -3,27 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
-import { loadStripe } from "@stripe/stripe-js"
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
+import { getStripePromise } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 
-const stripePublishableKey =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-  process.env.STRIPE_STRIPE_PUBLISHABLE_KEY ||
-  process.env.STRIPE_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-  ""
-
-// Debug log para verificar la clave
-console.log("🔑 Stripe Key Status:", {
-  hasKey: !!stripePublishableKey,
-  keyPrefix: stripePublishableKey?.substring(0, 8),
-  keyLength: stripePublishableKey?.length,
-})
-
-// Inicializar Stripe solo si hay clave configurada
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
+const stripePromise = getStripePromise()
 
 interface PaymentFormProps {
   amount: number

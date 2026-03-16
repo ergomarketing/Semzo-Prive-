@@ -114,7 +114,7 @@ export default function MagazineSection() {
             {canScrollLeft && (
               <button
                 onClick={() => scroll("left")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all opacity-0 group-hover:opacity-100"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all"
                 aria-label="Scroll left"
               >
                 <ChevronLeft className="h-6 w-6 text-indigo-dark" />
@@ -125,7 +125,7 @@ export default function MagazineSection() {
             {canScrollRight && (
               <button
                 onClick={() => scroll("right")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all opacity-0 group-hover:opacity-100"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all"
                 aria-label="Scroll right"
               >
                 <ChevronRight className="h-6 w-6 text-indigo-dark" />

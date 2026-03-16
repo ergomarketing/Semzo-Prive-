@@ -3,18 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
-import { loadStripe } from "@stripe/stripe-js"
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
+import { getStripePromise } from "@/lib/stripe-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreditCard, Loader2, CheckCircle2, AlertTriangle, Tag, X, Gift } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
-const stripePublishableKey =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-  "pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB"
-
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
+const stripePromise = getStripePromise()
 
 interface PaymentFormProps {
   amount: number

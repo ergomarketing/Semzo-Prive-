@@ -127,6 +127,8 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.supabase.com' },
       { protocol: 'https', hostname: '**.v0.dev' },
       { protocol: 'https', hostname: '**.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '**.vusercontent.net' },
+      { protocol: 'https', hostname: '**.vercel.app' },
     ],
   },
 };
