@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
           .single();
 
         const membershipLabels: Record<string, string> = {
-          petite: "L'Essentiel",
+          petite: "Petite",
           essentiel: "L'Essentiel",
           signature: "Signature",
           prive: "Privé",
@@ -505,7 +505,7 @@ export async function POST(req: NextRequest) {
           if (identityProfile?.email) {
             const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
             const membershipLabels: Record<string, string> = {
-              petite: "L'Essentiel", essentiel: "L'Essentiel", signature: "Signature", prive: "Privé",
+              petite: "Petite", essentiel: "L'Essentiel", signature: "Signature", prive: "Privé",
             };
             const label = membershipLabels[pendingIntent.membership_type] || pendingIntent.membership_type;
             await EmailServiceProduction.getInstance().sendWithResend({
