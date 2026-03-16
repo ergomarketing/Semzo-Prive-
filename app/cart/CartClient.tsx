@@ -141,7 +141,16 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.shipping_address
       setExtendedFormCompleted(!!hasExtendedData)
-      setIdentityVerified(profile?.identity_verified === true)
+
+      // Verificar desde identity_verifications (fuente de verdad)
+      const { data: verification } = await supabase
+        .from("identity_verifications")
+        .select("status")
+        .eq("user_id", currentUser.id)
+        .maybeSingle()
+
+      const isVerified = verification?.status === "verified" || profile?.identity_verified === true
+      setIdentityVerified(isVerified)
 
       if (profile) {
         setExtendedFormData((prev) => ({
@@ -450,9 +459,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     return items.length > 0 ? analyzeCartItems(items) : null
   }, [items])
   
-  // Identity verification happens AFTER payment via webhook, not before
-  // Users can pay memberships without Identity verified - webhook handles verification flow
-  const needsVerification = false
+  // Bloquear checkout si el carrito tiene membresía y el usuario no est�� verificado
+  const needsVerification = !!(cartAnalysis?.membershipType && !identityVerified)
   const needsExtendedForm = cartAnalysis?.membershipType && !extendedFormCompleted
 
   const handleVerificationComplete = (verified: boolean) => {
@@ -752,6 +760,18 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
               </Card>
 
               {/* Boton de pago - PASO 1: create-intent, PASO 2: Stripe Checkout */}
+              {needsVerification && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  Debes verificar tu identidad antes de activar tu membresía.{" "}
+                  <button
+                    onClick={handleVerifyIdentity}
+                    className="underline font-medium hover:text-amber-900"
+                  >
+                    Verificar ahora
+                  </button>
+                </div>
+              )}
+
               <Button
                 onClick={async () => {
                   setCheckoutLoading(true)
@@ -760,6 +780,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     if (!user || !user.id) {
                       toast.error("Por favor, inicia sesión para continuar")
                       setShowAuthModal(true)
+                      setCheckoutLoading(false)
+                      return
+                    }
+
+                    // Bloquear si no está verificado
+                    if (needsVerification) {
+                      toast.error("Debes verificar tu identidad antes de continuar")
                       setCheckoutLoading(false)
                       return
                     }
