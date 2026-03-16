@@ -24,16 +24,19 @@ export async function POST() {
 
     if (!membership) return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
 
-    // Si tiene Stripe, verificar estado antes de actualizar
+    // Si tiene Stripe, intentar pausar — ignorar errores de Stripe (membresía ya cancelada, etc.)
     if (membership.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-      const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
-      if (sub.status === "active") {
-        await stripe.subscriptions.update(membership.stripe_subscription_id, {
-          pause_collection: { behavior: "mark_uncollectible" },
-        })
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
+        const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
+        if (sub.status === "active") {
+          await stripe.subscriptions.update(membership.stripe_subscription_id, {
+            pause_collection: { behavior: "mark_uncollectible" },
+          })
+        }
+      } catch (_) {
+        // Stripe falla (ya cancelada, etc.) — continuamos y actualizamos solo Supabase
       }
-      // Si ya está canceled/past_due en Stripe, solo actualizamos Supabase
     }
 
     await supabase

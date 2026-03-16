@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
+      console.log("[v0] RPC error:", error.message, error.code, error.details, error.hint)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
