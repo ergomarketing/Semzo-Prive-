@@ -1,72 +1,36 @@
+import Stripe from "stripe"
 import { NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import Stripe from "stripe"
 
-export async function POST() {
-  try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll: () => cookieStore.getAll() } }
-    )
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+export async function POST(req: Request) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
 
-    const { data: membership } = await supabase
-      .from("user_memberships")
-      .select("stripe_subscription_id, status, end_date")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
-    if (!membership) return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
+  const { subscriptionId } = await req.json()
 
-    let cancelDate = ""
-
-    // Calcular fecha de cancelación desde Supabase por defecto
-    cancelDate = membership.end_date
-      ? new Date(membership.end_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
-      : "final del período"
-
-    // Stripe: best-effort — cualquier error se ignora
-    if (membership.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
-      try {
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-        const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
-        if ((sub.status === "active" || sub.status === "trialing") && !sub.cancel_at_period_end) {
-          const updated = await stripe.subscriptions.update(membership.stripe_subscription_id, {
-            cancel_at_period_end: true,
-          })
-          cancelDate = new Date(updated.current_period_end * 1000).toLocaleDateString("es-ES", {
-            day: "numeric", month: "long", year: "numeric",
-          })
-        }
-      } catch { /* ignorar — Supabase se actualiza de todos modos */ }
+  if (subscriptionId) {
+    try {
+      await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true })
+    } catch (e) {
+      console.error("Stripe cancel error", e)
     }
-      } catch (_) {
-        // Stripe no disponible o suscripción inválida — cancelar solo en Supabase
-        cancelDate = membership.end_date
-          ? new Date(membership.end_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
-          : "final del período"
-      }
-    } else {
-      // Gift card / manual — cancelar inmediatamente en Supabase
-      cancelDate = membership.end_date
-        ? new Date(membership.end_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
-        : "final del período"
-    }
-
+  } else {
+    // Gift card / sin Stripe — cancelar directamente en Supabase
     await supabase
       .from("user_memberships")
       .update({ status: "cancelling", updated_at: new Date().toISOString() })
       .eq("user_id", user.id)
-      .eq("status", "active")
-
-    return NextResponse.json({ success: true, cancelDate })
-  } catch (error: any) {
-    return NextResponse.json({ error: "Error al cancelar" }, { status: 500 })
   }
+
+  return NextResponse.json({ success: true })
 }

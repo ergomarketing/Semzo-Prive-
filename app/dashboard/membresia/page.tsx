@@ -68,7 +68,11 @@ export default function MembresiaPage() {
   const handleMembershipAction = async (action: "pause" | "resume" | "cancel") => {
     setActionLoading(action)
     try {
-      const res = await fetch(`/api/memberships/${action}`, { method: "POST" })
+      const res = await fetch(`/api/memberships/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: membership?.stripe_subscription_id ?? null }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       await mutate()

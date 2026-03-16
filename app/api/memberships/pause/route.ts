@@ -1,51 +1,38 @@
+import Stripe from "stripe"
 import { NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import Stripe from "stripe"
 
-export async function POST() {
-  try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll: () => cookieStore.getAll() } }
-    )
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+export async function POST(req: Request) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
 
-    const { data: membership } = await supabase
-      .from("user_memberships")
-      .select("stripe_subscription_id, status")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
-    if (!membership) return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
+  const { subscriptionId } = await req.json()
 
-    // Stripe: best-effort — cualquier error se ignora, Supabase siempre se actualiza
-    void (async () => {
-      if (!membership.stripe_subscription_id || !process.env.STRIPE_SECRET_KEY) return
-      try {
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-        const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
-        if (sub.status === "active" && !sub.cancel_at_period_end) {
-          await stripe.subscriptions.update(membership.stripe_subscription_id, {
-            pause_collection: { behavior: "mark_uncollectible" },
-          })
-        }
-      } catch { /* ignorar */ }
-    })()
-
+  if (subscriptionId) {
+    try {
+      await stripe.subscriptions.update(subscriptionId, {
+        pause_collection: { behavior: "void" },
+      })
+    } catch (e) {
+      console.error("Stripe pause error", e)
+    }
+  } else {
+    // Gift card / sin Stripe — pausar directamente en Supabase
     await supabase
       .from("user_memberships")
       .update({ status: "paused", updated_at: new Date().toISOString() })
       .eq("user_id", user.id)
-      .eq("status", "active")
-
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Error al pausar" }, { status: 500 })
   }
+
+  return NextResponse.json({ success: true })
 }
