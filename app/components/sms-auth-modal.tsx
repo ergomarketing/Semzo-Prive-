@@ -43,12 +43,17 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup" }: SM
   }, [resendCooldown])
 
   useEffect(() => {
-    if (!isOpen || step !== "code") {
+    if (!isOpen) {
+      // Reset completo al cerrar
+      setStep("phone")
+      setPhone("")
+      setCode("")
+      setError("")
       setCanResend(false)
       setResendCooldown(0)
       setResendAttempts(0)
     }
-  }, [isOpen, step])
+  }, [isOpen])
 
   const handleSendCode = async (isResend = false) => {
     setLoading(true)
