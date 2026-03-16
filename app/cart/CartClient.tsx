@@ -927,7 +927,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           <Card className="mb-6 border-2 border-rose-pastel/30 shadow-lg">
             <CardContent className="p-8 text-center">
   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-nude flex items-center justify-center overflow-hidden">
-    <Image src="/images/sp-monogram-v2.png" alt="Semzo Privé" width={40} height={40} className="object-contain" />
+    <Image src="/images/sp-monogram-v2.png" alt="Semzo Privé" width={40} height={40} className="object-contain" style={{ width: "auto", height: "auto" }} />
   </div>
               <h3 className="font-serif text-xl text-indigo-dark mb-2">Inicia sesión para continuar</h3>
               <p className="text-sm text-indigo-dark/70 mb-6">
