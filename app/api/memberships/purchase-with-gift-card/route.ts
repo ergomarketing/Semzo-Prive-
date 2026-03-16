@@ -1,52 +1,78 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { getMembershipPrice, validateMembershipType } from "@/lib/plan-config"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as const
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, billingCycle } = body
-    const membershipType = (body.membershipType || "essentiel").toLowerCase()
+    const { userId, giftCardId, billingCycle, membershipType: rawMembershipType } = body
+    const membershipType = rawMembershipType?.toLowerCase()
 
-    if (!userId || !giftCardId || !billingCycle) {
+    if (!userId || !giftCardId || !billingCycle || !membershipType) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle" },
+        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle, membershipType" },
         { status: 400 }
       )
     }
 
-    if (!VALID_MEMBERSHIP_TYPES.includes(membershipType as any)) {
+    if (!validateMembershipType(membershipType)) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    // Una sola RPC transaccional — gift card y membresía en la misma transacción Postgres
-    // Si la membresía falla, el saldo NO se descuenta
-    const membershipPrices: Record<string, number> = {
-      petite: 19.99,
-      essentiel: 39.99,
-      signature: 79.99,
-      prive: 149.99,
+    const amountEuros = getMembershipPrice(membershipType, billingCycle)
+    if (!amountEuros) {
+      return NextResponse.json({ error: `Precio no encontrado para membresía: ${membershipType} / ${billingCycle}` }, { status: 400 })
     }
-    const amountEuros = membershipPrices[membershipType] || 0
 
-    const { error } = await supabase.rpc("purchase_membership_with_gift_card", {
-      p_user_id: userId,
-      p_gift_card_id: giftCardId,
-      p_membership_type: membershipType,
-      p_billing_cycle: billingCycle,
-      p_amount: amountEuros,
-    })
+    // 1. Verificar gift card
+    const { data: gc, error: gcErr } = await supabase
+      .from("gift_cards")
+      .select("id, amount, status")
+      .eq("id", giftCardId)
+      .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
+    if (gcErr || !gc) return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
+    if (!["active", "partial"].includes(gc.status)) return NextResponse.json({ error: "Gift card no está activa" }, { status: 400 })
+    if (gc.amount < amountEuros) return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+
+    // 2. Descontar saldo
+    const newAmount = gc.amount - amountEuros
+    const { error: gcUpdateErr } = await supabase
+      .from("gift_cards")
+      .update({ amount: newAmount, status: newAmount <= 0 ? "used" : "active", updated_at: new Date().toISOString() })
+      .eq("id", giftCardId)
+
+    if (gcUpdateErr) return NextResponse.json({ error: "Error actualizando gift card" }, { status: 500 })
+
+    // 3. Calcular fecha de fin
+    const endDate = new Date()
+    if (billingCycle === "quarterly") endDate.setMonth(endDate.getMonth() + 3)
+    else if (billingCycle === "weekly") endDate.setDate(endDate.getDate() + 7)
+    else endDate.setMonth(endDate.getMonth() + 1)
+
+    // 4. Upsert membresía (funciona tanto para nuevos como para reactivaciones)
+    const { error: membershipErr } = await supabase
+      .from("user_memberships")
+      .upsert({
+        user_id: userId,
+        membership_type: membershipType,
+        status: "active",
+        start_date: new Date().toISOString(),
+        end_date: endDate.toISOString(),
+        stripe_subscription_id: null,
+        stripe_customer_id: null,
+        failed_payment_count: 0,
+        dunning_status: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" })
+
+    if (membershipErr) return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {

@@ -136,7 +136,6 @@ export default function MembershipSection() {
       period: period,
     }
 
-    console.log("[v0] Adding membership to cart:", cartItem)
     addItem(cartItem)
     router.push("/cart")
   }

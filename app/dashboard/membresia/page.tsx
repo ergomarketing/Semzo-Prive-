@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Crown, Check, Loader2, Info, AlertTriangle } from "lucide-react"
+import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle } from "lucide-react"
 import useSWR from "swr"
+import { toast } from "sonner"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -21,7 +22,9 @@ export default function MembresiaPage() {
   const { user } = useAuth()
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailInput, setEmailInput] = useState("")
-  const [isPhoneEmail, setIsPhoneEmail] = useState(false) // Declare isPhoneEmail variable
+  const [isPhoneEmail, setIsPhoneEmail] = useState(false)
+  const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   // SINGLE SOURCE OF TRUTH - NO guardias aquí, layout.tsx maneja redirects
   const { data, error, isLoading, mutate } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
@@ -59,6 +62,28 @@ export default function MembresiaPage() {
       alert("Error al actualizar email")
     } finally {
       setSavingEmail(false)
+    }
+  }
+
+  const handleMembershipAction = async (action: "pause" | "resume" | "cancel") => {
+    setActionLoading(action)
+    try {
+      const res = await fetch(`/api/memberships/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: membership?.stripe_subscription_id ?? null }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      await mutate()
+      if (action === "pause") toast.success("Membresía pausada correctamente")
+      if (action === "resume") toast.success("Membresía reanudada correctamente")
+      if (action === "cancel") toast.success(`Membresía cancelada. Acceso hasta: ${data.cancelDate}`)
+      setShowCancelConfirm(false)
+    } catch (err: any) {
+      toast.error(err.message || "Error al realizar la acción")
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -299,7 +324,85 @@ export default function MembresiaPage() {
                   </div>
                 )}
 
-                {!isActive && (
+                {/* Controles de suscripción */}
+                {isActive && (
+                  <div className="mt-4 space-y-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleMembershipAction("pause")}
+                      disabled={!!actionLoading}
+                      className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
+                    >
+                      {actionLoading === "pause" ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <PauseCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Pausar membresía
+                    </Button>
+
+                    {!showCancelConfirm ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowCancelConfirm(true)}
+                        disabled={!!actionLoading}
+                        className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancelar membresía
+                      </Button>
+                    ) : (
+                      <div className="border border-indigo-dark/20 rounded-lg p-4 bg-rose-nude/30 space-y-3">
+                        <p className="text-sm text-indigo-dark font-medium">
+                          ¿Segura que quieres cancelar? Mantendrás el acceso hasta el final del período actual.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleMembershipAction("cancel")}
+                            disabled={!!actionLoading}
+                            className="flex-1 bg-indigo-dark hover:bg-indigo-dark/90 text-white text-sm"
+                          >
+                            {actionLoading === "cancel" ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : null}
+                            Sí, cancelar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowCancelConfirm(false)}
+                            disabled={!!actionLoading}
+                            className="flex-1 text-sm"
+                          >
+                            Mantener
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reanudar si está pausada */}
+                {membership.status === "paused" && (
+                  <div className="mt-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-amber-800">Tu membresía está pausada. No se realizarán cobros hasta que la reanudes.</p>
+                    </div>
+                    <Button
+                      onClick={() => handleMembershipAction("resume")}
+                      disabled={!!actionLoading}
+                      className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                    >
+                      {actionLoading === "resume" ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Reanudar membresía
+                    </Button>
+                  </div>
+                )}
+
+                {!isActive && membership.status !== "paused" && (
                   <Button
                     onClick={() => router.push("/membership/upgrade")}
                     className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
