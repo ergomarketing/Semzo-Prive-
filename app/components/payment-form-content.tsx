@@ -66,6 +66,8 @@ export default function PaymentFormContent({
   extendedFormCompleted,
   identityVerified,
   onVerifyIdentity,
+  membershipType,
+  billingCycle,
 }: PaymentFormContentProps) {
   const stripe = useStripe()
   const elements = useElements()
@@ -93,18 +95,19 @@ export default function PaymentFormContent({
 
     try {
       if (finalAmount <= 0 && appliedGiftCard) {
-        console.log("[v0] Procesando pago con gift card para userId:", user.id)
         const res = await fetch("/api/memberships/purchase-with-gift-card", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({
+            userId: user.id,
+            giftCardId: appliedGiftCard?.id,
+            membershipType: membershipType || "essentiel",
+            billingCycle: billingCycle || "monthly",
+          }),
         })
 
         const data = await res.json()
-        console.log("[v0] Gift card response:", data)
         if (!res.ok) throw new Error(data.error || "Error procesando gift card")
-        
-        console.log("[v0] Gift card payment successful, redirecting to verification")
         toast.success("Membresía confirmada. Redirigiendo a verificación de identidad...")
         setTimeout(() => {
           router.push("/dashboard/membresia/status")
