@@ -100,6 +100,12 @@ export async function POST() {
 
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
+    options: {
+      document: {
+        require_live_capture: true,
+        require_matching_selfie: true,
+      },
+    },
     return_url: `${appUrl}/verify-identity/result?session_id={VERIFICATION_SESSION_ID}`,
     metadata: {
       user_id: user.id,
