@@ -80,9 +80,7 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup" }: SM
         },
       })
 
-      if (error) {
-        console.error("[v0] SMS send error:", error)
-
+        if (error) {
         if (error.message.includes("unverified") && error.message.includes("Trial accounts")) {
           setError(
             `⚠️ Cuenta Twilio en modo prueba: El número ${phone} debe ser verificado primero. 
@@ -96,18 +94,16 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup" }: SM
           setError(`Error enviando SMS: ${error.message}`)
         }
       } else {
-        console.log("[v0] SMS sent successfully")
         if (!isResend) {
           setStep("code")
         }
         setCanResend(false)
-        setResendCooldown(60) // 60 seconds cooldown
+        setResendCooldown(60)
         if (isResend) {
           setResendAttempts((prev) => prev + 1)
         }
       }
     } catch (err) {
-      console.error("[v0] SMS send exception:", err)
       setError("Error enviando código SMS")
     } finally {
       setLoading(false)
@@ -142,8 +138,6 @@ const { data, error } = await supabase.auth.verifyOtp({
   })
 
       if (error) {
-        console.error("[v0] [SMS] Verify error:", error.message)
-
         if (error.message.includes("expired") || error.message.includes("Token has expired")) {
           setError(
             "Código expirado. Los códigos SMS de Supabase expiran en 60 segundos. Solicita un nuevo código haciendo clic en 'Reenviar código'.",
@@ -156,28 +150,15 @@ const { data, error } = await supabase.auth.verifyOtp({
           setResendCooldown(0)
         }
       } else if (data.user) {
-        console.log("[v0] [SMS] Verification successful for user:", data.user.id)
-        console.log("[v0] [SMS] User phone:", data.user.phone)
-        console.log("[v0] [SMS] User email:", data.user.email)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
 
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-
-        console.log("[v0] [SMS] Checking if profile exists for user:", data.user.id)
         const { data: existingProfile, error: checkError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", data.user.id)
           .maybeSingle()
 
-        if (checkError) {
-          console.error("[v0] [SMS] Profile check error:", checkError)
-        }
-
-        console.log("[v0] [SMS] Profile check result:", existingProfile ? "EXISTS" : "NOT FOUND")
-
         if (!existingProfile) {
-          console.log("[v0] [SMS] Creating profile manually for user:", data.user.id)
-
           const profileData = {
             id: data.user.id,
             email: data.user.email || `${data.user.phone}@phone.semzoprive.com`,
@@ -188,8 +169,6 @@ const { data, error } = await supabase.auth.verifyOtp({
             membership_status: "inactive",
           }
 
-          console.log("[v0] [SMS] Profile data to insert:", profileData)
-
           const { data: newProfile, error: insertError } = await supabase
             .from("profiles")
             .insert(profileData)
@@ -197,16 +176,11 @@ const { data, error } = await supabase.auth.verifyOtp({
             .single()
 
           if (insertError) {
-            console.error("[v0] [SMS] Profile creation error:", insertError)
-            console.error("[v0] [SMS] Error details:", JSON.stringify(insertError))
             setError("Error creando perfil. Contacta a soporte.")
             setLoading(false)
             return
           }
-
-          console.log("[v0] [SMS] Profile created successfully:", newProfile)
         } else {
-          console.log("[v0] [SMS] Profile already exists, updating phone if needed")
           const { error: updateError } = await supabase
             .from("profiles")
             .update({
@@ -215,11 +189,7 @@ const { data, error } = await supabase.auth.verifyOtp({
             })
             .eq("id", data.user.id)
 
-          if (updateError) {
-            console.error("[v0] [SMS] Profile update error:", updateError)
-          } else {
-            console.log("[v0] [SMS] Profile updated successfully")
-          }
+
         }
 
         const { data: finalProfile, error: finalCheckError } = await supabase
@@ -229,27 +199,20 @@ const { data, error } = await supabase.auth.verifyOtp({
           .single()
 
         if (finalCheckError || !finalProfile) {
-          console.error("[v0] [SMS] CRITICAL: Profile not found after creation/update:", finalCheckError)
           setError("Error crítico: perfil no se guardó correctamente. Contacta a soporte.")
           setLoading(false)
           return
         }
 
-        console.log("[v0] [SMS] VERIFIED: Profile exists in database:", finalProfile)
-        
-        // Check if user has a name, if not ask for it
         if (!finalProfile.full_name) {
-          console.log("[v0] [SMS] User has no name, showing profile step")
           setStep("profile")
           return
         }
-        
-        console.log("[v0] [SMS] SUCCESS: User registration completed")
+
         onSuccess(data.user)
         onClose()
       }
     } catch (err) {
-      console.error("[v0] [SMS] Verify exception:", err)
       setError("Error verificando código")
     } finally {
       setLoading(false)
@@ -278,7 +241,6 @@ const { data, error } = await supabase.auth.verifyOtp({
       })
 
       if (error) {
-        console.error("[v0] Profile update error:", error)
         setError(`Error actualizando perfil: ${error.message}`)
         return
       }
@@ -293,15 +255,9 @@ const { data, error } = await supabase.auth.verifyOtp({
         })
         .eq("id", data.user?.id)
 
-      if (profileUpdateError) {
-        console.error("[v0] Profile table update error:", profileUpdateError)
-      }
-
-      console.log("[v0] Profile updated successfully:", data.user)
       onSuccess(data.user)
       onClose()
     } catch (err) {
-      console.error("[v0] Profile update exception:", err)
       setError("Error completando registro")
     } finally {
       setLoading(false)
