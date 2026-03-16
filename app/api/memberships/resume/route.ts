@@ -26,19 +26,17 @@ export async function POST() {
 
     if (!membership) return NextResponse.json({ error: "No tienes una membresía pausada" }, { status: 400 })
 
-    if (!membership.stripe_subscription_id) {
-      return NextResponse.json({ error: "No hay suscripción de Stripe asociada" }, { status: 400 })
+    if (membership.stripe_subscription_id) {
+      await stripe.subscriptions.update(membership.stripe_subscription_id, {
+        pause_collection: null,
+      } as any)
     }
-
-    await stripe.subscriptions.update(membership.stripe_subscription_id, {
-      pause_collection: null,
-    } as any)
 
     await supabase
       .from("user_memberships")
       .update({ status: "active", updated_at: new Date().toISOString() })
       .eq("user_id", user.id)
-      .eq("stripe_subscription_id", membership.stripe_subscription_id)
+      .eq("status", "paused")
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

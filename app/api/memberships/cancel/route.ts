@@ -19,30 +19,35 @@ export async function POST() {
 
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("stripe_subscription_id, status")
+      .select("stripe_subscription_id, status, end_date")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
 
     if (!membership) return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
 
-    if (!membership.stripe_subscription_id) {
-      return NextResponse.json({ error: "No hay suscripción de Stripe asociada" }, { status: 400 })
-    }
+    let cancelDate = ""
 
-    const subscription = await stripe.subscriptions.update(membership.stripe_subscription_id, {
-      cancel_at_period_end: true,
-    })
+    if (membership.stripe_subscription_id) {
+      // Suscripción Stripe — cancelar al final del período
+      const subscription = await stripe.subscriptions.update(membership.stripe_subscription_id, {
+        cancel_at_period_end: true,
+      })
+      cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES", {
+        day: "numeric", month: "long", year: "numeric",
+      })
+    } else {
+      // Gift card / manual — cancelar inmediatamente en Supabase
+      cancelDate = membership.end_date
+        ? new Date(membership.end_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+        : "final del período"
+    }
 
     await supabase
       .from("user_memberships")
       .update({ status: "cancelling", updated_at: new Date().toISOString() })
       .eq("user_id", user.id)
-      .eq("stripe_subscription_id", membership.stripe_subscription_id)
-
-    const cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES", {
-      day: "numeric", month: "long", year: "numeric",
-    })
+      .eq("status", "active")
 
     return NextResponse.json({ success: true, cancelDate })
   } catch (error: any) {
