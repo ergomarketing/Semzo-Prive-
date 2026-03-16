@@ -24,12 +24,16 @@ export async function POST() {
 
     if (!membership) return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
 
-    // Si tiene Stripe, pausar en Stripe también
+    // Si tiene Stripe, verificar estado antes de actualizar
     if (membership.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-      await stripe.subscriptions.update(membership.stripe_subscription_id, {
-        pause_collection: { behavior: "mark_uncollectible" },
-      })
+      const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
+      if (sub.status === "active") {
+        await stripe.subscriptions.update(membership.stripe_subscription_id, {
+          pause_collection: { behavior: "mark_uncollectible" },
+        })
+      }
+      // Si ya está canceled/past_due en Stripe, solo actualizamos Supabase
     }
 
     await supabase
@@ -40,7 +44,6 @@ export async function POST() {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.log("[v0] pause error:", error.message, error.stack)
     return NextResponse.json({ error: error.message || "Error al pausar" }, { status: 500 })
   }
 }

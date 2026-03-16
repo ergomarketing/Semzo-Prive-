@@ -27,14 +27,21 @@ export async function POST() {
     let cancelDate = ""
 
     if (membership.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
-      // Suscripción Stripe — cancelar al final del período
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-      const subscription = await stripe.subscriptions.update(membership.stripe_subscription_id, {
-        cancel_at_period_end: true,
-      })
-      cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES", {
-        day: "numeric", month: "long", year: "numeric",
-      })
+      const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
+      if (sub.status === "active" || sub.status === "trialing") {
+        const updated = await stripe.subscriptions.update(membership.stripe_subscription_id, {
+          cancel_at_period_end: true,
+        })
+        cancelDate = new Date(updated.current_period_end * 1000).toLocaleDateString("es-ES", {
+          day: "numeric", month: "long", year: "numeric",
+        })
+      } else if (sub.status === "canceled") {
+        // Ya cancelada en Stripe — usar fecha de fin existente
+        cancelDate = sub.canceled_at
+          ? new Date(sub.canceled_at * 1000).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+          : "ya cancelada"
+      }
     } else {
       // Gift card / manual — cancelar inmediatamente en Supabase
       cancelDate = membership.end_date
@@ -50,7 +57,6 @@ export async function POST() {
 
     return NextResponse.json({ success: true, cancelDate })
   } catch (error: any) {
-    console.log("[v0] cancel error:", error.message, error.stack)
     return NextResponse.json({ error: error.message || "Error al cancelar" }, { status: 500 })
   }
 }
