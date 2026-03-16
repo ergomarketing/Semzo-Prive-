@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
               dunning_status: null,
               updated_at: now,
             },
-            { onConflict: "stripe_subscription_id" }
+            { onConflict: "user_id" }
           );
 
         await supabase
