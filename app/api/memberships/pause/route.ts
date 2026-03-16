@@ -29,7 +29,7 @@ export async function POST() {
       try {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
         const sub = await stripe.subscriptions.retrieve(membership.stripe_subscription_id)
-        if (sub.status === "active") {
+        if (sub.status === "active" && !sub.cancel_at_period_end) {
           await stripe.subscriptions.update(membership.stripe_subscription_id, {
             pause_collection: { behavior: "mark_uncollectible" },
           })
