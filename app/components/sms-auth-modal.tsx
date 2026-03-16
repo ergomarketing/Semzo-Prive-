@@ -143,18 +143,22 @@ const { data, error } = await supabase.auth.verifyOtp({
   })
 
       if (error) {
-        if (error.message.includes("expired") || error.message.includes("Token has expired")) {
-          setError(
-            "Código expirado. Los códigos SMS de Supabase expiran en 60 segundos. Solicita un nuevo código haciendo clic en 'Reenviar código'.",
-          )
-          setCanResend(true)
-          setResendCooldown(0)
-        } else {
-          setError("Código incorrecto o expirado. Haz clic en 'Reenviar código' para recibir uno nuevo.")
-          setCanResend(true)
-          setResendCooldown(0)
-        }
-      } else if (data.user) {
+        setError("Código incorrecto o expirado. Solicita un nuevo código.")
+        setCanResend(true)
+        setResendCooldown(0)
+        setLoading(false)
+        return
+      }
+
+      if (!data?.user) {
+        setError("No se pudo verificar el código. Solicita uno nuevo.")
+        setCanResend(true)
+        setResendCooldown(0)
+        setLoading(false)
+        return
+      }
+
+      if (data.user) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
 
         const { data: existingProfile, error: checkError } = await supabase
