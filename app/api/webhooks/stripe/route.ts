@@ -429,12 +429,21 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // identity.verification_session.* events are handled exclusively
+      // by /api/webhooks/stripe-identity to avoid duplicate processing
+      case "identity.verification_session.verified":
+      case "identity.verification_session.requires_input":
+      case "identity.verification_session.canceled":
+      case "identity.verification_session.processing":
+        console.log("ℹ️ Identity event delegated to stripe-identity webhook:", event.type);
+        break;
+
       /**
        * ============================================================
-       * 4️⃣ IDENTITY VERIFICATION — STRIPE IDENTITY WEBHOOK
+       * 4️⃣ IDENTITY VERIFICATION — STRIPE IDENTITY WEBHOOK (deprecated block below, kept as reference)
        * ============================================================
        */
-      case "identity.verification_session.verified": {
+      case "identity.verification_session.verified_DISABLED": {
         const vs = event.data.object as Stripe.Identity.VerificationSession;
         const userId = vs.metadata?.user_id;
         if (!userId) break;
@@ -521,22 +530,6 @@ export async function POST(req: NextRequest) {
         }
 
         console.log("✅ Identity VERIFIED for user:", userId);
-        break;
-      }
-
-      case "identity.verification_session.requires_input": {
-        const vs = event.data.object as Stripe.Identity.VerificationSession;
-        const userId = vs.metadata?.user_id;
-        if (!userId) break;
-
-        const now3 = new Date().toISOString();
-
-        await supabase
-          .from("identity_verifications")
-          .update({ status: "requires_input", updated_at: now3 })
-          .eq("stripe_verification_id", vs.id);
-
-        console.log("⚠️ Identity requires_input for user:", userId);
         break;
       }
 
