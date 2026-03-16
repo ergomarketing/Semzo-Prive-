@@ -450,9 +450,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     return items.length > 0 ? analyzeCartItems(items) : null
   }, [items])
   
-  // Identity verification happens AFTER payment via webhook, not before
-  // Users can pay memberships without Identity verified - webhook handles verification flow
-  const needsVerification = false
+  // Bloquear checkout si el carrito tiene membresía y el usuario no está verificado
+  const needsVerification = !!(cartAnalysis?.membershipType && !identityVerified)
   const needsExtendedForm = cartAnalysis?.membershipType && !extendedFormCompleted
 
   const handleVerificationComplete = (verified: boolean) => {
