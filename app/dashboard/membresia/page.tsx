@@ -321,7 +321,7 @@ export default function MembresiaPage() {
                 )}
 
                 {/* Controles de suscripción */}
-                {isActive && membership.stripe_subscription_id && (
+                {isActive && (
                   <div className="mt-4 space-y-2">
                     <Button
                       variant="outline"
@@ -378,7 +378,7 @@ export default function MembresiaPage() {
                 )}
 
                 {/* Reanudar si está pausada */}
-                {membership.status === "paused" && membership.stripe_subscription_id && (
+                {membership.status === "paused" && (
                   <div className="mt-4">
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
                       <p className="text-sm text-amber-800">Tu membresía está pausada. No se realizarán cobros hasta que la reanudes.</p>
