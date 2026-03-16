@@ -10,9 +10,28 @@ function PostCheckoutContent() {
   const sessionId = searchParams.get("session_id")
   const hasCalled = useRef(false)
   const attempts = useRef(0)
-  const MAX_ATTEMPTS = 8
+  const MAX_ATTEMPTS = 10
 
   const [message, setMessage] = useState("Confirmando tu suscripción...")
+
+  const launchIdentityVerification = async () => {
+    try {
+      setMessage("Preparando verificación de identidad...")
+      const res = await fetch("/api/identity/create-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        // Si falla el identity, redirigir al status para que lo haga desde ahí
+        router.replace("/dashboard/membresia/status")
+      }
+    } catch {
+      router.replace("/dashboard/membresia/status")
+    }
+  }
 
   useEffect(() => {
     if (!sessionId || hasCalled.current) return
@@ -33,24 +52,24 @@ function PostCheckoutContent() {
           }
 
           if (data.identity_verified === true) {
-            // Membresía activa y verificada: acceso completo
+            // Membresía activa y ya verificada: acceso completo
             router.replace("/dashboard")
           } else {
-            // Membresía activa pero sin verificar identidad
-            router.replace("/dashboard/membresia/status")
+            // Membresía activa pero identidad pendiente — lanzar Stripe Identity
+            await launchIdentityVerification()
           }
           return
         }
 
         // Webhook aún no procesó — reintentar con backoff
         if (attempts.current >= MAX_ATTEMPTS) {
-          // Después de 8 intentos (~16s) ir al status page para que el usuario vea el estado
           setMessage("Redirigiendo a tu área de membresía...")
           setTimeout(() => router.replace("/dashboard/membresia/status"), 1500)
           return
         }
 
-        const delay = Math.min(2000 * attempts.current, 6000)
+        const delay = Math.min(1500 * attempts.current, 5000)
+        setMessage(attempts.current > 3 ? "Procesando pago, un momento más..." : "Confirmando tu suscripción...")
         setTimeout(verify, delay)
       } catch {
         if (attempts.current >= MAX_ATTEMPTS) {
