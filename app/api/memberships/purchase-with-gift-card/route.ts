@@ -12,12 +12,12 @@ const VALID_MEMBERSHIP_TYPES = ["petite", "essentiel", "signature", "prive"] as 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, billingCycle } = body
-    const membershipType = (body.membershipType || "essentiel").toLowerCase()
+    const { userId, giftCardId, billingCycle, membershipType: rawMembershipType } = body
+    const membershipType = rawMembershipType?.toLowerCase()
 
-    if (!userId || !giftCardId || !billingCycle) {
+    if (!userId || !giftCardId || !billingCycle || !membershipType) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle" },
+        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle, membershipType" },
         { status: 400 }
       )
     }
@@ -29,12 +29,15 @@ export async function POST(request: NextRequest) {
     // Una sola RPC transaccional — gift card y membresía en la misma transacción Postgres
     // Si la membresía falla, el saldo NO se descuenta
     const membershipPrices: Record<string, number> = {
-      petite: 19.99,
-      essentiel: 39.99,
-      signature: 79.99,
-      prive: 149.99,
+      petite: 39,
+      essentiel: 59,
+      signature: 89,
+      prive: 149,
     }
-    const amountEuros = membershipPrices[membershipType] || 0
+    const amountEuros = membershipPrices[membershipType]
+    if (!amountEuros) {
+      return NextResponse.json({ error: `Precio no encontrado para membresía: ${membershipType}` }, { status: 400 })
+    }
 
     const { error } = await supabase.rpc("purchase_membership_with_gift_card", {
       p_user_id: userId,
