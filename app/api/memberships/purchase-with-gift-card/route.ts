@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { getMembershipPlan, validateMembershipType } from "@/lib/plan-config"
+import { getMembershipPrice, validateMembershipType } from "@/lib/plan-config"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,8 +25,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    const plan = getMembershipPlan(membershipType)!
-    const amountEuros = plan.price
+    const amountEuros = getMembershipPrice(membershipType, billingCycle)
+    if (!amountEuros) {
+      return NextResponse.json({ error: `Precio no encontrado para membresía: ${membershipType} / ${billingCycle}` }, { status: 400 })
+    }
 
     const { error } = await supabase.rpc("purchase_membership_with_gift_card", {
       p_user_id: userId,

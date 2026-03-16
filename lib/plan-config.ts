@@ -4,26 +4,26 @@
 
 export const MEMBERSHIP_PLANS = {
   petite: {
-    price: 19.99,
-    billing_cycle: "weekly",
+    price_monthly: 19.99,
+    price_quarterly: null,
     label: "Petite",
-    stripe_interval: "week",
+    stripe_interval: "month",
   },
   essentiel: {
-    price: 59,
-    billing_cycle: "monthly",
+    price_monthly: 59,
+    price_quarterly: 142,
     label: "L'Essentiel",
     stripe_interval: "month",
   },
   signature: {
-    price: 89,
-    billing_cycle: "monthly",
+    price_monthly: 129,
+    price_quarterly: 310,
     label: "Signature",
     stripe_interval: "month",
   },
   prive: {
-    price: 149,
-    billing_cycle: "monthly",
+    price_monthly: 189,
+    price_quarterly: 453,
     label: "Privé",
     stripe_interval: "month",
   },
@@ -35,6 +35,13 @@ export function getMembershipPlan(type: string) {
   return MEMBERSHIP_PLANS[type?.toLowerCase() as MembershipType] ?? null
 }
 
+export function getMembershipPrice(type: string, billingCycle: string): number | null {
+  const plan = getMembershipPlan(type)
+  if (!plan) return null
+  if (billingCycle === "quarterly") return plan.price_quarterly ?? null
+  return plan.price_monthly
+}
+
 export function validateMembershipType(type: string): type is MembershipType {
   return type?.toLowerCase() in MEMBERSHIP_PLANS
 }
@@ -44,17 +51,20 @@ export function validateMembershipType(type: string): type is MembershipType {
 // Endpoint: /api/stripe/create-payment-checkout
 
 export const BAG_PASSES = {
-  semana: {
-    price: 25,
-    label: "Pase Semanal",
-    description: "Acceso semanal a un bolso de lujo",
-    duration_days: 7,
+  essentiel: {
+    price: 52,
+    label: "Pase L'Essentiel",
+    description: "Acceso a un bolso de la selección Essentiel",
   },
-  fin_de_semana: {
-    price: 15,
-    label: "Pase Fin de Semana",
-    description: "Acceso de fin de semana a un bolso de lujo",
-    duration_days: 2,
+  signature: {
+    price: 99,
+    label: "Pase Signature",
+    description: "Acceso a un bolso de la selección Signature",
+  },
+  prive: {
+    price: 137,
+    label: "Pase Privé",
+    description: "Acceso a un bolso de la selección Privé",
   },
 } as const
 
