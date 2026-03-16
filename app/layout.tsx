@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
 import Script from "next/script"
-import TikTokPixel from "@/components/TikTokPixel"
 import "./globals.css"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
@@ -237,7 +236,14 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <TikTokPixel />
+        <Script
+          id="tiktok-pixel"
+          strategy="afterInteractive"
+          src="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=D4A7JSJC77U1BLONR900&lib=ttq"
+        />
+        <Script id="tiktok-pixel-init" strategy="afterInteractive">
+          {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
+        </Script>
         <AuthProvider>
           <CartProvider>
             <Navbar />
