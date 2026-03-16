@@ -40,6 +40,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    console.log("[v0] pause error:", error.message, error.stack)
     return NextResponse.json({ error: error.message || "Error al pausar" }, { status: 500 })
   }
 }

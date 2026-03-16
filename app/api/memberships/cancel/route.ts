@@ -50,6 +50,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true, cancelDate })
   } catch (error: any) {
+    console.log("[v0] cancel error:", error.message, error.stack)
     return NextResponse.json({ error: error.message || "Error al cancelar" }, { status: 500 })
   }
 }
