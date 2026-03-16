@@ -21,16 +21,16 @@ export async function POST(req: Request) {
   if (subscriptionId) {
     try {
       await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true })
-    } catch (e) {
-      console.error("Stripe cancel error", e)
+    } catch (_) {
+      // Stripe falla (suscripción ya cancelada, etc.) — actualizamos Supabase igualmente
     }
-  } else {
-    // Gift card / sin Stripe — cancelar directamente en Supabase
-    await supabase
-      .from("user_memberships")
-      .update({ status: "cancelling", updated_at: new Date().toISOString() })
-      .eq("user_id", user.id)
   }
 
-  return NextResponse.json({ success: true })
+  // Siempre actualizar Supabase
+  await supabase
+    .from("user_memberships")
+    .update({ status: "cancelling", updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+
+  return NextResponse.json({ success: true, cancelDate: "fin del período actual" })
 }

@@ -23,16 +23,16 @@ export async function POST(req: Request) {
       await stripe.subscriptions.update(subscriptionId, {
         pause_collection: { behavior: "void" },
       })
-    } catch (e) {
-      console.error("Stripe pause error", e)
+    } catch (_) {
+      // Stripe falla (suscripción cancelada, etc.) — actualizamos Supabase igualmente
     }
-  } else {
-    // Gift card / sin Stripe — pausar directamente en Supabase
-    await supabase
-      .from("user_memberships")
-      .update({ status: "paused", updated_at: new Date().toISOString() })
-      .eq("user_id", user.id)
   }
+
+  // Siempre actualizar Supabase
+  await supabase
+    .from("user_memberships")
+    .update({ status: "paused", updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
 
   return NextResponse.json({ success: true })
 }
