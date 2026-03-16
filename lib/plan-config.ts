@@ -7,7 +7,7 @@ export const MEMBERSHIP_PLANS = {
     price_monthly: 19.99,
     price_quarterly: null,
     label: "Petite",
-    stripe_interval: "month",
+    stripe_interval: "month", // suscripción mensual — los pases se renuevan semanalmente aparte
   },
   essentiel: {
     price_monthly: 59,
