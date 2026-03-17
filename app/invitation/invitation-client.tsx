@@ -19,7 +19,7 @@ export default function InvitationClient() {
   return (
     <div className="relative min-h-screen">
       <div
-        className="fixed inset-0 -z-10 bg-contain bg-center bg-no-repeat"
+        className="fixed inset-0 -z-10 bg-cover bg-center"
         style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
       />
       <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/85" />
@@ -64,33 +64,28 @@ export default function InvitationClient() {
               </button>
             </div>
 
-            <div className="rounded-lg bg-gray-50 p-4 border border-gray-200">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-2xl font-semibold text-[#1a1a4b]">50% Off</p>
               <p className="text-sm text-gray-600">On your first monthly membership</p>
             </div>
           </div>
 
           <div className="mb-12 space-y-4 text-left">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-[#1a1a4b]" />
-              <p className="text-gray-700">Access to our designer handbag collection</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-[#1a1a4b]" />
-              <p className="text-gray-700">Authentic, verified pieces with guarantee</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-[#1a1a4b]" />
-              <p className="text-gray-700">Free shipping and hassle-free returns</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-2 w-2 rounded-full bg-[#1a1a4b]" />
-              <p className="text-gray-700">Exclusive community of style-conscious women</p>
-            </div>
+            {[
+              "Access to our exclusive designer handbag collection",
+              "Authentic, verified pieces with guarantee",
+              "Free shipping and hassle-free returns",
+              "Exclusive community of style-conscious women",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-3">
+                <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
+                <p className="text-gray-700">{item}</p>
+              </div>
+            ))}
           </div>
 
           <Link href="/#membresias">
-            <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto">
+            <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto md:px-12">
               Activate My Membership
             </Button>
           </Link>
