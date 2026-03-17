@@ -19,7 +19,7 @@ export default function InvitationClient() {
   return (
     <div className="relative min-h-screen">
       <div
-        className="fixed inset-0 -z-10 bg-cover bg-center"
+        className="fixed inset-0 -z-10 bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
       />
       <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/85" />
