@@ -199,19 +199,13 @@ const { data, error } = await supabase.auth.verifyOtp({
 
         }
 
-        const { data: finalProfile, error: finalCheckError } = await supabase
+        const { data: finalProfile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", data.user.id)
-          .single()
+          .maybeSingle()
 
-        if (finalCheckError || !finalProfile) {
-          setError("Error crítico: perfil no se guardó correctamente. Contacta a soporte.")
-          setLoading(false)
-          return
-        }
-
-        if (!finalProfile.full_name) {
+        if (!finalProfile?.full_name) {
           setStep("profile")
           return
         }
