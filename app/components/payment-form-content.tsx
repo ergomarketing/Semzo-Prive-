@@ -84,12 +84,7 @@ export default function PaymentFormContent({
       return
     }
 
-    if (needsVerification && !identityVerified) {
-      toast.info("Debes verificar tu identidad para continuar")
-      onVerifyIdentity?.()
-      return
-    }
-
+    // Identity verification happens AFTER payment, not before
     setProcessing(true)
     setCardError("")
 
