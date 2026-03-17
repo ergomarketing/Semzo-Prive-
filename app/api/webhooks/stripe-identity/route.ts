@@ -39,7 +39,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    processWebhookAsync(event, session).catch(() => {})
+    processWebhookAsync(event, session).catch((err) => {
+      console.error("[identity-webhook] processWebhookAsync failed:", err?.message ?? err)
+    })
 
     // Responder 200 inmediatamente para que Stripe no reintente
     return NextResponse.json({ received: true }, { status: 200 })

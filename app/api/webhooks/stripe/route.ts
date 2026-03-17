@@ -539,8 +539,30 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "paid", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
+      case "payment_intent.processing": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "processing", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
       default:
-        console.log("ℹ️ Unhandled event:", event.type);
+        break;
     }
 
     return NextResponse.json({ received: true });
