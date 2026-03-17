@@ -57,11 +57,14 @@ export async function POST(request: NextRequest) {
     else endDate.setMonth(endDate.getMonth() + 1)
 
     // 4. Upsert membresía (funciona tanto para nuevos como para reactivaciones)
+    // CRÍTICO: incluir billing_cycle para evitar error de constraint en DB
+    const normalizedBillingCycle = billingCycle === "weekly" ? "weekly" : billingCycle === "quarterly" ? "quarterly" : "monthly"
     const { error: membershipErr } = await supabase
       .from("user_memberships")
       .upsert({
         user_id: userId,
         membership_type: membershipType,
+        billing_cycle: normalizedBillingCycle,
         status: "active",
         start_date: new Date().toISOString(),
         end_date: endDate.toISOString(),
@@ -72,10 +75,41 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" })
 
-    if (membershipErr) return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+    if (membershipErr) {
+      console.error("[purchase-with-gift-card] membership upsert error", {
+        message: membershipErr.message,
+        details: membershipErr.details,
+        hint: membershipErr.hint,
+        code: membershipErr.code,
+        payload: { userId, membershipType, normalizedBillingCycle },
+      })
+      return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+    }
+
+    // 5. Sincronizar estado de perfil para evitar desalineación frontend/backend
+    const { error: profileErr } = await supabase
+      .from("profiles")
+      .update({
+        membership_status: "active",
+        membership_type: membershipType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
+
+    if (profileErr) {
+      console.error("[purchase-with-gift-card] profile update error", {
+        message: profileErr.message,
+        details: profileErr.details,
+        hint: profileErr.hint,
+        code: profileErr.code,
+        userId,
+      })
+      return NextResponse.json({ error: "Membresía activada, pero falló actualización de perfil" }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {
+    console.error("[purchase-with-gift-card] unexpected error", error)
     return NextResponse.json({ error: "Error inesperado: " + error.message }, { status: 500 })
   }
 }
