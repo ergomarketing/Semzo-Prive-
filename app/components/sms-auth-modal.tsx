@@ -178,13 +178,11 @@ const { data, error } = await supabase.auth.verifyOtp({
             membership_status: "inactive",
           }
 
-          const { data: newProfile, error: insertError } = await supabase
+          const { error: upsertError } = await supabase
             .from("profiles")
-            .insert(profileData)
-            .select()
-            .single()
+            .upsert(profileData, { onConflict: "id", ignoreDuplicates: false })
 
-          if (insertError) {
+          if (upsertError && upsertError.code !== "23505") {
             setError("Error creando perfil. Contacta a soporte.")
             setLoading(false)
             return
@@ -201,19 +199,13 @@ const { data, error } = await supabase.auth.verifyOtp({
 
         }
 
-        const { data: finalProfile, error: finalCheckError } = await supabase
+        const { data: finalProfile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", data.user.id)
-          .single()
+          .maybeSingle()
 
-        if (finalCheckError || !finalProfile) {
-          setError("Error crítico: perfil no se guardó correctamente. Contacta a soporte.")
-          setLoading(false)
-          return
-        }
-
-        if (!finalProfile.full_name) {
+        if (!finalProfile?.full_name) {
           setStep("profile")
           return
         }
