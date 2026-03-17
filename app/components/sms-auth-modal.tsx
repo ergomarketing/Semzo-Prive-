@@ -178,13 +178,11 @@ const { data, error } = await supabase.auth.verifyOtp({
             membership_status: "inactive",
           }
 
-          const { data: newProfile, error: insertError } = await supabase
+          const { error: upsertError } = await supabase
             .from("profiles")
-            .insert(profileData)
-            .select()
-            .single()
+            .upsert(profileData, { onConflict: "id", ignoreDuplicates: false })
 
-          if (insertError) {
+          if (upsertError && upsertError.code !== "23505") {
             setError("Error creando perfil. Contacta a soporte.")
             setLoading(false)
             return
