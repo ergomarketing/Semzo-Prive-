@@ -164,7 +164,8 @@ export async function POST(req: NextRequest) {
         await supabase
           .from("profiles")
           .update({
-            membership_status: subscription.status,
+            membership_status: "paid_pending_verification",
+            payment_status: "paid",
             updated_at: now,
           })
           .eq("id", userId);
@@ -429,6 +430,28 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id || pi.metadata?.supabase_user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "paid", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
+      case "payment_intent.processing": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id || pi.metadata?.supabase_user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "processing", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
       // identity.verification_session.* events are handled exclusively
       // by /api/webhooks/stripe-identity to avoid duplicate processing
       case "identity.verification_session.verified":
@@ -470,7 +493,7 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
 
-        if (pendingIntent?.stripe_subscription_id) {
+        if (pendingIntent) {
           await supabase
             .from("user_memberships")
             .upsert(
@@ -478,16 +501,21 @@ export async function POST(req: NextRequest) {
                 user_id: userId,
                 membership_type: pendingIntent.membership_type,
                 status: "active",
-                stripe_subscription_id: pendingIntent.stripe_subscription_id,
+                stripe_subscription_id: pendingIntent.stripe_subscription_id ?? null,
                 identity_verified: true,
                 updated_at: now2,
               },
-              { onConflict: "stripe_subscription_id" }
+              { onConflict: "user_id" }
             );
 
           await supabase
             .from("profiles")
-            .update({ membership_status: "active", membership_type: pendingIntent.membership_type, updated_at: now2 })
+            .update({
+              membership_status: "active",
+              membership_type: pendingIntent.membership_type,
+              payment_status: "paid",
+              updated_at: now2,
+            })
             .eq("id", userId);
 
           await supabase
@@ -533,8 +561,30 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "paid", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
+      case "payment_intent.processing": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id;
+        if (!userId) break;
+        await supabase
+          .from("profiles")
+          .update({ payment_status: "processing", updated_at: now })
+          .eq("id", userId);
+        break;
+      }
+
       default:
-        console.log("ℹ️ Unhandled event:", event.type);
+        break;
     }
 
     return NextResponse.json({ received: true });
