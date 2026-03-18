@@ -11,8 +11,10 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, billingCycle, membershipType: rawMembershipType } = body
+    const { userId, giftCardId, billingCycle: rawBillingCycle, membershipType: rawMembershipType } = body
     const membershipType = rawMembershipType?.toLowerCase()
+    // Normalizar billingCycle
+    const billingCycle = ["weekly", "monthly", "quarterly"].includes(rawBillingCycle) ? rawBillingCycle : "monthly"
 
     if (!userId || !giftCardId || !billingCycle || !membershipType) {
       return NextResponse.json(
@@ -58,23 +60,45 @@ export async function POST(request: NextRequest) {
     else if (billingCycle === "weekly") endDate.setDate(endDate.getDate() + 7)
     else endDate.setMonth(endDate.getMonth() + 1)
 
-    // 4. Upsert membresía (funciona tanto para nuevos como para reactivaciones)
+    // 4. Upsert membresía
+    const membershipPayload = {
+      user_id: userId,
+      membership_type: membershipType,
+      billing_cycle: billingCycle,
+      status: "active",
+      start_date: new Date().toISOString(),
+      end_date: endDate.toISOString(),
+      stripe_subscription_id: null,
+      stripe_customer_id: null,
+      failed_payment_count: 0,
+      dunning_status: null,
+      updated_at: new Date().toISOString(),
+    }
+
     const { error: membershipErr } = await supabase
       .from("user_memberships")
-      .upsert({
-        user_id: userId,
-        membership_type: membershipType,
-        status: "active",
-        start_date: new Date().toISOString(),
-        end_date: endDate.toISOString(),
-        stripe_subscription_id: null,
-        stripe_customer_id: null,
-        failed_payment_count: 0,
-        dunning_status: null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" })
+      .upsert(membershipPayload, { onConflict: "user_id" })
 
-    if (membershipErr) return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+    if (membershipErr) {
+      console.error("[gift-card] upsert error", {
+        message: membershipErr.message,
+        details: membershipErr.details,
+        hint: membershipErr.hint,
+        code: membershipErr.code,
+        payload: membershipPayload,
+      })
+      return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+    }
+
+    // 5. Sincronizar profiles para evitar desalineación en frontend
+    await supabase
+      .from("profiles")
+      .update({
+        membership_status: "active",
+        membership_type: membershipType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
 
     return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
   } catch (error: any) {
