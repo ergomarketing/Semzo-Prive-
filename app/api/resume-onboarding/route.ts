@@ -248,19 +248,6 @@ export async function POST() {
     )
   }
 }
-
-type ResumeAction =
-  | "active"
-  | "launch_identity"
-  | "resume_checkout"
-  | "processing_payment"
-  | "payment_incomplete"
-
-function isPaidStatus(status?: string | null) {
-  return status === "succeeded" || status === "paid"
-}
-
-export async function POST() {
   try {
     const supabase = await createClient()
 
