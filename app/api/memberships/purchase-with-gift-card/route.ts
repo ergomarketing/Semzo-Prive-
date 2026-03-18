@@ -11,8 +11,10 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, billingCycle, membershipType: rawMembershipType } = body
+    const { userId, giftCardId, billingCycle: rawBillingCycle, membershipType: rawMembershipType } = body
     const membershipType = rawMembershipType?.toLowerCase()
+    // Normalizar billingCycle
+    const billingCycle = ["weekly", "monthly", "quarterly"].includes(rawBillingCycle) ? rawBillingCycle : "monthly"
 
     if (!userId || !giftCardId || !billingCycle || !membershipType) {
       return NextResponse.json(
@@ -25,10 +27,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
     }
 
-    const amountEuros = getMembershipPrice(membershipType, billingCycle)
-    if (!amountEuros) {
+    const priceEuros = getMembershipPrice(membershipType, billingCycle)
+    if (!priceEuros) {
       return NextResponse.json({ error: `Precio no encontrado para membresía: ${membershipType} / ${billingCycle}` }, { status: 400 })
     }
+    // DB almacena amount en céntimos
+    const amountCents = Math.round(priceEuros * 100)
 
     // 1. Verificar gift card
     const { data: gc, error: gcErr } = await supabase
@@ -39,10 +43,10 @@ export async function POST(request: NextRequest) {
 
     if (gcErr || !gc) return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
     if (!["active", "partial"].includes(gc.status)) return NextResponse.json({ error: "Gift card no está activa" }, { status: 400 })
-    if (gc.amount < amountEuros) return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+    if (gc.amount < amountCents) return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
 
     // 2. Descontar saldo
-    const newAmount = gc.amount - amountEuros
+    const newAmount = gc.amount - amountCents
     const { error: gcUpdateErr } = await supabase
       .from("gift_cards")
       .update({ amount: newAmount, status: newAmount <= 0 ? "used" : "active", updated_at: new Date().toISOString() })
@@ -61,8 +65,24 @@ export async function POST(request: NextRequest) {
     const normalizedBillingCycle = billingCycle === "weekly" ? "weekly" : billingCycle === "quarterly" ? "quarterly" : "monthly"
     const { error: membershipErr } = await supabase
       .from("user_memberships")
-      .upsert({
-        user_id: userId,
+      .upsert(membershipPayload, { onConflict: "user_id" })
+
+    if (membershipErr) {
+      console.error("[gift-card] upsert error", {
+        message: membershipErr.message,
+        details: membershipErr.details,
+        hint: membershipErr.hint,
+        code: membershipErr.code,
+        payload: membershipPayload,
+      })
+      return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+    }
+
+    // 5. Sincronizar profiles para evitar desalineación en frontend
+    await supabase
+      .from("profiles")
+      .update({
+        membership_status: "active",
         membership_type: membershipType,
         billing_cycle: normalizedBillingCycle,
         status: "active",
