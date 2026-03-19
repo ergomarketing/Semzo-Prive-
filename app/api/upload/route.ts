@@ -1,11 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
+import { put } from "@vercel/blob"
 import { type NextRequest, NextResponse } from "next/server"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,27 +22,10 @@ export async function POST(request: NextRequest) {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "-")
     const filename = `bags/${timestamp}-${sanitizedName}`
 
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    const { error: uploadError } = await supabase.storage
-      .from("bag-images")
-      .upload(filename, buffer, {
-        contentType: file.type,
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error("Supabase upload error:", uploadError)
-      return NextResponse.json({ error: "Error al subir imagen" }, { status: 500 })
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from("bag-images")
-      .getPublicUrl(filename)
+    const blob = await put(filename, file, { access: "public" })
 
     return NextResponse.json({
-      url: publicUrl,
+      url: blob.url,
       filename: file.name,
       size: file.size,
       type: file.type,
