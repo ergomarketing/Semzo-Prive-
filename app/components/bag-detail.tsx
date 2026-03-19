@@ -821,13 +821,19 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               </div>
             )}
             {activeTab === "care" && (
-              <div className="space-y-4">
-                {bag.careInstructions?.map((instruction, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <Check className="h-5 w-5 text-[#1a2c4e] flex-shrink-0 mt-0.5" />
-                    <span className="text-slate-600">{instruction}</span>
-                  </div>
-                ))}
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                <p>
+                  Trata la bolsa que has pedido con el cariño y respeto que merece durante vuestro tiempo juntos, para que otros miembros puedan disfrutar tanto como tú.
+                </p>
+                <p>
+                  Si te preocupa cualquier marca, habla siempre con nosotros primero para que podamos aconsejarte cuál es la mejor acción a tomar.
+                </p>
+                <p>
+                  En general, la amabilidad ayuda mucho: las bolsas de nuestra colección prefieren mucho más estar en el regazo que en el suelo, por ejemplo, y no nos gusta sentirse demasiado llenas.
+                </p>
+                <p>
+                  Inspeccionamos cada bolsa al devolucionar y te avisaremos si hay algún problema.
+                </p>
               </div>
             )}
           </div>
