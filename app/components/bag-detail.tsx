@@ -550,21 +550,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>
               </p>
 
-              {bag.rating && (
-                <div className="flex items-center mb-6">
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-5 w-5 ${
-                          i < Math.floor(bag.rating!) ? "fill-yellow-400 text-yellow-400" : "text-slate-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-slate-600">({bag.reviews} reseñas)</span>
-                </div>
-              )}
+
             </div>
 
             {authUser ? (
