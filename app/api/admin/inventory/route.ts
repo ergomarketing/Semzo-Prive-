@@ -189,8 +189,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("[v0] Error creating bag:", error)
-      return NextResponse.json({ error: "Error al crear el bolso" }, { status: 500 })
+      console.error("[v0] Error creating bag:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        body,
+      })
+      return NextResponse.json({ error: error.message || "Error al crear el bolso" }, { status: 500 })
     }
 
     try {
