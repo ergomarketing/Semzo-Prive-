@@ -1,48 +1,12 @@
 import { createServerClient } from "@supabase/ssr"
-import type { SupabaseClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 
-/**
- * Garantiza que el perfil SIEMPRE existe antes de cualquier lógica.
- * Si no existe lo crea con valores mínimos seguros.
- */
-async function getOrCreateProfile(supabase: SupabaseClient, userId: string) {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle()
-
-  if (!profile) {
-    console.log("[SYNC PROFILE] Perfil no encontrado, creando perfil base para userId:", userId)
-    const { data: newProfile, error } = await supabase
-      .from("profiles")
-      .insert({
-        id: userId,
-        membership_status: "free",
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
-
-    if (error) throw new Error(`Error creando perfil base: ${error.message}`)
-    console.log("[PROFILE FOUND]", newProfile?.id)
-    return newProfile
-  }
-
-  console.log("[PROFILE FOUND]", profile?.id)
-  return profile
-}
-
 export async function POST(request: NextRequest) {
-  console.log("[SYNC PROFILE] sync-profile endpoint called:", new Date().toISOString())
-
   try {
     const body = await request.json()
     const { firstName, lastName, phone } = body
 
-    // Obtener sesión del usuario autenticado
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,53 +30,44 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       console.error("[SYNC PROFILE] No authenticated user:", authError)
-      return NextResponse.json(
-        { success: false, message: "No autenticado", error: "UNAUTHORIZED" },
-        { status: 401 },
-      )
+      return NextResponse.json({ success: false, error: "UNAUTHORIZED" }, { status: 401 })
     }
 
     const userId = user.id
 
-    // Guard crítico: nunca continuar con userId nulo
-    if (!userId) {
-      console.error("[SYNC PROFILE] userId es null — abortando")
-      return NextResponse.json({ success: false, message: "Missing userId", error: "MISSING_USER_ID" }, { status: 400 })
-    }
-
-    console.log("[SYNC PROFILE]", { userId })
-
-    // SIEMPRE garantizar que el perfil existe antes de cualquier lógica
-    const existingProfile = await getOrCreateProfile(supabase, userId)
-
-    const currentStatus = existingProfile?.membership_status
-    const keepStatus = currentStatus && currentStatus !== "free"
-
-    // Paso 1: update simple (el perfil ya existe gracias a getOrCreateProfile)
-    // NO se incluye phone aquí para evitar la constraint profiles_phone_unique
-    const updatePayload: Record<string, unknown> = {
-      email: user.email!,
-      full_name: `${firstName} ${lastName}`,
-      first_name: firstName,
-      last_name: lastName,
-      updated_at: new Date().toISOString(),
-    }
-    if (!keepStatus) updatePayload.membership_status = "free"
-
-    const { error: profileError } = await supabase
+    // Verificar que el perfil existe — si no existe, NO crearlo (solo signup puede crearlo)
+    const { data: existingProfile } = await supabase
       .from("profiles")
-      .update(updatePayload)
+      .select("id, membership_status")
+      .eq("id", userId)
+      .maybeSingle()
+
+    if (!existingProfile) {
+      console.error("[SYNC PROFILE] Perfil no encontrado para userId:", userId, "— abortando sin crear")
+      return NextResponse.json({ success: false, error: "PROFILE_NOT_FOUND" }, { status: 404 })
+    }
+
+    const keepStatus = existingProfile.membership_status && existingProfile.membership_status !== "free"
+
+    // Update campos básicos — sin phone para evitar constraint profiles_phone_unique
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        email: user.email!,
+        full_name: `${firstName} ${lastName}`,
+        first_name: firstName,
+        last_name: lastName,
+        ...(keepStatus ? {} : { membership_status: "free" }),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", userId)
 
-    if (profileError) {
-      console.error("[SYNC PROFILE] Profile update error:", profileError)
-      return NextResponse.json(
-        { success: false, message: `Error al sincronizar perfil: ${profileError.message}`, error: "PROFILE_ERROR" },
-        { status: 500 },
-      )
+    if (updateError) {
+      console.error("[SYNC PROFILE] Update error:", updateError)
+      return NextResponse.json({ success: false, error: "PROFILE_ERROR" }, { status: 500 })
     }
 
-    // Paso 2: actualizar phone por separado solo si no pertenece a otro usuario
+    // Phone: update separado solo si no pertenece a otro usuario
     if (phone) {
       const { data: phoneOwner } = await supabase
         .from("profiles")
@@ -127,7 +82,7 @@ export async function POST(request: NextRequest) {
           .update({ phone })
           .eq("id", userId)
 
-        if (phoneError && phoneError.code !== "23505") {
+        if (phoneError) {
           console.log("[SYNC PROFILE] Phone update ignorado:", phoneError.message)
         }
       } else {
@@ -135,22 +90,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("[SYNC PROFILE] Perfil sincronizado correctamente para userId:", userId)
+    console.log("[SYNC PROFILE] OK:", userId)
 
     return NextResponse.json({
       success: true,
-      message: "Perfil sincronizado correctamente",
-      profile: {
-        id: userId,
-        email: user.email,
-        full_name: `${firstName} ${lastName}`,
-      },
+      profile: { id: userId, email: user.email, full_name: `${firstName} ${lastName}` },
     })
   } catch (error) {
     console.error("[SYNC PROFILE] Error inesperado:", error)
-    return NextResponse.json(
-      { success: false, message: "Error inesperado al sincronizar perfil", error: "INTERNAL_ERROR" },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: "INTERNAL_ERROR" }, { status: 500 })
   }
 }
