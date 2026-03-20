@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, Smartphone } from "lucide-react"
+import { getSupabaseBrowser } from "@/app/lib/supabase"
+import { useAuth } from "../../hooks/useAuth"
+import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
-// Apple SVG icon (no emoji, no lucide — Apple requiere su propio logo)
 function AppleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -17,9 +19,6 @@ function AppleIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-import { getSupabaseBrowser } from "@/app/lib/supabase"
-import { useAuth } from "../../hooks/useAuth"
-import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
