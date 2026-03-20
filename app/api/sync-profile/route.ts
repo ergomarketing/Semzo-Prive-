@@ -88,22 +88,24 @@ export async function POST(request: NextRequest) {
     const currentStatus = existingProfile?.membership_status
     const keepStatus = currentStatus && currentStatus !== "free"
 
-    // Paso 1: upsert sin phone para evitar cualquier conflicto de unicidad
-    const { error: profileError } = await supabase.from("profiles").upsert(
-      {
-        id: userId,
-        email: user.email!,
-        full_name: `${firstName} ${lastName}`,
-        first_name: firstName,
-        last_name: lastName,
-        ...(keepStatus ? {} : { membership_status: "free" }),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    )
+    // Paso 1: update simple (el perfil ya existe gracias a getOrCreateProfile)
+    // NO se incluye phone aquí para evitar la constraint profiles_phone_unique
+    const updatePayload: Record<string, unknown> = {
+      email: user.email!,
+      full_name: `${firstName} ${lastName}`,
+      first_name: firstName,
+      last_name: lastName,
+      updated_at: new Date().toISOString(),
+    }
+    if (!keepStatus) updatePayload.membership_status = "free"
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update(updatePayload)
+      .eq("id", userId)
 
     if (profileError) {
-      console.error("[SYNC PROFILE] Profile upsert error:", profileError)
+      console.error("[SYNC PROFILE] Profile update error:", profileError)
       return NextResponse.json(
         { success: false, message: `Error al sincronizar perfil: ${profileError.message}`, error: "PROFILE_ERROR" },
         { status: 500 },
