@@ -906,15 +906,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     if (cartBagPass) {
                       checkoutBody.amountCents = Math.round(finalAmount * 100)
                       checkoutBody.productName = cartBagPass.name || "Pase de Bolso"
-                      // Pasar giftCardId para que el webhook lo consuma tras el pago
                       if (appliedGiftCard) {
-                        checkoutBody.giftCardId = appliedGiftCard.id
+                        checkoutBody.gift_card_id = appliedGiftCard.id
                         checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
                       }
                     } else {
                       checkoutBody.priceId = priceId
                       checkoutBody.membershipType = type
                       checkoutBody.billingCycle = cycle
+                      if (appliedGiftCard) {
+                        checkoutBody.gift_card_id = appliedGiftCard.id
+                      }
                     }
 
                     // Bag-pass → endpoint de pago único

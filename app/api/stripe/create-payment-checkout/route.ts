@@ -8,7 +8,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06
 
 export async function POST(req: NextRequest) {
   try {
-    const { amountCents, productName, intentId, giftCardId } = await req.json()
+    const body = await req.json()
+    const { amountCents, productName, intentId } = body
+    // Acepta gift_card_id (snake_case desde CartClient) o giftCardId (legacy camelCase)
+    const giftCardId: string | undefined = body.gift_card_id || body.giftCardId
 
     if (!amountCents || !productName || !intentId) {
       return NextResponse.json(
