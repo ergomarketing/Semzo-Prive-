@@ -366,33 +366,43 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   }
 
   const handleAuthSuccess = async (newUser: any) => {
-    console.log("[v0] handleAuthSuccess called with user:", newUser.id)
-    setUser(newUser)
+    const supabase = getSupabaseBrowser()
+
+    let user = null
+    for (let i = 0; i < 3; i++) {
+      const res = await supabase.auth.getUser()
+      user = res.data.user
+      if (user) break
+      await new Promise(r => setTimeout(r, 300))
+    }
+
+    if (!user) {
+      console.warn("[CART] User still null after retry")
+      return
+    }
+
+    setUser(user)
     setShowAuthModal(false)
-    
-    // Sincronizar profile inmediatamente después del signup SMS
+
     try {
       const syncResponse = await fetch("/api/sync-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: newUser.user_metadata?.first_name || "",
-          lastName: newUser.user_metadata?.last_name || "",
-          phone: newUser.phone || newUser.user_metadata?.phone || "",
+          firstName: user.user_metadata?.first_name || "",
+          lastName: user.user_metadata?.last_name || "",
+          phone: user.phone || user.user_metadata?.phone || "",
         }),
       })
-      
-      if (syncResponse.ok) {
-        console.log("[v0] Profile synced successfully after SMS signup")
+
+      if (!syncResponse.ok) {
+        console.error("[CART] sync-profile error:", syncResponse.status)
       }
     } catch (error) {
-      console.error("[v0] Profile sync error (non-blocking):", error)
+      console.error("[CART] Profile sync error (non-blocking):", error)
     }
-    
+
     toast.success("¡Cuenta creada! Completa tu pedido")
-    
-    // NO abrir Identity aquí - Identity se activa DESPUÉS del pago cuando existe membership_intent
-    // El pago crea el intent, luego el webhook activa Identity verification
   }
 
   const handleAuthSubmit = async (e: React.FormEvent) => {

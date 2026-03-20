@@ -12,6 +12,7 @@ import { getSupabaseBrowser } from "@/app/lib/supabase"
 import { useAuth } from "../../hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")

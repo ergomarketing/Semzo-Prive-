@@ -29,6 +29,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
+    // Guard crítico: nunca ejecutar lógica de membresía sin userId
+    if (!user.id) {
+      console.error("[ACTIVATE] userId es null — abortando")
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 })
+    }
+
+    // SIEMPRE garantizar que el perfil existe antes de cualquier lógica de membresía
+    const { data: profileCheck } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (!profileCheck) {
+      console.log("[ACTIVATE] Perfil no encontrado, creando perfil base para:", user.id)
+      const { error: insertError } = await supabase
+        .from("profiles")
+        .insert({ id: user.id, membership_status: "free", created_at: new Date().toISOString() })
+      if (insertError) {
+        console.error("[ACTIVATE] Error creando perfil base:", insertError)
+        return NextResponse.json({ error: "Error creando perfil de usuario" }, { status: 500 })
+      }
+    }
+
     // Verificar si ya tiene membresia activa
     const { data: existingMembership } = await supabase
       .from("user_memberships")
