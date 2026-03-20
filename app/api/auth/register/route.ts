@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
 
     const fullName = `${firstName || ""} ${lastName || ""}`.trim()
 
+    // Upsert sin phone para evitar constraint profiles_phone_unique
     await supabaseService
       .from("profiles")
       .upsert({
@@ -89,10 +90,26 @@ export async function POST(request: NextRequest) {
         full_name: fullName || null,
         first_name: firstName || null,
         last_name: lastName || null,
-        phone: phone || null,
         auth_method: "email",
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" })
+
+    // Phone en paso separado solo si no pertenece a otro usuario
+    if (phone) {
+      const { data: phoneOwner } = await supabaseService
+        .from("profiles")
+        .select("id")
+        .eq("phone", phone)
+        .neq("id", authData.user.id)
+        .maybeSingle()
+
+      if (!phoneOwner) {
+        await supabaseService
+          .from("profiles")
+          .update({ phone })
+          .eq("id", authData.user.id)
+      }
+    }
 
     // Notificar al admin del nuevo registro
     try {
