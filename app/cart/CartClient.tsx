@@ -459,8 +459,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     return items.length > 0 ? analyzeCartItems(items) : null
   }, [items])
   
-  // Bloquear checkout si el carrito tiene membresía y el usuario no est�� verificado
-  const needsVerification = !!(cartAnalysis?.membershipType && !identityVerified)
+  // Bloquear checkout si el carrito tiene membresía y el usuario no está verificado
+  // Excepción: si el total es 0€ con gift card, se permite pagar y la verificación va después
+  const needsVerification = !!(cartAnalysis?.membershipType && !identityVerified && !(finalAmount === 0 && appliedGiftCard))
   const needsExtendedForm = cartAnalysis?.membershipType && !extendedFormCompleted
 
   const handleVerificationComplete = (verified: boolean) => {

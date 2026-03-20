@@ -103,7 +103,7 @@ export default function MembershipUpgradeClientPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/auth/login")
+      router.push("/auth/login?redirect=/membership/upgrade")
     }
   }, [user, loading, router])
 
@@ -115,7 +115,13 @@ export default function MembershipUpgradeClientPage() {
     )
   }
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
 
   if (membershipType === "prive") {
     return (

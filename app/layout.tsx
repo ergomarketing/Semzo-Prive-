@@ -236,6 +236,31 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        <Script id="chunk-error-handler" strategy="beforeInteractive">
+          {`
+            if (typeof window !== "undefined") {
+              window.addEventListener("error", function(e) {
+                if (e && e.message && (e.message.includes("ChunkLoadError") || e.message.includes("Loading chunk"))) {
+                  var key = "chunk_reload_attempted";
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, "1");
+                    window.location.reload();
+                  }
+                }
+              });
+              window.addEventListener("unhandledrejection", function(e) {
+                var msg = e && e.reason && e.reason.message;
+                if (msg && (msg.includes("ChunkLoadError") || msg.includes("Loading chunk"))) {
+                  var key = "chunk_reload_attempted";
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, "1");
+                    window.location.reload();
+                  }
+                }
+              });
+            }
+          `}
+        </Script>
         <Script
           id="tiktok-pixel"
           strategy="afterInteractive"

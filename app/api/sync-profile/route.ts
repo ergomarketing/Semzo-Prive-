@@ -49,6 +49,16 @@ export async function POST(request: NextRequest) {
 
     // Sincronizar profile con upsert (idempotente)
     console.log("[BACKEND] Upserting profile...")
+    // Primero verificar si ya tiene membresía activa para no sobreescribirla
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("membership_status")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    const currentStatus = existingProfile?.membership_status
+    const keepStatus = currentStatus && currentStatus !== "free"
+
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
@@ -57,7 +67,7 @@ export async function POST(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
-        membership_status: "free",
+        ...(keepStatus ? {} : { membership_status: "free" }),
         updated_at: new Date().toISOString(),
       },
       {
