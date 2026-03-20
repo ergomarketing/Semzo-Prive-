@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // Marcar email como confirmado en profiles (no sobreescribir otros campos)
       if (data.user) {
         try {
           const { createClient } = await import("@supabase/supabase-js")
@@ -39,10 +38,33 @@ export async function GET(request: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!,
             { auth: { persistSession: false } }
           )
-          await supabaseService
+
+          // Garantizar que el perfil existe (primer login con Apple puede no tener perfil)
+          const { data: existingProfile } = await supabaseService
             .from("profiles")
-            .update({ email_confirmed: true, updated_at: new Date().toISOString() })
+            .select("id")
             .eq("id", data.user.id)
+            .maybeSingle()
+
+          if (!existingProfile) {
+            const fullName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ""
+            const parts = fullName.split(" ")
+            await supabaseService.from("profiles").insert({
+              id: data.user.id,
+              email: data.user.email || "",
+              full_name: fullName,
+              first_name: parts[0] || "",
+              last_name: parts.slice(1).join(" ") || "",
+              membership_status: "free",
+              email_confirmed: true,
+              created_at: new Date().toISOString(),
+            })
+          } else {
+            await supabaseService
+              .from("profiles")
+              .update({ email_confirmed: true, updated_at: new Date().toISOString() })
+              .eq("id", data.user.id)
+          }
         } catch (syncError) {
           // No bloquear el flujo si falla
         }
