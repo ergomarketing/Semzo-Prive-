@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       intentId: clientIntentId,
       amountCents,
       productName,
+      gift_card_id,
     } = body
 
     // VALIDATION: Required fields — priceId OR amountCents son suficientes
@@ -159,11 +160,12 @@ export async function POST(request: NextRequest) {
     const successUrl = `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${baseUrl}/cart?canceled=true`
 
-    const commonMetadata = {
+    const commonMetadata: Record<string, string> = {
       intent_id: intentId,
       user_id: userId,
       membership_type: membershipType || "",
       billing_cycle: billingCycle || "monthly",
+      ...(gift_card_id ? { gift_card_id } : {}),
     }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription

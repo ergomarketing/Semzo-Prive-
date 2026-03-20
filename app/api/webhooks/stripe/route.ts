@@ -111,6 +111,11 @@ export async function POST(req: NextRequest) {
           session.subscription as string
         );
 
+        // gift_card_id puede estar en subscription.metadata o en session.metadata
+        const giftCardId =
+          subscription.metadata?.gift_card_id ||
+          session.metadata?.gift_card_id;
+
         // user_id puede estar en subscription.metadata o en session.metadata
         let userId: string | undefined =
           subscription.metadata?.user_id ||
@@ -169,6 +174,26 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("id", userId);
+
+        // Consumir gift card si había una aplicada en la suscripción
+        if (giftCardId && userId) {
+          const amountChargedEuros = (session.amount_total || 0) / 100;
+          const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+          const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
+          const originalPriceEuros = originalPriceCents / 100;
+          const giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
+
+          if (giftCardConsumedEuros > 0) {
+            await supabase.rpc("consume_gift_card_atomic", {
+              p_gift_card_id: giftCardId,
+              p_amount: giftCardConsumedEuros,
+              p_user_id: userId,
+              p_reference_id: session.id,
+              p_reference_type: "membership",
+            });
+            console.log("✅ Gift card consumed for membership:", giftCardId, "amount:", giftCardConsumedEuros);
+          }
+        }
 
         // Marcar el intent como paid_pending_verification
         // para que identity/create-session pueda encontrarlo
