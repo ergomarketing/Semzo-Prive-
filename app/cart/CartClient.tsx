@@ -366,20 +366,32 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   }
 
   const handleAuthSuccess = async (newUser: any) => {
-    if (!newUser) return
+    const supabase = getSupabaseBrowser()
 
-    setUser(newUser)
+    let user = null
+    for (let i = 0; i < 3; i++) {
+      const res = await supabase.auth.getUser()
+      user = res.data.user
+      if (user) break
+      await new Promise(r => setTimeout(r, 300))
+    }
+
+    if (!user) {
+      console.warn("[CART] User still null after retry")
+      return
+    }
+
+    setUser(user)
     setShowAuthModal(false)
 
-    // Sincronizar profile solo si el usuario existe
     try {
       const syncResponse = await fetch("/api/sync-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: newUser.user_metadata?.first_name || "",
-          lastName: newUser.user_metadata?.last_name || "",
-          phone: newUser.phone || newUser.user_metadata?.phone || "",
+          firstName: user.user_metadata?.first_name || "",
+          lastName: user.user_metadata?.last_name || "",
+          phone: user.phone || user.user_metadata?.phone || "",
         }),
       })
 
