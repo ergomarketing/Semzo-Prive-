@@ -366,11 +366,12 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   }
 
   const handleAuthSuccess = async (newUser: any) => {
-    console.log("[v0] handleAuthSuccess called with user:", newUser.id)
+    if (!newUser) return
+
     setUser(newUser)
     setShowAuthModal(false)
-    
-    // Sincronizar profile inmediatamente después del signup SMS
+
+    // Sincronizar profile solo si el usuario existe
     try {
       const syncResponse = await fetch("/api/sync-profile", {
         method: "POST",
@@ -381,18 +382,15 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           phone: newUser.phone || newUser.user_metadata?.phone || "",
         }),
       })
-      
-      if (syncResponse.ok) {
-        console.log("[v0] Profile synced successfully after SMS signup")
+
+      if (!syncResponse.ok) {
+        console.error("[CART] sync-profile error:", syncResponse.status)
       }
     } catch (error) {
-      console.error("[v0] Profile sync error (non-blocking):", error)
+      console.error("[CART] Profile sync error (non-blocking):", error)
     }
-    
+
     toast.success("¡Cuenta creada! Completa tu pedido")
-    
-    // NO abrir Identity aquí - Identity se activa DESPUÉS del pago cuando existe membership_intent
-    // El pago crea el intent, luego el webhook activa Identity verification
   }
 
   const handleAuthSubmit = async (e: React.FormEvent) => {

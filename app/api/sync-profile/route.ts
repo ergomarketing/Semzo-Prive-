@@ -88,6 +88,21 @@ export async function POST(request: NextRequest) {
     const currentStatus = existingProfile?.membership_status
     const keepStatus = currentStatus && currentStatus !== "free"
 
+    // Si viene phone, verificar que no pertenezca a otro usuario antes de incluirlo
+    let safePhone: string | null = phone || null
+    if (safePhone) {
+      const { data: phoneOwner } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("phone", safePhone)
+        .neq("id", userId)
+        .maybeSingle()
+      if (phoneOwner) {
+        console.log("[SYNC PROFILE] Phone ya existe en otro perfil, omitiendo campo phone")
+        safePhone = null
+      }
+    }
+
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: userId,
@@ -95,7 +110,7 @@ export async function POST(request: NextRequest) {
         full_name: `${firstName} ${lastName}`,
         first_name: firstName,
         last_name: lastName,
-        phone: phone || null,
+        ...(safePhone !== null ? { phone: safePhone } : {}),
         ...(keepStatus ? {} : { membership_status: "free" }),
         updated_at: new Date().toISOString(),
       },
@@ -103,11 +118,16 @@ export async function POST(request: NextRequest) {
     )
 
     if (profileError) {
-      console.error("[SYNC PROFILE] Profile upsert error:", profileError)
-      return NextResponse.json(
-        { success: false, message: `Error al sincronizar perfil: ${profileError.message}`, error: "PROFILE_ERROR" },
-        { status: 500 },
-      )
+      // Error 23505 = duplicate key — no es un crash, continuar sin bloquear
+      if (profileError.code === "23505") {
+        console.log("[SYNC PROFILE] Conflicto de unicidad ignorado:", profileError.message)
+      } else {
+        console.error("[SYNC PROFILE] Profile upsert error:", profileError)
+        return NextResponse.json(
+          { success: false, message: `Error al sincronizar perfil: ${profileError.message}`, error: "PROFILE_ERROR" },
+          { status: 500 },
+        )
+      }
     }
 
     console.log("[SYNC PROFILE] Perfil sincronizado correctamente para userId:", userId)
