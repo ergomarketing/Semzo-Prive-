@@ -69,7 +69,7 @@ export default function CTASection() {
 
             <div className="relative w-full max-w-md aspect-square">
               <Image
-                src="/images/gift-card-semzo.png"
+                src="/images/gift-card-semzo.jpg"
                 alt="Gift Cards Semzo Privé - Tarjeta regalo de lujo"
                 fill
                 className="object-contain transition-transform duration-500 hover:scale-105"
