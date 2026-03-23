@@ -498,7 +498,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
             <Button onClick={() => router.push("/catalog")} className="mt-6 bg-[#2D2A45] hover:bg-[#2D2A45]/90">
-              Explorar Cat��������logo
+              Explorar Catalogo
             </Button>
           </div>
         </div>
