@@ -15,7 +15,7 @@ export default function CTASection() {
       <div className="container mx-auto px-4 max-w-6xl space-y-20">
         
         {/* Fila 1: Fendi + Agendar Consulta */}
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
           <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-lg">
             <Image
               src="/images/fendi-white-cta.jpeg"
@@ -63,7 +63,7 @@ export default function CTASection() {
         </div>
 
         {/* Fila 2: Gift Card + Comienza tu experiencia */}
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
           <div className="space-y-6 order-2 md:order-1">
             <p 
               className="text-sm uppercase tracking-widest font-medium"
@@ -108,13 +108,14 @@ export default function CTASection() {
             </div>
           </div>
           
-          <div className="relative aspect-square max-w-md mx-auto order-1 md:order-2">
+          <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-1 md:order-2">
             <Image
               src="/images/gift-card-semzo.jpg"
               alt="Gift Cards Semzo Prive - Tarjeta regalo de lujo"
               fill
-              className="object-contain drop-shadow-lg"
-              sizes="(max-width: 768px) 100vw, 400px"
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
             />
           </div>
         </div>
