@@ -77,5 +77,48 @@ export async function syncMembershipFromStripe(
     return { success: false, error: error.message }
   }
 
+  // --- ACTIVACION AUTOMATICA DE MEMBRESIA ---
+  // Verificar si se cumplen todas las condiciones para activar
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("identity_verified, sepa_payment_method_id, membership_status")
+    .eq("id", userId)
+    .single()
+
+  const hasActiveMembership = status === "active" || subscription.status === "trialing"
+  const hasIdentityVerified = profile?.identity_verified === true
+  const hasSepaMandate = !!profile?.sepa_payment_method_id
+  const isNotAlreadyActive = profile?.membership_status !== "active"
+
+  console.log("[ORCHESTRATOR CHECK]", {
+    userId,
+    hasActiveMembership,
+    hasIdentityVerified,
+    hasSepaMandate,
+    currentStatus: profile?.membership_status,
+  })
+
+  const shouldActivate =
+    hasActiveMembership &&
+    hasIdentityVerified &&
+    hasSepaMandate &&
+    isNotAlreadyActive
+
+  if (shouldActivate) {
+    await supabase
+      .from("profiles")
+      .update({
+        membership_status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
+
+    console.log("[ORCHESTRATOR] Membresia activada para userId:", userId)
+
+    // TODO: Enviar emails de activacion (descomentar cuando esten los imports)
+    // await sendEmail({ type: "membership_activated", userId })
+    // await sendAdminNotification({ type: "membership_activated", userId })
+  }
+
   return { success: true }
 }
