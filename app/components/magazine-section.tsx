@@ -138,17 +138,18 @@ export default function MagazineSection() {
                   <Link
                     key={post.slug}
                     href={`/blog/${post.slug}`}
-                    className="flex-shrink-0 w-[85vw] md:w-[45vw] lg:w-[30vw] group/card"
+                    className="flex-shrink-0 w-[80vw] md:w-[40vw] lg:w-[28vw] group/card"
                   >
-                    <div className="flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
-                      <div className="relative aspect-[3/4] w-full overflow-hidden">
+                    <div className="flex flex-col rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
+                      <div className="relative aspect-[4/3] w-full overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={post.image_url || "/placeholder.svg?height=800&width=600"}
+                          src={post.image_url || "/placeholder.svg?height=300&width=400"}
                           alt={post.title}
-                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg?height=800&width=600" }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg?height=300&width=400" }}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           className="group-hover/card:scale-105 transition-transform duration-500"
+                          loading="lazy"
                         />
                       </div>
 
