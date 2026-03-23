@@ -57,8 +57,8 @@ export default function CTASection() {
             </div>
           </div>
 
-          {/* Right side - Lifestyle Image */}
-          <div className="relative">
+          {/* Right side - Gift Cards */}
+          <div className="relative flex flex-col items-center">
             {/* Ambient background glow */}
             <div
               className="absolute inset-0 rounded-3xl blur-3xl opacity-30"
@@ -67,26 +67,35 @@ export default function CTASection() {
               }}
             />
 
-            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
+            <div className="relative w-full max-w-md aspect-square">
               <Image
-                src="/images/fendi-white-cta.jpeg"
-                alt="Bolso Fendi blanco de lujo - Membresía Semzo Privé"
+                src="/images/gift-card-semzo.png"
+                alt="Gift Cards Semzo Privé - Tarjeta regalo de lujo"
                 fill
-                className="object-cover transition-transform duration-500 hover:scale-105"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain transition-transform duration-500 hover:scale-105"
+                sizes="(max-width: 768px) 100vw, 400px"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             </div>
 
             {/* Info section below image */}
-            <div className="text-center space-y-4 mt-8">
+            <div className="text-center space-y-4 mt-6">
               <h3 className="font-serif text-2xl md:text-3xl font-light" style={{ color: "#1a1a4b" }}>
-                Acceso exclusivo cada mes
+                Gift Cards de Semzo Prive
               </h3>
               <p className="text-sm md:text-base text-slate-600 leading-relaxed max-w-md mx-auto px-4">
-                Descubre piezas icónicas que elevan tu estilo. Cambia tu bolso tan a menudo como desees.
+                Regala acceso a lujo y diseno exclusivo. El regalo perfecto para quien valora la elegancia.
               </p>
+              <Button
+                onClick={() => (window.location.href = "/gift-cards")}
+                className="rounded-none px-10 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 mt-4"
+                style={{
+                  backgroundColor: "#1a1a4b",
+                  color: "#ffffff",
+                }}
+              >
+                Comprar Gift Card
+              </Button>
             </div>
           </div>
         </div>
