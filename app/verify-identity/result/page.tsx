@@ -30,8 +30,8 @@ function VerifyIdentityResultContent() {
 
         if (data.status === "verified") {
           setStatus("approved")
-          // Redirigir al dashboard — la membresía ya está activa
-          setTimeout(() => router.push("/dashboard"), 3000)
+          // Redirigir a onboarding-complete para configurar SEPA
+          setTimeout(() => router.push("/onboarding-complete"), 2000)
         } else if (
           data.status === "requires_input" ||
           data.status === "canceled"
@@ -63,7 +63,7 @@ function VerifyIdentityResultContent() {
     approved: {
       title: "Identidad verificada",
       message:
-        "Tu verificación ha sido completada con éxito. Acceso completo desbloqueado. Redirigiendo...",
+        "Tu verificación ha sido completada. Un último paso para completar tu membresía...",
     },
     pending: {
       title: "Verificación en proceso",
