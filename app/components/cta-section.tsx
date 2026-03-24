@@ -21,7 +21,7 @@ export default function CTASection() {
               src="/images/fendi-white-cta.jpeg"
               alt="Bolso Fendi blanco de lujo - Semzo Prive"
               fill
-              className="object-cover"
+              className="object-cover object-[65%_30%] scale-110"
               sizes="(max-width: 768px) 100vw, 55vw"
               priority
             />
