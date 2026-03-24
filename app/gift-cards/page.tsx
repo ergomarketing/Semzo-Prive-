@@ -73,7 +73,7 @@ function GiftCardForm() {
       
       if (authError || !user) {
         toast.error("Debes iniciar sesión para comprar una Gift Card")
-        router.push("/login?redirect=/gift-cards")
+        router.push("/auth/login?redirect=/gift-cards")
         setLoading(false)
         return
       }
