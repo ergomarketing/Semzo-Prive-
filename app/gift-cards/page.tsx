@@ -18,14 +18,16 @@ const stripePromise = getStripePromise()
 
 const PRESET_AMOUNTS = [50, 100, 150, 200, 300, 500]
 
-// Logo SP component
-function LogoSP({ className = "w-12 h-12" }: { className?: string }) {
+// Logo SP component - usa la imagen real
+function LogoSP({ size = 56 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <text x="50" y="65" textAnchor="middle" fontFamily="Playfair Display, Georgia, serif" fontSize="48" fontWeight="600" fill="#c9a86c">
-        SP
-      </text>
-    </svg>
+    <Image
+      src="/images/logo-semzo-sp.png"
+      alt="Semzo Prive"
+      width={size}
+      height={size}
+      className="object-contain"
+    />
   )
 }
 
@@ -141,7 +143,7 @@ function GiftCardForm() {
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
           style={{ backgroundColor: "#1a1a4b" }}
         >
-          <LogoSP className="w-14 h-14" />
+          <LogoSP size={56} />
         </div>
         <h2 className="font-serif text-3xl mb-2" style={{ color: "#1a1a4b" }}>Comprar Gift Card</h2>
         <p className="text-gray-500">El regalo perfecto para las amantes de la moda</p>
@@ -291,7 +293,7 @@ function PaymentForm({
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
           style={{ backgroundColor: "#1a1a4b" }}
         >
-          <LogoSP className="w-14 h-14" />
+          <LogoSP size={56} />
         </div>
         <h2 className="font-serif text-3xl mb-2" style={{ color: "#1a1a4b" }}>Pago de Gift Card</h2>
         <p className="text-gray-500">Total: {amount}€</p>
