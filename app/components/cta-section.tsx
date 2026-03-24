@@ -108,13 +108,13 @@ export default function CTASection() {
             </div>
           </div>
           
-          <div className="relative aspect-square max-w-md ml-auto order-1 md:order-2">
+          <div className="relative aspect-[4/5] w-full order-1 md:order-2">
             <Image
               src="/images/gift-card-semzo.jpg"
               alt="Gift Cards Semzo Prive - Tarjeta regalo de lujo"
               fill
               className="object-contain"
-              sizes="(max-width: 768px) 100vw, 400px"
+              sizes="(max-width: 768px) 100vw, 50vw"
               priority
             />
           </div>
