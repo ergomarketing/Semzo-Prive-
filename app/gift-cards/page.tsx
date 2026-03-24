@@ -13,8 +13,8 @@ import { getStripePromise } from "@/lib/stripe-client"
 import { toast } from "sonner"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
+import { LoginModal } from "@/app/components/login-modal"
 
 const stripePromise = getStripePromise()
 
@@ -34,8 +34,8 @@ function LogoSP({ size = 56 }: { size?: number }) {
 }
 
 function GiftCardForm() {
-  const router = useRouter()
   const [amount, setAmount] = useState(100)
+  const [showLoginModal, setShowLoginModal] = useState(false)
   const [customAmount, setCustomAmount] = useState("")
   const [recipientName, setRecipientName] = useState("")
   const [recipientEmail, setRecipientEmail] = useState("")
@@ -72,9 +72,8 @@ function GiftCardForm() {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError || !user) {
-        toast.error("Debes iniciar sesión para comprar una Gift Card")
-        router.push("/auth/login?redirect=/gift-cards")
         setLoading(false)
+        setShowLoginModal(true)
         return
       }
     } catch {
@@ -267,6 +266,18 @@ function GiftCardForm() {
           Las gift cards son válidas por 2 años y no son reembolsables
         </p>
       </div>
+
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+        onSuccess={() => {
+          setShowLoginModal(false)
+          // Re-trigger checkout despues de login exitoso
+          handleContinue()
+        }}
+        onClose={() => setShowLoginModal(false)}
+      />
     </div>
   )
 }
