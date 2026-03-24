@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { X, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
 
@@ -104,15 +104,6 @@ export function LoginModal({ open, onOpenChange, onSuccess, onClose }: LoginModa
 
           {/* Formulario lado derecho */}
           <div className="relative p-8 md:p-10">
-            {/* Boton cerrar */}
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Cerrar"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-
             <div className="max-w-sm mx-auto">
               {/* Header */}
               <div className="text-center mb-8">
