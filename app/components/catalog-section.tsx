@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { addToWaitlist } from "@/lib/waitlistFunctions" // Declare or import the addToWaitlist function
 import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
+import { LoginModal } from "@/app/components/login-modal"
 
 interface BagItem {
   id: string
@@ -34,11 +35,13 @@ const MEMBERSHIP_PRICES: Record<string, number> = {
 }
 
 export default function CatalogSection() {
-  const { user } = useAuth()
+  const { user, refetch } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
   const [bags, setBags] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(true)
   const [userMembership, setUserMembership] = useState<string | null>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const { addItem } = useCart()
   const router = useRouter()
 
