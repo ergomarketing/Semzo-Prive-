@@ -12,22 +12,22 @@ export default function CTASection() {
         background: "linear-gradient(180deg, #ffffff 0%, #fdf2f4 20%, #fce8ec 60%, #f8dce2 100%)",
       }}
     >
-      <div className="container mx-auto px-4 max-w-6xl space-y-20">
+      <div className="container mx-auto px-4 lg:px-8 max-w-7xl space-y-24">
         
-        {/* Fila 1: Fendi + Agendar Consulta */}
-        <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-          <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-lg">
+        {/* Fila 1: Fendi + Agendar Consulta - Fendi protagonista */}
+        <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 md:gap-20 items-start">
+          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-xl">
             <Image
               src="/images/fendi-white-cta.jpeg"
               alt="Bolso Fendi blanco de lujo - Semzo Prive"
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 768px) 100vw, 55vw"
               priority
             />
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-6 pt-4">
             <p 
               className="text-sm uppercase tracking-widest font-medium"
               style={{ color: "#c9a86c" }}
@@ -40,7 +40,7 @@ export default function CTASection() {
             >
               Descubre tu bolso ideal
             </h2>
-            <p className="text-slate-600 leading-relaxed text-lg">
+            <p className="text-slate-600 leading-relaxed text-lg max-w-lg">
               Nuestro equipo de estilistas esta disponible para ayudarte a elegir 
               la pieza perfecta para cada ocasion. Agenda una consulta gratuita 
               y recibe recomendaciones personalizadas.
@@ -62,9 +62,9 @@ export default function CTASection() {
           </div>
         </div>
 
-        {/* Fila 2: Gift Card + Comienza tu experiencia */}
-        <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-          <div className="space-y-6 order-2 md:order-1">
+        {/* Fila 2: Comienza tu experiencia + Gift Card */}
+        <div className="grid md:grid-cols-[1fr_1fr] gap-10 md:gap-20 items-start">
+          <div className="space-y-6 order-2 md:order-1 pt-4">
             <p 
               className="text-sm uppercase tracking-widest font-medium"
               style={{ color: "#c9a86c" }}
@@ -77,7 +77,7 @@ export default function CTASection() {
             >
               Comienza tu experiencia de lujo hoy mismo
             </h2>
-            <p className="text-slate-600 leading-relaxed text-lg">
+            <p className="text-slate-600 leading-relaxed text-lg max-w-lg">
               Se parte de una comunidad exclusiva de mujeres que valoran la calidad, 
               el diseno y la sostenibilidad. Nuestras plazas son limitadas para 
               garantizar un servicio impecable.
@@ -108,13 +108,13 @@ export default function CTASection() {
             </div>
           </div>
           
-          <div className="relative aspect-[4/5] rounded-2xl overflow-hidden order-1 md:order-2">
+          <div className="relative aspect-square max-w-md ml-auto order-1 md:order-2">
             <Image
               src="/images/gift-card-semzo.jpg"
               alt="Gift Cards Semzo Prive - Tarjeta regalo de lujo"
               fill
               className="object-contain"
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 768px) 100vw, 400px"
               priority
             />
           </div>
