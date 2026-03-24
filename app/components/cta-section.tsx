@@ -16,7 +16,7 @@ export default function CTASection() {
         
         {/* Fila 1: Fendi + Agendar Consulta - Fendi protagonista */}
         <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 md:gap-20 items-start">
-          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-xl">
+          <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-xl">
             <Image
               src="/images/fendi-white-cta.jpeg"
               alt="Bolso Fendi blanco de lujo - Semzo Prive"
@@ -79,24 +79,13 @@ export default function CTASection() {
             </h2>
             <p className="text-slate-600 leading-relaxed text-lg max-w-lg">
               Se parte de una comunidad exclusiva de mujeres que valoran la calidad, 
-              el diseno y la sostenibilidad. Nuestras plazas son limitadas para 
+              el diseño y la sostenibilidad. Nuestras plazas son limitadas para 
               garantizar un servicio impecable.
             </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <Link href="/membresias">
-                <Button
-                  className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
-                  style={{
-                    backgroundColor: "#f4c4cc",
-                    color: "#1a1a4b",
-                  }}
-                >
-                  Comenzar Suscripcion
-                </Button>
-              </Link>
+            <div className="pt-4 flex justify-center md:justify-start">
               <Link href="/gift-cards">
                 <Button
-                  className="rounded-none px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
+                  className="rounded-none px-10 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300"
                   style={{
                     backgroundColor: "#1a1a4b",
                     color: "#ffffff",
@@ -108,7 +97,7 @@ export default function CTASection() {
             </div>
           </div>
           
-          <div className="relative aspect-[4/5] w-full order-1 md:order-2">
+          <div className="relative aspect-[4/5] w-full order-1 md:order-2 rounded-3xl overflow-hidden">
             <Image
               src="/images/gift-card-semzo.jpg"
               alt="Gift Cards Semzo Prive - Tarjeta regalo de lujo"
