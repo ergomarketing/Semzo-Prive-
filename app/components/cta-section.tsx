@@ -16,12 +16,12 @@ export default function CTASection() {
         
         {/* Fila 1: Fendi + Agendar Consulta - Fendi protagonista */}
         <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 md:gap-20 items-start">
-          <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-xl">
+          <div className="relative aspect-[3/4] rounded-3xl overflow-hidden shadow-xl">
             <Image
               src="/images/fendi-white-cta.jpeg"
               alt="Bolso Fendi blanco de lujo - Semzo Prive"
               fill
-              className="object-cover"
+              className="object-cover object-[60%_30%]"
               sizes="(max-width: 768px) 100vw, 55vw"
               priority
             />
