@@ -13,6 +13,8 @@ import { getStripePromise } from "@/lib/stripe-client"
 import { toast } from "sonner"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 const stripePromise = getStripePromise()
 
@@ -32,6 +34,7 @@ function LogoSP({ size = 56 }: { size?: number }) {
 }
 
 function GiftCardForm() {
+  const router = useRouter()
   const [amount, setAmount] = useState(100)
   const [customAmount, setCustomAmount] = useState("")
   const [recipientName, setRecipientName] = useState("")
@@ -62,6 +65,24 @@ function GiftCardForm() {
     }
 
     setLoading(true)
+    
+    // Verificar sesion antes de continuar
+    try {
+      const supabase = createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        toast.error("Debes iniciar sesión para comprar una Gift Card")
+        router.push("/login?redirect=/gift-cards")
+        setLoading(false)
+        return
+      }
+    } catch {
+      toast.error("Error al verificar sesión")
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch("/api/gift-cards/purchase", {
         method: "POST",
