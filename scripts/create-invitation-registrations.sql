@@ -22,13 +22,7 @@ CREATE POLICY "Allow public inserts" ON invitation_registrations
   FOR INSERT
   WITH CHECK (true);
 
--- Politica para que solo admins puedan leer
-CREATE POLICY "Allow admin read" ON invitation_registrations
+-- Politica para que usuarios autenticados puedan leer (admin verificara en codigo)
+CREATE POLICY "Allow authenticated read" ON invitation_registrations
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+  USING (auth.uid() IS NOT NULL);
