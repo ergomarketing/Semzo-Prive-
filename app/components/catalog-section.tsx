@@ -35,7 +35,7 @@ const MEMBERSHIP_PRICES: Record<string, number> = {
 }
 
 export default function CatalogSection() {
-  const { user, refetch } = useAuth()
+  const { user } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
   const [bags, setBags] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -747,9 +747,8 @@ function BagCard({
       <LoginModal
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
-        onSuccess={async () => {
+        onSuccess={() => {
           setShowLoginModal(false)
-          await refetch()
           if (pendingAction) {
             pendingAction()
             setPendingAction(null)
