@@ -67,13 +67,14 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Background image - IDENTICAL to original */}
-      <div className="fixed inset-0 -z-10">
+      {/* Background image - Full showcase view */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
         <Image
           src="/images/lista-privada-bg.jpg"
           alt="Luxury handbags background"
           fill
-          className="object-cover object-center"
+          className="object-contain object-top scale-[1.3] md:object-cover md:scale-100"
+          sizes="100vw"
           priority
         />
       </div>
