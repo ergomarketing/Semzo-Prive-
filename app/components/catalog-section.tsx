@@ -127,7 +127,9 @@ export default function CatalogSection() {
 
   const toggleWishlist = async (id: string) => {
     if (!user || !supabase) {
-      window.location.href = "/auth/login"
+      // Guardar accion pendiente y mostrar LoginModal
+      setPendingAction(() => () => toggleWishlist(id))
+      setShowLoginModal(true)
       return
     }
 
@@ -740,6 +742,24 @@ function BagCard({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+        onSuccess={async () => {
+          setShowLoginModal(false)
+          await refetch()
+          if (pendingAction) {
+            pendingAction()
+            setPendingAction(null)
+          }
+        }}
+        onClose={() => {
+          setShowLoginModal(false)
+          setPendingAction(null)
+        }}
+      />
     </>
   )
 }
