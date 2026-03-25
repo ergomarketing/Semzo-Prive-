@@ -67,7 +67,7 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen w-full">
-      {/* Background - same as original: contained image centered with side margins */}
+      {/* Background image */}
       <div
         style={{
           position: "fixed",
@@ -81,6 +81,18 @@ export default function InvitationClient() {
           backgroundPosition: "top center",
           backgroundRepeat: "no-repeat",
           backgroundColor: "#f8f6f3",
+        }}
+      />
+      {/* White overlay to camouflage/fade the image like the original */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1,
+          backgroundColor: "rgba(248, 246, 243, 0.78)",
         }}
       />
 
