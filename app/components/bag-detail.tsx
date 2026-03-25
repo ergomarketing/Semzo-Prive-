@@ -23,6 +23,7 @@ import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
+import { LoginModal } from "@/app/components/login-modal"
 
 interface BagDetailProps {
   bag: {
@@ -67,7 +68,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const [isInWaitlist, setIsInWaitlist] = useState(false)
   const [pendingItems, setPendingItems] = useState<any[]>([])
   const [showReplaceDialog, setShowReplaceDialog] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
 
   const [userMembership, setUserMembership] = useState<{
     tier: string | null
@@ -359,7 +361,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const handleQuickReserve = async () => {
     if (!authUser) {
-      setShowAuthModal(true)
+      setPendingAction(() => handleQuickReserve)
+      setShowLoginModal(true)
       return
     }
 
@@ -863,6 +866,23 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             </div>
           </div>
         )}
+
+        {/* Login Modal */}
+        <LoginModal
+          open={showLoginModal}
+          onOpenChange={setShowLoginModal}
+          onSuccess={() => {
+            setShowLoginModal(false)
+            if (pendingAction) {
+              pendingAction()
+              setPendingAction(null)
+            }
+          }}
+          onClose={() => {
+            setShowLoginModal(false)
+            setPendingAction(null)
+          }}
+        />
       </div>
     </div>
   )

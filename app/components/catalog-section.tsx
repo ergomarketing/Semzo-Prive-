@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { addToWaitlist } from "@/lib/waitlistFunctions" // Declare or import the addToWaitlist function
 import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
+import { LoginModal } from "@/app/components/login-modal"
 
 interface BagItem {
   id: string
@@ -39,6 +40,8 @@ export default function CatalogSection() {
   const [bags, setBags] = useState<BagItem[]>([])
   const [loading, setLoading] = useState(true)
   const [userMembership, setUserMembership] = useState<string | null>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const { addItem } = useCart()
   const router = useRouter()
 
@@ -124,7 +127,9 @@ export default function CatalogSection() {
 
   const toggleWishlist = async (id: string) => {
     if (!user || !supabase) {
-      window.location.href = "/auth/login"
+      // Guardar accion pendiente y mostrar LoginModal
+      setPendingAction(() => () => toggleWishlist(id))
+      setShowLoginModal(true)
       return
     }
 
@@ -737,6 +742,23 @@ function BagCard({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
+        onSuccess={() => {
+          setShowLoginModal(false)
+          if (pendingAction) {
+            pendingAction()
+            setPendingAction(null)
+          }
+        }}
+        onClose={() => {
+          setShowLoginModal(false)
+          setPendingAction(null)
+        }}
+      />
     </>
   )
 }

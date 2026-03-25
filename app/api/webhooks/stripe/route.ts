@@ -457,6 +457,113 @@ export async function POST(req: NextRequest) {
 
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
+
+        // --- GIFT CARD PURCHASE ---
+        if (pi.metadata?.type === "gift_card") {
+          const recipientEmail = pi.metadata?.recipient_email;
+          const recipientName = pi.metadata?.recipient_name;
+          const purchaserId = pi.metadata?.user_id;
+
+          // Buscar la gift card pendiente creada con este PaymentIntent
+          const amountCents = pi.amount;
+          const { data: giftCard } = await supabase
+            .from("gift_cards")
+            .select("id, code, amount, personal_message")
+            .eq("purchased_by", purchaserId)
+            .eq("status", "pending")
+            .eq("amount", amountCents)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (giftCard) {
+            // Activar la gift card
+            await supabase
+              .from("gift_cards")
+              .update({
+                status: "active",
+                stripe_payment_intent_id: pi.id,
+                activated_at: now,
+                updated_at: now,
+              })
+              .eq("id", giftCard.id);
+
+            // Enviar email al destinatario
+            if (recipientEmail) {
+              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+              const amountEuros = (giftCard.amount / 100).toFixed(0);
+              const emailService = EmailServiceProduction.getInstance();
+
+              await emailService.sendWithResend({
+                to: recipientEmail,
+                subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
+                html: `
+                  <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                    <div style="text-align: center; margin-bottom: 32px;">
+                      <h1 style="color: #1a1a4b; font-size: 28px; margin-bottom: 8px;">Gift Card Semzo Prive</h1>
+                      <p style="color: #c9a86c; font-size: 14px; letter-spacing: 2px; margin: 0;">ACCESO EXCLUSIVO AL LUJO</p>
+                    </div>
+                    
+                    <p style="color: #444; line-height: 1.6; font-size: 16px;">
+                      Hola${recipientName ? ` ${recipientName}` : ""},
+                    </p>
+                    <p style="color: #444; line-height: 1.6;">
+                      Alguien especial te ha regalado acceso al mundo del lujo con una Gift Card de <strong>${amountEuros}€</strong>.
+                    </p>
+                    
+                    ${giftCard.personal_message ? `
+                      <div style="background: #fdf8f4; border-left: 4px solid #c9a86c; padding: 20px; margin: 24px 0; border-radius: 4px; font-style: italic;">
+                        "${giftCard.personal_message}"
+                      </div>
+                    ` : ""}
+                    
+                    <div style="background: #1a1a4b; color: white; padding: 24px; border-radius: 8px; text-align: center; margin: 32px 0;">
+                      <p style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 2px; opacity: 0.8;">TU CODIGO</p>
+                      <p style="margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 4px;">${giftCard.code}</p>
+                    </div>
+                    
+                    <p style="color: #444; line-height: 1.6;">
+                      Usa este codigo en el checkout para aplicar tu credito a cualquier membresia o pase de bolso.
+                    </p>
+                    
+                    <div style="text-align: center; margin: 32px 0;">
+                      <a href="${siteUrl}/membresias" style="background: #1a1a4b; color: white; padding: 14px 32px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                        EXPLORAR MEMBRESIAS
+                      </a>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                      Semzo Prive · El regalo perfecto para quien valora la elegancia<br />
+                      <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a>
+                    </p>
+                  </div>
+                `,
+              }).catch(() => {});
+            }
+
+            // Notificar al admin
+            const emailService = EmailServiceProduction.getInstance();
+            await emailService.sendWithResend({
+              to: "mailbox@semzoprive.com",
+              subject: `[Admin] Nueva Gift Card vendida - ${(amountCents / 100).toFixed(0)}€`,
+              html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                  <h2 style="color: #1a1a4b;">Nueva Gift Card vendida</h2>
+                  <p><strong>Codigo:</strong> ${giftCard.code}</p>
+                  <p><strong>Monto:</strong> ${(amountCents / 100).toFixed(0)}€</p>
+                  <p><strong>Destinatario:</strong> ${recipientName || "N/A"} (${recipientEmail || "N/A"})</p>
+                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+                </div>
+              `,
+            }).catch(() => {});
+
+            console.log("✅ Gift card ACTIVATED:", giftCard.code);
+          }
+          break;
+        }
+
+        // --- REGULAR PAYMENT ---
         const userId = pi.metadata?.user_id || pi.metadata?.supabase_user_id;
         if (!userId) break;
         await supabase

@@ -14,6 +14,8 @@ import { IdentityVerificationModal } from "@/app/components/identity-verificatio
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
 import SMSAuthModal from "@/app/components/sms-auth-modal"
+import { LoginModal } from "@/app/components/login-modal"
+import { useRequireAuth } from "@/app/hooks/useRequireAuth"
 
 function analyzeCartItems(items: any[]) {
   const bagPassItem = items.find((item) => {
@@ -120,6 +122,14 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   const [giftCardError, setGiftCardError] = useState("")
 
   const router = useRouter()
+  
+  // Hook para login modal con accion pendiente
+  const { 
+    showLoginModal, 
+    setShowLoginModal, 
+    requireAuth, 
+    executePendingAction 
+  } = useRequireAuth()
 
   const [checkoutLoading, setCheckoutLoading] = useState(false)
 
@@ -498,7 +508,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
             <Button onClick={() => router.push("/catalog")} className="mt-6 bg-[#2D2A45] hover:bg-[#2D2A45]/90">
-              Explorar Cat��������logo
+              Explorar Catalogo
             </Button>
           </div>
         </div>
@@ -784,14 +794,21 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
               )}
 
               <Button
+                data-checkout-btn
                 onClick={async () => {
                   setCheckoutLoading(true)
                   try {
-                    // Validación crítica: verificar que el usuario existe
+                    // Validacion critica: verificar que el usuario existe
                     if (!user || !user.id) {
-                      toast.error("Por favor, inicia sesión para continuar")
-                      setShowAuthModal(true)
+                      // Guardar accion pendiente y mostrar login modal
                       setCheckoutLoading(false)
+                      await requireAuth(async () => {
+                        // Esta accion se ejecutara automaticamente tras login exitoso
+                        toast.info("Sesion iniciada. Procesando checkout...")
+                        // Re-trigger checkout
+                        const checkoutBtn = document.querySelector('[data-checkout-btn]') as HTMLButtonElement
+                        if (checkoutBtn) checkoutBtn.click()
+                      })
                       return
                     }
 
@@ -1001,6 +1018,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
             mode="signup"
           />
         )}
+
+        {/* Login Modal con accion pendiente */}
+        <LoginModal
+          open={showLoginModal}
+          onOpenChange={setShowLoginModal}
+          onSuccess={async () => {
+            await refetchUserProfile()
+            await executePendingAction()
+          }}
+          onClose={() => setShowLoginModal(false)}
+        />
       </div>
     </div>
   )
