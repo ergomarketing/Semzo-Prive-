@@ -67,17 +67,24 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen w-full">
-      {/* Background - full screen cover exactly like the original */}
-      <div 
-        className="fixed inset-0 -z-10 w-screen h-screen"
+      {/* Background - full viewport width, 100% of all bags visible */}
+      <div
         style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -2,
           backgroundImage: "url('/images/lista-privada-bg.jpg')",
           backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat"
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+          width: "100vw",
+          height: "100vh",
         }}
       />
-      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/70" />
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, backgroundColor: "rgba(248,246,243,0.72)" }} />
 
       <main className="w-full px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
@@ -88,7 +95,7 @@ export default function InvitationClient() {
               alt="Semzo Privé"
               width={70}
               height={70}
-              className="object-contain"
+              className="object-contain drop-shadow-sm"
             />
           </div>
 
