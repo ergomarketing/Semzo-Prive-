@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const ADMIN_EMAIL = "mailbox@semzoprive.com"
-const ADMIN_PASSWORD = "semzo2024!"
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com").trim().replace(/\.$/, "")
+const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "semzo2024!").trim()
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").trim()
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -46,7 +47,11 @@ export default function AdminLogin() {
       const expectedEmail = ADMIN_EMAIL.toLowerCase()
       const expectedPassword = ADMIN_PASSWORD
 
-      if (inputEmail === expectedEmail && inputPassword === expectedPassword) {
+      // Acepta email O username (admin)
+      const emailMatch = inputEmail === expectedEmail || inputEmail === ADMIN_USERNAME.toLowerCase()
+      const passwordMatch = inputPassword === expectedPassword
+
+      if (emailMatch && passwordMatch) {
         if (typeof window !== "undefined") {
           localStorage.setItem("admin_session_token", "valid_admin_token")
           localStorage.setItem("admin_login_time", Date.now().toString())
