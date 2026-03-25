@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Check, Copy, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import Image from "next/image"
+
 import { toast } from "sonner"
 
 export default function InvitationClient() {
@@ -67,25 +67,24 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Background image - Full showcase view */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <Image
-          src="/images/lista-privada-bg.jpg"
-          alt="Luxury handbags background"
-          fill
-          className="object-contain object-top scale-[1.3] md:object-cover md:scale-100"
-          sizes="100vw"
-          priority
-        />
-      </div>
-      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/80" />
+      {/* Background image - Full showcase view with all bags visible */}
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          backgroundImage: "url('/images/lista-privada-bg.jpg')",
+          backgroundSize: "100% auto",
+          backgroundPosition: "top center",
+          backgroundRepeat: "no-repeat"
+        }}
+      />
+      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/75" />
 
       <main className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
           {/* Logo SP - IDENTICAL position */}
           <div className="mb-6 flex justify-center">
-            <Image
-              src="/images/semzo-20priv-c3-a9.png"
+            <img
+              src="/images/logo-semzo-sp.png"
               alt="Semzo Privé"
               width={70}
               height={70}
