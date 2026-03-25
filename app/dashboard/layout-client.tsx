@@ -82,7 +82,7 @@ export default function DashboardLayoutClient({
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full bg-slate-50">
-        <Sidebar className="border-r border-slate-200" collapsible="offcanvas">
+        <Sidebar className="border-r border-slate-200 hidden md:flex" collapsible="offcanvas">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link href="/" className="group">
               <span className="text-xl font-serif text-indigo-dark group-hover:text-indigo-dark/80 transition-colors">
