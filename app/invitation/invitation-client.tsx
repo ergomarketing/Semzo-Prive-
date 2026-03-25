@@ -67,49 +67,53 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Background image with zoom out effect */}
-      <div
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat scale-110"
-        style={{ backgroundImage: "url('/images/lista-privada-bg.jpg')" }}
-      />
-      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/85" />
+      {/* Background image - IDENTICAL to original */}
+      <div className="fixed inset-0 -z-10">
+        <Image
+          src="/images/lista-privada-bg.jpg"
+          alt="Luxury handbags background"
+          fill
+          className="object-cover object-center"
+          priority
+        />
+      </div>
+      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/80" />
 
-      <main className="container mx-auto px-4 py-12 md:py-20">
+      <main className="container mx-auto px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
-          {/* Logo SP */}
-          <div className="mb-8 flex justify-center">
+          {/* Logo SP - IDENTICAL position */}
+          <div className="mb-6 flex justify-center">
             <Image
               src="/images/semzo-20priv-c3-a9.png"
               alt="Semzo Privé"
-              width={80}
-              height={80}
+              width={70}
+              height={70}
               className="object-contain"
             />
           </div>
 
+          {/* Title - IDENTICAL styling */}
           <h1 className="mb-4 font-serif text-4xl text-[#1a1a4b] md:text-5xl italic">
-            {isRegistered ? "Welcome!" : "You Have Been Invited"}
+            You Have Been Invited
           </h1>
 
-          <p className="mb-8 text-base text-gray-600 leading-relaxed max-w-lg mx-auto">
-            {isRegistered 
-              ? "You're now part of our exclusive circle. Use your code to get 50% off your first month."
-              : "Welcome to our exclusive circle of women who appreciate conscious luxury and timeless style."
-            }
+          {/* Subtitle - IDENTICAL */}
+          <p className="mb-10 text-base text-gray-600 leading-relaxed max-w-lg mx-auto">
+            Welcome to our exclusive circle of women who appreciate conscious luxury and timeless style.
           </p>
 
-          {/* Registration form - only shows if NOT registered */}
+          {/* Registration form - shows BEFORE registration */}
           {!isRegistered && (
-            <form onSubmit={handleSubmit} className="mb-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
-              <p className="mb-6 text-sm uppercase tracking-widest text-gray-500">Register to Access Your Code</p>
+            <div className="mb-8 rounded-xl bg-white p-8 shadow-sm border border-gray-100">
+              <p className="mb-6 text-xs uppercase tracking-[0.2em] text-gray-500">Register to Get Your Code</p>
               
-              <div className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                   type="text"
                   placeholder="Name"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="border-gray-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12"
+                  className="border-gray-200 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12 text-base"
                   required
                 />
                 <Input
@@ -117,7 +121,7 @@ export default function InvitationClient() {
                   placeholder="Email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="border-gray-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12"
+                  className="border-gray-200 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12 text-base"
                   required
                 />
                 <Input
@@ -125,52 +129,53 @@ export default function InvitationClient() {
                   placeholder="WhatsApp (optional)"
                   value={formData.whatsapp}
                   onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                  className="border-gray-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12"
+                  className="border-gray-200 focus:border-[#1a1a4b] focus:ring-[#1a1a4b] h-12 text-base"
                 />
-              </div>
 
-              <Button 
-                type="submit"
-                disabled={loading}
-                className="mt-6 w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 h-12 text-sm uppercase tracking-widest"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Registering...
-                  </>
-                ) : (
-                  "Get My Exclusive Code"
-                )}
-              </Button>
-            </form>
+                <Button 
+                  type="submit"
+                  disabled={loading}
+                  className="mt-2 w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 h-12 text-sm uppercase tracking-widest font-medium"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    "Get My Exclusive Code"
+                  )}
+                </Button>
+              </form>
+            </div>
           )}
 
-          {/* Discount code - ONLY shows AFTER registration */}
+          {/* Discount code card - IDENTICAL to original - shows AFTER registration */}
           {isRegistered && (
-            <div className="mb-8 rounded-2xl border border-[#c9a86c] bg-white p-8 shadow-lg ring-2 ring-[#c9a86c]/20">
-              <p className="mb-4 text-sm uppercase tracking-widest text-gray-500">Your Exclusive Code</p>
+            <div className="mb-8 rounded-xl bg-white p-8 shadow-sm border border-gray-100">
+              <p className="mb-4 text-xs uppercase tracking-[0.2em] text-gray-500">Your Exclusive Code</p>
 
               <div className="mb-6 flex items-center justify-center gap-3">
-                <span className="font-serif text-4xl font-bold tracking-wider text-[#1a1a4b] md:text-5xl">{discountCode}</span>
+                <span className="font-serif text-4xl font-bold tracking-wider text-[#1a1a4b]">{discountCode}</span>
                 <button
                   onClick={handleCopyCode}
-                  className="rounded-lg border border-gray-300 p-2.5 transition-colors hover:bg-gray-50"
+                  className="rounded-md border border-gray-200 p-2 transition-colors hover:bg-gray-50"
                   aria-label="Copy code"
                 >
-                  {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5 text-gray-600" />}
+                  {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5 text-gray-400" />}
                 </button>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-[#f8f6f3] p-4">
+              {/* Beige box - IDENTICAL */}
+              <div className="rounded-lg bg-[#f5f0e8] p-5">
                 <p className="text-2xl font-semibold text-[#1a1a4b]">50% Off</p>
                 <p className="text-sm text-gray-600">On your first monthly membership</p>
               </div>
             </div>
           )}
 
-          {/* Benefits list */}
-          <div className="mb-8 space-y-3 text-left">
+          {/* Benefits list - IDENTICAL styling */}
+          <div className="mb-8 space-y-4 text-left max-w-md mx-auto">
             {[
               "Access to our exclusive designer handbag collection",
               "Authentic, verified pieces with guarantee",
@@ -178,21 +183,25 @@ export default function InvitationClient() {
               "Exclusive community of style-conscious women",
             ].map((item) => (
               <div key={item} className="flex items-start gap-3">
-                <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
-                <p className="text-gray-700">{item}</p>
+                <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
+                <p className="text-gray-700 text-[15px]">{item}</p>
               </div>
             ))}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button - IDENTICAL */}
           <Link href="/#membresias">
-            <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto md:px-12 h-12 text-sm uppercase tracking-widest">
+            <Button 
+              size="lg" 
+              className="bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 px-12 h-12 text-sm uppercase tracking-widest font-medium rounded-md"
+            >
               Activate My Membership
             </Button>
           </Link>
 
+          {/* Disclaimer - only shows after registration */}
           {isRegistered && (
-            <p className="mt-4 text-xs text-gray-500">
+            <p className="mt-6 text-xs text-gray-500">
               The discount code is applied automatically when you enter{" "}
               <span className="font-semibold">{discountCode}</span> during checkout. Valid for new members only.
             </p>
@@ -200,9 +209,9 @@ export default function InvitationClient() {
         </div>
       </main>
 
-      <footer className="border-t border-gray-200/60 bg-white/70 backdrop-blur-sm py-6">
+      <footer className="bg-white/80 backdrop-blur-sm py-6 mt-8">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>© 2026 Semzo Privé. All rights reserved.</p>
+          <p>&copy; 2026 Semzo Priv&eacute;. All rights reserved.</p>
         </div>
       </footer>
     </div>
