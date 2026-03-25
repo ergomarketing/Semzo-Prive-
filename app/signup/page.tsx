@@ -156,27 +156,38 @@ function SignupContent() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-        <CardDescription className="text-gray-600">
-          {selectedPlan ? (
-            <>
-              Únete a Semzo Privé con el plan <span className="font-semibold capitalize">{selectedPlan}</span>
-            </>
-          ) : (
-            "Únete a Semzo Privé y accede a bolsos de lujo exclusivos"
-          )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {selectedPlan && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
-            <p className="text-sm text-rose-800 text-center">
-              Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+    <div className="w-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl">
+      <div className="grid md:grid-cols-2">
+        {/* Imagen lado izquierdo - igual que el LoginModal */}
+        <div className="relative hidden md:block min-h-[600px]">
+          <img
+            src="/images/login-modal-chanel.jpg"
+            alt="Bolso de lujo Semzo Prive"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute bottom-8 left-8 right-8">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4">
+              <p className="text-sm font-medium" style={{ color: "#1a1a4b" }}>SEMZO PRIVE</p>
+              <p className="text-xs text-slate-600 mt-1">Acceso exclusivo al lujo</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Formulario lado derecho */}
+        <div className="p-8 md:p-10 overflow-y-auto max-h-[90vh]">
+          <div className="text-center mb-6">
+            <h2 className="font-serif text-3xl font-light mb-2" style={{ color: "#1a1a4b" }}>
+              Crear Cuenta
+            </h2>
+            <p className="text-sm text-slate-600">
+              {selectedPlan ? (
+                <>Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span></>
+              ) : (
+                "Únete a nuestro círculo exclusivo"
+              )}
             </p>
           </div>
-        )}
+        <div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -298,40 +309,41 @@ function SignupContent() {
             </Alert>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full h-12 rounded-lg text-sm uppercase tracking-widest font-medium"
+            style={{ backgroundColor: "#1a1a4b", color: "#ffffff" }}
+            disabled={loading}
+          >
             {loading ? "Creando cuenta..." : "Crear Cuenta"}
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            ¿Ya tienes cuenta?{" "}
-            <Link
-              href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
-              className="text-pink-600 hover:text-pink-700 font-medium"
-            >
-              Inicia sesión
-            </Link>
-          </p>
+        <p className="text-center text-xs text-slate-500 mt-4">
+          ¿Ya tienes cuenta?{" "}
+          <Link
+            href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
+            className="underline font-medium hover:text-slate-700"
+            style={{ color: "#1a1a4b" }}
+          >
+            Inicia sesión
+          </Link>
+        </p>
         </div>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "linear-gradient(to bottom, #fff0f310, #f4c4cc0d)" }}>
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-900">Crear Cuenta</CardTitle>
-              <CardDescription className="text-gray-600">Cargando...</CardDescription>
-            </CardHeader>
-          </Card>
-        }
-      >
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+      <Suspense fallback={
+        <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
+          <p className="text-slate-600">Cargando...</p>
+        </div>
+      }>
         <SignupContent />
       </Suspense>
     </div>

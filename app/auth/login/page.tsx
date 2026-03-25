@@ -165,149 +165,133 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md border-0 shadow-xl">
-        <CardHeader className="text-center pb-8">
-          <div className="mx-auto mb-4">
-            <img src="/images/logo-20semzo-20prive.png" alt="" loading="eager" className="h-12 w-auto mx-auto" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4">
+      <div className="w-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl">
+        <div className="grid md:grid-cols-2">
+          {/* Imagen lado izquierdo - igual que el LoginModal */}
+          <div className="relative hidden md:block min-h-[600px]">
+            <img
+              src="/images/login-modal-chanel.jpg"
+              alt="Bolso de lujo Semzo Prive"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute bottom-8 left-8 right-8">
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4">
+                <p className="text-sm font-medium" style={{ color: "#1a1a4b" }}>SEMZO PRIVE</p>
+                <p className="text-xs text-slate-600 mt-1">Acceso exclusivo al lujo</p>
+              </div>
+            </div>
           </div>
-          <CardTitle className="font-serif text-3xl text-slate-900">Bienvenida de vuelta</CardTitle>
-          <CardDescription className="text-slate-600">
-            {selectedPlan ? (
-              <>
-                Continúa con tu plan <span className="font-semibold capitalize">{selectedPlan}</span>
-              </>
-            ) : (
-              "Accede a tu cuenta de Semzo Privé"
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          {selectedPlan && (
-            <div className="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg">
-              <p className="text-sm text-rose-800 text-center">
-                Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+
+          {/* Formulario lado derecho */}
+          <div className="p-8 md:p-10 flex items-center">
+            <div className="w-full max-w-sm mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="font-serif text-3xl font-light mb-2" style={{ color: "#1a1a4b" }}>
+                  Iniciar Sesion
+                </h2>
+                <p className="text-sm text-slate-600">Accede a tu cuenta para continuar</p>
+                {selectedPlan && (
+                  <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-xs text-slate-700">
+                      Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium" style={{ color: "#1a1a4b" }}>
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    className="h-12 border-gray-200 focus:border-[#1a1a4b] rounded-lg"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium" style={{ color: "#1a1a4b" }}>
+                    Contraseña
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="********"
+                      className="h-12 border-gray-200 focus:border-[#1a1a4b] rounded-lg pr-12"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <a href="/auth/forgot-password" className="text-sm hover:underline" style={{ color: "#1a1a4b" }}>
+                    ¿Olvidaste tu contraseña?
+                  </a>
+                </div>
+
+                {message && (
+                  <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${
+                    message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada")
+                      ? "bg-green-50 border border-green-200 text-green-700"
+                      : "bg-red-50 border border-red-200 text-red-700"
+                  }`}>
+                    {message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada")
+                      ? <CheckCircle className="h-4 w-4 shrink-0" />
+                      : <AlertCircle className="h-4 w-4 shrink-0" />
+                    }
+                    {message}
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-2">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 rounded-lg text-sm uppercase tracking-widest font-medium"
+                    style={{ backgroundColor: "#1a1a4b", color: "#ffffff" }}
+                  >
+                    {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : "Iniciar Sesion"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 rounded-lg text-sm uppercase tracking-widest font-medium border-2 bg-transparent"
+                    style={{ borderColor: "#1a1a4b", color: "#1a1a4b" }}
+                    onClick={() => router.push(selectedPlan ? `/signup?plan=${selectedPlan}` : "/signup")}
+                  >
+                    Unirse al Club
+                  </Button>
+                </div>
+              </form>
+
+              <p className="text-center text-xs text-slate-500 mt-6">
+                Al continuar, aceptas nuestros{" "}
+                <a href="/terminos" className="underline hover:text-slate-700">Terminos y Condiciones</a>
               </p>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="email" className="text-slate-700 font-medium mb-2 block">
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@email.com"
-                className="h-12"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-slate-700 font-medium mb-2 block">
-                Contraseña
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Tu contraseña"
-                  className="h-12 pr-12"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 h-12"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  Iniciando sesión...
-                </>
-              ) : (
-                "Iniciar Sesión"
-              )}
-            </Button>
-
-            {message && (
-              <div
-                className={`text-center text-sm p-3 rounded-lg flex items-center justify-center gap-2 ${
-                  message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada")
-                    ? "text-indigo-dark bg-rose-50 border border-rose-200"
-                    : "text-red-700 bg-red-50 border border-red-200"
-                }`}
-              >
-                {message.includes("exitoso") || message.includes("confirmado") || message.includes("actualizada") ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                {message}
-              </div>
-            )}
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-slate-500">O continúa con</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full mt-4 h-12 border-slate-300 hover:bg-slate-50 bg-transparent"
-              onClick={() => setShowSMSModal(true)}
-            >
-              <Smartphone className="h-5 w-5 mr-2" />
-              Iniciar sesión con teléfono
-            </Button>
           </div>
-
-          <div className="mt-6 text-center">
-            <a href="/auth/forgot-password" className="text-sm text-indigo-dark hover:underline font-medium">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
-
-          <div className="mt-8 text-center">
-            <p className="text-slate-600">
-              ¿No tienes cuenta?{" "}
-              <a
-                href={selectedPlan ? `/signup?plan=${selectedPlan}` : "/signup"}
-                className="text-indigo-dark hover:underline font-medium"
-              >
-                Únete a Semzo Privé
-              </a>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <SMSAuthModal 
         isOpen={showSMSModal} 
