@@ -322,6 +322,8 @@ function BagCard({
   const [showPassSelector, setShowPassSelector] = useState(false)
   const [availablePasses, setAvailablePasses] = useState<any[]>([])
   const [selectedPassId, setSelectedPassId] = useState<string | null>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
 
   const { toast } = useToast()
   const { addItem } = useCart()
@@ -399,7 +401,8 @@ function BagCard({
 
   const handleQuickReserve = async () => {
     if (!user) {
-      window.location.href = "/auth/login"
+      setPendingAction(() => handleQuickReserve)
+      setShowLoginModal(true)
       return
     }
 
@@ -452,7 +455,7 @@ function BagCard({
     setShowPassSelector(false)
 
     try {
-      console.log("[v0] Creating reservation from catalog for user:", user.id, "bag:", bag.id, "pass:", passId)
+
 
       const startDate = new Date()
       const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -532,7 +535,8 @@ function BagCard({
 
   const addToWaitlistHandler = async () => {
     if (!user || !supabase) {
-      window.location.href = "/auth/login"
+      setPendingAction(() => addToWaitlistHandler)
+      setShowLoginModal(true)
       return
     }
 

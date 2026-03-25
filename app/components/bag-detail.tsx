@@ -203,8 +203,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        alert("Debes iniciar sesión para unirte a la lista de espera")
-        window.location.href = "/login"
+        setShowLoginModal(true)
         return
       }
 
@@ -303,13 +302,11 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const handleDirectReservation = async () => {
     if (!userId) {
-      console.log("[v0] No userId, redirecting to login")
-      window.location.href = "/auth/login?redirect=/catalog/" + bag.id
+      setShowLoginModal(true)
       return
     }
 
     if (!userMembership.tier || !userMembership.isActive) {
-      console.log("[v0] No active membership, showing upgrade option")
       return
     }
 
