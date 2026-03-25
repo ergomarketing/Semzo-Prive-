@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const ADMIN_EMAIL = "mailbox@semzoprive.com"
-const ADMIN_PASSWORD = "Semzoprive1*"
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "semzo2024!"
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
