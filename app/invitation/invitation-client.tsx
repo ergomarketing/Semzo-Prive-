@@ -66,25 +66,25 @@ export default function InvitationClient() {
   }
 
   return (
-    <div className="relative min-h-screen">
-      {/* Background image - Full showcase view with all bags visible */}
+    <div className="relative min-h-screen w-full">
+      {/* Background - full screen cover exactly like the original */}
       <div 
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0 -z-10 w-screen h-screen"
         style={{
           backgroundImage: "url('/images/lista-privada-bg.jpg')",
-          backgroundSize: "100% auto",
-          backgroundPosition: "top center",
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
           backgroundRepeat: "no-repeat"
         }}
       />
-      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/75" />
+      <div className="fixed inset-0 -z-10 bg-[#f8f6f3]/70" />
 
-      <main className="container mx-auto px-4 py-12 md:py-16">
+      <main className="w-full px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
-          {/* Logo SP - IDENTICAL position */}
+          {/* Logo SP dorado - identico al original */}
           <div className="mb-6 flex justify-center">
             <img
-              src="/images/logo-semzo-sp.png"
+              src="/images/semzo-20priv-c3-a9.png"
               alt="Semzo Privé"
               width={70}
               height={70}
