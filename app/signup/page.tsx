@@ -107,7 +107,6 @@ function SignupContent() {
       // Si NO requiere confirmación, sincronizar profile inmediatamente
       if (!needsConfirmation) {
         try {
-          console.log("[v0] Syncing profile after successful signup...")
           await fetch("/api/sync-profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -117,9 +116,8 @@ function SignupContent() {
               phone: formData.phone,
             }),
           })
-          console.log("[v0] Profile synced successfully")
         } catch (syncError) {
-          console.error("[v0] Profile sync error (non-blocking):", syncError)
+          // non-blocking
         }
       }
 
@@ -323,7 +321,7 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-nude/10 to-rose-pastel/5 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "linear-gradient(to bottom, #fff0f310, #f4c4cc0d)" }}>
       <Suspense
         fallback={
           <Card className="w-full max-w-md">
