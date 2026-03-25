@@ -67,7 +67,7 @@ export default function InvitationClient() {
 
   return (
     <div className="relative min-h-screen w-full">
-      {/* Background - full viewport width, 100% of all bags visible */}
+      {/* Background - same as original: contained image centered with side margins */}
       <div
         style={{
           position: "fixed",
@@ -77,14 +77,12 @@ export default function InvitationClient() {
           bottom: 0,
           zIndex: -2,
           backgroundImage: "url('/images/lista-privada-bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
+          backgroundSize: "contain",
+          backgroundPosition: "top center",
           backgroundRepeat: "no-repeat",
-          width: "100vw",
-          height: "100vh",
+          backgroundColor: "#f8f6f3",
         }}
       />
-      <div style={{ position: "fixed", inset: 0, zIndex: -1, backgroundColor: "rgba(248,246,243,0.72)" }} />
 
       <main className="w-full px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
