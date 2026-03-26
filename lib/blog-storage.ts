@@ -84,9 +84,13 @@ export async function listPosts(): Promise<BlogPost[]> {
     for (const blob of blobs) {
       if (blob.pathname.endsWith(".md")) {
         try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 5000)
           const response = await fetch(blob.url, {
-            next: { revalidate: 604800 }, // Cache blob content for 7 days
+            signal: controller.signal,
+            next: { revalidate: 604800 },
           }).catch(() => null)
+          clearTimeout(timeout)
           if (!response || !response.ok) {
             continue
           }
