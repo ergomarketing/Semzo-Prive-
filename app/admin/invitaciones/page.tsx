@@ -1,9 +1,121 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import { Download, Copy, Check } from "lucide-react"
+import { Download, Copy, Check, Users, RefreshCw } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
+
+interface Registration {
+  id: string
+  nombre: string
+  email: string
+  whatsapp: string | null
+  codigo_descuento: string
+  created_at: string
+}
+
+function RegistrationsList() {
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchRegistrations = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/admin/invitation-registrations")
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Error al cargar")
+      setRegistrations(data.registrations)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchRegistrations()
+  }, [])
+
+  return (
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-6 border-b border-[#f4c4cc] pb-3">
+        <div className="flex items-center gap-3">
+          <Users className="w-6 h-6 text-[#1a1a4b]" />
+          <h2 className="font-serif text-2xl font-bold text-[#1a1a4b]">
+            Registros de Invitación
+            {!loading && (
+              <span className="ml-3 text-base font-normal text-gray-500">
+                ({registrations.length} persona{registrations.length !== 1 ? "s" : ""})
+              </span>
+            )}
+          </h2>
+        </div>
+        <Button
+          onClick={fetchRegistrations}
+          variant="outline"
+          size="sm"
+          className="border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#fff0f3] bg-transparent"
+          disabled={loading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Actualizar
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm mb-4">
+          Error: {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+          Cargando registros...
+        </div>
+      ) : registrations.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+          No hay registros todavía.
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[#f8f6f3] border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-semibold text-[#1a1a4b]">Nombre</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#1a1a4b]">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#1a1a4b]">WhatsApp</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#1a1a4b]">Código</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#1a1a4b]">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registrations.map((r, i) => (
+                <tr key={r.id} className={i % 2 === 0 ? "bg-white" : "bg-[#fdfcfb]"}>
+                  <td className="px-4 py-3 text-gray-900">{r.nombre}</td>
+                  <td className="px-4 py-3 text-gray-600">{r.email}</td>
+                  <td className="px-4 py-3 text-gray-600">{r.whatsapp || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono font-semibold text-[#1a1a4b] bg-[#fff0f3] px-2 py-0.5 rounded text-xs">
+                      {r.codigo_descuento}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {new Date(r.created_at).toLocaleString("es-ES", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit"
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function downloadQR(svgId: string, filename: string) {
   const svg = document.getElementById(svgId)
@@ -143,6 +255,8 @@ export default function InvitacionesAdmin() {
           <h1 className="font-serif text-4xl font-bold text-[#1a1a4b] mb-2">Generador de Invitaciones</h1>
           <p className="text-gray-600">Códigos QR para tarjetas de invitación exclusivas — ES / EN</p>
         </div>
+
+        <RegistrationsList />
 
         <QRSection
           lang="es"
