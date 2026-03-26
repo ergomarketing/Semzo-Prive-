@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       amountCents,
       productName,
       gift_card_id,
+      coupon,
     } = body
 
     // VALIDATION: Required fields — priceId OR amountCents son suficientes
@@ -168,6 +169,10 @@ export async function POST(request: NextRequest) {
       ...(gift_card_id ? { gift_card_id } : {}),
     }
 
+    // Si hay coupon aplicado desde el cart, pasarlo a Stripe directamente
+    // coupon.code es el coupon.id de Stripe devuelto por validate-coupon
+    const couponId: string | null = coupon?.code || null
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription
       ? {
           mode: "subscription",
@@ -175,16 +180,18 @@ export async function POST(request: NextRequest) {
           payment_method_types: ["card"],
           payment_method_collection: "always",
           line_items: [{ price: priceId, quantity: 1 }],
-          metadata: commonMetadata,
+          metadata: { ...commonMetadata, ...(couponId ? { coupon_code: couponId } : {}) },
           subscription_data: {
             metadata: {
               ...commonMetadata,
               service: "luxury_rental",
             },
+            ...(couponId ? { coupon: couponId } : {}),
           },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          allow_promotion_codes: true,
+          // Si ya hay coupon aplicado, no mostrar campo de promo en Stripe
+          ...(couponId ? {} : { allow_promotion_codes: true }),
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
@@ -207,11 +214,13 @@ export async function POST(request: NextRequest) {
                   quantity: 1,
                 },
               ],
-          metadata: commonMetadata,
+          metadata: { ...commonMetadata, ...(couponId ? { coupon_code: couponId } : {}) },
           payment_intent_data: { metadata: commonMetadata },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          allow_promotion_codes: true,
+          ...(couponId
+            ? { discounts: [{ coupon: couponId }] }
+            : { allow_promotion_codes: true }),
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
