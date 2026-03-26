@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,19 +24,19 @@ export default function MembershipStatusPage() {
   const [emailInput, setEmailInput] = useState<string>("")
   const [savingEmail, setSavingEmail] = useState(false)
   const [currentStep, setCurrentStep] = useState<Step>("identity")
-  const [checkingIdentity, setCheckingIdentity] = useState(false)
   const [startingVerification, setStartingVerification] = useState(false)
   const [pollingActive, setPollingActive] = useState(true)
+  const checkingIdentityRef = useRef(false)
 
   const { data: dashboardData, error, isLoading, mutate } = useSWR(
     user ? "/api/user/dashboard" : null,
     fetcher,
-    { refreshInterval: pollingActive ? 8000 : 0 }
+    { refreshInterval: pollingActive ? 30000 : 0 }
   )
 
   const checkIdentityStatus = useCallback(async () => {
-    if (checkingIdentity) return
-    setCheckingIdentity(true)
+    if (checkingIdentityRef.current) return
+    checkingIdentityRef.current = true
     try {
       const res = await fetch("/api/identity/check-status")
       if (!res.ok) return
@@ -54,9 +54,9 @@ export default function MembershipStatusPage() {
     } catch {
       // silencioso
     } finally {
-      setCheckingIdentity(false)
+      checkingIdentityRef.current = false
     }
-  }, [checkingIdentity, mutate, router])
+  }, [mutate, router])
 
   useEffect(() => {
     if (authLoading || isLoading || error || !dashboardData) return
@@ -101,7 +101,7 @@ export default function MembershipStatusPage() {
     if (!pollingActive) return
     if (identityStatus !== "pending" && identityStatus !== "processing") return
 
-    const interval = setInterval(checkIdentityStatus, 15000)
+    const interval = setInterval(checkIdentityStatus, 30000)
     return () => clearInterval(interval)
   }, [identityStatus, pollingActive, checkIdentityStatus])
 
