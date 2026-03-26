@@ -32,9 +32,12 @@ function VerifyIdentityResultContent() {
 
         if (!activeRef.current) return
 
-        if (data.status === "verified") {
+        if (data.status === "verified" || data.verified === true) {
           setStatus("approved")
-          setTimeout(() => router.push("/onboarding-complete"), 2000)
+          // Redirigir a dashboard directamente - no a onboarding-complete
+          setTimeout(() => {
+            window.location.href = "/dashboard"
+          }, 2500)
         } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
         } else if (data.status === "processing") {
@@ -69,29 +72,29 @@ function VerifyIdentityResultContent() {
       message: "Por favor espera un momento.",
     },
     approved: {
-      title: "Identidad verificada",
+      title: "Verificacion completada",
       message:
-        "Tu verificación ha sido completada. Un último paso para completar tu membresía...",
+        "Tu identidad ha sido verificada correctamente. Redirigiendo a tu dashboard...",
     },
     pending: {
-      title: "Verificación en proceso",
+      title: "Verificacion en proceso",
       message:
-        "Estamos revisando tu documentación. Te notificaremos por email cuando esté lista.",
-      action: "/dashboard",
-      actionLabel: "Ir al dashboard",
+        "Estamos revisando tu documentacion. Te notificaremos por email cuando este lista. Ya puedes acceder a tu cuenta.",
+      action: "/auth/login",
+      actionLabel: "Iniciar sesion",
     },
     rejected: {
-      title: "Verificación no completada",
+      title: "Verificacion no completada",
       message:
-        "No hemos podido verificar tu identidad. Por favor inténtalo de nuevo o contáctanos.",
+        "No hemos podido verificar tu identidad. Por favor intentalo de nuevo o contactanos.",
       action: "/verify-identity",
-      actionLabel: "Reintentar verificación",
+      actionLabel: "Reintentar verificacion",
     },
     error: {
       title: "Error inesperado",
-      message: "No hemos podido procesar la verificación. Por favor intenta de nuevo.",
-      action: "/dashboard",
-      actionLabel: "Ir al dashboard",
+      message: "No hemos podido procesar la verificacion. Por favor inicia sesion para continuar.",
+      action: "/auth/login",
+      actionLabel: "Iniciar sesion",
     },
   }
 
