@@ -1,12 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { ShieldCheck, Camera, CreditCard, Clock, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function VerifyIdentityPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,12 +104,6 @@ export default function VerifyIdentityPage() {
             )}
           </Button>
 
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-          >
-            Verificar más tarde
-          </button>
         </div>
 
         {/* Nota de seguridad */}
