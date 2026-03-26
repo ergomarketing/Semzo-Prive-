@@ -166,14 +166,42 @@ export async function POST(req: NextRequest) {
             { onConflict: "user_id" }
           );
 
-        await supabase
+        // Asegurar que el perfil existe antes de actualizarlo
+        // (puede no existir si el usuario pagó sin haber pasado por signup completo)
+        const { data: existingProfile } = await supabase
           .from("profiles")
-          .update({
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (!existingProfile) {
+          // Obtener email del customer de Stripe
+          const customerId = session.customer as string;
+          const customer = await stripe.customers.retrieve(customerId);
+          const customerEmail = !customer.deleted ? (customer as Stripe.Customer).email : null;
+
+          await supabase.from("profiles").insert({
+            id: userId,
+            email: customerEmail,
             membership_status: "paid_pending_verification",
             payment_status: "paid",
+            membership_type: membershipType,
+            stripe_customer_id: customerId,
+            identity_verified: false,
+            created_at: now,
             updated_at: now,
-          })
-          .eq("id", userId);
+          });
+        } else {
+          await supabase
+            .from("profiles")
+            .update({
+              membership_status: "paid_pending_verification",
+              payment_status: "paid",
+              membership_type: membershipType,
+              updated_at: now,
+            })
+            .eq("id", userId);
+        }
 
         // Consumir gift card si había una aplicada en la suscripción
         if (giftCardId && userId) {

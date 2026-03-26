@@ -7,27 +7,55 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
 })
 
-export async function POST() {
+export async function POST(req: Request) {
   const cookieStore = await cookies()
 
-  const supabase = createServerClient(
+  const { createClient } = await import("@supabase/supabase-js")
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Intentar obtener user_id del body primero (post-checkout con session_id)
+  let userId: string | null = null
+  let bodyUserId: string | null = null
 
-  if (!user) {
+  try {
+    const body = await req.json().catch(() => ({}))
+    bodyUserId = body?.user_id || null
+  } catch {
+    bodyUserId = null
+  }
+
+  if (bodyUserId) {
+    // Verificar que el user_id existe en auth.users via service_role
+    const { data: authUser } = await supabase.auth.admin.getUserById(bodyUserId)
+    if (authUser?.user) {
+      userId = authUser.user.id
+    }
+  }
+
+  // Fallback: resolver desde cookie de sesion
+  if (!userId) {
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {},
+        },
+      }
+    )
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+    userId = user?.id || null
+  }
+
+  if (!userId) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 })
   }
+
+  const user = { id: userId }
 
   // Buscar el intent más reciente del usuario (cualquier estado post-pago)
   const { data: intent } = await supabase

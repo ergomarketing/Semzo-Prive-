@@ -13,6 +13,7 @@ function PostCheckoutContent() {
   const MAX_ATTEMPTS = 10
 
   const [message, setMessage] = useState("Confirmando tu suscripción...")
+  const verifiedUserId = useRef<string | null>(null)
 
   const launchIdentityVerification = async () => {
     try {
@@ -20,12 +21,12 @@ function PostCheckoutContent() {
       const res = await fetch("/api/identity/create-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: verifiedUserId.current }),
       })
       const data = await res.json()
       if (data.url) {
         window.location.href = data.url
       } else {
-        // Si falla el identity, redirigir al status para que lo haga desde ahí
         router.replace("/dashboard/membresia/status")
       }
     } catch {
@@ -45,17 +46,17 @@ function PostCheckoutContent() {
         const data = await res.json()
 
         if (data.status === "active") {
+          // Guardar user_id para pasarlo a identity/create-session
+          if (data.user_id) verifiedUserId.current = data.user_id
+
           if (data.mode === "payment") {
-            // Pase de bolso: sin identity, ir al dashboard directamente
             router.replace("/dashboard")
             return
           }
 
           if (data.identity_verified === true) {
-            // Membresía activa y ya verificada: acceso completo
             router.replace("/dashboard")
           } else {
-            // Membresía activa pero identidad pendiente — lanzar Stripe Identity
             await launchIdentityVerification()
           }
           return
