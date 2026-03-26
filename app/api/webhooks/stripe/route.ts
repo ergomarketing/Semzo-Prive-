@@ -141,71 +141,21 @@ export async function POST(req: NextRequest) {
           session.metadata?.billing_cycle ||
           (membershipType === "petite" ? "weekly" : "monthly");
 
-        // PRIMERO: Asegurar que el usuario existe en auth.users y profiles
-        // ANTES de crear user_memberships
+        // Actualizar profile del usuario (ya debe existir - se registró antes de pagar)
         const customerId = session.customer as string;
-        const customer = await stripe.customers.retrieve(customerId);
-        const customerEmail = !customer.deleted ? (customer as Stripe.Customer).email : null;
-        const customerName = !customer.deleted ? (customer as Stripe.Customer).name : null;
 
-        const { data: existingProfile } = await supabase
+        await supabase
           .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (!existingProfile) {
-          // Verificar si el usuario existe en auth.users
-          const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-
-          if (!authUser?.user && customerEmail) {
-            // Crear usuario en auth.users con password temporal
-            // El usuario recibira email para establecer su password
-            const tempPassword = crypto.randomUUID() + "Aa1!";
-            const { data: newAuthUser, error: authError } = await supabase.auth.admin.createUser({
-              email: customerEmail,
-              password: tempPassword,
-              email_confirm: true,
-              user_metadata: {
-                full_name: customerName,
-                stripe_customer_id: customerId,
-              },
-            });
-
-            if (authError) {
-              console.error("Error creating auth user:", authError);
-            } else if (newAuthUser?.user) {
-              userId = newAuthUser.user.id;
-              console.log("Created new auth user:", userId, customerEmail);
-            }
-          }
-
-          await supabase.from("profiles").insert({
-            id: userId,
-            email: customerEmail,
-            full_name: customerName,
+          .update({
             membership_status: "paid_pending_verification",
             payment_status: "paid",
             membership_type: membershipType,
             stripe_customer_id: customerId,
-            identity_verified: false,
-            created_at: now,
             updated_at: now,
-          });
-        } else {
-          // Profile existe, actualizar estado
-          await supabase
-            .from("profiles")
-            .update({
-              membership_status: "paid_pending_verification",
-              payment_status: "paid",
-              membership_type: membershipType,
-              updated_at: now,
-            })
-            .eq("id", userId);
-        }
+          })
+          .eq("id", userId);
 
-        // AHORA crear user_memberships con el userId correcto
+        // Crear/actualizar user_memberships
         const startDate = new Date(subscription.current_period_start * 1000);
         const endDate =
           billingCycle === "weekly"
@@ -741,7 +691,7 @@ export async function POST(req: NextRequest) {
                 <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
                   <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">Bienvenida al club, ${identityProfile.full_name?.split(" ")[0] || ""}.</h1>
                   <p style="color: #444; line-height: 1.7;">Tu identidad ha sido verificada y tu membresía <strong>${label}</strong> está completamente activa.</p>
-                  <p style="color: #444; line-height: 1.7;">Ya puedes acceder al catálogo completo y realizar tus primeras reservas.</p>
+                  <p style="color: #444; line-height: 1.7;">Ya puedes acceder al cat��logo completo y realizar tus primeras reservas.</p>
                   <div style="margin: 32px 0;">
                     <a href="${siteUrl}/catalog" style="background: #1a1a4b; color: white; padding: 14px 32px; text-decoration: none; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase;">
                       Ver el catálogo
