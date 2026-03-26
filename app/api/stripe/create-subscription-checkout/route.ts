@@ -186,12 +186,13 @@ export async function POST(request: NextRequest) {
               ...commonMetadata,
               service: "luxury_rental",
             },
-            ...(couponId ? { coupon: couponId } : {}),
           },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          // Si ya hay coupon aplicado, no mostrar campo de promo en Stripe
-          ...(couponId ? {} : { allow_promotion_codes: true }),
+          // Discounts a nivel de sesion para ambos modos
+          ...(couponId
+            ? { discounts: [{ coupon: couponId }] }
+            : { allow_promotion_codes: true }),
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
