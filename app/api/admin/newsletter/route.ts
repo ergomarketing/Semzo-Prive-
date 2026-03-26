@@ -29,8 +29,17 @@ export async function GET() {
       throw error
     }
 
+    const { data: invitedLeads } = await supabase
+      .from("invitation_registrations")
+      .select("id, nombre, email, whatsapp, codigo_descuento, created_at")
+      .order("created_at", { ascending: false })
+
     console.log("[v0] ✅ Subscribers loaded:", subscribers?.length || 0)
-    return NextResponse.json({ subscribers: subscribers || [] })
+    console.log("[v0] ✅ Invitation leads loaded:", invitedLeads?.length || 0)
+    return NextResponse.json({
+      subscribers: subscribers || [],
+      invitedLeads: invitedLeads || [],
+    })
   } catch (error: any) {
     console.error("[v0] ❌ Error fetching subscribers:", error)
     return NextResponse.json({ error: "Failed to fetch subscribers", subscribers: [] }, { status: 500 })

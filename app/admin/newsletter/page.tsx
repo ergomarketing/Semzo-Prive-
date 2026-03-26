@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Users, Send, Loader2, CheckCircle, XCircle } from "lucide-react"
+import { Mail, Users, Send, Loader2, CheckCircle, XCircle, QrCode } from "lucide-react"
 
 interface Subscriber {
   id: string
@@ -14,6 +14,15 @@ interface Subscriber {
   name: string | null
   status: string
   subscribed_at: string
+}
+
+interface InvitedLead {
+  id: string
+  nombre: string
+  email: string
+  whatsapp: string | null
+  codigo_descuento: string
+  created_at: string
 }
 
 const colors = {
@@ -24,6 +33,7 @@ const colors = {
 
 export default function NewsletterPage() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
+  const [invitedLeads, setInvitedLeads] = useState<InvitedLead[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [showComposer, setShowComposer] = useState(false)
@@ -41,6 +51,7 @@ export default function NewsletterPage() {
       if (response.ok) {
         const data = await response.json()
         setSubscribers(data.subscribers || [])
+        setInvitedLeads(data.invitedLeads || [])
       }
     } catch (error) {
       console.error("Error loading subscribers:", error)
@@ -208,6 +219,60 @@ export default function NewsletterPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Leads de Invitacion QR */}
+      <Card className="border-0 shadow-sm mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2" style={{ color: colors.primary }}>
+            <QrCode className="h-5 w-5" />
+            Leads de Invitacion QR
+            <span className="text-base font-normal text-gray-400">({invitedLeads.length})</span>
+          </CardTitle>
+          <CardDescription style={{ color: "#888" }}>
+            Personas registradas desde el QR de invitacion
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.accent }} />
+            </div>
+          ) : invitedLeads.length === 0 ? (
+            <p style={{ color: "#888" }}>No hay registros todavia</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b" style={{ color: colors.primary }}>
+                    <th className="text-left py-2 pr-4 font-semibold">Nombre</th>
+                    <th className="text-left py-2 pr-4 font-semibold">Email</th>
+                    <th className="text-left py-2 pr-4 font-semibold">WhatsApp</th>
+                    <th className="text-left py-2 pr-4 font-semibold">Codigo</th>
+                    <th className="text-left py-2 font-semibold">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invitedLeads.map((lead) => (
+                    <tr key={lead.id} className="border-b last:border-0" style={{ backgroundColor: colors.bg }}>
+                      <td className="py-3 pr-4 font-medium" style={{ color: colors.primary }}>{lead.nombre}</td>
+                      <td className="py-3 pr-4 text-gray-600">{lead.email}</td>
+                      <td className="py-3 pr-4 text-gray-500">{lead.whatsapp || "—"}</td>
+                      <td className="py-3 pr-4">
+                        <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: colors.accent + "33", color: colors.primary }}>
+                          {lead.codigo_descuento}
+                        </span>
+                      </td>
+                      <td className="py-3 text-xs text-gray-400">
+                        {new Date(lead.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Subscribers List */}
       <Card className="border-0 shadow-sm">

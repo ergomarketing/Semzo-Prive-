@@ -10,9 +10,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST() {
   const cookieStore = await cookies()
 
-  const supabase = createServerClient(
+  // ANON_KEY para resolver sesión de usuario desde cookies
+  const supabaseAuth = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
@@ -23,11 +24,18 @@ export async function POST() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabaseAuth.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 })
   }
+
+  // SERVICE_ROLE para leer/escribir datos sin RLS
+  const { createClient } = await import("@supabase/supabase-js")
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   // Buscar el intent más reciente del usuario (cualquier estado post-pago)
   const { data: intent } = await supabase
