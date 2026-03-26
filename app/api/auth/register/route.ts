@@ -81,8 +81,10 @@ export async function POST(request: NextRequest) {
 
     const fullName = `${firstName || ""} ${lastName || ""}`.trim()
 
+    console.log("[v0] Register: Creating profile for user:", authData.user.id, email)
+
     // Upsert sin phone para evitar constraint profiles_phone_unique
-    await supabaseService
+    const { error: profileError } = await supabaseService
       .from("profiles")
       .upsert({
         id: authData.user.id,
@@ -93,6 +95,12 @@ export async function POST(request: NextRequest) {
         auth_method: "email",
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" })
+
+    if (profileError) {
+      console.error("[v0] Register: Profile upsert error:", profileError)
+    } else {
+      console.log("[v0] Register: Profile created successfully for:", authData.user.id)
+    }
 
     // Phone en paso separado solo si no pertenece a otro usuario
     if (phone) {
