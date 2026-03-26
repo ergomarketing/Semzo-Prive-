@@ -917,6 +917,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         checkoutBody.gift_card_id = appliedGiftCard.id
                       }
                     }
+                    // Pasar cupón a Stripe para que lo aplique en el checkout
+                    if (appliedCoupon) {
+                      checkoutBody.coupon = appliedCoupon
+                    }
 
                     // Bag-pass → endpoint de pago único
                     // Membresía → endpoint de suscripción
