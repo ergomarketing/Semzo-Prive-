@@ -52,7 +52,7 @@ export async function POST() {
   const { error: updateError } = await supabase
     .from("profiles")
     .update({
-      membership_status: "active",
+      membership_status: "pending",
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -62,22 +62,21 @@ export async function POST() {
     return NextResponse.json({ error: "Error al activar membresía" }, { status: 500 })
   }
 
-  // 6️⃣ Log de auditoría (opcional pero recomendado)
   await supabase.from("audit_log").insert({
     user_id: user.id,
-    action: "membership_activated",
+    action: "membership_pending",
     resource_type: "membership",
     resource_id: user.id,
     details: {
       membership_plan: profile.membership_plan,
       previous_status: "pending_verification",
-      new_status: "active",
+      new_status: "pending",
     },
   })
 
   return NextResponse.json({
     success: true,
-    membership_status: "active",
+    membership_status: "pending",
     membership_plan: profile.membership_plan,
   })
 }
