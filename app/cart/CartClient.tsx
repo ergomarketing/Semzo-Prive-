@@ -781,17 +781,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
               </Card>
 
               {/* Boton de pago - PASO 1: create-intent, PASO 2: Stripe Checkout */}
-              {needsVerification && (
-                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                  Debes verificar tu identidad antes de activar tu membresía.{" "}
-                  <button
-                    onClick={handleVerifyIdentity}
-                    className="underline font-medium hover:text-amber-900"
-                  >
-                    Verificar ahora
-                  </button>
-                </div>
-              )}
 
               <Button
                 data-checkout-btn
@@ -809,13 +798,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         const checkoutBtn = document.querySelector('[data-checkout-btn]') as HTMLButtonElement
                         if (checkoutBtn) checkoutBtn.click()
                       })
-                      return
-                    }
-
-                    // Bloquear si no está verificado
-                    if (needsVerification) {
-                      toast.error("Debes verificar tu identidad antes de continuar")
-                      setCheckoutLoading(false)
                       return
                     }
 
