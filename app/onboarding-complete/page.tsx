@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { loadStripe } from "@stripe/stripe-js"
 import { Elements, IbanElement, useStripe, useElements } from "@stripe/react-stripe-js"
+import { getStripePromise } from "@/lib/stripe-client"
 import { Check, Loader2, CreditCard, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise = getStripePromise()
 
 function SepaForm({ onComplete }: { onComplete: () => void }) {
   const stripe = useStripe()

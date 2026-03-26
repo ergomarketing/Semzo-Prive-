@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
-import { list } from "@vercel/blob"
 
 function parseFrontmatter(content: string): { metadata: Record<string, string>; content: string } {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
@@ -129,32 +128,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const blogUrls: MetadataRoute.Sitemap = []
 
   try {
-    const { blobs } = await list({ prefix: "blog/" })
-
-    for (const blob of blobs) {
-      if (blob.pathname.endsWith(".md")) {
-        try {
-          const response = await fetch(blob.url)
-          const content = await response.text()
-          const { metadata } = parseFrontmatter(content)
-
-          const postSlug = metadata.slug || blob.pathname.replace("blog/", "").replace(".md", "")
-          const postDate = metadata.date || currentDate
-
-          blogUrls.push({
-            url: `${baseUrl}/blog/${postSlug}`,
-            lastModified: postDate,
-            changeFrequency: "monthly" as const,
-            priority: 0.75,
-          })
-        } catch (error) {
-          console.error(`Error processing blog post ${blob.pathname}:`, error)
-          continue
-        }
-      }
+    const { listPosts } = await import("@/lib/blog-storage")
+    const posts = await listPosts()
+    for (const post of posts) {
+      blogUrls.push({
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: post.date || currentDate,
+        changeFrequency: "monthly" as const,
+        priority: 0.75,
+      })
     }
-  } catch (error) {
-    console.error("Error generating blog URLs for sitemap:", error)
+  } catch {
+    // silencioso - no bloquear el sitemap si el blog falla
   }
 
   try {

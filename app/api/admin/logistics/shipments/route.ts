@@ -54,7 +54,7 @@ async function activateMembershipOnDelivery(reservationId: string) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
-        membership_status: "active",
+        membership_status: "pending",
         membership_start_date: now.toISOString(),
         membership_end_date: endDate.toISOString(),
         updated_at: now.toISOString(),

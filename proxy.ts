@@ -15,6 +15,20 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
+  // Skip auth check for static assets, api routes, and public media
+  const isStaticAsset = 
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/images/") ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/fonts/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
+
+  if (isStaticAsset) {
+    return response
+  }
+
   const supabaseUrl = process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey =
     process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -45,7 +59,6 @@ export async function proxy(request: NextRequest) {
     user = data.user
   } catch (error) {
     // If refresh token is invalid, clear cookies and continue
-    console.log("[v0] Auth error in middleware, clearing cookies:", error)
     response.cookies.delete("sb-access-token")
     response.cookies.delete("sb-refresh-token")
   }

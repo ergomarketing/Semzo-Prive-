@@ -66,15 +66,7 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/_next/static/chunks/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store',
-          },
-        ],
-      },
+
       {
         source: '/:path*',
         headers: [

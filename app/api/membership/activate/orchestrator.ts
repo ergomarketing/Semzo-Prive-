@@ -90,12 +90,23 @@ export async function syncMembershipFromStripe(
   const hasSepaMandate = !!profile?.sepa_payment_method_id
   const isNotAlreadyActive = profile?.membership_status !== "active"
 
-  console.log("[ORCHESTRATOR CHECK]", {
+  console.log("[ORCHESTRATOR CHECK] Evaluando condiciones de activacion:", {
     userId,
-    hasActiveMembership,
-    hasIdentityVerified,
-    hasSepaMandate,
-    currentStatus: profile?.membership_status,
+    // Condicion 1: pago
+    payment_ok: hasActiveMembership,
+    stripe_subscription_status: subscription.status,
+    mapped_status: status,
+    // Condicion 2: identidad
+    identity_verified: profile?.identity_verified,
+    identity_verified_ok: hasIdentityVerified,
+    // Condicion 3: mandato SEPA
+    sepa_payment_method_id: profile?.sepa_payment_method_id ?? null,
+    sepa_mandate_ok: hasSepaMandate,
+    // Estado actual en DB
+    current_membership_status: profile?.membership_status ?? null,
+    is_not_already_active: isNotAlreadyActive,
+    // Resultado final
+    should_activate: hasActiveMembership && hasIdentityVerified && hasSepaMandate && isNotAlreadyActive,
   })
 
   const shouldActivate =
@@ -105,7 +116,7 @@ export async function syncMembershipFromStripe(
     isNotAlreadyActive
 
   if (shouldActivate) {
-    await supabase
+    const { error: activationError } = await supabase
       .from("profiles")
       .update({
         membership_status: "active",
@@ -113,11 +124,16 @@ export async function syncMembershipFromStripe(
       })
       .eq("id", userId)
 
-    console.log("[ORCHESTRATOR] Membresia activada para userId:", userId)
+    if (activationError) {
+      console.log("[ORCHESTRATOR ERROR] Fallo al activar membresia:", {
+        userId,
+        error: activationError.message,
+        code: activationError.code,
+      })
+      return { success: false, error: activationError.message }
+    }
 
-    // TODO: Enviar emails de activacion (descomentar cuando esten los imports)
-    // await sendEmail({ type: "membership_activated", userId })
-    // await sendAdminNotification({ type: "membership_activated", userId })
+    console.log("[ORCHESTRATOR] Membresia activada para userId:", userId)
   }
 
   return { success: true }

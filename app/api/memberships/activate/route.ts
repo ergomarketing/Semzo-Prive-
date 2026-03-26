@@ -80,7 +80,7 @@ export async function POST() {
   const { error: updateError } = await supabase
     .from("profiles")
     .update({
-      membership_status: "active",
+      membership_status: "pending",
       membership_started_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -91,6 +91,6 @@ export async function POST() {
 
   return NextResponse.json({
     success: true,
-    membership_status: "active",
+    membership_status: "pending",
   })
 }
