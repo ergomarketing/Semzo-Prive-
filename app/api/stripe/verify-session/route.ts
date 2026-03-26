@@ -48,28 +48,41 @@ export async function GET(req: NextRequest) {
       session.subscription as string
     )
 
-    await syncMembershipFromStripe(subscription)
+    // Sincronizar en background — no bloquear la respuesta
+    syncMembershipFromStripe(subscription).catch(() => {})
 
-    const userId = subscription.metadata?.user_id
-    if (!userId) return NextResponse.json({ status: "incomplete" })
+    const userId =
+      subscription.metadata?.user_id ||
+      session.metadata?.user_id ||
+      session.client_reference_id ||
+      null
 
-    const { data: membership } = await supabase
-      .from("user_memberships")
-      .select("status")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle()
+    if (!userId) {
+      console.error("[verify-session] No user_id en metadata:", {
+        sub_metadata: subscription.metadata,
+        session_metadata: session.metadata,
+      })
+      return NextResponse.json({ status: "incomplete" })
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("identity_verified")
+      .select("identity_verified, membership_status")
       .eq("id", userId)
       .single()
 
-    if (membership?.status === "active") {
+    // Si la suscripcion de Stripe esta activa o en trial, el pago fue exitoso
+    // No dependemos de que el webhook haya activado la fila — eso puede tardar
+    const stripePaymentOk =
+      subscription.status === "active" ||
+      subscription.status === "trialing" ||
+      subscription.status === "incomplete" // primer pago puede quedar en incomplete momentáneamente
+
+    if (stripePaymentOk) {
       return NextResponse.json({
         status: "active",
         identity_verified: profile?.identity_verified ?? false,
+        user_id: userId,
         mode: "subscription",
       })
     }
