@@ -112,7 +112,7 @@ function VerifyIdentityResultContent() {
 
         {current.action && current.actionLabel && (
           <button
-            onClick={() => router.push(current.action!)}
+            onClick={() => window.location.href = current.action!}
             className="px-6 py-2 border border-border text-foreground text-sm hover:bg-muted transition-colors"
           >
             {current.actionLabel}
