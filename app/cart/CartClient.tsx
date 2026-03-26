@@ -318,7 +318,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       if (data.valid) {
         setAppliedCoupon({
-          code: couponCode.trim(),
+          code: data.code, // ID de Stripe (no el codigo ingresado)
+          displayCode: couponCode.trim().toUpperCase(), // Para mostrar en UI
           discount: data.percentOff || data.amountOff || 0,
           type: data.percentOff ? "percent" : "fixed",
         })
@@ -620,7 +621,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       <div className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-indigo-dark" />
                         <span className="text-sm text-indigo-dark">
-                          Cupón {appliedCoupon.code} aplicado (-{appliedCoupon.discount}
+                          Cupón {appliedCoupon.displayCode || appliedCoupon.code} aplicado (-{appliedCoupon.discount}
                           {appliedCoupon.type === "percent" ? "%" : "€"})
                         </span>
                       </div>
@@ -702,7 +703,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm text-rose-pastel">
-                      <span>Descuento ({appliedCoupon.code})</span>
+                      <span>Descuento ({appliedCoupon.displayCode || appliedCoupon.code})</span>
                       <span>
                         -{appliedCoupon.discount}
                         {appliedCoupon.type === "percent" ? "%" : "€"}
@@ -916,6 +917,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       if (appliedGiftCard) {
                         checkoutBody.gift_card_id = appliedGiftCard.id
                       }
+                    }
+                    // Pasar cupón a Stripe para que lo aplique en el checkout
+                    if (appliedCoupon) {
+                      checkoutBody.coupon = appliedCoupon
                     }
 
                     // Bag-pass → endpoint de pago único
