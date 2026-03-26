@@ -43,9 +43,26 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (!existingProfile) {
-      console.error("[SYNC PROFILE] Perfil no encontrado para userId:", userId, "— abortando sin crear")
-      return NextResponse.json({ success: false, error: "PROFILE_NOT_FOUND" }, { status: 404 })
+      console.log("[SYNC PROFILE] creando perfil automáticamente")
+
+      const { error: insertError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          email: user.email,
+          membership_status: "free",
+          identity_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (insertError) {
+        console.error("[SYNC PROFILE ERROR creating profile]", insertError)
+        return NextResponse.json({ success: false, error: "PROFILE_CREATE_ERROR" }, { status: 500 })
+      }
     }
+
+    console.log("[SYNC PROFILE OK]", { user_id: userId })
 
     const keepStatus = existingProfile.membership_status && existingProfile.membership_status !== "free"
 
