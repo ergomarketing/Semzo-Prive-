@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -11,9 +11,16 @@ function VerifyIdentityResultContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
   const [status, setStatus] = useState<VerificationStatus>("loading")
+  const attemptsRef = useRef(0)
+  const activeRef = useRef(true)
 
   useEffect(() => {
+    activeRef.current = true
+    attemptsRef.current = 0
+
     async function checkStatus() {
+      if (!activeRef.current) return
+
       if (!sessionId) {
         setStatus("error")
         return
@@ -23,23 +30,20 @@ function VerifyIdentityResultContent() {
         const res = await fetch(`/api/identity/check-status?sessionId=${sessionId}`)
         const data = await res.json()
 
-        if (!data.status) {
-          setStatus("pending")
-          return
-        }
+        if (!activeRef.current) return
 
         if (data.status === "verified") {
           setStatus("approved")
-          // Redirigir a onboarding-complete para configurar SEPA
           setTimeout(() => router.push("/onboarding-complete"), 2000)
-        } else if (
-          data.status === "requires_input" ||
-          data.status === "canceled"
-        ) {
+        } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
         } else if (data.status === "processing") {
-          // Procesando — polling hasta obtener resultado
-          setStatus("pending")
+          attemptsRef.current += 1
+          if (attemptsRef.current >= 12) {
+            // 12 intentos x 5s = 60s máximo, luego muestra pending
+            setStatus("pending")
+            return
+          }
           setTimeout(checkStatus, 5000)
         } else {
           setStatus("pending")
@@ -50,6 +54,10 @@ function VerifyIdentityResultContent() {
     }
 
     checkStatus()
+
+    return () => {
+      activeRef.current = false
+    }
   }, [sessionId, router])
 
   const content: Record<

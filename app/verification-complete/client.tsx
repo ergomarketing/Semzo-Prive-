@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,10 +14,16 @@ export default function VerificationCompleteClient({
 }) {
   const router = useRouter()
   const [status, setStatus] = useState<"checking" | "verified" | "pending">("checking")
-  const [attempts, setAttempts] = useState(0)
+  const attemptsRef = useRef(0)
+  const activeRef = useRef(true)
 
   useEffect(() => {
+    activeRef.current = true
+    attemptsRef.current = 0
+
     const checkStatus = async () => {
+      if (!activeRef.current) return
+
       try {
         const params = new URLSearchParams()
         if (intentId) params.set("intentId", intentId)
@@ -26,62 +32,42 @@ export default function VerificationCompleteClient({
         const response = await fetch(`/api/identity/check-status?${params.toString()}`)
         const data = await response.json()
 
-        console.log("[v0] Polling verification status:", {
-          attempt: attempts + 1,
-          verified: data.verified,
-          status: data.status,
-        })
+        if (!activeRef.current) return
 
-        // TIMING CORRECTO: Reconciliar cuando identity_verified=true PERO status!=active
-        if (data.verified && data.status !== "active") {
-          console.log("[v0] Identity verified but membership not active - calling reconcile")
-          
+        if (data.verified) {
           try {
-            const reconResponse = await fetch("/api/membership/reconcile", {
+            await fetch("/api/membership/reconcile", {
               method: "POST",
-              headers: { "Content-Type": "application/json" }
+              headers: { "Content-Type": "application/json" },
             })
-            const reconData = await reconResponse.json()
-            console.log("[v0] Reconciliation result:", reconData)
-            
-            if (reconData.success) {
-              console.log("[v0] Reconciliation succeeded, redirecting...")
-              setStatus("verified")
-              setTimeout(() => {
-                router.push("/dashboard")
-              }, 2000)
-              return
-            }
-          } catch (reconError) {
-            console.error("[v0] Reconciliation error:", reconError)
+          } catch {
+            // no critico
           }
-          
-          // Si reconcile falla, seguir polling
-          setAttempts((prev) => prev + 1)
-          setTimeout(checkStatus, 3000)
-        } else if (data.status === "active") {
-          // Ya está activo (webhook ganó la carrera)
-          console.log("[v0] Membership already active")
           setStatus("verified")
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 2000)
-        } else if (attempts >= 20) {
-          console.log("[v0] Verification still pending after 60s")
-          setStatus("pending")
-        } else {
-          setAttempts((prev) => prev + 1)
-          setTimeout(checkStatus, 3000)
+          setTimeout(() => router.push("/dashboard"), 2000)
+          return
         }
-      } catch (error) {
-        console.error("[v0] Error checking status:", error)
-        setAttempts((prev) => prev + 1)
+
+        attemptsRef.current += 1
+        if (attemptsRef.current >= 20) {
+          setStatus("pending")
+          return
+        }
+
         setTimeout(checkStatus, 5000)
+      } catch {
+        if (!activeRef.current) return
+        attemptsRef.current += 1
+        setTimeout(checkStatus, 10000)
       }
     }
 
     checkStatus()
-  }, [userId, intentId, router, attempts])
+
+    return () => {
+      activeRef.current = false
+    }
+  }, [userId, intentId, router])
 
   return (
     <div className="min-h-screen bg-[#fff0f3] flex items-center justify-center p-4">
