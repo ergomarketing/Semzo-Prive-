@@ -180,16 +180,6 @@ export async function POST(req: NextRequest) {
             },
             { onConflict: "user_id" }
           );
-          await supabase
-            .from("profiles")
-            .update({
-              membership_status: "paid_pending_verification",
-              payment_status: "paid",
-              membership_type: membershipType,
-              updated_at: now,
-            })
-            .eq("id", userId);
-        }
 
         // Consumir gift card si había una aplicada en la suscripción
         if (giftCardId && userId) {
