@@ -108,7 +108,7 @@ export const metadata: Metadata = {
   },
 
   verification: {
-    google: "G-8YP8K5BWKV",
+    google: "G-0BMNYQLWLZ",
     other: {
       "p:domain_verify": "a98e3be6d7a4e44ba4587bc1cdba9e61",
     },
@@ -204,7 +204,7 @@ export default function RootLayout({
 
         {/* Google Analytics */}
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-8YP8K5BWKV"
+          src="https://www.googletagmanager.com/gtag/js?id=G-0BMNYQLWLZ"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -212,7 +212,10 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-8YP8K5BWKV');
+            gtag('config', 'G-0BMNYQLWLZ', {
+              anonymize_ip: true,
+              send_page_view: true
+            });
           `}
         </Script>
 
