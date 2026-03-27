@@ -51,17 +51,32 @@ export async function GET(req: NextRequest) {
     // Sincronizar en background — no bloquear la respuesta
     syncMembershipFromStripe(subscription).catch(() => {})
 
+    // Prioridad: client_reference_id > session.metadata > subscription.metadata
     const userId =
-      subscription.metadata?.user_id ||
-      session.metadata?.user_id ||
       session.client_reference_id ||
+      session.metadata?.user_id ||
+      subscription.metadata?.user_id ||
       null
 
+    console.log("[v0] verify-session: userId lookup", {
+      client_reference_id: session.client_reference_id,
+      session_metadata_user_id: session.metadata?.user_id,
+      sub_metadata_user_id: subscription.metadata?.user_id,
+      resolved_userId: userId,
+    })
+
     if (!userId) {
-      console.error("[verify-session] No user_id en metadata:", {
-        sub_metadata: subscription.metadata,
-        session_metadata: session.metadata,
-      })
+      console.error("[verify-session] No user_id encontrado")
+      // Aun sin userId, si Stripe confirma el pago, redirigir a identity
+      // para que el usuario pueda verificarse manualmente
+      if (subscription.status === "active" || subscription.status === "trialing") {
+        return NextResponse.json({
+          status: "active",
+          identity_verified: false,
+          user_id: null,
+          mode: "subscription",
+        })
+      }
       return NextResponse.json({ status: "incomplete" })
     }
 

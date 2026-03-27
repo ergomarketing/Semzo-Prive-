@@ -57,6 +57,17 @@ export async function POST(req: Request) {
 
   const user = { id: userId }
 
+  // Verificar si el usuario ya tiene identidad verificada
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("identity_verified")
+    .eq("id", user.id)
+    .single()
+
+  if (profile?.identity_verified === true) {
+    return NextResponse.json({ alreadyVerified: true })
+  }
+
   // Buscar el intent más reciente del usuario (cualquier estado post-pago)
   const { data: intent } = await supabase
     .from("membership_intents")
@@ -113,13 +124,9 @@ export async function POST(req: Request) {
       const session = await stripe.identity.verificationSessions.retrieve(
         existing.stripe_verification_id
       )
-      // Solo reusar si no está cancelada ni expirada
+      // Solo reusar si no está cancelada ni expirada y tiene URL
       if (session.url && session.status !== "canceled") {
-  if (!session.url) {
-    return NextResponse.json({ error: "No se pudo crear la sesión de verificación" }, { status: 500 })
-  }
-
-  return NextResponse.json({ url: session.url, sessionId: session.id })
+        return NextResponse.json({ url: session.url, sessionId: session.id })
       }
     } catch {
       // Sesión inválida — crear nueva

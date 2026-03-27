@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
       ? {
           mode: "subscription",
           customer: stripeCustomerId,
+          client_reference_id: userId,
           payment_method_types: ["card"],
           payment_method_collection: "always",
           line_items: [{ price: priceId, quantity: 1 }],
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
       : {
           mode: "payment",
           customer: stripeCustomerId,
+          client_reference_id: userId,
           payment_method_types: ["card"],
           line_items: priceId
             ? [{ price: priceId, quantity: 1 }]
