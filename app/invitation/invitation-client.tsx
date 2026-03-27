@@ -206,13 +206,11 @@ export default function InvitationClient() {
             ))}
           </div>
 
-          {/* Disclaimer - only shows after registration */}
-          {isRegistered && (
-            <p className="mt-6 text-xs text-gray-500">
-              The discount code is applied automatically when you enter{" "}
-              <span className="font-semibold">{discountCode}</span> during checkout. Valid for new members only.
-            </p>
-          )}
+          {/* Disclaimer */}
+          <p className="mt-6 text-xs text-gray-500">
+            The discount code is applied automatically when you enter{" "}
+            <span className="font-semibold">{discountCode}</span> during checkout. Valid for new members only.
+          </p>
         </div>
       </main>
 
