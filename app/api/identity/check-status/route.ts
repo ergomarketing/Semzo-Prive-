@@ -29,10 +29,14 @@ export async function GET(request: Request) {
       // Obtener userId del metadata de la sesion de Stripe
       const userId = stripeSession.metadata?.user_id || null
 
+      console.log("[v0] check-status: Stripe session status:", stripeSession.status, "userId:", userId)
+
       if (stripeSession.status === "verified") {
         // Actualizar DB
         if (userId) {
-          await supabase
+          console.log("[v0] check-status: Updating profile to active for userId:", userId)
+          
+          const { error: profileError } = await supabase
             .from("profiles")
             .update({
               identity_verified: true,
@@ -41,6 +45,12 @@ export async function GET(request: Request) {
               updated_at: now,
             })
             .eq("id", userId)
+
+          if (profileError) {
+            console.error("[v0] check-status: Profile update error:", profileError)
+          } else {
+            console.log("[v0] check-status: Profile updated to active for userId:", userId)
+          }
 
           await supabase
             .from("identity_verifications")

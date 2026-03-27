@@ -12,8 +12,9 @@ function VerifyIdentityResultContent() {
   const [status, setStatus] = useState<VerificationStatus>("loading")
 
   useEffect(() => {
-    if (!sessionId) {
-      setStatus("error")
+    // Si el sessionId es el placeholder literal o no existe, redirigir a dashboard
+    if (!sessionId || sessionId.includes("VERIFICATION_SESSION")) {
+      window.location.href = "/dashboard"
       return
     }
 

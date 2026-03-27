@@ -115,7 +115,11 @@ export async function POST(req: Request) {
       )
       // Solo reusar si no está cancelada ni expirada
       if (session.url && session.status !== "canceled") {
-        return NextResponse.json({ url: session.url, sessionId: session.id })
+  if (!session.url) {
+    return NextResponse.json({ error: "No se pudo crear la sesión de verificación" }, { status: 500 })
+  }
+
+  return NextResponse.json({ url: session.url, sessionId: session.id })
       }
     } catch {
       // Sesión inválida — crear nueva

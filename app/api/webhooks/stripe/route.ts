@@ -144,7 +144,9 @@ export async function POST(req: NextRequest) {
         // Actualizar profile del usuario (ya debe existir - se registró antes de pagar)
         const customerId = session.customer as string;
 
-        await supabase
+        console.log("[v0] Webhook: Updating profile for userId:", userId)
+
+        const { error: profileUpdateError, count } = await supabase
           .from("profiles")
           .update({
             membership_status: "paid_pending_verification",
@@ -154,6 +156,12 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("id", userId);
+
+        if (profileUpdateError) {
+          console.error("[v0] Webhook: Profile update error:", profileUpdateError)
+        } else {
+          console.log("[v0] Webhook: Profile updated for userId:", userId, "rows affected:", count)
+        }
 
         // Crear/actualizar user_memberships
         const startDate = new Date(subscription.current_period_start * 1000);
