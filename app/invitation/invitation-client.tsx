@@ -206,16 +206,6 @@ export default function InvitationClient() {
             ))}
           </div>
 
-          {/* CTA Button - IDENTICAL */}
-          <Link href="/#membresias">
-            <Button 
-              size="lg" 
-              className="bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 px-12 h-12 text-sm uppercase tracking-widest font-medium rounded-md"
-            >
-              Activate My Membership
-            </Button>
-          </Link>
-
           {/* Disclaimer - only shows after registration */}
           {isRegistered && (
             <p className="mt-6 text-xs text-gray-500">

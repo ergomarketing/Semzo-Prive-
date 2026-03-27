@@ -95,13 +95,6 @@ export default function InvitacionClient() {
             </div>
           </div>
 
-          {/* CTA */}
-          <Link href="/#membresias">
-            <Button size="lg" className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90 md:w-auto">
-              Activar Mi Membresía
-            </Button>
-          </Link>
-
           {/* Nota legal */}
           <p className="mt-6 text-xs text-gray-500">
             El código de descuento se aplica automáticamente al ingresar{" "}
