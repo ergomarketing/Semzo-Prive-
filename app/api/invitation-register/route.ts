@@ -1,26 +1,18 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    console.log("[v0] invitation-register received:", body)
-    
-    const { nombre, email, whatsapp } = body
+    const { nombre, email, whatsapp } = await request.json()
 
     if (!nombre || !email) {
-      console.log("[v0] invitation-register: Missing nombre or email")
       return NextResponse.json(
         { error: "Nombre y email son requeridos" },
         { status: 400 }
       )
     }
 
-    // Usar service_role para evitar problemas de RLS
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
 
     // Verificar si el email ya esta registrado
     const { data: existing } = await supabase
@@ -37,8 +29,7 @@ export async function POST(request: Request) {
     }
 
     // Insertar nuevo registro
-    console.log("[v0] invitation-register: Inserting new registration")
-    const { data: insertData, error } = await supabase
+    const { error } = await supabase
       .from("invitation_registrations")
       .insert({
         nombre: nombre.trim(),
@@ -46,17 +37,15 @@ export async function POST(request: Request) {
         whatsapp: whatsapp?.trim() || null,
         codigo_descuento: "PRIVE50"
       })
-      .select()
 
     if (error) {
-      console.error("[v0] invitation-register: Insert error:", error)
+      console.error("Error inserting invitation registration:", error)
       return NextResponse.json(
         { error: "Error al registrar. Por favor intenta de nuevo." },
         { status: 500 }
       )
     }
 
-    console.log("[v0] invitation-register: Success, inserted:", insertData)
     return NextResponse.json({ 
       success: true,
       message: "Registro exitoso",
