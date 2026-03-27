@@ -24,13 +24,21 @@ function PostCheckoutContent() {
         body: JSON.stringify({ user_id: verifiedUserId.current }),
       })
       const data = await res.json()
+      
+      if (data.alreadyVerified) {
+        setMessage("Identidad ya verificada. Redirigiendo al dashboard...")
+        setTimeout(() => router.replace("/dashboard"), 1000)
+        return
+      }
+      
       if (data.url) {
         window.location.href = data.url
       } else {
-        router.replace("/dashboard/membresia/status")
+        // Si no hay URL, ir a página de verificación manual
+        router.replace("/verify-identity")
       }
     } catch {
-      router.replace("/dashboard/membresia/status")
+      router.replace("/verify-identity")
     }
   }
 
@@ -45,18 +53,17 @@ function PostCheckoutContent() {
         const res = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`)
         const data = await res.json()
 
-        if (data.status === "active") {
-          // Guardar user_id para pasarlo a identity/create-session
+        // Si el pago está activo o en trial, continuar al siguiente paso
+        if (data.status === "active" || data.status === "trialing") {
           if (data.user_id) verifiedUserId.current = data.user_id
 
-          if (data.mode === "payment") {
-            router.replace("/dashboard")
-            return
-          }
-
+          // SIEMPRE ir a verificación de identidad después del pago
+          // Solo skip si explícitamente está verificado
           if (data.identity_verified === true) {
-            router.replace("/dashboard")
+            setMessage("Identidad verificada. Redirigiendo al dashboard...")
+            setTimeout(() => router.replace("/dashboard"), 1000)
           } else {
+            // Pago OK, ahora verificación de identidad
             await launchIdentityVerification()
           }
           return
@@ -64,8 +71,9 @@ function PostCheckoutContent() {
 
         // Webhook aún no procesó — reintentar con backoff
         if (attempts.current >= MAX_ATTEMPTS) {
-          setMessage("Redirigiendo a tu área de membresía...")
-          setTimeout(() => router.replace("/dashboard/membresia/status"), 1500)
+          // Después de muchos intentos, igual lanzar verificación
+          setMessage("Continuando con verificación de identidad...")
+          await launchIdentityVerification()
           return
         }
 
@@ -74,7 +82,8 @@ function PostCheckoutContent() {
         setTimeout(verify, delay)
       } catch {
         if (attempts.current >= MAX_ATTEMPTS) {
-          router.replace("/dashboard/membresia/status")
+          // En caso de error, intentar lanzar verificación de todas formas
+          await launchIdentityVerification()
           return
         }
         setTimeout(verify, 3000)
