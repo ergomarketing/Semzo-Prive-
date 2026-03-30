@@ -76,6 +76,11 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
   const loadCorreosConfig = async () => {
     try {
       const res = await fetch("/api/admin/logistics/correos/credentials")
+      if (!res.ok) {
+        // Si la API falla (columna no existe, etc.), mostrar formulario vacío
+        setLoading(false)
+        return
+      }
       const data = await res.json()
       if (data.configured) {
         setIsConfigured(true)

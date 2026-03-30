@@ -1,30 +1,9 @@
-import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
 import { CorreosAPI } from "@/lib/correos-api"
 
 // POST - Probar conexión con Correos API
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    // Verificar rol admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-    }
-
     const { clientId, clientSecret } = await request.json()
 
     if (!clientId || !clientSecret) {
@@ -34,7 +13,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Crear cliente de Correos y probar conexión
     const correos = new CorreosAPI({ clientId, clientSecret })
     const result = await correos.testConnection()
 
