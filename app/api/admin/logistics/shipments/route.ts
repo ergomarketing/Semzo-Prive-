@@ -1,7 +1,17 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import { CorreosAPI, CORREOS_PRODUCTS } from "@/lib/correos-api"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+// Direccion de remitente (Semzo Prive)
+const SENDER_INFO = {
+  name: "Semzo Prive",
+  address: "Calle Principal 123", // TODO: Configurar en settings
+  city: "Madrid",
+  postalCode: "28001",
+  country: "ES",
+}
 
 function getMembershipDuration(planId: string): number {
   const durations: Record<string, number> = {
@@ -200,40 +210,109 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/logistics/shipments
- * Crear un nuevo envío
+ * Crear un nuevo envío - con integración de Correos
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { reservation_id, carrier, tracking_number, estimated_delivery, cost, notes } = body
+    const { 
+      reservation_id, 
+      carrier = "Correos",
+      tracking_number,
+      estimated_delivery, 
+      cost, 
+      notes,
+      // Datos del destinatario para Correos
+      recipient_name,
+      recipient_address,
+      recipient_city,
+      recipient_postal_code,
+      recipient_country = "ES",
+      recipient_phone,
+      recipient_email,
+      weight = 2000, // Default 2kg
+      service_type = "PAQ_PREMIUM",
+      use_correos_api = true
+    } = body
 
-    // Validar campos requeridos
-    if (!reservation_id) {
-      return NextResponse.json({ error: "reservation_id is required" }, { status: 400 })
+    // Si se usa Correos API, validar dirección
+    if (use_correos_api && carrier === "Correos") {
+      if (!recipient_name || !recipient_address || !recipient_city || !recipient_postal_code) {
+        return NextResponse.json({ error: "Dirección del destinatario incompleta" }, { status: 400 })
+      }
     }
 
-    // Verificar que la reserva existe
-    const { data: reservation, error: reservationError } = await supabase
-      .from("reservations")
-      .select("id")
-      .eq("id", reservation_id)
-      .single()
+    let correosTrackingNumber = tracking_number
+    let correosResponse = null
 
-    if (reservationError || !reservation) {
-      return NextResponse.json({ error: "Reservation not found" }, { status: 404 })
+    // Intentar crear envío en Correos si está habilitado
+    if (use_correos_api && carrier === "Correos") {
+      // Obtener credenciales de Correos
+      const { data: correosSettings } = await supabase
+        .from("logistics_settings")
+        .select("api_credentials, is_enabled")
+        .eq("carrier_name", "Correos")
+        .single()
+
+      if (correosSettings?.api_credentials && correosSettings.is_enabled) {
+        try {
+          const { clientId, clientSecret } = correosSettings.api_credentials as {
+            clientId: string
+            clientSecret: string
+          }
+
+          const correosClient = new CorreosAPI({ clientId, clientSecret })
+          const productCode = service_type === "PAQ_PREMIUM" 
+            ? CORREOS_PRODUCTS.PAQ_PREMIUM 
+            : CORREOS_PRODUCTS.PAQ_ESTANDAR
+
+          correosResponse = await correosClient.createShipment({
+            senderName: SENDER_INFO.name,
+            senderAddress: SENDER_INFO.address,
+            senderCity: SENDER_INFO.city,
+            senderPostalCode: SENDER_INFO.postalCode,
+            senderCountry: SENDER_INFO.country,
+            recipientName: recipient_name,
+            recipientAddress: recipient_address,
+            recipientCity: recipient_city,
+            recipientPostalCode: recipient_postal_code,
+            recipientCountry: recipient_country,
+            recipientPhone: recipient_phone,
+            recipientEmail: recipient_email,
+            weight,
+            productCode,
+            reference: reservation_id ? `RES-${reservation_id}` : `SHIP-${Date.now()}`
+          })
+
+          correosTrackingNumber = correosResponse.codEnvio
+        } catch (correosError) {
+          console.error("[Logistics API] Error creating Correos shipment:", correosError)
+          // Continuar sin tracking de Correos
+        }
+      }
     }
 
-    // Crear el envío
+    // Crear el envío en base de datos
     const { data, error } = await supabase
       .from("shipments")
       .insert({
-        reservation_id,
-        status: "pending",
-        carrier: carrier || null,
-        tracking_number: tracking_number || null,
+        reservation_id: reservation_id || null,
+        status: correosTrackingNumber ? "label_created" : "pending",
+        carrier,
+        tracking_number: correosTrackingNumber || null,
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,
+        recipient_name,
+        recipient_address,
+        recipient_city,
+        recipient_postal_code,
+        recipient_country,
+        recipient_phone,
+        recipient_email,
+        weight,
+        service_type: service_type === "PAQ_PREMIUM" ? "Paq Premium" : "Paq Estándar",
+        correos_response: correosResponse
       })
       .select()
       .single()
@@ -251,7 +330,39 @@ export async function POST(request: NextRequest) {
       new_values: data,
     })
 
-    return NextResponse.json(data, { status: 201 })
+    // Enviar notificación por email si hay tracking
+    if (correosTrackingNumber && recipient_email) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/admin/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: recipient_email,
+            subject: "Tu pedido ha sido enviado - Semzo Prive",
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1a1a4b;">Tu pedido está en camino</h2>
+                <p>Hola ${recipient_name},</p>
+                <p>Tu pedido de Semzo Prive ha sido enviado.</p>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>Transportista:</strong> Correos</p>
+                  <p><strong>Número de seguimiento:</strong> ${correosTrackingNumber}</p>
+                  <p><strong>Seguir envío:</strong> <a href="https://www.correos.es/es/es/herramientas/localizador/envios/${correosTrackingNumber}">Ver en Correos</a></p>
+                </div>
+                <p>Recibirás tu pedido en 1-2 días laborables.</p>
+              </div>
+            `,
+          }),
+        })
+      } catch (emailError) {
+        console.error("[Logistics API] Error sending tracking email:", emailError)
+      }
+    }
+
+    return NextResponse.json({
+      ...data,
+      correos_success: !!correosTrackingNumber
+    }, { status: 201 })
   } catch (error) {
     console.error("[Logistics API] Unexpected error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
