@@ -1269,6 +1269,424 @@ export class EmailServiceProduction {
       </html>
     `
   }
+
+  // NUEVOS METODOS PARA ENVIO Y DEVOLUCION
+
+  async sendShipmentCreatedEmail(data: {
+    userEmail: string
+    userName: string
+    trackingNumber: string
+    carrier: string
+    estimatedDelivery?: string
+    bagName?: string
+  }): Promise<boolean> {
+    const trackingUrl = data.carrier === "Correos" 
+      ? `https://www.correos.es/es/es/herramientas/localizador/envios/${data.trackingNumber}`
+      : `#`
+
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: "Tu pedido ha sido enviado - Semzo Prive",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .tracking-box { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #d4af37; }
+            .button { display: inline-block; background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Tu pedido esta en camino</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>Tu pedido de Semzo Prive ha sido enviado${data.bagName ? ` (${data.bagName})` : ""}.</p>
+              
+              <div class="tracking-box">
+                <p><strong>Transportista:</strong> ${data.carrier}</p>
+                <p><strong>Numero de seguimiento:</strong> ${data.trackingNumber}</p>
+                ${data.estimatedDelivery ? `<p><strong>Entrega estimada:</strong> ${data.estimatedDelivery}</p>` : ""}
+              </div>
+              
+              <p style="text-align: center;">
+                <a href="${trackingUrl}" class="button">Seguir mi envio</a>
+              </p>
+              
+              <p>Recibiras tu pedido en 1-2 dias laborables.</p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const adminEmailData: EmailData = {
+      to: this.adminEmail,
+      subject: `Envio creado: ${data.trackingNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Nuevo envio creado</h2>
+          <p><strong>Cliente:</strong> ${data.userName} (${data.userEmail})</p>
+          <p><strong>Tracking:</strong> ${data.trackingNumber}</p>
+          <p><strong>Transportista:</strong> ${data.carrier}</p>
+          ${data.bagName ? `<p><strong>Producto:</strong> ${data.bagName}</p>` : ""}
+        </div>
+      `,
+    }
+
+    const userSent = await this.sendWithResend(userEmailData)
+    const adminSent = await this.sendWithResend(adminEmailData)
+    return userSent && adminSent
+  }
+
+  async sendShipmentDeliveredEmail(data: {
+    userEmail: string
+    userName: string
+    bagName?: string
+    membershipEndDate?: string
+  }): Promise<boolean> {
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: "Tu bolso ha sido entregado - Semzo Prive",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .info-box { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .button { display: inline-block; background: #d4af37; color: #1a1a4b; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Disfruta tu bolso!</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>Tu bolso${data.bagName ? ` <strong>${data.bagName}</strong>` : ""} ha sido entregado exitosamente.</p>
+              
+              <div class="info-box">
+                <p>A partir de ahora, tu membresia esta activa.</p>
+                ${data.membershipEndDate ? `<p><strong>Tu membresia es valida hasta:</strong> ${new Date(data.membershipEndDate).toLocaleDateString("es-ES")}</p>` : ""}
+              </div>
+              
+              <p style="text-align: center;">
+                <a href="https://semzoprive.com/dashboard" class="button">Ir a mi cuenta</a>
+              </p>
+              
+              <p>Disfruta de tu experiencia Semzo Prive!</p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    return await this.sendWithResend(userEmailData)
+  }
+
+  async sendReturnReminderEmail(data: {
+    userEmail: string
+    userName: string
+    bagName: string
+    returnDate: string
+    daysRemaining: number
+  }): Promise<boolean> {
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: `Recordatorio: Devolucion de ${data.bagName} en ${data.daysRemaining} dias`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .warning-box { background: #fff3cd; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107; }
+            .button { display: inline-block; background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Recordatorio de Devolucion</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>Te recordamos que la devolucion de tu bolso esta proxima.</p>
+              
+              <div class="warning-box">
+                <p><strong>Bolso:</strong> ${data.bagName}</p>
+                <p><strong>Fecha de devolucion:</strong> ${new Date(data.returnDate).toLocaleDateString("es-ES")}</p>
+                <p><strong>Dias restantes:</strong> ${data.daysRemaining}</p>
+              </div>
+              
+              <p>Por favor, prepara el bolso para su devolucion. Te enviaremos una etiqueta de envio prepagada.</p>
+              
+              <p style="text-align: center;">
+                <a href="https://semzoprive.com/dashboard/mis-reservas" class="button">Ver mis reservas</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    return await this.sendWithResend(userEmailData)
+  }
+
+  async sendReturnInitiatedEmail(data: {
+    userEmail: string
+    userName: string
+    bagName: string
+    trackingNumber?: string
+    returnLabel?: string
+  }): Promise<boolean> {
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: `Etiqueta de devolucion - ${data.bagName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .info-box { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .button { display: inline-block; background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+            .steps { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .step { display: flex; margin: 10px 0; align-items: flex-start; }
+            .step-num { background: #1a1a4b; color: white; border-radius: 50%; width: 24px; height: 24px; text-align: center; margin-right: 10px; flex-shrink: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Devolucion de tu bolso</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>Aqui tienes las instrucciones para devolver tu bolso <strong>${data.bagName}</strong>.</p>
+              
+              <div class="steps">
+                <h3>Pasos para la devolucion:</h3>
+                <div class="step">
+                  <span class="step-num">1</span>
+                  <span>Empaca el bolso en su caja original o similar</span>
+                </div>
+                <div class="step">
+                  <span class="step-num">2</span>
+                  <span>Imprime la etiqueta de envio adjunta</span>
+                </div>
+                <div class="step">
+                  <span class="step-num">3</span>
+                  <span>Pega la etiqueta en el paquete</span>
+                </div>
+                <div class="step">
+                  <span class="step-num">4</span>
+                  <span>Dejalo en cualquier oficina de Correos</span>
+                </div>
+              </div>
+              
+              ${data.trackingNumber ? `
+              <div class="info-box">
+                <p><strong>Numero de seguimiento:</strong> ${data.trackingNumber}</p>
+              </div>
+              ` : ""}
+              
+              ${data.returnLabel ? `
+              <p style="text-align: center;">
+                <a href="${data.returnLabel}" class="button">Descargar etiqueta</a>
+              </p>
+              ` : ""}
+              
+              <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const adminEmailData: EmailData = {
+      to: this.adminEmail,
+      subject: `Devolucion iniciada: ${data.bagName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Devolucion iniciada</h2>
+          <p><strong>Cliente:</strong> ${data.userName} (${data.userEmail})</p>
+          <p><strong>Bolso:</strong> ${data.bagName}</p>
+          ${data.trackingNumber ? `<p><strong>Tracking:</strong> ${data.trackingNumber}</p>` : ""}
+        </div>
+      `,
+    }
+
+    const userSent = await this.sendWithResend(userEmailData)
+    const adminSent = await this.sendWithResend(adminEmailData)
+    return userSent && adminSent
+  }
+
+  async sendReturnReceivedEmail(data: {
+    userEmail: string
+    userName: string
+    bagName: string
+  }): Promise<boolean> {
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: `Devolucion recibida - ${data.bagName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .success-box { background: #d4edda; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745; }
+            .button { display: inline-block; background: #d4af37; color: #1a1a4b; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Devolucion recibida!</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              
+              <div class="success-box">
+                <p>Hemos recibido tu bolso <strong>${data.bagName}</strong> en perfectas condiciones.</p>
+                <p>Gracias por cuidarlo!</p>
+              </div>
+              
+              <p>Ya puedes reservar un nuevo bolso de nuestra coleccion.</p>
+              
+              <p style="text-align: center;">
+                <a href="https://semzoprive.com/catalogo" class="button">Explorar catalogo</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    return await this.sendWithResend(userEmailData)
+  }
+
+  async sendPaymentFailedEmail(data: {
+    userEmail: string
+    userName: string
+    amount?: string
+    reason?: string
+  }): Promise<boolean> {
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: "Problema con tu pago - Semzo Prive",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #dc3545; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .warning-box { background: #fff3cd; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107; }
+            .button { display: inline-block; background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Problema con tu pago</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>No hemos podido procesar tu pago${data.amount ? ` de €${data.amount}` : ""}.</p>
+              
+              <div class="warning-box">
+                ${data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ""}
+                <p>Por favor, verifica tu metodo de pago y vuelve a intentarlo.</p>
+              </div>
+              
+              <p style="text-align: center;">
+                <a href="https://semzoprive.com/dashboard/membresia" class="button">Actualizar metodo de pago</a>
+              </p>
+              
+              <p>Si tienes alguna pregunta, contacta a nuestro equipo de soporte.</p>
+            </div>
+            <div class="footer">
+              <p>Semzo Prive - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const adminEmailData: EmailData = {
+      to: this.adminEmail,
+      subject: `Pago fallido: ${data.userName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: #dc3545;">Pago fallido</h2>
+          <p><strong>Cliente:</strong> ${data.userName} (${data.userEmail})</p>
+          ${data.amount ? `<p><strong>Monto:</strong> €${data.amount}</p>` : ""}
+          ${data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ""}
+        </div>
+      `,
+    }
+
+    const userSent = await this.sendWithResend(userEmailData)
+    const adminSent = await this.sendWithResend(adminEmailData)
+    return userSent && adminSent
+  }
 }
 
 export function useEmailServiceProduction() {

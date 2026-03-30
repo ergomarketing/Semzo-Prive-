@@ -729,6 +729,94 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      /**
+       * ============================================================
+       * PAGO FALLIDO - Notificar al usuario
+       * ============================================================
+       */
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const amountDue = invoice.amount_due ? (invoice.amount_due / 100).toFixed(2) : undefined;
+
+        // Buscar usuario por stripe_customer_id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, email, full_name, first_name, last_name, failed_payment_count")
+          .eq("stripe_customer_id", customerId)
+          .single();
+
+        if (profile) {
+          const customerName = profile.full_name || 
+            `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
+            "Cliente";
+
+          // Incrementar contador de pagos fallidos
+          const failedCount = (profile.failed_payment_count || 0) + 1;
+          await supabase
+            .from("profiles")
+            .update({ 
+              payment_status: "failed",
+              failed_payment_count: failedCount,
+              updated_at: now 
+            })
+            .eq("id", profile.id);
+
+          // Enviar email de pago fallido
+          const emailService = EmailServiceProduction.getInstance();
+          await emailService.sendPaymentFailedEmail({
+            userEmail: profile.email,
+            userName: customerName,
+            amount: amountDue,
+            reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
+          });
+
+          console.log(`[Stripe Webhook] Pago fallido para usuario ${profile.id}, intento #${failedCount}`);
+        }
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const userId = pi.metadata?.user_id;
+        
+        if (userId) {
+          // Buscar perfil
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name, failed_payment_count")
+            .eq("id", userId)
+            .single();
+
+          if (profile) {
+            const customerName = profile.full_name || 
+              `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
+              "Cliente";
+
+            // Actualizar estado de pago
+            const failedCount = (profile.failed_payment_count || 0) + 1;
+            await supabase
+              .from("profiles")
+              .update({ 
+                payment_status: "failed",
+                failed_payment_count: failedCount,
+                updated_at: now 
+              })
+              .eq("id", userId);
+
+            // Enviar email
+            const emailService = EmailServiceProduction.getInstance();
+            await emailService.sendPaymentFailedEmail({
+              userEmail: profile.email,
+              userName: customerName,
+              amount: pi.amount ? (pi.amount / 100).toFixed(2) : undefined,
+              reason: pi.last_payment_error?.message || "Pago rechazado"
+            });
+          }
+        }
+        break;
+      }
+
       default:
         break;
     }

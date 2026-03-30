@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Truck,
   Package,
@@ -17,6 +28,9 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
+  Download,
+  ExternalLink,
+  MapPin,
 } from "lucide-react"
 
 interface Shipment {
@@ -264,6 +278,20 @@ export default function LogisticsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
+  const [showNewShipmentModal, setShowNewShipmentModal] = useState(false)
+  const [creatingShipment, setCreatingShipment] = useState(false)
+  const [newShipment, setNewShipment] = useState({
+    recipient_name: "",
+    recipient_address: "",
+    recipient_city: "",
+    recipient_postal_code: "",
+    recipient_country: "ES",
+    recipient_phone: "",
+    recipient_email: "",
+    weight: 2000,
+    service_type: "PAQ_PREMIUM",
+    notes: ""
+  })
 
   useEffect(() => {
     loadLogisticsData()
@@ -291,6 +319,60 @@ export default function LogisticsPage() {
       console.error("Error loading logistics data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCreateShipment = async () => {
+    if (!newShipment.recipient_name || !newShipment.recipient_address || 
+        !newShipment.recipient_city || !newShipment.recipient_postal_code) {
+      alert("Por favor completa todos los campos requeridos")
+      return
+    }
+
+    setCreatingShipment(true)
+    try {
+      const res = await fetch("/api/admin/logistics/shipments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newShipment,
+          carrier: "Correos",
+          use_correos_api: true
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al crear envío")
+      }
+
+      if (data.correos_success && data.return_label_created) {
+        alert(`Envio creado!\n\nTracking ida: ${data.tracking_number}\nTracking retorno: ${data.return_tracking_number}\n\nDescarga ambas etiquetas desde la lista de envios.`)
+      } else if (data.correos_success) {
+        alert(`Envio creado con tracking: ${data.tracking_number}`)
+      } else {
+        alert("Envio creado (sin tracking de Correos)")
+      }
+      
+      setShowNewShipmentModal(false)
+      setNewShipment({
+        recipient_name: "",
+        recipient_address: "",
+        recipient_city: "",
+        recipient_postal_code: "",
+        recipient_country: "ES",
+        recipient_phone: "",
+        recipient_email: "",
+        weight: 2000,
+        service_type: "PAQ_PREMIUM",
+        notes: ""
+      })
+      loadLogisticsData()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Error al crear envío")
+    } finally {
+      setCreatingShipment(false)
     }
   }
 
@@ -465,7 +547,10 @@ export default function LogisticsPage() {
                 className="pl-10"
               />
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowNewShipmentModal(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Envío
             </Button>
@@ -488,21 +573,55 @@ export default function LogisticsPage() {
                     <div key={shipment.id} className="border rounded-lg p-4 hover:bg-gray-50">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="font-semibold">{shipment.reservations.profiles.full_name}</p>
+                          <p className="font-semibold">
+                            {shipment.reservations?.profiles?.full_name || "Sin nombre"}
+                          </p>
                           <p className="text-sm text-gray-600">
-                            {shipment.reservations.bags.brand} - {shipment.reservations.bags.name}
+                            {shipment.reservations?.bags?.brand} - {shipment.reservations?.bags?.name}
                           </p>
                           {shipment.tracking_number && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tracking: {shipment.tracking_number}
-                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-gray-500">
+                                Tracking: {shipment.tracking_number}
+                              </span>
+                              <a
+                                href={`https://www.correos.es/es/es/herramientas/localizador/envios/${shipment.tracking_number}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end gap-2">
                           {getStatusBadge(shipment.status)}
                           {shipment.carrier && (
-                            <p className="text-xs text-gray-500 mt-2">{shipment.carrier}</p>
+                            <p className="text-xs text-gray-500">{shipment.carrier}</p>
                           )}
+                          <div className="flex flex-col gap-1">
+                            {shipment.tracking_number && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${shipment.tracking_number}`, "_blank")}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Etiqueta Ida
+                              </Button>
+                            )}
+                            {(shipment as { return_tracking_number?: string }).return_tracking_number && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${(shipment as { return_tracking_number?: string }).return_tracking_number}`, "_blank")}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Etiqueta Retorno
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -574,6 +693,155 @@ export default function LogisticsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal Nuevo Envío */}
+      <Dialog open={showNewShipmentModal} onOpenChange={setShowNewShipmentModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              Crear Nuevo Envío con Correos
+            </DialogTitle>
+            <DialogDescription>
+              Se generan automaticamente 2 etiquetas: envio de ida + etiqueta de devolucion prepagada
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipient_name">Nombre completo *</Label>
+                <Input
+                  id="recipient_name"
+                  value={newShipment.recipient_name}
+                  onChange={(e) => setNewShipment({ ...newShipment, recipient_name: e.target.value })}
+                  placeholder="María García López"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recipient_phone">Teléfono</Label>
+                <Input
+                  id="recipient_phone"
+                  value={newShipment.recipient_phone}
+                  onChange={(e) => setNewShipment({ ...newShipment, recipient_phone: e.target.value })}
+                  placeholder="+34 600 000 000"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="recipient_email">Email</Label>
+              <Input
+                id="recipient_email"
+                type="email"
+                value={newShipment.recipient_email}
+                onChange={(e) => setNewShipment({ ...newShipment, recipient_email: e.target.value })}
+                placeholder="cliente@email.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="recipient_address">Dirección completa *</Label>
+              <Input
+                id="recipient_address"
+                value={newShipment.recipient_address}
+                onChange={(e) => setNewShipment({ ...newShipment, recipient_address: e.target.value })}
+                placeholder="Calle Mayor 123, Piso 2, Puerta A"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipient_city">Ciudad *</Label>
+                <Input
+                  id="recipient_city"
+                  value={newShipment.recipient_city}
+                  onChange={(e) => setNewShipment({ ...newShipment, recipient_city: e.target.value })}
+                  placeholder="Madrid"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recipient_postal_code">Código Postal *</Label>
+                <Input
+                  id="recipient_postal_code"
+                  value={newShipment.recipient_postal_code}
+                  onChange={(e) => setNewShipment({ ...newShipment, recipient_postal_code: e.target.value })}
+                  placeholder="28001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recipient_country">País</Label>
+                <Select
+                  value={newShipment.recipient_country}
+                  onValueChange={(value) => setNewShipment({ ...newShipment, recipient_country: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ES">España</SelectItem>
+                    <SelectItem value="PT">Portugal</SelectItem>
+                    <SelectItem value="FR">Francia</SelectItem>
+                    <SelectItem value="AD">Andorra</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="service_type">Tipo de servicio</Label>
+                <Select
+                  value={newShipment.service_type}
+                  onValueChange={(value) => setNewShipment({ ...newShipment, service_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PAQ_PREMIUM">Paq Premium (1-2 días)</SelectItem>
+                    <SelectItem value="PAQ_ESTANDAR">Paq Estándar (3-5 días)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="weight">Peso (gramos)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={newShipment.weight}
+                  onChange={(e) => setNewShipment({ ...newShipment, weight: parseInt(e.target.value) || 2000 })}
+                  placeholder="2000"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Textarea
+                id="notes"
+                value={newShipment.notes}
+                onChange={(e) => setNewShipment({ ...newShipment, notes: e.target.value })}
+                placeholder="Instrucciones especiales de entrega..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewShipmentModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateShipment} 
+              disabled={creatingShipment}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {creatingShipment ? "Creando envío..." : "Crear Envío"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
