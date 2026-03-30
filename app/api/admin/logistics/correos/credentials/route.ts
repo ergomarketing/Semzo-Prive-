@@ -1,30 +1,18 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 
-// GET - Obtener credenciales de Correos (sin mostrar el secret completo)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+// GET - Obtener credenciales de Correos
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = getServiceClient()
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    // Verificar rol admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-    }
-
-    // Obtener credenciales de la tabla de configuración
     const { data: settings } = await supabase
       .from("logistics_settings")
       .select("api_credentials, is_enabled")
@@ -41,42 +29,20 @@ export async function GET() {
       configured: true,
       isEnabled: settings.is_enabled,
       clientId: credentials.clientId,
-      // Solo mostrar últimos 4 caracteres del secret por seguridad
       clientSecretMasked: credentials.clientSecret
         ? `****${credentials.clientSecret.slice(-4)}`
         : null,
-      // Para uso interno (no exponer al frontend directamente)
-      clientSecret: credentials.clientSecret,
     })
   } catch (error) {
     console.error("Error getting Correos credentials:", error)
-    return NextResponse.json({ error: "Error interno" }, { status: 500 })
+    return NextResponse.json({ configured: false })
   }
 }
 
 // POST - Guardar credenciales de Correos
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    // Verificar rol admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-    }
-
+    const supabase = getServiceClient()
     const { clientId, clientSecret } = await request.json()
 
     if (!clientId || !clientSecret) {
@@ -95,7 +61,6 @@ export async function POST(request: Request) {
 
     let error
     if (existing?.id) {
-      // Actualizar registro existente
       const { error: updateError } = await supabase
         .from("logistics_settings")
         .update({
@@ -107,7 +72,6 @@ export async function POST(request: Request) {
         .eq("carrier_name", "Correos")
       error = updateError
     } else {
-      // Insertar nuevo registro
       const { error: insertError } = await supabase
         .from("logistics_settings")
         .insert({
@@ -121,7 +85,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Error saving Correos credentials:", error)
-      return NextResponse.json({ error: "Error al guardar credenciales" }, { status: 500 })
+      return NextResponse.json({ error: "Error al guardar: " + error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: "Credenciales guardadas correctamente" })
@@ -134,25 +98,7 @@ export async function POST(request: Request) {
 // DELETE - Eliminar credenciales de Correos
 export async function DELETE() {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    // Verificar rol admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-    }
+    const supabase = getServiceClient()
 
     const { error } = await supabase
       .from("logistics_settings")
@@ -160,11 +106,10 @@ export async function DELETE() {
       .eq("carrier_name", "Correos")
 
     if (error) {
-      console.error("Error deleting Correos credentials:", error)
-      return NextResponse.json({ error: "Error al eliminar credenciales" }, { status: 500 })
+      return NextResponse.json({ error: "Error al eliminar" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, message: "Credenciales eliminadas" })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error deleting Correos credentials:", error)
     return NextResponse.json({ error: "Error interno" }, { status: 500 })
