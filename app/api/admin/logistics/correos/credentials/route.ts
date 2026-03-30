@@ -86,17 +86,38 @@ export async function POST(request: Request) {
       )
     }
 
-    // Upsert en logistics_settings
-    const { error } = await supabase.from("logistics_settings").upsert(
-      {
-        carrier_name: "Correos",
-        api_credentials: { clientId, clientSecret },
-        is_enabled: true,
-        default_service: "PAQ_PREMIUM",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "carrier_name" }
-    )
+    // Verificar si ya existe el registro de Correos
+    const { data: existing } = await supabase
+      .from("logistics_settings")
+      .select("id")
+      .eq("carrier_name", "Correos")
+      .single()
+
+    let error
+    if (existing?.id) {
+      // Actualizar registro existente
+      const { error: updateError } = await supabase
+        .from("logistics_settings")
+        .update({
+          api_credentials: { clientId, clientSecret },
+          is_enabled: true,
+          default_service: "PAQ_PREMIUM",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("carrier_name", "Correos")
+      error = updateError
+    } else {
+      // Insertar nuevo registro
+      const { error: insertError } = await supabase
+        .from("logistics_settings")
+        .insert({
+          carrier_name: "Correos",
+          api_credentials: { clientId, clientSecret },
+          is_enabled: true,
+          default_service: "PAQ_PREMIUM",
+        })
+      error = insertError
+    }
 
     if (error) {
       console.error("Error saving Correos credentials:", error)
