@@ -244,6 +244,8 @@ export async function POST(request: NextRequest) {
 
     let correosTrackingNumber = tracking_number
     let correosResponse = null
+    let returnTrackingNumber = null
+    let returnCorreosResponse = null
 
     // Intentar crear envío en Correos si está habilitado
     if (use_correos_api && carrier === "Correos") {
@@ -255,17 +257,18 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (correosSettings?.api_credentials && correosSettings.is_enabled) {
+        const { clientId, clientSecret } = correosSettings.api_credentials as {
+          clientId: string
+          clientSecret: string
+        }
+
+        const correosClient = new CorreosAPI({ clientId, clientSecret })
+        const productCode = service_type === "PAQ_PREMIUM" 
+          ? CORREOS_PRODUCTS.PAQ_PREMIUM 
+          : CORREOS_PRODUCTS.PAQ_ESTANDAR
+
+        // 1. Crear envío de IDA (Semzo -> Cliente)
         try {
-          const { clientId, clientSecret } = correosSettings.api_credentials as {
-            clientId: string
-            clientSecret: string
-          }
-
-          const correosClient = new CorreosAPI({ clientId, clientSecret })
-          const productCode = service_type === "PAQ_PREMIUM" 
-            ? CORREOS_PRODUCTS.PAQ_PREMIUM 
-            : CORREOS_PRODUCTS.PAQ_ESTANDAR
-
           correosResponse = await correosClient.createShipment({
             senderName: SENDER_INFO.name,
             senderAddress: SENDER_INFO.address,
@@ -281,18 +284,42 @@ export async function POST(request: NextRequest) {
             recipientEmail: recipient_email,
             weight,
             productCode,
-            reference: reservation_id ? `RES-${reservation_id}` : `SHIP-${Date.now()}`
+            reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`
           })
-
           correosTrackingNumber = correosResponse.codEnvio
         } catch (correosError) {
-          console.error("[Logistics API] Error creating Correos shipment:", correosError)
-          // Continuar sin tracking de Correos
+          console.error("[Logistics API] Error creating outbound Correos shipment:", correosError)
+        }
+
+        // 2. Crear envío de RETORNO (Cliente -> Semzo) - etiqueta prepagada
+        try {
+          returnCorreosResponse = await correosClient.createShipment({
+            // Remitente = Cliente (quien devuelve)
+            senderName: recipient_name,
+            senderAddress: recipient_address,
+            senderCity: recipient_city,
+            senderPostalCode: recipient_postal_code,
+            senderCountry: recipient_country,
+            // Destinatario = Semzo Prive
+            recipientName: SENDER_INFO.name,
+            recipientAddress: SENDER_INFO.address,
+            recipientCity: SENDER_INFO.city,
+            recipientPostalCode: SENDER_INFO.postalCode,
+            recipientCountry: SENDER_INFO.country,
+            recipientPhone: "+34 900 000 000", // Telefono Semzo
+            recipientEmail: "devoluciones@semzoprive.com",
+            weight,
+            productCode,
+            reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`
+          })
+          returnTrackingNumber = returnCorreosResponse.codEnvio
+        } catch (returnError) {
+          console.error("[Logistics API] Error creating return Correos shipment:", returnError)
         }
       }
     }
 
-    // Crear el envío en base de datos
+    // Crear el envío en base de datos (con datos de ida y retorno)
     const { data, error } = await supabase
       .from("shipments")
       .insert({
@@ -300,6 +327,7 @@ export async function POST(request: NextRequest) {
         status: correosTrackingNumber ? "label_created" : "pending",
         carrier,
         tracking_number: correosTrackingNumber || null,
+        return_tracking_number: returnTrackingNumber || null, // Tracking de retorno
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,
@@ -312,7 +340,8 @@ export async function POST(request: NextRequest) {
         recipient_email,
         weight,
         service_type: service_type === "PAQ_PREMIUM" ? "Paq Premium" : "Paq Estándar",
-        correos_response: correosResponse
+        correos_response: correosResponse,
+        return_correos_response: returnCorreosResponse // Respuesta de Correos para retorno
       })
       .select()
       .single()
@@ -361,7 +390,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ...data,
-      correos_success: !!correosTrackingNumber
+      correos_success: !!correosTrackingNumber,
+      return_label_created: !!returnTrackingNumber,
+      return_tracking_number: returnTrackingNumber
     }, { status: 201 })
   } catch (error) {
     console.error("[Logistics API] Unexpected error:", error)

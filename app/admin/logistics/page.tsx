@@ -347,9 +347,13 @@ export default function LogisticsPage() {
         throw new Error(data.error || "Error al crear envío")
       }
 
-      alert(data.correos_success 
-        ? `Envío creado con tracking: ${data.tracking_number}` 
-        : "Envío creado (sin tracking de Correos)")
+      if (data.correos_success && data.return_label_created) {
+        alert(`Envio creado!\n\nTracking ida: ${data.tracking_number}\nTracking retorno: ${data.return_tracking_number}\n\nDescarga ambas etiquetas desde la lista de envios.`)
+      } else if (data.correos_success) {
+        alert(`Envio creado con tracking: ${data.tracking_number}`)
+      } else {
+        alert("Envio creado (sin tracking de Correos)")
+      }
       
       setShowNewShipmentModal(false)
       setNewShipment({
@@ -596,16 +600,28 @@ export default function LogisticsPage() {
                           {shipment.carrier && (
                             <p className="text-xs text-gray-500">{shipment.carrier}</p>
                           )}
-                          {shipment.tracking_number && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${shipment.tracking_number}`, "_blank")}
-                            >
-                              <Download className="h-3 w-3 mr-1" />
-                              Etiqueta
-                            </Button>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {shipment.tracking_number && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${shipment.tracking_number}`, "_blank")}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Etiqueta Ida
+                              </Button>
+                            )}
+                            {(shipment as { return_tracking_number?: string }).return_tracking_number && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${(shipment as { return_tracking_number?: string }).return_tracking_number}`, "_blank")}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Etiqueta Retorno
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -687,7 +703,7 @@ export default function LogisticsPage() {
               Crear Nuevo Envío con Correos
             </DialogTitle>
             <DialogDescription>
-              Ingresa los datos del destinatario para generar la etiqueta de envío
+              Se generan automaticamente 2 etiquetas: envio de ida + etiqueta de devolucion prepagada
             </DialogDescription>
           </DialogHeader>
 
