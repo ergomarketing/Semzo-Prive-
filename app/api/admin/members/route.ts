@@ -6,11 +6,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[v0] GET /api/admin/members - Starting request")
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    console.log("[v0] Fetching profiles from Supabase...")
 
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
@@ -18,11 +14,8 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (profilesError) {
-      console.log("[v0] Error fetching profiles:", profilesError)
       return NextResponse.json({ error: "Error al obtener miembros", details: profilesError }, { status: 500 })
     }
-
-    console.log("[v0] Found profiles:", profiles?.length || 0)
 
     const {
       data: { users: authUsers },
@@ -30,15 +23,12 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.admin.listUsers()
 
     if (authError) {
-      console.log("[v0] Error fetching auth users:", authError)
       return NextResponse.json({ error: "Error al obtener usuarios de auth", details: authError }, { status: 500 })
     }
 
     const authUserIds = new Set(authUsers.map((u) => u.id))
 
     const validProfiles = profiles?.filter((p) => authUserIds.has(p.id)) || []
-
-    console.log("[v0] Valid profiles (with auth.user):", validProfiles.length)
 
     const { data: reservationCounts } = await supabase.from("reservations").select("user_id")
 
@@ -73,8 +63,6 @@ export async function GET(request: NextRequest) {
       active: members.filter((m) => m.status === "active").length,
     }
 
-    console.log("[v0] Returning members:", members.length, "Stats:", stats)
-
     return NextResponse.json({
       members,
       total: members.length,
@@ -96,7 +84,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 })
     }
 
-    console.log("[v0] Deleting orphaned records for user:", userId)
+
 
     const { data: authUser } = await supabase.auth.admin.getUserById(userId)
 
@@ -111,8 +99,6 @@ export async function DELETE(request: NextRequest) {
     await supabase.from("membership_intents").delete().eq("user_id", userId)
     await supabase.from("user_memberships").delete().eq("user_id", userId)
     await supabase.from("profiles").delete().eq("id", userId)
-
-    console.log("[v0] Successfully deleted orphaned records for user:", userId)
 
     return NextResponse.json({ success: true, message: "Registros huérfanos eliminados" })
   } catch (error) {
