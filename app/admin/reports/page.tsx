@@ -4,49 +4,72 @@ import { useEffect, useState } from "react"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Users, CreditCard, Gift } from 'lucide-react'
+import { TrendingUp, Users, CreditCard, Gift, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+
+interface StripeMetrics {
+  totalRevenue: number
+  totalPayments: number
+  mrr: number
+}
+
+interface MemberMetrics {
+  activeMembers: number
+  membersByType: Record<string, number>
+}
 
 export default function AdminReportsPage() {
   const supabase = createSupabaseBrowserClient()
-  const [metrics, setMetrics] = useState<any>(null)
+  const [stripeMetrics, setStripeMetrics] = useState<StripeMetrics | null>(null)
+  const [memberMetrics, setMemberMetrics] = useState<MemberMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMetrics()
   }, [])
 
   const fetchMetrics = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      const startOfMonth = new Date()
-      startOfMonth.setDate(1)
-      startOfMonth.setHours(0, 0, 0, 0)
+      // Fetch Stripe metrics and member metrics in parallel
+      const [stripeRes, membersData] = await Promise.all([
+        fetch("/api/admin/reports/stripe-metrics"),
+        supabase
+          .from("user_memberships")
+          .select("membership_type, status")
+          .eq("status", "active"),
+      ])
 
-      const { data: payments } = await supabase
-        .from("payments")
-        .select("amount, status, membership_type")
-        .eq("status", "completed")
-        .gte("created_at", startOfMonth.toISOString())
-
-      const totalRevenue = payments?.reduce((sum, p) => sum + p.amount, 0) || 0
-
-      const { data: activeMembers } = await supabase
-        .from("user_memberships")
-        .select("membership_type")
-        .eq("status", "active")
-
-      const membersByType = {
-        petite: 0,
-        essentiel: 0,
-        signature: 0,
-        prive: 0,
+      // Stripe metrics
+      if (stripeRes.ok) {
+        const data = await stripeRes.json()
+        setStripeMetrics(data)
+      } else {
+        // Fallback: calcular MRR desde Supabase si Stripe falla
+        setStripeMetrics({ totalRevenue: 0, totalPayments: 0, mrr: 0 })
       }
 
-      activeMembers?.forEach((m) => {
-        if (membersByType.hasOwnProperty(m.membership_type)) {
-          membersByType[m.membership_type as keyof typeof membersByType]++
+      // Member metrics desde Supabase
+      const activeMembers = membersData.data || []
+      const membersByType: Record<string, number> = {
+        Petite: 0,
+        Essentiel: 0,
+        Signature: 0,
+        Prive: 0,
+      }
+
+      activeMembers.forEach((m) => {
+        const type = m.membership_type
+          ? m.membership_type.charAt(0).toUpperCase() + m.membership_type.slice(1).toLowerCase()
+          : ""
+        if (membersByType.hasOwnProperty(type)) {
+          membersByType[type]++
         }
       })
 
+      // Calcular MRR desde Supabase como respaldo
       const membershipPrices: Record<string, number> = {
         petite: 1999,
         essentiel: 4999,
@@ -54,32 +77,64 @@ export default function AdminReportsPage() {
         prive: 29999,
       }
 
-      const mrr = Object.entries(membersByType).reduce((sum, [type, count]) => {
-        return sum + membershipPrices[type] * count
+      const mrrFromSupabase = activeMembers.reduce((sum, m) => {
+        const price = membershipPrices[m.membership_type?.toLowerCase() || ""] || 0
+        return sum + price
       }, 0)
 
-      setMetrics({
-        totalRevenue,
-        mrr,
+      setMemberMetrics({
+        activeMembers: activeMembers.length,
         membersByType,
-        activeMembers: activeMembers?.length || 0,
-        totalPayments: payments?.length || 0,
       })
-    } catch (error) {
-      console.error("Error fetching metrics:", error)
+
+      // Si Stripe no devolvio MRR, usar el calculado desde Supabase
+      setStripeMetrics((prev) =>
+        prev
+          ? {
+              ...prev,
+              mrr: prev.mrr || mrrFromSupabase,
+            }
+          : { totalRevenue: 0, totalPayments: 0, mrr: mrrFromSupabase }
+      )
+    } catch (err) {
+      console.error("Error fetching metrics:", err)
+      setError("Error al cargar las métricas")
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <div className="p-8">Cargando métricas...</div>
+  const formatEuros = (cents: number) => {
+    return (cents / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "€"
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center gap-2 text-muted-foreground">
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        Cargando métricas desde Stripe...
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 p-8">
-      <div>
-        <h1 className="text-3xl font-bold">Reportes Financieros</h1>
-        <p className="text-muted-foreground">Vista general de ingresos y membresías activas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Reportes Financieros</h1>
+          <p className="text-muted-foreground">Datos en tiempo real desde Stripe y Supabase</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchMetrics}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualizar
+        </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
@@ -88,8 +143,8 @@ export default function AdminReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(metrics?.totalRevenue / 100).toFixed(2)}€</div>
-            <p className="text-xs text-muted-foreground">{metrics?.totalPayments} pagos procesados</p>
+            <div className="text-2xl font-bold">{formatEuros(stripeMetrics?.totalRevenue || 0)}</div>
+            <p className="text-xs text-muted-foreground">{stripeMetrics?.totalPayments || 0} pagos procesados</p>
           </CardContent>
         </Card>
 
@@ -99,7 +154,7 @@ export default function AdminReportsPage() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(metrics?.mrr / 100).toFixed(2)}€</div>
+            <div className="text-2xl font-bold">{formatEuros(stripeMetrics?.mrr || 0)}</div>
             <p className="text-xs text-muted-foreground">Ingresos recurrentes mensuales</p>
           </CardContent>
         </Card>
@@ -110,8 +165,8 @@ export default function AdminReportsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.activeMembers}</div>
-            <p className="text-xs text-muted-foreground">Membresías activas</p>
+            <div className="text-2xl font-bold">{memberMetrics?.activeMembers || 0}</div>
+            <p className="text-xs text-muted-foreground">Membresías activas en Supabase</p>
           </CardContent>
         </Card>
 
@@ -122,10 +177,10 @@ export default function AdminReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {Object.entries(metrics?.membersByType || {}).map(([type, count]) => (
+              {Object.entries(memberMetrics?.membersByType || {}).map(([type, count]) => (
                 <div key={type} className="flex justify-between text-sm">
-                  <span className="capitalize">{type}</span>
-                  <Badge variant="secondary">{count}</Badge>
+                  <span>{type}</span>
+                  <Badge variant="secondary">{count as number}</Badge>
                 </div>
               ))}
             </div>
