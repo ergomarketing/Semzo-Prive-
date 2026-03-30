@@ -58,6 +58,200 @@ interface LogisticsSettings {
   created_at: string
 }
 
+function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
+  const [clientId, setClientId] = useState("")
+  const [clientSecret, setClientSecret] = useState("")
+  const [isConfigured, setIsConfigured] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(false)
+  const [maskedSecret, setMaskedSecret] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  useEffect(() => {
+    loadCorreosConfig()
+  }, [])
+
+  const loadCorreosConfig = async () => {
+    try {
+      const res = await fetch("/api/admin/logistics/correos/credentials")
+      const data = await res.json()
+      if (data.configured) {
+        setIsConfigured(true)
+        setIsEnabled(data.isEnabled)
+        setClientId(data.clientId || "")
+        setMaskedSecret(data.clientSecretMasked || "")
+      }
+    } catch (error) {
+      console.error("Error loading Correos config:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    if (!clientId || !clientSecret) {
+      setTestResult({ success: false, message: "Ingresa Client ID y Client Secret" })
+      return
+    }
+
+    setTesting(true)
+    setTestResult(null)
+
+    try {
+      const res = await fetch("/api/admin/logistics/correos/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, clientSecret }),
+      })
+      const data = await res.json()
+      setTestResult(data)
+    } catch {
+      setTestResult({ success: false, message: "Error al probar conexión" })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!clientId || !clientSecret) return
+
+    setSaving(true)
+    try {
+      const res = await fetch("/api/admin/logistics/correos/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, clientSecret }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setIsConfigured(true)
+        setIsEnabled(true)
+        setMaskedSecret(`****${clientSecret.slice(-4)}`)
+        setClientSecret("")
+        onSaved()
+      }
+    } catch (error) {
+      console.error("Error saving credentials:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Truck className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <CardTitle>Correos de Espana</CardTitle>
+              <CardDescription>Integración con la API de Correos para envíos nacionales</CardDescription>
+            </div>
+          </div>
+          {isConfigured && (
+            <Badge className={isEnabled ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+              {isEnabled ? "Activo" : "Inactivo"}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isConfigured && !clientSecret ? (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-green-900">Credenciales configuradas</p>
+                <p className="text-sm text-green-700 mt-1">
+                  Client ID: {clientId}<br />
+                  Client Secret: {maskedSecret}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setClientSecret("")
+                setIsConfigured(false)
+              }}
+            >
+              Actualizar credenciales
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Client ID</label>
+              <Input
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Client Secret</label>
+              <Input
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                placeholder="Ingresa el Client Secret"
+              />
+            </div>
+
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg flex gap-2 ${
+                  testResult.success
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-red-50 border border-red-200"
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                )}
+                <p className={testResult.success ? "text-green-800" : "text-red-800"}>
+                  {testResult.message}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
+                {testing ? "Probando..." : "Probar conexión"}
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={handleSave}
+                disabled={saving || !clientId || !clientSecret}
+              >
+                {saving ? "Guardando..." : "Guardar credenciales"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function LogisticsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [returns, setReturns] = useState<Return[]>([])
@@ -352,51 +546,25 @@ export default function LogisticsPage() {
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <div className="flex justify-end mb-4">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Configurar Transportista
-            </Button>
-          </div>
+          {/* Correos Configuration Card */}
+          <CorreosConfigCard onSaved={loadLogisticsData} />
 
           <Card>
             <CardHeader>
-              <CardTitle>Transportistas Configurados</CardTitle>
-              <CardDescription>Gestiona las integraciones con proveedores de logística</CardDescription>
+              <CardTitle>Otros Transportistas</CardTitle>
+              <CardDescription>Próximamente: DHL, FedEx, UPS, Glovo</CardDescription>
             </CardHeader>
             <CardContent>
-              {settings.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Settings className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No hay transportistas configurados</p>
-                  <p className="text-sm mt-2">Configura un transportista para comenzar</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {settings.map((setting) => (
-                    <div key={setting.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold">{setting.carrier_name}</p>
-                          <p className="text-sm text-gray-600">
-                            Servicio: {setting.default_service || "No configurado"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {setting.is_enabled ? (
-                            <Badge className="bg-green-100 text-green-800">Activo</Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>
-                          )}
-                          <Button variant="outline" size="sm">
-                            Editar
-                          </Button>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {["DHL", "FedEx", "UPS", "Glovo"].map((carrier) => (
+                  <div key={carrier} className="border rounded-lg p-4 opacity-50">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{carrier}</p>
+                      <Badge className="bg-gray-100 text-gray-800">Próximamente</Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
