@@ -490,49 +490,6 @@ export default function LogisticsPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información General</CardTitle>
-              <CardDescription>Estado actual del módulo de logística</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-blue-900">Módulo en Desarrollo</h4>
-                  <p className="text-sm text-blue-800 mt-1">
-                    El módulo de logística está configurado pero sin integraciones de transportistas activas.
-                    Puedes configurar las credenciales de DHL, FedEx, UPS, Correos y Glovo en la sección de
-                    Configuración cuando estés listo.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Próximas Características</h4>
-                  <ul className="text-sm space-y-1 text-gray-600">
-                    <li>✓ Integración con DHL</li>
-                    <li>✓ Integración con FedEx</li>
-                    <li>✓ Integración con UPS</li>
-                    <li>✓ Integración con Correos</li>
-                    <li>✓ Integración con Glovo</li>
-                  </ul>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">Funcionalidades Disponibles</h4>
-                  <ul className="text-sm space-y-1 text-gray-600">
-                    <li>✓ Crear envíos manualmente</li>
-                    <li>✓ Rastrear envíos</li>
-                    <li>✓ Gestionar devoluciones</li>
-                    <li>✓ Auditoría de cambios</li>
-                    <li>✓ Notificaciones a clientes</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Shipments Tab */}

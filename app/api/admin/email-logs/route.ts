@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@supabase/supabase-js"
+
+function getServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+}
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +12,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type")
     const limit = Number.parseInt(searchParams.get("limit") || "100")
 
-    const supabase = await createClient()
+    const supabase = getServiceClient()
 
     let query = supabase.from("email_logs").select("*").order("created_at", { ascending: false }).limit(limit)
 
@@ -24,13 +28,11 @@ export async function GET(request: Request) {
 
     if (error) {
       if (error.message.includes("does not exist")) {
-        console.log("[v0] Email logs table not created yet, returning empty data")
         return NextResponse.json({
           logs: [],
           stats: { total: 0, sent: 0, failed: 0, pending: 0 },
         })
       }
-      console.error("[v0] Error fetching email logs:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -53,7 +55,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ logs, stats })
   } catch (error) {
-    console.error("[v0] Exception in email-logs API:", error)
     return NextResponse.json(
       {
         logs: [],

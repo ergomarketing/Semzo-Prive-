@@ -1,5 +1,9 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+
+function getServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+}
 
 // Genera código único
 function generateGiftCardCode(): string {
@@ -11,7 +15,7 @@ function generateGiftCardCode(): string {
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = getServiceClient()
 
     const { data: giftCards, error } = await supabase
       .from("gift_cards")
@@ -42,7 +46,7 @@ export async function GET() {
 // Crear gift card manualmente (admin)
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = getServiceClient()
     const { amount, recipientEmail, recipientName, expiresInMonths = 24 } = await request.json()
 
     const amountCents = Math.round(amount * 100)

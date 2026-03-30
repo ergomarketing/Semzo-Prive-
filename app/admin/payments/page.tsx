@@ -6,30 +6,40 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { DollarSign, TrendingUp, CreditCard, Calendar, ArrowLeft, Search } from "lucide-react"
-import Link from "next/link"
+import { DollarSign, TrendingUp, CreditCard, Calendar, Search, ExternalLink, RefreshCw } from "lucide-react"
 
-interface Payment {
+interface StripeCharge {
   id: string
-  created_at: string
   amount: number
+  currency: string
   status: string
-  payment_method: string
-  stripe_payment_id: string
-  profiles: {
-    full_name: string
-    email: string
-  }
-  reservations: {
-    bags: {
-      name: string
-      brand: string
-    }
-  }
+  created: number
+  description: string | null
+  customer_email: string | null
+  customer_name: string | null
+  payment_method_type: string
+  receipt_url: string | null
+}
+
+interface PaymentStats {
+  totalRevenue: number
+  thisMonthRevenue: number
+  totalCharges: number
+  succeeded: number
+  failed: number
+  refunded: number
 }
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [charges, setCharges] = useState<StripeCharge[]>([])
+  const [stats, setStats] = useState<PaymentStats>({
+    totalRevenue: 0,
+    thisMonthRevenue: 0,
+    totalCharges: 0,
+    succeeded: 0,
+    failed: 0,
+    refunded: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -38,10 +48,12 @@ export default function PaymentsPage() {
   }, [])
 
   const fetchPayments = async () => {
+    setLoading(true)
     try {
-      const response = await fetch("/api/admin/payments")
-      const data = await response.json()
-      setPayments(data)
+      const res = await fetch("/api/admin/payments")
+      const data = await res.json()
+      setCharges(data.charges || [])
+      setStats(data.stats || {})
     } catch (error) {
       console.error("Error fetching payments:", error)
     } finally {
@@ -50,184 +62,165 @@ export default function PaymentsPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      succeeded: "default",
-      pending: "secondary",
-      failed: "destructive",
-      refunded: "outline",
+    const map: Record<string, { label: string; class: string }> = {
+      succeeded: { label: "Exitoso", class: "bg-green-100 text-green-800" },
+      pending: { label: "Pendiente", class: "bg-yellow-100 text-yellow-800" },
+      failed: { label: "Fallido", class: "bg-red-100 text-red-800" },
+      refunded: { label: "Reembolsado", class: "bg-gray-100 text-gray-800" },
     }
-    const labels: Record<string, string> = {
-      succeeded: "Exitoso",
-      pending: "Pendiente",
-      failed: "Fallido",
-      refunded: "Reembolsado",
-    }
-    return <Badge variant={variants[status] || "default"}>{labels[status] || status}</Badge>
+    const config = map[status] || { label: status, class: "bg-gray-100 text-gray-800" }
+    return <Badge className={config.class}>{config.label}</Badge>
   }
 
-  const filteredPayments = payments.filter(
-    (payment) =>
-      payment.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.profiles.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.stripe_payment_id.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filtered = charges.filter(
+    (c) =>
+      c.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.id.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const stats = {
-    total: payments.reduce((sum, p) => sum + p.amount, 0),
-    succeeded: payments.filter((p) => p.status === "succeeded").length,
-    pending: payments.filter((p) => p.status === "pending").length,
-    thisMonth: payments
-      .filter((p) => {
-        const paymentDate = new Date(p.created_at)
-        const now = new Date()
-        return paymentDate.getMonth() === now.getMonth() && paymentDate.getFullYear() === now.getFullYear()
-      })
-      .reduce((sum, p) => sum + p.amount, 0),
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando pagos...</p>
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Pagos</h1>
+          <p className="text-gray-600 mt-1">Historial de cobros desde Stripe</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchPayments} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Actualizar
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.open("https://dashboard.stripe.com/payments", "_blank")}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Abrir Stripe
+          </Button>
         </div>
       </div>
-    )
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/admin">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver al Dashboard
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Pagos</h1>
-          <p className="text-gray-600 mt-2">Administra todos los pagos y transacciones</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">€{stats.total.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Este Mes</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">€{stats.thisMonth.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagos Exitosos</CardTitle>
-              <CreditCard className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.succeeded}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-              <Calendar className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Search */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Buscar Pagos</CardTitle>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+            <DollarSign className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por nombre, email o ID de pago..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <div className="text-2xl font-bold">€{stats.totalRevenue.toFixed(2)}</div>
+            <p className="text-xs text-gray-500">{stats.totalCharges} transacciones</p>
           </CardContent>
         </Card>
-
-        {/* Payments Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Historial de Pagos</CardTitle>
-            <CardDescription>{filteredPayments.length} pago(s) encontrado(s)</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Este Mes</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
+            <div className="text-2xl font-bold">€{stats.thisMonthRevenue.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Exitosos</CardTitle>
+            <CreditCard className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.succeeded}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Fallidos</CardTitle>
+            <Calendar className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Historial de Cobros</CardTitle>
+          <CardDescription>Datos en tiempo real desde Stripe</CardDescription>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar por email, nombre o ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 mt-2"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="animate-spin h-6 w-6 text-gray-400" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p>No hay pagos registrados</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Bolso</TableHead>
+                  <TableHead>Descripcion</TableHead>
+                  <TableHead>Metodo</TableHead>
                   <TableHead>Monto</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>ID Stripe</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>
-                      {new Date(payment.created_at).toLocaleDateString("es-ES", {
-                        year: "numeric",
-                        month: "short",
+                {filtered.map((charge) => (
+                  <TableRow key={charge.id}>
+                    <TableCell className="text-sm">
+                      {new Date(charge.created * 1000).toLocaleDateString("es-ES", {
                         day: "numeric",
+                        month: "short",
+                        year: "numeric",
                       })}
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{payment.profiles.full_name}</div>
-                        <div className="text-sm text-gray-500">{payment.profiles.email}</div>
-                      </div>
+                      <div className="font-medium">{charge.customer_name || "Sin nombre"}</div>
+                      <div className="text-xs text-gray-500">{charge.customer_email || "-"}</div>
                     </TableCell>
+                    <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">
+                      {charge.description || "-"}
+                    </TableCell>
+                    <TableCell className="text-sm capitalize">{charge.payment_method_type}</TableCell>
+                    <TableCell className="font-bold">
+                      €{(charge.amount / 100).toFixed(2)}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(charge.status)}</TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{payment.reservations.bags.name}</div>
-                        <div className="text-sm text-gray-500">{payment.reservations.bags.brand}</div>
-                      </div>
+                      {charge.receipt_url && (
+                        <a
+                          href={charge.receipt_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
                     </TableCell>
-                    <TableCell className="font-bold">€{payment.amount.toFixed(2)}</TableCell>
-                    <TableCell className="capitalize">{payment.payment_method}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {payment.stripe_payment_id.substring(0, 20)}...
-                      </code>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
