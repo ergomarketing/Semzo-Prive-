@@ -103,9 +103,9 @@ export default function PaymentFormContent({
 
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || "Error procesando gift card")
-        toast.success("Membresía confirmada. Redirigiendo a verificación de identidad...")
+        toast.success("¡Pago procesado! Verifica tu identidad para continuar.")
         setTimeout(() => {
-          router.push("/dashboard/membresia/status")
+          router.push("/verify-identity")
         }, 1500)
         return
       }
@@ -141,8 +141,8 @@ export default function PaymentFormContent({
       if (error) throw error
 
       if (paymentIntent?.status === "succeeded") {
-        toast.success("Pago realizado correctamente")
-        router.push("/dashboard/membresia/status")
+        toast.success("¡Pago procesado! Verifica tu identidad para continuar.")
+        router.push("/verify-identity")
         onSuccess()
       }
     } catch (e: any) {
