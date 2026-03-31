@@ -49,38 +49,25 @@ export async function POST() {
     return NextResponse.json({ error: "Datos personales incompletos" }, { status: 400 })
   }
 
-  // 4️⃣ Validar identidad
+  // 4️⃣ Validar identidad verificada
   if (profile.identity_verified !== true) {
     return NextResponse.json({ error: "Identidad no verificada" }, { status: 400 })
   }
 
-  // 5️⃣ Validar pago o gift card
-  const { data: payment } = await supabase
-    .from("payments")
-    .select("status")
-    .eq("user_id", user.id)
-    .eq("status", "succeeded")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  const { data: giftCardUsage } = await supabase
-    .from("gift_card_usages")
-    .select("id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  if (!payment && !giftCardUsage) {
-    return NextResponse.json({ error: "No hay pago ni gift card válida" }, { status: 400 })
+  // 5️⃣ Validar que está en estado pending_sepa (listo para activar)
+  if (profile.membership_status !== "pending_sepa") {
+    // Si ya está activo, retornar éxito
+    if (profile.membership_status === "active") {
+      return NextResponse.json({ success: true, membership_status: "active" })
+    }
+    return NextResponse.json({ error: "Estado de membresía inválido" }, { status: 400 })
   }
 
-  // 6️⃣ Activar membresía
+  // 6️⃣ Activar membresía en profiles
   const { error: updateError } = await supabase
     .from("profiles")
     .update({
-      membership_status: "pending",
+      membership_status: "active",
       membership_started_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -89,8 +76,18 @@ export async function POST() {
     return NextResponse.json({ error: "Error activando membresía" }, { status: 500 })
   }
 
+  // 7️⃣ Activar membresía en user_memberships
+  await supabase
+    .from("user_memberships")
+    .update({
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id)
+    .eq("status", "pending_sepa")
+
   return NextResponse.json({
     success: true,
-    membership_status: "pending",
+    membership_status: "active",
   })
 }

@@ -25,9 +25,9 @@ function VerifyIdentityResultContent() {
 
         if (data.verified === true || data.status === "verified") {
           setStatus("approved")
-          // Redirigir a dashboard automaticamente despues de mostrar exito
+          // Redirigir a configuración SEPA después de Identity verificado
           setTimeout(() => {
-            window.location.href = "/dashboard"
+            window.location.href = "/onboarding-complete"
           }, 2000)
         } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
@@ -53,7 +53,7 @@ function VerifyIdentityResultContent() {
     },
     approved: {
       title: "Verificacion completada",
-      message: "Tu identidad ha sido verificada correctamente. Redirigiendo a tu dashboard...",
+      message: "Tu identidad ha sido verificada. Ahora configura tu cuenta bancaria...",
     },
     rejected: {
       title: "Verificacion no completada",
