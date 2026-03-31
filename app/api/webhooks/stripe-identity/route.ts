@@ -113,24 +113,24 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           })
           .eq("id", intent.id)
 
-        // 2. Activar membresía en user_memberships (de pending_verification a active)
+        // 2. Marcar identity como verificado pero NO activar membresía (falta SEPA)
         await supabase
           .from("user_memberships")
           .update({
-            status: "active",
+            status: "pending_sepa",
             identity_verified: true,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", intent.user_id)
           .eq("status", "pending_verification")
 
-        // 3. Actualizar profile (identity + membership activa)
+        // 3. Actualizar profile (identity verificado, membresía aún pendiente de SEPA)
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
             identity_verified: true,
             stripe_verification_session_id: session.id,
-            membership_status: "active",
+            membership_status: "pending_sepa",
             updated_at: new Date().toISOString(),
           })
           .eq("id", intent.user_id)

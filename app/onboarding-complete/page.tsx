@@ -81,6 +81,12 @@ function SepaForm({ onComplete }: { onComplete: () => void }) {
           }),
         })
 
+        // 4. Activar membresía (Identity + SEPA completados)
+        await fetch("/api/memberships/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        })
+
         onComplete()
       } else {
         throw new Error("El mandato no se pudo completar")
