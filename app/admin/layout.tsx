@@ -14,7 +14,6 @@ import {
   Users,
   CreditCard,
   MapPin,
-  BarChart3,
   Mail,
   MessageSquare,
   LogOut,
@@ -90,7 +89,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: "General",
       items: [
         { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-        { label: "Análisis", href: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
         { label: "Reportes", href: "/admin/reports", icon: <FileText className="h-4 w-4" /> },
       ],
     },

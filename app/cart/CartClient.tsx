@@ -367,9 +367,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   }
 
   const handlePaymentSuccess = () => {
-    toast.success("¡Pago procesado exitosamente!")
+    toast.success("¡Pago procesado! Ahora verifica tu identidad.")
     clearCart()
-    router.push("/dashboard/membresia")
+    router.push("/verify-identity")
   }
 
   const handleError = (error: string) => {

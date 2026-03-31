@@ -132,8 +132,8 @@ export default function MembershipUpgradeClient({ plan, userId }: Props) {
           return
         }
 
-        toast.success("Membresía activada con Gift Card")
-        router.push("/dashboard/membresia")
+        toast.success("¡Pago procesado! Ahora verifica tu identidad.")
+        router.push("/verify-identity")
         return
       }
 
