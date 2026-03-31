@@ -57,12 +57,12 @@ export async function POST(request: NextRequest) {
     else if (billingCycle === "weekly") endDate.setDate(endDate.getDate() + 7)
     else endDate.setMonth(endDate.getMonth() + 1)
 
-    // 4. Upsert membresía
+    // 4. Upsert membresía (pending_verification hasta que complete Identity)
     const membershipPayload = {
       user_id: userId,
       membership_type: membershipType,
       billing_cycle: billingCycle,
-      status: "active",
+      status: "pending_verification",
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString(),
       stripe_subscription_id: null,
@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
     }
 
-    // 5. Sincronizar profiles
+    // 5. Sincronizar profiles (pending_verification hasta Identity)
     await supabase
       .from("profiles")
       .update({
-        membership_status: "active",
+        membership_status: "pending_verification",
         membership_type: membershipType,
         updated_at: new Date().toISOString(),
       })
