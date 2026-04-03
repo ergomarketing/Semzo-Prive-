@@ -211,7 +211,7 @@ export function LoginModal({ open, onOpenChange, onSuccess, onClose }: LoginModa
                     }}
                     onClick={() => {
                       handleClose()
-                      window.location.href = "/registro"
+                      window.location.href = "/signup"
                     }}
                   >
                     Unirse al Club
