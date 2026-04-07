@@ -76,6 +76,8 @@ export async function POST(req: Request) {
     .in("status", [
       "paid_pending_verification",
       "pending_payment",
+      "pending_verification",
+      "pending_sepa",
       "active",
       "completed",
       "pending",
@@ -94,7 +96,7 @@ export async function POST(req: Request) {
       .from("user_memberships")
       .select("id, membership_type")
       .eq("user_id", user.id)
-      .eq("status", "active")
+      .in("status", ["active", "pending_verification", "pending_sepa"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
