@@ -24,12 +24,14 @@ export async function GET() {
       .select("*")
       .order("created_at", { ascending: false })
 
+    // Incluir usuarios con membresía activa O pendientes de verificación (ya pagaron)
     const { data: activeMembers, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select(
         "id, full_name, email, membership_type, membership_status, created_at, updated_at, stripe_subscription_id, stripe_customer_id, subscription_end_date",
       )
-      .eq("membership_status", "active")
+      .in("membership_status", ["active", "paid_pending_verification", "pending_sepa", "pending_verification"])
+      .neq("membership_type", "free")
       .order("updated_at", { ascending: false })
 
     let allSubscriptions: any[] = []

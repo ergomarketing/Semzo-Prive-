@@ -159,6 +159,23 @@ export async function POST(req: NextRequest) {
 
         if (profileUpdateError) {
           console.error("[v0] Webhook: Profile update error:", profileUpdateError)
+        } else if (count === 0) {
+          // El update no afectó filas - el profile existe pero no se actualizó
+          // Intentar de nuevo con una query más específica
+          console.warn("[v0] Webhook: Profile update affected 0 rows, retrying with email lookup")
+          const { data: customer } = await stripe.customers.retrieve(customerId) as { data: Stripe.Customer };
+          if (customer && !customer.deleted && customer.email) {
+            await supabase
+              .from("profiles")
+              .update({
+                membership_status: "paid_pending_verification",
+                payment_status: "paid",
+                membership_type: membershipType,
+                stripe_customer_id: customerId,
+                updated_at: now,
+              })
+              .eq("email", customer.email);
+          }
         } else {
           console.log("[v0] Webhook: Profile updated for userId:", userId, "rows affected:", count)
         }
@@ -366,6 +383,15 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("stripe_subscription_id", subscriptionId);
+
+        // Sincronizar profiles con el mismo status
+        await supabase
+          .from("profiles")
+          .update({
+            membership_status: subscription.status === "active" ? "active" : "paid_pending_verification",
+            updated_at: now,
+          })
+          .eq("id", membership.user_id);
 
         await supabase
           .from("payment_history")
