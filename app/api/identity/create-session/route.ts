@@ -135,9 +135,10 @@ export async function POST(req: Request) {
     }
   }
 
+  // Prioridad: variable de entorno > dominio de produccion hardcodeado > localhost
   const appUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+    "https://semzoprive.com"
 
   const session = await stripe.identity.verificationSessions.create({
     type: "document",

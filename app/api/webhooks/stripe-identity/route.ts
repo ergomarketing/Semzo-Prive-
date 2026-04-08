@@ -113,26 +113,45 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           })
           .eq("id", intent.id)
 
-        // 2. Marcar identity como verificado pero NO activar membresía (falta SEPA)
-        await supabase
+        // 2. Marcar identity como verificado - buscar cualquier membresía del usuario
+        // Incluir todos los estados posibles: pending_verification, active, paid_pending_verification
+        const { data: membership } = await supabase
           .from("user_memberships")
-          .update({
-            status: "pending_sepa",
-            identity_verified: true,
-            updated_at: new Date().toISOString(),
-          })
+          .select("id, membership_type, status")
           .eq("user_id", intent.user_id)
-          .eq("status", "pending_verification")
+          .in("status", ["pending_verification", "active", "paid_pending_verification", "pending_sepa"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (membership) {
+          await supabase
+            .from("user_memberships")
+            .update({
+              status: "pending_sepa",
+              identity_verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", membership.id)
+        }
 
         // 3. Actualizar profile (identity verificado, membresía aún pendiente de SEPA)
+        // IMPORTANTE: Sincronizar también membership_type desde user_memberships
+        const profileUpdate: Record<string, any> = {
+          identity_verified: true,
+          stripe_verification_session_id: session.id,
+          membership_status: "pending_sepa",
+          updated_at: new Date().toISOString(),
+        }
+        
+        // Si encontramos la membresía, sincronizar el tipo
+        if (membership?.membership_type) {
+          profileUpdate.membership_type = membership.membership_type
+        }
+
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({
-            identity_verified: true,
-            stripe_verification_session_id: session.id,
-            membership_status: "pending_sepa",
-            updated_at: new Date().toISOString(),
-          })
+          .update(profileUpdate)
           .eq("id", intent.user_id)
 
         // 4. Actualizar identity_verifications a verified
