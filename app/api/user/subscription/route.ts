@@ -26,12 +26,12 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Obtener suscripción activa
+    // Obtener membresía activa desde user_memberships (fuente de verdad)
     const { data: subscription, error: subError } = await supabase
-      .from("subscriptions")
+      .from("user_memberships")
       .select("*")
       .eq("user_id", user.id)
-      .in("status", ["active", "trialing", "past_due"])
+      .in("status", ["active", "pending_verification", "paid_pending_verification", "pending_sepa", "trialing", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

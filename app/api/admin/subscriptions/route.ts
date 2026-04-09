@@ -19,6 +19,8 @@ export async function GET() {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
+    // DEPRECATED: La tabla 'subscriptions' está en desuso - usar user_memberships como fuente de verdad
+    // Mantenemos esta query temporalmente por compatibilidad con datos legacy
     const { data: subscriptions, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .select("*")

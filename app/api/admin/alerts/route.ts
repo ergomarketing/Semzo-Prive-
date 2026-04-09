@@ -42,8 +42,9 @@ export async function GET() {
       })
     }
 
+    // Buscar pagos fallidos en user_memberships (fuente de verdad)
     const { data: failedPayments } = await supabase
-      .from("subscriptions")
+      .from("user_memberships")
       .select("id, user_id, membership_type, profiles(full_name, email)")
       .eq("status", "past_due")
 

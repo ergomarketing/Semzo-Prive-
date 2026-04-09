@@ -55,7 +55,12 @@ export default function CatalogSection() {
       }
 
       try {
-        const { data, error } = await supabase.from("bags").select("*").order("brand", { ascending: true })
+        // Ordenar por display_order (manual desde admin), fallback a brand
+        const { data, error} = await supabase
+          .from("bags")
+          .select("*")
+          .order("display_order", { ascending: true, nullsFirst: false })
+          .order("brand", { ascending: true })
 
         if (error) throw error
 
