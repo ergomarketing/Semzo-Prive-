@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     for (const bag of potentialOrphanedBags) {
       const { data: activeReservation, error: reservationError } = await supabase
         .from("reservations")
-        .select("id, status")
+        .select("id, status, is_admin_rent")
         .eq("bag_id", bag.id)
         .in("status", ["confirmed", "active", "pending", "in_progress"])
         .limit(1)
@@ -68,10 +68,12 @@ export async function GET(request: Request) {
         continue
       }
 
-      // If no active reservation, this bag is orphaned
+      // No liberar si tiene reserva activa O si es un alquiler manual del admin
       if (!activeReservation) {
         orphanedBagIds.push(bag.id)
         console.log(`[CRON] Bag ${bag.id} (${bag.name}) is orphaned - status: ${bag.status}, updated: ${bag.updated_at}`)
+      } else if (activeReservation.is_admin_rent) {
+        console.log(`[CRON] Bag ${bag.id} (${bag.name}) has admin rental - skipping cleanup`)
       }
     }
 

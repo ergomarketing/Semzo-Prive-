@@ -117,6 +117,32 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Error al actualizar el estado del bolso" }, { status: 500 })
     }
 
+    // Si se marca como "rented", crear automáticamente una reserva administrativa
+    // Esto evita que el cron job lo detecte como "huérfano" y lo libere
+    if (status === "rented") {
+      const startDate = new Date()
+      const endDate = new Date()
+      endDate.setDate(endDate.getDate() + 7) // Por defecto 7 días
+
+      try {
+        await supabase.from("reservations").insert({
+          bag_id: bagId,
+          user_id: null, // Reserva administrativa sin usuario específico
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          status: "active",
+          is_admin_rent: true, // Flag para identificar alquileres manuales
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+        console.log(`[v0] Created administrative reservation for bag ${bagId}`)
+      } catch (reservationError) {
+        console.error("[v0] Error creating administrative reservation:", reservationError)
+        // No falla el update del bag, solo logueamos el error
+      }
+    }
+
     if (status === "available") {
       const { data: waitlistEntries } = await supabase
         .from("waitlist")
