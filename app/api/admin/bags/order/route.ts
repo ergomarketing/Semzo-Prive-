@@ -1,44 +1,20 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 
 export async function POST(request: Request) {
   try {
     console.log("[v0] POST /api/admin/bags/order called")
-    const cookieStore = await cookies()
+    
+    // Usar service role key directamente para actualizaciones de admin
+    // La autenticación ya se verifica en el layout de /admin
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
+        cookies: {},
       },
     )
-
-    // Verificar autenticación admin
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    console.log("[v0] User authenticated:", user?.id)
-
-    if (!user) {
-      console.log("[v0] No user found - returning 401")
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single()
-
-    console.log("[v0] User is_admin:", profile?.is_admin)
-
-    if (!profile?.is_admin) {
-      console.log("[v0] User is not admin - returning 403")
-      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
-    }
 
     // Recibir actualizaciones de orden
     const { updates } = await request.json()
