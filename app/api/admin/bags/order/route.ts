@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 
 export async function POST(request: Request) {
   try {
+    console.log("[v0] POST /api/admin/bags/order called")
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,13 +24,19 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    console.log("[v0] User authenticated:", user?.id)
+
     if (!user) {
+      console.log("[v0] No user found - returning 401")
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single()
 
+    console.log("[v0] User is_admin:", profile?.is_admin)
+
     if (!profile?.is_admin) {
+      console.log("[v0] User is not admin - returning 403")
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
@@ -37,10 +44,11 @@ export async function POST(request: Request) {
     const { updates } = await request.json()
 
     if (!Array.isArray(updates)) {
+      console.log("[v0] Invalid updates format")
       return NextResponse.json({ error: "Formato inválido" }, { status: 400 })
     }
 
-    console.log(`[v0] Updating order for ${updates.length} bags`)
+    console.log(`[v0] Updating order for ${updates.length} bags:`, updates)
 
     // Actualizar display_order en lote
     for (const update of updates) {
