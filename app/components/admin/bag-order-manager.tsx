@@ -170,10 +170,17 @@ export default function BagOrderManager() {
         display_order: index + 1,
       }))
 
-      for (const update of updates) {
-        const { error } = await supabase.from("bags").update({ display_order: update.display_order }).eq("id", update.id)
+      // Usar API endpoint que revalida el cache del catálogo
+      const response = await fetch("/api/admin/bags/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      })
 
-        if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al guardar")
       }
 
       setOriginalBags([...bags])
@@ -181,14 +188,14 @@ export default function BagOrderManager() {
 
       toast({
         title: "✅ Orden guardado",
-        description: "El orden del catálogo se ha actualizado correctamente",
+        description: "El catálogo se actualizará automáticamente",
       })
     } catch (error) {
       console.error("Error saving order:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo guardar el orden",
+        description: error instanceof Error ? error.message : "No se pudo guardar el orden",
       })
     } finally {
       setSaving(false)
