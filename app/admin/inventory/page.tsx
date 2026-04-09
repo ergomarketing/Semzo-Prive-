@@ -1,5 +1,6 @@
 import InventorySystem from "../../components/inventory-system"
 import ReservationCalendar from "../../components/reservation-calendar"
+import BagOrderManager from "../../components/admin/bag-order-manager"
 import Navbar from "../../components/navbar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -15,13 +16,18 @@ export default function AdminInventoryPage() {
           </div>
 
           <Tabs defaultValue="inventory" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl">
               <TabsTrigger value="inventory">Inventario</TabsTrigger>
+              <TabsTrigger value="order">Ordenar Catálogo</TabsTrigger>
               <TabsTrigger value="calendar">Calendario</TabsTrigger>
             </TabsList>
 
             <TabsContent value="inventory" className="mt-6">
               <InventorySystem />
+            </TabsContent>
+
+            <TabsContent value="order" className="mt-6">
+              <BagOrderManager />
             </TabsContent>
 
             <TabsContent value="calendar" className="mt-6">
