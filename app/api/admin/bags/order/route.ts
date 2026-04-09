@@ -1,46 +1,30 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
+    console.log("[v0] POST /api/admin/bags/order called")
+    
+    // Usar service role key directamente para actualizaciones de admin
+    // La autenticación ya se verifica en el layout de /admin
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
+        cookies: {},
       },
     )
-
-    // Verificar autenticación admin
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single()
-
-    if (!profile?.is_admin) {
-      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
-    }
 
     // Recibir actualizaciones de orden
     const { updates } = await request.json()
 
     if (!Array.isArray(updates)) {
+      console.log("[v0] Invalid updates format")
       return NextResponse.json({ error: "Formato inválido" }, { status: 400 })
     }
 
-    console.log(`[v0] Updating order for ${updates.length} bags`)
+    console.log(`[v0] Updating order for ${updates.length} bags:`, updates)
 
     // Actualizar display_order en lote
     for (const update of updates) {

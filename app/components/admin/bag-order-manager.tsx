@@ -170,6 +170,8 @@ export default function BagOrderManager() {
         display_order: index + 1,
       }))
 
+      console.log("[v0] Saving bag order, updates:", updates)
+
       // Usar API endpoint que revalida el cache del catálogo
       const response = await fetch("/api/admin/bags/order", {
         method: "POST",
@@ -177,7 +179,10 @@ export default function BagOrderManager() {
         body: JSON.stringify({ updates }),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       const data = await response.json()
+      console.log("[v0] Response data:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Error al guardar")
