@@ -50,11 +50,11 @@ export async function POST() {
         cancel_at_period_end: true,
       })
 
-      // Actualizar en nuestra base de datos
+      // Actualizar en user_memberships (fuente de verdad)
       await supabase
-        .from("subscriptions")
+        .from("user_memberships")
         .update({
-          cancel_at_period_end: true,
+          status: "cancelled",
           updated_at: new Date().toISOString(),
         })
         .eq("stripe_subscription_id", profile.stripe_subscription_id)
