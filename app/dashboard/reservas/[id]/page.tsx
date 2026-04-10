@@ -168,15 +168,29 @@ export default function ReservationDetailsPage() {
           return
         }
 
+        // profiles: solo datos de contacto
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, email, phone, membership_type, membership_status")
+          .select("id, full_name, email, phone")
           .eq("id", user.id)
           .single()
 
+        // membership_type y status de user_memberships (FUENTE DE VERDAD)
+        const { data: membershipData } = await supabase
+          .from("user_memberships")
+          .select("membership_type, status")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
         const enrichedData = {
           ...data,
-          profiles: profileData,
+          profiles: {
+            ...profileData,
+            membership_type: membershipData?.membership_type || null,
+            membership_status: membershipData?.status || null,
+          },
         }
 
         console.log("[ReservationDetails] Reservation loaded:", enrichedData)

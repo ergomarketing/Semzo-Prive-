@@ -217,10 +217,10 @@ export async function POST(request: NextRequest) {
 
     const effectivePlan = membership.membership_type || "free"
 
-    // Obtener perfil: email para notificaciones + identity_verified para proteccion backend
+    // Obtener perfil: solo datos de contacto (email, nombre)
     const { data: userProfile } = await supabase
       .from("profiles")
-      .select("full_name, email, identity_verified")
+      .select("full_name, email")
       .eq("id", userId)
       .single()
 
@@ -228,11 +228,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Error al obtener perfil de usuario" }, { status: 500 })
     }
 
-    // PUNTO 7: Proteccion backend — bloquear reservas si identidad no verificada
-    if (userProfile.identity_verified === false) {
+    // Proteccion backend: bloquear reservas si identidad no verificada
+    // Leer de identity_verifications (FUENTE DE VERDAD)
+    const { data: identityCheck } = await supabase
+      .from("identity_verifications")
+      .select("status")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const identityVerified =
+      identityCheck?.status === "verified" || identityCheck?.status === "approved"
+
+    if (!identityVerified) {
       return NextResponse.json(
         {
-          error: "Debes completar la verificación de identidad antes de realizar reservas.",
+          error: "Debes completar la verificacion de identidad antes de realizar reservas.",
           identity_verification_required: true,
         },
         { status: 403 }
@@ -448,7 +460,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reservation: existingWithBag, message: "Reserva ya existente" })
     }
 
-    // LLAMADA ATÓMICA AL RPC: locks + creaci����n de reserva
+    // LLAMADA ATÓMICA AL RPC: locks + creaci������n de reserva
     const passIdToConsume = passToUse?.id || usePassId
     
     console.log("[v0] Calling atomic RPC V3:", {
@@ -529,15 +541,8 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] New reservation created successfully:", reservation.id)
 
-    // POST-PROCESAMIENTO: Actualizar contador de pases disponibles
-    if (passIdToConsume) {
-      // El pase ya fue marcado como usado por el RPC
-      // Solo actualizamos el contador en profiles
-      const { data: passCount } = await supabase.rpc("count_available_passes", { p_user_id: userId })
-      if (passCount !== null) {
-        await supabase.from("profiles").update({ available_passes_count: passCount }).eq("id", userId)
-      }
-    }
+    // POST-PROCESAMIENTO: el pase ya fue marcado como usado por el RPC atomico
+    // El conteo de pases se calcula en tiempo real desde bag_passes, no se cachea en profiles
 
     try {
       await supabase.from("audit_log").insert({

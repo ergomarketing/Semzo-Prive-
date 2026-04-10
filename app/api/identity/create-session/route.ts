@@ -57,14 +57,17 @@ export async function POST(req: Request) {
 
   const user = { id: userId }
 
-  // Verificar si el usuario ya tiene identidad verificada
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("identity_verified")
-    .eq("id", user.id)
-    .single()
+  // Verificar si ya tiene identidad verificada (FUENTE DE VERDAD: identity_verifications)
+  const { data: existingVerified } = await supabase
+    .from("identity_verifications")
+    .select("status")
+    .eq("user_id", user.id)
+    .in("status", ["verified", "approved"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (profile?.identity_verified === true) {
+  if (existingVerified) {
     return NextResponse.json({ alreadyVerified: true })
   }
 

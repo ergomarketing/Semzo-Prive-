@@ -145,21 +145,23 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("identity_verified, full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
+        .select("full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
         .eq("id", currentUser.id)
-     .maybeSingle() 
+        .maybeSingle()
 
       const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.shipping_address
       setExtendedFormCompleted(!!hasExtendedData)
 
-      // Verificar desde identity_verifications (fuente de verdad)
+      // Verificar desde identity_verifications (FUENTE DE VERDAD)
       const { data: verification } = await supabase
         .from("identity_verifications")
         .select("status")
         .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
 
-      const isVerified = verification?.status === "verified" || profile?.identity_verified === true
+      const isVerified = verification?.status === "verified" || verification?.status === "approved"
       setIdentityVerified(isVerified)
 
       if (profile) {
@@ -190,13 +192,23 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         // Fetch profile data to determine extendedFormCompleted
         const { data: profile } = await supabase
           .from("profiles")
-          .select("identity_verified, full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
+          .select("full_name, first_name, last_name, phone, document_number, document_type, shipping_address, shipping_city, shipping_postal_code, shipping_country")
           .eq("id", session.user.id)
           .maybeSingle()
 
         const hasExtendedData = profile?.full_name && profile?.phone && profile?.document_number && profile?.shipping_address
         setExtendedFormCompleted(!!hasExtendedData)
-        setIdentityVerified(profile?.identity_verified === true)
+
+        // Verificar identidad desde identity_verifications (FUENTE DE VERDAD)
+        const { data: identityRec } = await supabase
+          .from("identity_verifications")
+          .select("status")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        setIdentityVerified(identityRec?.status === "verified" || identityRec?.status === "approved")
 
         if (profile) {
           setExtendedFormData((prev) => ({

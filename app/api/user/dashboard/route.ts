@@ -42,8 +42,18 @@ export async function GET() {
     const membershipType = activeMembership?.membership_type || null
     const membershipStatus = activeMembership ? "active" : "inactive"
 
-    // Identity se valida aparte desde profiles
-    const needsVerification = activeMembership && profile?.identity_verified === false
+    // Identity: leer de identity_verifications (FUENTE DE VERDAD)
+    const { data: identityRecord } = await supabase
+      .from("identity_verifications")
+      .select("status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const isIdentityVerified =
+      identityRecord?.status === "verified" || identityRecord?.status === "approved"
+    const needsVerification = activeMembership && !isIdentityVerified
 
     // Calcular fechas de membresía
     let membershipStartedAt = null

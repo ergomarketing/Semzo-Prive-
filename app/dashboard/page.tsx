@@ -73,12 +73,12 @@ export default function DashboardHome() {
   const membershipLabel = getStatusLabel(membershipUIStatus)
   const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
 
-  // Modal solo si: profile cargado + identity_verified es exactamente false + tiene membresía activa
-  // Nunca se muestra a usuarios sin membresía ni compradores de pases
+  // Modal solo si: tiene membresia activa + identidad no verificada (FUENTE: flags.needs_verification)
+  // Nunca se muestra a usuarios sin membresia ni compradores de pases
   const shouldShowModal =
-    profile !== null &&
-    profile !== undefined &&
-    profile?.identity_verified === false &&
+    flags !== null &&
+    flags !== undefined &&
+    flags?.needs_verification === true &&
     membership?.status === "active"
 
   const userName =

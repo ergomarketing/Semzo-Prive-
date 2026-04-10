@@ -32,26 +32,8 @@ export async function GET(request: Request) {
       console.log("[v0] check-status: Stripe session status:", stripeSession.status, "userId:", userId)
 
       if (stripeSession.status === "verified") {
-        // Actualizar DB
         if (userId) {
-          console.log("[v0] check-status: Updating profile to active for userId:", userId)
-          
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .update({
-              identity_verified: true,
-              identity_verified_at: now,
-              membership_status: "active",
-              updated_at: now,
-            })
-            .eq("id", userId)
-
-          if (profileError) {
-            console.error("[v0] check-status: Profile update error:", profileError)
-          } else {
-            console.log("[v0] check-status: Profile updated to active for userId:", userId)
-          }
-
+          // Actualizar identity_verifications (FUENTE DE VERDAD para identidad)
           await supabase
             .from("identity_verifications")
             .upsert({
@@ -61,6 +43,13 @@ export async function GET(request: Request) {
               verified_at: now,
               updated_at: now,
             }, { onConflict: "stripe_verification_id" })
+
+          // Activar user_memberships si hay una pendiente (FUENTE DE VERDAD para membresia)
+          await supabase
+            .from("user_memberships")
+            .update({ status: "active", updated_at: now })
+            .eq("user_id", userId)
+            .in("status", ["paid_pending_verification", "pending_verification", "pending"])
         }
 
         return NextResponse.json({
@@ -102,17 +91,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    // Buscar estado en profile
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("identity_verified, membership_status")
-      .eq("id", user.id)
-      .single()
+    // Buscar estado en identity_verifications (FUENTE DE VERDAD)
+    const { data: identityRecord } = await supabase
+      .from("identity_verifications")
+      .select("status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // Buscar estado de membresia en user_memberships (FUENTE DE VERDAD)
+    const { data: membershipRecord } = await supabase
+      .from("user_memberships")
+      .select("status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const isVerified = identityRecord?.status === "verified" || identityRecord?.status === "approved"
 
     return NextResponse.json({
-      verified: profile?.identity_verified === true,
-      status: profile?.identity_verified ? "verified" : "not_started",
-      membership_status: profile?.membership_status,
+      verified: isVerified,
+      status: identityRecord?.status || "not_started",
+      membership_status: membershipRecord?.status,
     })
   } catch (error: any) {
     console.error("[Identity Check Status Error]:", error)

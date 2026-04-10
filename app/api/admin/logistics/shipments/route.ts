@@ -38,10 +38,10 @@ async function activateMembershipOnDelivery(reservationId: string) {
       return
     }
 
-    // Obtener el perfil del usuario para ver su plan
+    // Obtener datos de contacto del perfil (email, nombre para notificacion)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("membership_type, membership_status, email, full_name")
+      .select("email, full_name")
       .eq("id", reservation.user_id)
       .single()
 
@@ -50,43 +50,42 @@ async function activateMembershipOnDelivery(reservationId: string) {
       return
     }
 
-    // Si ya tiene membresía activa con fecha, no modificar
-    if (profile.membership_status === "active") {
-      console.log("[Logistics] Membresía ya activa, actualizando fecha de inicio por nueva entrega")
+    // Obtener membresía desde user_memberships (FUENTE DE VERDAD)
+    const { data: activeMembership } = await supabase
+      .from("user_memberships")
+      .select("id, membership_type, status")
+      .eq("user_id", reservation.user_id)
+      .in("status", ["active", "pending_delivery", "pending_verification", "paid_pending_verification"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (activeMembership?.status === "active") {
+      console.log("[Logistics] Membresia ya activa, actualizando fecha de inicio por nueva entrega")
     }
 
-    const planId = profile.membership_type || "signature"
+    const planId = activeMembership?.membership_type || "signature"
     const durationDays = getMembershipDuration(planId)
     const now = new Date()
     const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000)
 
-    // Actualizar perfil con fechas de membresía basadas en la entrega
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        membership_status: "pending",
-        membership_start_date: now.toISOString(),
-        membership_end_date: endDate.toISOString(),
-        updated_at: now.toISOString(),
-      })
-      .eq("id", reservation.user_id)
+    // Activar user_memberships (FUENTE DE VERDAD para membresía)
+    if (activeMembership) {
+      const { error: updateError } = await supabase
+        .from("user_memberships")
+        .update({
+          status: "active",
+          start_date: now.toISOString(),
+          end_date: endDate.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("id", activeMembership.id)
 
-    if (updateError) {
-      console.error("[Logistics] Error activating membership:", updateError)
-      return
+      if (updateError) {
+        console.error("[Logistics] Error activating membership:", updateError)
+        return
+      }
     }
-
-    // También actualizar en user_memberships si existe
-    await supabase
-      .from("user_memberships")
-      .update({
-        status: "active",
-        start_date: now.toISOString(),
-        end_date: endDate.toISOString(),
-        updated_at: now.toISOString(),
-      })
-      .eq("user_id", reservation.user_id)
-      .eq("status", "pending_delivery")
 
     // Actualizar la reserva como activa
     await supabase
