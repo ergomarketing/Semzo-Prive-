@@ -32,11 +32,16 @@ export async function POST() {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, identity_verified, membership_status")
-      .eq("id", user.id)
+    // Leer estado de identidad de identity_verifications (FUENTE DE VERDAD)
+    const { data: latestIdentity } = await supabase
+      .from("identity_verifications")
+      .select("status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
+
+    const isIdentityVerified = latestIdentity?.status === "verified" || latestIdentity?.status === "approved"
 
     const { data: intent } = await supabase
       .from("membership_intents")
@@ -116,7 +121,7 @@ export async function POST() {
     }
 
     // 3) Payment is OK. Identity pending? relaunch/reuse verification.
-    if (profile?.identity_verified !== true) {
+    if (!isIdentityVerified) {
       const { data: latestVerification } = await supabase
         .from("identity_verifications")
         .select("stripe_verification_id, status")
@@ -135,10 +140,11 @@ export async function POST() {
           )
 
           if (existing.status === "verified") {
+            // Actualizar identity_verifications (FUENTE DE VERDAD)
             await supabase
-              .from("profiles")
-              .update({ identity_verified: true, identity_verified_at: new Date().toISOString() })
-              .eq("id", user.id)
+              .from("identity_verifications")
+              .update({ status: "verified", updated_at: new Date().toISOString() })
+              .eq("stripe_verification_id", latestVerification.stripe_verification_id)
           } else if (existing.status !== "canceled" && existing.url) {
             verificationUrl = existing.url
             verificationId = existing.id
@@ -148,13 +154,18 @@ export async function POST() {
         }
       }
 
-      const { data: freshProfile } = await supabase
-        .from("profiles")
-        .select("identity_verified")
-        .eq("id", user.id)
+      // Re-verificar identidad con la fuente de verdad
+      const { data: freshIdentity } = await supabase
+        .from("identity_verifications")
+        .select("status")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
 
-      if (freshProfile?.identity_verified !== true) {
+      const isFreshIdentityVerified = freshIdentity?.status === "verified" || freshIdentity?.status === "approved"
+
+      if (!isFreshIdentityVerified) {
         if (!verificationUrl) {
           const appUrl =
             process.env.NEXT_PUBLIC_SITE_URL ||
@@ -231,10 +242,8 @@ export async function POST() {
       .update({ status: "active", updated_at: new Date().toISOString() })
       .eq("id", intent.id)
 
-    await supabase
-      .from("profiles")
-      .update({ membership_status: "active", updated_at: new Date().toISOString() })
-      .eq("id", user.id)
+    // user_memberships ya se actualiza via syncMembershipFromStripe
+    // NO escribir a profiles.membership_status
 
     return NextResponse.json({
       action: "active" as ResumeAction,
