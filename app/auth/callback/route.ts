@@ -5,11 +5,13 @@ import { type NextRequest, NextResponse } from "next/server"
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
+  const token_hash = requestUrl.searchParams.get("token_hash")
+  const type = requestUrl.searchParams.get("type") as "signup" | "recovery" | "email" | null
   const next = requestUrl.searchParams.get("next")
   const plan = requestUrl.searchParams.get("plan")
   const origin = requestUrl.searchParams.get("origin")
 
-  if (code) {
+  if (code || token_hash) {
     const cookieStore = await cookies()
 
     const supabase = createServerClient(
@@ -27,7 +29,17 @@ export async function GET(request: NextRequest) {
       },
     )
 
-    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    // Manejar tanto code (PKCE flow) como token_hash (email confirmation flow)
+    let error, data
+    if (code) {
+      const result = await supabase.auth.exchangeCodeForSession(code)
+      error = result.error
+      data = result.data
+    } else if (token_hash && type) {
+      const result = await supabase.auth.verifyOtp({ token_hash, type })
+      error = result.error
+      data = result.data
+    }
 
     if (!error) {
       if (data.user) {
