@@ -771,9 +771,6 @@ export async function POST(req: NextRequest) {
         }
         break;
       }
-        }
-        break;
-      }
 
       default:
         break;
