@@ -37,9 +37,19 @@ export async function POST(request: NextRequest) {
       },
     )
 
+    // Construir redirect_to con el returnUrl para restaurar contexto tras confirmación
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
+    const callbackUrl = new URL(`${siteUrl}/auth/callback`)
+    if (returnUrl) callbackUrl.searchParams.set("next", returnUrl)
+    if (plan) callbackUrl.searchParams.set("plan", plan)
+    if (origin) callbackUrl.searchParams.set("origin", origin)
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email.toLowerCase().trim(),
-      password: password
+      password: password,
+      options: {
+        emailRedirectTo: callbackUrl.toString(),
+      },
     })
 
     if (authError) {
