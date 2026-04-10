@@ -34,7 +34,7 @@ interface Bag {
   display_order: number
 }
 
-function SortableBagItem({ bag }: { bag: Bag }) {
+function SortableBagItem({ bag, index }: { bag: Bag; index: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bag.id })
 
   const style = {
@@ -89,7 +89,7 @@ function SortableBagItem({ bag }: { bag: Bag }) {
             </span>
           </div>
 
-          <div className="text-sm text-slate-500">#{bag.display_order}</div>
+          <div className="text-sm text-slate-500">#{index + 1}</div>
         </div>
       </Card>
     </div>
@@ -170,8 +170,6 @@ export default function BagOrderManager() {
         display_order: index + 1,
       }))
 
-      console.log("[v0] Saving bag order, updates:", updates)
-
       // Usar API endpoint que revalida el cache del catálogo
       const response = await fetch("/api/admin/bags/order", {
         method: "POST",
@@ -179,10 +177,7 @@ export default function BagOrderManager() {
         body: JSON.stringify({ updates }),
       })
 
-      console.log("[v0] Response status:", response.status)
-
       const data = await response.json()
-      console.log("[v0] Response data:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Error al guardar")
@@ -250,8 +245,8 @@ export default function BagOrderManager() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={bags.map((b) => b.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
-              {bags.map((bag) => (
-                <SortableBagItem key={bag.id} bag={bag} />
+              {bags.map((bag, index) => (
+                <SortableBagItem key={bag.id} bag={bag} index={index} />
               ))}
             </div>
           </SortableContext>
