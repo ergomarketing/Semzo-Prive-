@@ -43,6 +43,8 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
           password,
           options: {
             data: { full_name: name },
+            // Redirigir al callback con next=/cart para restaurar contexto de checkout
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/cart`,
           },
         })
         if (error) throw error

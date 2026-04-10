@@ -429,7 +429,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           email: authEmail,
           password: authPassword,
           options: {
-            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+            // Redirigir al callback con next=/cart para restaurar contexto del carrito
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/cart`,
           },
         })
 
