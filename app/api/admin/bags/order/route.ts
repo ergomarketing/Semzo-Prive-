@@ -1,18 +1,21 @@
-import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 
 export async function POST(request: Request) {
   try {
-    console.log("[v0] POST /api/admin/bags/order called")
+
     
     // Usar service role key directamente para actualizaciones de admin
     // La autenticación ya se verifica en el layout de /admin
-    const supabase = createServerClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
-        cookies: {},
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
       },
     )
 
@@ -26,19 +29,29 @@ export async function POST(request: Request) {
 
     console.log(`[v0] Updating order for ${updates.length} bags:`, updates)
 
-    // Actualizar display_order en lote
-    for (const update of updates) {
-      const { error } = await supabase.from("bags").update({ display_order: update.display_order }).eq("id", update.id)
+    // Actualizar display_order en lote con upsert
+    const bagUpdates = updates.map((u: { id: string; display_order: number }) => ({
+      id: u.id,
+      display_order: u.display_order,
+    }))
 
-      if (error) {
-        console.error(`[v0] Error updating bag ${update.id}:`, error)
-        throw error
-      }
+    const { error: upsertError } = await supabase
+      .from("bags")
+      .upsert(bagUpdates, { onConflict: "id", ignoreDuplicates: false })
+
+    if (upsertError) {
+      console.error("[v0] Error upserting bag order:", upsertError)
+      throw upsertError
     }
 
-    // Revalidar páginas del catálogo para reflejar cambios
-    revalidatePath("/catalog")
-    revalidatePath("/")
+    // Revalidar páginas del catálogo para reflejar cambios inmediatamente
+    try {
+      revalidatePath("/catalog")
+      revalidatePath("/")
+    } catch (revalidateError) {
+      // No fallar si revalidatePath no funciona en preview
+      console.log("[v0] revalidatePath skipped:", revalidateError)
+    }
 
     console.log("[v0] Bag order updated and catalog revalidated")
 
