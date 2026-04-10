@@ -24,10 +24,23 @@ export async function GET(req: Request) {
     // Actualizar en Supabase si está verificado
     if (isVerified) {
       const supabase = await createRouteHandlerClient()
+      // Actualizar identity_verifications (FUENTE DE VERDAD)
       await supabase
-        .from("profiles")
-        .update({ identity_verified: true, identity_verified_at: new Date().toISOString() })
-        .eq("id", userId)
+        .from("identity_verifications")
+        .upsert({
+          user_id: userId,
+          stripe_verification_id: sessionId,
+          status: "verified",
+          verified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "stripe_verification_id" })
+
+      // Activar membresia pendiente en user_memberships (FUENTE DE VERDAD)
+      await supabase
+        .from("user_memberships")
+        .update({ status: "active", updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .in("status", ["paid_pending_verification", "pending_verification", "pending"])
     }
 
     return NextResponse.json({

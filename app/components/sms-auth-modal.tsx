@@ -168,6 +168,7 @@ const { data, error } = await supabase.auth.verifyOtp({
           .maybeSingle()
 
         if (!existingProfile) {
+          // Solo datos de contacto — estado de membresía e identidad se gestionan en sus tablas propias
           const profileData = {
             id: data.user.id,
             email: data.user.email || `${data.user.phone}@phone.semzoprive.com`,
@@ -175,7 +176,6 @@ const { data, error } = await supabase.auth.verifyOtp({
             full_name: data.user.user_metadata?.full_name || null,
             first_name: data.user.user_metadata?.first_name || null,
             last_name: data.user.user_metadata?.last_name || null,
-            membership_status: "inactive",
           }
 
           const { error: upsertError } = await supabase

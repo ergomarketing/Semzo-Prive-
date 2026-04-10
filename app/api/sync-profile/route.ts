@@ -45,13 +45,12 @@ export async function POST(request: NextRequest) {
     if (!existingProfile) {
       console.log("[SYNC PROFILE] creando perfil automáticamente")
 
+      // Crear perfil con datos basicos (NO estado de negocio)
       const { error: insertError } = await supabase
         .from("profiles")
         .insert({
           id: userId,
           email: user.email,
-          membership_status: "free",
-          identity_verified: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

@@ -32,56 +32,56 @@ export async function POST() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    // Leer membresia de user_memberships (FUENTE DE VERDAD)
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("id, user_id, status, membership_type, stripe_subscription_id, end_date")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (!membership || membership.status === "free" || membership.status === "cancelled") {
+      return NextResponse.json({ error: "No tienes una membresia activa" }, { status: 400 })
+    }
+
+    // Leer datos de contacto de profiles (solo lectura)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_subscription_id, email, full_name, membership_type, membership_status, subscription_end_date")
+      .select("email, full_name")
       .eq("id", user.id)
       .single()
 
-    if (!profile?.membership_status || profile.membership_status === "free") {
-      return NextResponse.json({ error: "No tienes una membresía activa" }, { status: 400 })
-    }
-
     let cancelDate: string
 
-    if (profile.stripe_subscription_id) {
-      // Cancelar suscripción en Stripe (al final del período)
-      const subscription = await stripe.subscriptions.update(profile.stripe_subscription_id, {
+    if (membership.stripe_subscription_id) {
+      // Cancelar suscripcion en Stripe (al final del periodo)
+      const subscription = await stripe.subscriptions.update(membership.stripe_subscription_id, {
         cancel_at_period_end: true,
       })
 
-      // Actualizar en user_memberships (fuente de verdad)
+      // Actualizar en user_memberships (FUENTE DE VERDAD)
       await supabase
         .from("user_memberships")
         .update({
           status: "cancelled",
           updated_at: new Date().toISOString(),
         })
-        .eq("stripe_subscription_id", profile.stripe_subscription_id)
+        .eq("id", membership.id)
 
       cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES")
     } else {
-      // Just set end date to now to cancel immediately since it's prepaid
-      const now = new Date()
-
-      await supabase
-        .from("profiles")
-        .update({
-          membership_status: "cancelled",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", user.id)
-
-      // Update user_memberships table if it exists
+      // Cancelar inmediatamente (prepaid/gift card)
       await supabase
         .from("user_memberships")
         .update({
           status: "cancelled",
+          updated_at: new Date().toISOString(),
         })
-        .eq("user_id", user.id)
+        .eq("id", membership.id)
 
-      cancelDate = profile.subscription_end_date
-        ? new Date(profile.subscription_end_date).toLocaleDateString("es-ES")
+      cancelDate = membership.end_date
+        ? new Date(membership.end_date).toLocaleDateString("es-ES")
         : new Date().toLocaleDateString("es-ES")
     }
 
@@ -91,49 +91,50 @@ export async function POST() {
       // Notify admin
       await emailService.sendWithResend({
         to: "mailbox@semzoprive.com",
-        subject: `Membresía cancelada: ${profile.full_name}`,
+        subject: `Membresia cancelada: ${profile?.full_name || "Usuario"}`,
         html: `
-          <h2>Usuario ha cancelado su membresía</h2>
-          <p><strong>Nombre:</strong> ${profile.full_name}</p>
-          <p><strong>Email:</strong> ${profile.email}</p>
-          <p><strong>Tipo de membresía:</strong> ${profile.membership_type}</p>
-          <p><strong>Método de pago:</strong> ${profile.stripe_subscription_id ? "Stripe" : "Gift Card"}</p>
+          <h2>Usuario ha cancelado su membresia</h2>
+          <p><strong>Nombre:</strong> ${profile?.full_name || "N/A"}</p>
+          <p><strong>Email:</strong> ${profile?.email || "N/A"}</p>
+          <p><strong>Tipo de membresia:</strong> ${membership.membership_type}</p>
+          <p><strong>Metodo de pago:</strong> ${membership.stripe_subscription_id ? "Stripe" : "Gift Card"}</p>
           <p><strong>Se cancela el:</strong> ${cancelDate}</p>
           ${
-            profile.stripe_subscription_id
-              ? "<p>La membresía permanecerá activa hasta el final del período de facturación.</p>"
-              : "<p>Membresía activada con Gift Card - cancelada inmediatamente.</p>"
+            membership.stripe_subscription_id
+              ? "<p>La membresia permanecera activa hasta el final del periodo de facturacion.</p>"
+              : "<p>Membresia activada con Gift Card - cancelada inmediatamente.</p>"
           }
         `,
       })
 
       // Notify user
-      await emailService.sendWithResend({
-        to: profile.email,
-        subject: "Membresía cancelada - Semzo Privé",
-        html: `
-          <h2>Hola ${profile.full_name},</h2>
-          <p>Tu membresía ha sido cancelada.</p>
-          ${
-            profile.stripe_subscription_id
-              ? `<p>Seguirás teniendo acceso completo hasta el <strong>${cancelDate}</strong>.</p>
-               <p>Si cambias de opinión, puedes reactivarla en cualquier momento desde tu panel.</p>`
-              : `<p>Tu membresía ha sido cancelada efectivamente.</p>
-               <p>Puedes activar una nueva membresía en cualquier momento desde tu panel.</p>`
-          }
-          <p>¡Esperamos verte pronto!</p>
-        `,
-      })
+      if (profile?.email) {
+        await emailService.sendWithResend({
+          to: profile.email,
+          subject: "Membresia cancelada - Semzo Prive",
+          html: `
+            <h2>Hola ${profile.full_name},</h2>
+            <p>Tu membresia ha sido cancelada.</p>
+            ${
+              membership.stripe_subscription_id
+                ? `<p>Seguiras teniendo acceso completo hasta el <strong>${cancelDate}</strong>.</p>
+                 <p>Si cambias de opinion, puedes reactivarla en cualquier momento desde tu panel.</p>`
+                : `<p>Tu membresia ha sido cancelada efectivamente.</p>
+                 <p>Puedes activar una nueva membresia en cualquier momento desde tu panel.</p>`
+            }
+            <p>Esperamos verte pronto!</p>
+          `,
+        })
+      }
     } catch (emailError) {
       console.error("Error sending cancellation emails:", emailError)
-      // Don't fail the request if email fails
     }
 
     return NextResponse.json({
       success: true,
-      message: profile.stripe_subscription_id
-        ? "Tu suscripción se cancelará al final del período actual"
-        : "Tu membresía ha sido cancelada",
+      message: membership.stripe_subscription_id
+        ? "Tu suscripcion se cancelara al final del periodo actual"
+        : "Tu membresia ha sido cancelada",
       cancelDate: cancelDate,
     })
   } catch (error) {

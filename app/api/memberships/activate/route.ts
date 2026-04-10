@@ -14,77 +14,71 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // 2️⃣ Obtener perfil
-  const { data: profile, error: profileError } = await supabase
+  // 2. Obtener membresia (FUENTE DE VERDAD)
+  const { data: membership, error: membershipError } = await supabase
+    .from("user_memberships")
+    .select("id, user_id, membership_type, status")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  if (membershipError || !membership) {
+    return NextResponse.json({ error: "Membresia no encontrada" }, { status: 400 })
+  }
+
+  // 3. Validar datos personales (profiles solo como datos de contacto)
+  const { data: profile } = await supabase
     .from("profiles")
-    .select(`
-      id,
-      membership_type,
-      membership_status,
-      identity_verified,
-      full_name,
-      phone,
-      document_number,
-      address,
-      city,
-      postal_code
-    `)
+    .select("full_name, phone, document_number, address, city, postal_code")
     .eq("id", user.id)
     .single()
 
-  if (profileError || !profile) {
-    return NextResponse.json({ error: "Perfil no encontrado" }, { status: 400 })
-  }
-
-  // 3️⃣ Validar datos personales
   const hasExtendedProfile =
-    profile.full_name &&
-    profile.phone &&
-    profile.document_number &&
-    profile.address &&
-    profile.city &&
-    profile.postal_code
+    profile?.full_name &&
+    profile?.phone &&
+    profile?.document_number &&
+    profile?.address &&
+    profile?.city &&
+    profile?.postal_code
 
   if (!hasExtendedProfile) {
     return NextResponse.json({ error: "Datos personales incompletos" }, { status: 400 })
   }
 
-  // 4️⃣ Validar identidad verificada
-  if (profile.identity_verified !== true) {
+  // 4. Validar identidad verificada (FUENTE DE VERDAD: identity_verifications)
+  const { data: identityCheck } = await supabase
+    .from("identity_verifications")
+    .select("status")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!identityCheck || (identityCheck.status !== "approved" && identityCheck.status !== "verified")) {
     return NextResponse.json({ error: "Identidad no verificada" }, { status: 400 })
   }
 
-  // 5️⃣ Validar que está en estado pending_sepa (listo para activar)
-  if (profile.membership_status !== "pending_sepa") {
-    // Si ya está activo, retornar éxito
-    if (profile.membership_status === "active") {
+  // 5. Validar que esta en estado pending_sepa (listo para activar)
+  if (membership.status !== "pending_sepa") {
+    if (membership.status === "active") {
       return NextResponse.json({ success: true, membership_status: "active" })
     }
-    return NextResponse.json({ error: "Estado de membresía inválido" }, { status: 400 })
+    return NextResponse.json({ error: "Estado de membresia invalido" }, { status: 400 })
   }
 
-  // 6️⃣ Activar membresía en profiles
+  // 6. Activar membresia en user_memberships (FUENTE DE VERDAD)
   const { error: updateError } = await supabase
-    .from("profiles")
-    .update({
-      membership_status: "active",
-      membership_started_at: new Date().toISOString(),
-    })
-    .eq("id", user.id)
-
-  if (updateError) {
-    return NextResponse.json({ error: "Error activando membresía" }, { status: 500 })
-  }
-
-  // 7️⃣ Activar membresía en user_memberships
-  await supabase
     .from("user_memberships")
     .update({
       status: "active",
       updated_at: new Date().toISOString(),
     })
-    .eq("user_id", user.id)
-    .eq("status", "pending_sepa")
+    .eq("id", membership.id)
+
+  if (updateError) {
+    return NextResponse.json({ error: "Error activando membresia" }, { status: 500 })
+  }
 
   return NextResponse.json({
     success: true,

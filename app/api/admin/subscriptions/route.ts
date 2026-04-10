@@ -26,13 +26,13 @@ export async function GET() {
       .select("*")
       .order("created_at", { ascending: false })
 
-    // Incluir usuarios con membresía activa O pendientes de verificación (ya pagaron)
-    const { data: activeMembers, error: profileError } = await supabaseAdmin
-      .from("profiles")
+    // Leer membresías desde user_memberships (FUENTE DE VERDAD)
+    const { data: activeMembers } = await supabaseAdmin
+      .from("user_memberships")
       .select(
-        "id, full_name, email, membership_type, membership_status, created_at, updated_at, stripe_subscription_id, stripe_customer_id, subscription_end_date",
+        "id, user_id, membership_type, status, created_at, updated_at, stripe_subscription_id, stripe_customer_id, ends_at, profiles!user_memberships_user_id_fkey(id, full_name, email)",
       )
-      .in("membership_status", ["active", "paid_pending_verification", "pending_sepa", "pending_verification"])
+      .in("status", ["active", "paid_pending_verification", "pending_sepa", "pending_verification"])
       .neq("membership_type", "free")
       .order("updated_at", { ascending: false })
 
@@ -82,28 +82,24 @@ export async function GET() {
       const existingUserIds = new Set(allSubscriptions.map((s) => s.user_id))
 
       for (const member of activeMembers) {
-        if (!existingUserIds.has(member.id)) {
-          allSubscriptions.push({
-            id: `profile_${member.id}`,
-            user_id: member.id,
-            membership_type: member.membership_type,
-            status: member.membership_status,
-            current_period_start: member.created_at,
-            current_period_end: member.subscription_end_date || null,
-            stripe_subscription_id: member.stripe_subscription_id,
-            stripe_customer_id: member.stripe_customer_id,
-            created_at: member.created_at,
-            updated_at: member.updated_at,
-            profiles: {
-              id: member.id,
-              full_name: member.full_name,
-              email: member.email,
-            },
-            stripe_verified_status: member.stripe_subscription_id ? null : "direct_payment",
-            status_match: true,
-          })
+          if (!existingUserIds.has(member.user_id)) {
+            allSubscriptions.push({
+              id: `membership_${member.id}`,
+              user_id: member.user_id,
+              membership_type: member.membership_type,
+              status: member.status,
+              current_period_start: member.created_at,
+              current_period_end: member.ends_at || null,
+              stripe_subscription_id: member.stripe_subscription_id,
+              stripe_customer_id: member.stripe_customer_id,
+              created_at: member.created_at,
+              updated_at: member.updated_at,
+              profiles: member.profiles || null,
+              stripe_verified_status: member.stripe_subscription_id ? null : "direct_payment",
+              status_match: true,
+            })
+          }
         }
-      }
     }
 
     return NextResponse.json(allSubscriptions)

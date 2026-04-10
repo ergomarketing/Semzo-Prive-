@@ -63,8 +63,8 @@ export default function MembershipStatusPage() {
 
     const { membership, profile, flags } = dashboardData
 
-    // Si ya tiene membresía activa y está verificado, redirigir
-    if (membership.status === "active" && profile.identity_verified !== false) {
+    // Si ya tiene membresía activa y está verificado (FUENTE: flags.needs_verification)
+    if (membership.status === "active" && flags?.needs_verification !== true) {
       setPollingActive(false)
       router.push("/dashboard")
       return

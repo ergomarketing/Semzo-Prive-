@@ -17,27 +17,28 @@ export async function GET() {
     const now = new Date()
     const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
+    // Leer membresías desde user_memberships (FUENTE DE VERDAD)
     const { data: expiringMemberships } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, membership_type, membership_end_date")
-      .eq("membership_status", "active")
-      .not("membership_end_date", "is", null)
-      .lte("membership_end_date", in7Days.toISOString())
-      .gte("membership_end_date", now.toISOString())
+      .from("user_memberships")
+      .select("id, user_id, membership_type, ends_at, profiles!user_memberships_user_id_fkey(full_name, email)")
+      .eq("status", "active")
+      .not("ends_at", "is", null)
+      .lte("ends_at", in7Days.toISOString())
+      .gte("ends_at", now.toISOString())
 
     for (const member of expiringMemberships || []) {
       const daysRemaining = Math.ceil(
-        (new Date(member.membership_end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        (new Date(member.ends_at).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       )
       alerts.push({
         id: `expiring-${member.id}`,
         type: "membership_expiring",
         severity: daysRemaining <= 3 ? "high" : "medium",
         title: `Membresía expirando en ${daysRemaining} día(s)`,
-        description: `La membresía ${member.membership_type} de ${member.full_name} expira pronto`,
-        user_id: member.id,
-        user_name: member.full_name,
-        user_email: member.email,
+        description: `La membresía ${member.membership_type} de ${member.profiles?.full_name} expira pronto`,
+        user_id: member.user_id,
+        user_name: member.profiles?.full_name,
+        user_email: member.profiles?.email,
         created_at: new Date().toISOString(),
       })
     }

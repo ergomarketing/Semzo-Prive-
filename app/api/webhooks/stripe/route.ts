@@ -141,46 +141,17 @@ export async function POST(req: NextRequest) {
           session.metadata?.billing_cycle ||
           (membershipType === "petite" ? "weekly" : "monthly");
 
-        // Actualizar profile del usuario (ya debe existir - se registró antes de pagar)
+        // Guardar stripe_customer_id en profiles (dato basico, no estado de negocio)
         const customerId = session.customer as string;
-
-        console.log("[v0] Webhook: Updating profile for userId:", userId)
-
-        const { error: profileUpdateError, count } = await supabase
+        await supabase
           .from("profiles")
           .update({
-            membership_status: "paid_pending_verification",
-            payment_status: "paid",
-            membership_type: membershipType,
             stripe_customer_id: customerId,
             updated_at: now,
           })
           .eq("id", userId);
 
-        if (profileUpdateError) {
-          console.error("[v0] Webhook: Profile update error:", profileUpdateError)
-        } else if (count === 0) {
-          // El update no afectó filas - el profile existe pero no se actualizó
-          // Intentar de nuevo con una query más específica
-          console.warn("[v0] Webhook: Profile update affected 0 rows, retrying with email lookup")
-          const { data: customer } = await stripe.customers.retrieve(customerId) as { data: Stripe.Customer };
-          if (customer && !customer.deleted && customer.email) {
-            await supabase
-              .from("profiles")
-              .update({
-                membership_status: "paid_pending_verification",
-                payment_status: "paid",
-                membership_type: membershipType,
-                stripe_customer_id: customerId,
-                updated_at: now,
-              })
-              .eq("email", customer.email);
-          }
-        } else {
-          console.log("[v0] Webhook: Profile updated for userId:", userId, "rows affected:", count)
-        }
-
-        // Crear/actualizar user_memberships
+        // Crear/actualizar user_memberships (FUENTE DE VERDAD para estado de membresia)
         const startDate = new Date(subscription.current_period_start * 1000);
         const endDate =
           billingCycle === "weekly"
@@ -384,15 +355,6 @@ export async function POST(req: NextRequest) {
           })
           .eq("stripe_subscription_id", subscriptionId);
 
-        // Sincronizar profiles con el mismo status
-        await supabase
-          .from("profiles")
-          .update({
-            membership_status: subscription.status === "active" ? "active" : "paid_pending_verification",
-            updated_at: now,
-          })
-          .eq("id", membership.user_id);
-
         await supabase
           .from("payment_history")
           .upsert(
@@ -410,14 +372,6 @@ export async function POST(req: NextRequest) {
             },
             { onConflict: "stripe_invoice_id" }
           );
-
-        await supabase
-          .from("profiles")
-          .update({
-            membership_status: subscription.status,
-            updated_at: now,
-          })
-          .eq("id", membership.user_id);
 
         // EMAIL AL USUARIO: Renovación confirmada
         const { data: renewProfile } = await supabase
@@ -482,14 +436,6 @@ export async function POST(req: NextRequest) {
             updated_at: now,
           })
           .eq("stripe_subscription_id", subscription.id);
-
-        await supabase
-          .from("profiles")
-          .update({
-            membership_status: subscription.status,
-            updated_at: now,
-          })
-          .eq("id", membership.user_id);
 
         console.log("ℹ️ Subscription status updated:", membership.user_id);
         break;
@@ -603,24 +549,12 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // --- REGULAR PAYMENT ---
-        const userId = pi.metadata?.user_id || pi.metadata?.supabase_user_id;
-        if (!userId) break;
-        await supabase
-          .from("profiles")
-          .update({ payment_status: "paid", updated_at: now })
-          .eq("id", userId);
+        // --- REGULAR PAYMENT --- (no escribir estado en profiles)
         break;
       }
 
       case "payment_intent.processing": {
-        const pi = event.data.object as Stripe.PaymentIntent;
-        const userId = pi.metadata?.user_id || pi.metadata?.supabase_user_id;
-        if (!userId) break;
-        await supabase
-          .from("profiles")
-          .update({ payment_status: "processing", updated_at: now })
-          .eq("id", userId);
+        // Estado de pago se refleja en user_memberships, no en profiles
         break;
       }
 
@@ -733,27 +667,7 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      case "payment_intent.succeeded": {
-        const pi = event.data.object as Stripe.PaymentIntent;
-        const userId = pi.metadata?.user_id;
-        if (!userId) break;
-        await supabase
-          .from("profiles")
-          .update({ payment_status: "paid", updated_at: now })
-          .eq("id", userId);
-        break;
-      }
-
-      case "payment_intent.processing": {
-        const pi = event.data.object as Stripe.PaymentIntent;
-        const userId = pi.metadata?.user_id;
-        if (!userId) break;
-        await supabase
-          .from("profiles")
-          .update({ payment_status: "processing", updated_at: now })
-          .eq("id", userId);
-        break;
-      }
+      // Bloques duplicados de payment_intent eliminados (ya manejados arriba)
 
       /**
        * ============================================================
@@ -765,28 +679,36 @@ export async function POST(req: NextRequest) {
         const customerId = invoice.customer as string;
         const amountDue = invoice.amount_due ? (invoice.amount_due / 100).toFixed(2) : undefined;
 
-        // Buscar usuario por stripe_customer_id
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, email, full_name, first_name, last_name, failed_payment_count")
+        // Buscar membresia y usuario por stripe_customer_id
+        const { data: failedMembership } = await supabase
+          .from("user_memberships")
+          .select("user_id, failed_payment_count")
           .eq("stripe_customer_id", customerId)
           .single();
 
-        if (profile) {
-          const customerName = profile.full_name || 
-            `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
-            "Cliente";
-
-          // Incrementar contador de pagos fallidos
-          const failedCount = (profile.failed_payment_count || 0) + 1;
+        if (failedMembership) {
+          // Incrementar contador de pagos fallidos en user_memberships
+          const failedCount = (failedMembership.failed_payment_count || 0) + 1;
           await supabase
-            .from("profiles")
-            .update({ 
-              payment_status: "failed",
+            .from("user_memberships")
+            .update({
               failed_payment_count: failedCount,
-              updated_at: now 
+              dunning_status: failedCount >= 3 ? "critical" : "warning",
+              updated_at: now,
             })
-            .eq("id", profile.id);
+            .eq("user_id", failedMembership.user_id);
+
+          // Obtener datos de contacto del perfil (solo lectura de datos basicos)
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", failedMembership.user_id)
+            .single();
+
+          if (profile) {
+            const customerName = profile.full_name || 
+              `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
+              "Cliente";
 
           // Enviar email de pago fallido
           const emailService = EmailServiceProduction.getInstance();
@@ -797,44 +719,51 @@ export async function POST(req: NextRequest) {
             reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
           });
 
-          console.log(`[Stripe Webhook] Pago fallido para usuario ${profile.id}, intento #${failedCount}`);
+          console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}`);
+          }
         }
         break;
       }
 
       case "payment_intent.payment_failed": {
         const pi = event.data.object as Stripe.PaymentIntent;
-        const userId = pi.metadata?.user_id;
-        
-        if (userId) {
-          // Buscar perfil
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("email, full_name, first_name, last_name, failed_payment_count")
-            .eq("id", userId)
+        const piUserId = pi.metadata?.user_id;
+
+        if (piUserId) {
+          // Actualizar failed_payment_count en user_memberships
+          const { data: piMembership } = await supabase
+            .from("user_memberships")
+            .select("failed_payment_count")
+            .eq("user_id", piUserId)
             .single();
 
-          if (profile) {
-            const customerName = profile.full_name || 
-              `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
-              "Cliente";
-
-            // Actualizar estado de pago
-            const failedCount = (profile.failed_payment_count || 0) + 1;
+          if (piMembership) {
+            const piFailedCount = (piMembership.failed_payment_count || 0) + 1;
             await supabase
-              .from("profiles")
-              .update({ 
-                payment_status: "failed",
-                failed_payment_count: failedCount,
-                updated_at: now 
+              .from("user_memberships")
+              .update({
+                failed_payment_count: piFailedCount,
+                dunning_status: piFailedCount >= 3 ? "critical" : "warning",
+                updated_at: now,
               })
-              .eq("id", userId);
+              .eq("user_id", piUserId);
+          }
 
-            // Enviar email
+          // Leer datos basicos del perfil para enviar email
+          const { data: piProfile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", piUserId)
+            .single();
+
+          if (piProfile) {
+            const piCustomerName = piProfile.full_name || 
+              `${piProfile.first_name || ""} ${piProfile.last_name || ""}`.trim() || 
+              "Cliente";
             const emailService = EmailServiceProduction.getInstance();
             await emailService.sendPaymentFailedEmail({
-              userEmail: profile.email,
-              userName: customerName,
+              userEmail: piProfile.email,
+              userName: piCustomerName,
               amount: pi.amount ? (pi.amount / 100).toFixed(2) : undefined,
               reason: pi.last_payment_error?.message || "Pago rechazado"
             });

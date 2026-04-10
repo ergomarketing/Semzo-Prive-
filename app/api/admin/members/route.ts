@@ -30,11 +30,27 @@ export async function GET(request: NextRequest) {
 
     const validProfiles = profiles?.filter((p) => authUserIds.has(p.id)) || []
 
-    const { data: reservationCounts } = await supabase.from("reservations").select("user_id")
+    const [{ data: reservationCounts }, { data: memberships }] = await Promise.all([
+      supabase.from("reservations").select("user_id"),
+      // Leer membresías desde user_memberships (FUENTE DE VERDAD)
+      supabase
+        .from("user_memberships")
+        .select("user_id, membership_type, status")
+        .in("status", ["active", "paid_pending_verification", "pending_verification"])
+        .order("created_at", { ascending: false }),
+    ])
 
     const rentalCountMap: Record<string, number> = {}
     reservationCounts?.forEach((r) => {
       rentalCountMap[r.user_id] = (rentalCountMap[r.user_id] || 0) + 1
+    })
+
+    // Crear mapa user_id → membresía más reciente activa
+    const membershipMap: Record<string, { membership_type: string; status: string }> = {}
+    memberships?.forEach((m) => {
+      if (!membershipMap[m.user_id]) {
+        membershipMap[m.user_id] = { membership_type: m.membership_type, status: m.status }
+      }
     })
 
     const members =
@@ -43,9 +59,9 @@ export async function GET(request: NextRequest) {
         name: profile.full_name || `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Usuario",
         email: profile.email,
         phone: profile.shipping_phone || "No disponible",
-        membership: profile.membership_type || "free",
+        membership: membershipMap[profile.id]?.membership_type || "free",
         joinDate: profile.created_at,
-        status: profile.membership_status === "active" ? "active" : "inactive",
+        status: membershipMap[profile.id]?.status === "active" ? "active" : "inactive",
         currentBag: null,
         totalRentals: rentalCountMap[profile.id] || 0,
         shippingAddress: profile.shipping_address,

@@ -5,11 +5,13 @@ import { type NextRequest, NextResponse } from "next/server"
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
+  const token_hash = requestUrl.searchParams.get("token_hash")
+  const type = requestUrl.searchParams.get("type") as "signup" | "recovery" | "email" | null
   const next = requestUrl.searchParams.get("next")
   const plan = requestUrl.searchParams.get("plan")
   const origin = requestUrl.searchParams.get("origin")
 
-  if (code) {
+  if (code || token_hash) {
     const cookieStore = await cookies()
 
     const supabase = createServerClient(
@@ -27,7 +29,17 @@ export async function GET(request: NextRequest) {
       },
     )
 
-    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    // Manejar tanto code (PKCE flow) como token_hash (email confirmation flow)
+    let error, data
+    if (code) {
+      const result = await supabase.auth.exchangeCodeForSession(code)
+      error = result.error
+      data = result.data
+    } else if (token_hash && type) {
+      const result = await supabase.auth.verifyOtp({ token_hash, type })
+      error = result.error
+      data = result.data
+    }
 
     if (!error) {
       if (data.user) {
@@ -70,19 +82,20 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // RESTAURAR CONTEXTO ORIGINAL: verificar returnUrl en cookies primero
+      // RESTAURAR CONTEXTO ORIGINAL: prioridad: next param > cookie > plan > cart > dashboard
       const returnUrl = cookieStore.get('checkout_return_url')?.value
 
-      if (returnUrl) {
+      if (next) {
+        // next tiene la URL original donde estaba el usuario (bolso, carrito, etc.)
+        return NextResponse.redirect(new URL(next, request.url))
+      } else if (returnUrl) {
         cookieStore.delete('checkout_return_url')
         return NextResponse.redirect(new URL(returnUrl, request.url))
       } else if (origin === "checkout" && plan) {
         return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
-      } else if (next) {
-        return NextResponse.redirect(new URL(next, request.url))
       } else {
-        // Último recurso: ir al cart si hay items, sino dashboard
-        return NextResponse.redirect(new URL("/cart", request.url))
+        // Último recurso: ir al dashboard del usuario
+        return NextResponse.redirect(new URL("/dashboard", request.url))
       }
     } else {
       return NextResponse.redirect(

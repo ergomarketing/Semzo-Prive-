@@ -80,23 +80,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ status: "incomplete" })
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("identity_verified, membership_status")
-      .eq("id", userId)
-      .single()
+    // Leer estado de identidad de identity_verifications (FUENTE DE VERDAD)
+    const { data: identityRecord } = await supabase
+      .from("identity_verifications")
+      .select("status")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    // Si la suscripcion de Stripe esta activa o en trial, el pago fue exitoso
-    // No dependemos de que el webhook haya activado la fila — eso puede tardar
+    const isIdentityVerified =
+      identityRecord?.status === "verified" || identityRecord?.status === "approved"
+
     const stripePaymentOk =
       subscription.status === "active" ||
       subscription.status === "trialing" ||
-      subscription.status === "incomplete" // primer pago puede quedar en incomplete momentáneamente
+      subscription.status === "incomplete"
 
     if (stripePaymentOk) {
       return NextResponse.json({
         status: "active",
-        identity_verified: profile?.identity_verified ?? false,
+        identity_verified: isIdentityVerified,
         user_id: userId,
         mode: "subscription",
       })

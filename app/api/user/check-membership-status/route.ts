@@ -20,27 +20,30 @@ export async function GET(request: NextRequest) {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_status, membership_type, subscription_end_date")
-      .eq("id", userId)
+    // Leer de user_memberships (FUENTE DE VERDAD)
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("status, membership_type, end_date")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single()
 
-    if (!profile) {
+    if (!membership) {
       return NextResponse.json({ hasActiveMembership: false })
     }
 
     const hasActiveMembership =
-      profile.membership_status === "active" &&
-      profile.membership_type &&
-      profile.membership_type !== "free" &&
-      profile.subscription_end_date &&
-      new Date(profile.subscription_end_date) > new Date()
+      membership.status === "active" &&
+      membership.membership_type &&
+      membership.membership_type !== "free" &&
+      membership.end_date &&
+      new Date(membership.end_date) > new Date()
 
     return NextResponse.json({
       hasActiveMembership,
-      membershipType: profile.membership_type,
-      endDate: profile.subscription_end_date,
+      membershipType: membership.membership_type,
+      endDate: membership.end_date,
     })
   } catch (error) {
     console.error("Error checking membership status:", error)

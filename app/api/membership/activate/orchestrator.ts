@@ -78,34 +78,49 @@ export async function syncMembershipFromStripe(
   }
 
   // --- ACTIVACION AUTOMATICA DE MEMBRESIA ---
-  // Verificar si se cumplen todas las condiciones para activar
-  const { data: profile } = await supabase
+  // Verificar condiciones usando FUENTES DE VERDAD correctas
+  
+  // Condicion 1: pago OK (ya verificado: status viene de Stripe)
+  const hasActiveMembership = status === "active" || subscription.status === "trialing"
+
+  // Condicion 2: identidad verificada (FUENTE DE VERDAD: identity_verifications)
+  const { data: identityRecord } = await supabase
+    .from("identity_verifications")
+    .select("status")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  const hasIdentityVerified = identityRecord?.status === "verified" || identityRecord?.status === "approved"
+
+  // Condicion 3: mandato SEPA (dato de pago en profiles, aceptable)
+  const { data: profilePayment } = await supabase
     .from("profiles")
-    .select("identity_verified, sepa_payment_method_id, membership_status")
+    .select("sepa_payment_method_id")
     .eq("id", userId)
     .single()
 
-  const hasActiveMembership = status === "active" || subscription.status === "trialing"
-  const hasIdentityVerified = profile?.identity_verified === true
-  const hasSepaMandate = !!profile?.sepa_payment_method_id
-  const isNotAlreadyActive = profile?.membership_status !== "active"
+  const hasSepaMandate = !!profilePayment?.sepa_payment_method_id
+
+  // Condicion 4: no duplicar activacion (leer de user_memberships)
+  const { data: currentMembership } = await supabase
+    .from("user_memberships")
+    .select("status")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  const isNotAlreadyActive = currentMembership?.status !== "active"
 
   console.log("[ORCHESTRATOR CHECK] Evaluando condiciones de activacion:", {
     userId,
-    // Condicion 1: pago
     payment_ok: hasActiveMembership,
-    stripe_subscription_status: subscription.status,
-    mapped_status: status,
-    // Condicion 2: identidad
-    identity_verified: profile?.identity_verified,
     identity_verified_ok: hasIdentityVerified,
-    // Condicion 3: mandato SEPA
-    sepa_payment_method_id: profile?.sepa_payment_method_id ?? null,
     sepa_mandate_ok: hasSepaMandate,
-    // Estado actual en DB
-    current_membership_status: profile?.membership_status ?? null,
+    current_status: currentMembership?.status,
     is_not_already_active: isNotAlreadyActive,
-    // Resultado final
     should_activate: hasActiveMembership && hasIdentityVerified && hasSepaMandate && isNotAlreadyActive,
   })
 
@@ -116,13 +131,14 @@ export async function syncMembershipFromStripe(
     isNotAlreadyActive
 
   if (shouldActivate) {
+    // Activar en user_memberships (FUENTE DE VERDAD)
     const { error: activationError } = await supabase
-      .from("profiles")
+      .from("user_memberships")
       .update({
-        membership_status: "active",
+        status: "active",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", userId)
+      .eq("user_id", userId)
 
     if (activationError) {
       console.log("[ORCHESTRATOR ERROR] Fallo al activar membresia:", {
