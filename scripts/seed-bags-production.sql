@@ -1,0 +1,206 @@
+-- Seed de bolsos de lujo para producción
+-- Incluye los campos completos de la tabla bags actual
+
+INSERT INTO public.bags (
+  name,
+  brand,
+  description,
+  retail_price,
+  image_url,
+  images,
+  category,
+  condition,
+  status,
+  membership_type,
+  display_order,
+  last_maintenance,
+  created_at,
+  updated_at
+) VALUES
+
+-- L'ESSENTIEL (membership_type = 'essentiel') -------------------------
+
+(
+  'Neverfull MM',
+  'Louis Vuitton',
+  'El bolso tote más icónico de Louis Vuitton en canvas Monogram. Espacioso, versátil y atemporal, perfecto para el día a día con un toque de lujo.',
+  1600,
+  'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
+  '["https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80"]',
+  'tote',
+  'excellent',
+  'available',
+  'essentiel',
+  1,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Speedy 25',
+  'Louis Vuitton',
+  'Clásico bolso de mano en canvas Damier Ebène. Compacto y elegante, un imprescindible del armario de moda.',
+  1100,
+  'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
+  '["https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"]',
+  'handbag',
+  'very-good',
+  'available',
+  'essentiel',
+  2,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'GG Marmont Small',
+  'Gucci',
+  'Bolso acolchado con el icónico cierre de doble G en cuero matelassé. Un clásico moderno de Gucci con cadena dorada.',
+  1500,
+  'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80',
+  '["https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80"]',
+  'shoulder',
+  'excellent',
+  'available',
+  'essentiel',
+  3,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Diana Small',
+  'Prada',
+  'Bolso de cuero Saffiano con hardware triangular Prada. Diseño limpio y sofisticado, tributo a la icónica Lady Di.',
+  1500,
+  'https://images.unsplash.com/photo-1614179818511-5e8ea9c7b5a5?w=800&q=80',
+  '["https://images.unsplash.com/photo-1614179818511-5e8ea9c7b5a5?w=800&q=80"]',
+  'handbag',
+  'excellent',
+  'available',
+  'essentiel',
+  4,
+  NOW(),
+  NOW(),
+  NOW()
+),
+
+-- SIGNATURE (membership_type = 'signature') ---------------------------
+
+(
+  'Classic Flap Medium',
+  'Chanel',
+  'El bolso más emblemático de Chanel en cuero acolchado caviar con cadena entrelazada dorada. Un símbolo de elegancia atemporal.',
+  8800,
+  'https://images.unsplash.com/photo-1608848461950-0fe51dfc41cb?w=800&q=80',
+  '["https://images.unsplash.com/photo-1608848461950-0fe51dfc41cb?w=800&q=80"]',
+  'shoulder',
+  'excellent',
+  'available',
+  'signature',
+  5,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Peekaboo Medium',
+  'Fendi',
+  'Bolso structured con cierre de barra abatible en cuero selleria. Artesanía italiana de la más alta calidad.',
+  4200,
+  'https://images.unsplash.com/photo-1575844264771-892081089af5?w=800&q=80',
+  '["https://images.unsplash.com/photo-1575844264771-892081089af5?w=800&q=80"]',
+  'handbag',
+  'excellent',
+  'available',
+  'signature',
+  6,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Saddle Bag',
+  'Dior',
+  'El bolso más reconocible de Dior en cuero de becerro granulado. Rediseñado por Maria Grazia Chiuri, un icono moderno.',
+  3600,
+  'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
+  '["https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80"]',
+  'shoulder',
+  'excellent',
+  'available',
+  'signature',
+  7,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Loulou Small',
+  'Yves Saint Laurent',
+  'Bolso acolchado en cuero matelassé con cadena dorada y cierre YSL. Glamour parisino en estado puro.',
+  2100,
+  'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=80',
+  '["https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=80"]',
+  'shoulder',
+  'very-good',
+  'available',
+  'signature',
+  8,
+  NOW(),
+  NOW(),
+  NOW()
+),
+
+-- PRIVÉ (membership_type = 'prive') -----------------------------------
+
+(
+  'Birkin 30',
+  'Hermès',
+  'El bolso más codiciado del mundo en cuero Togo con hardware Palladio. Pieza de inversión y símbolo de estatus absoluto.',
+  12000,
+  'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
+  '["https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"]',
+  'handbag',
+  'excellent',
+  'available',
+  'prive',
+  9,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Kelly 28',
+  'Hermès',
+  'Bolso Kelly en cuero Epsom con cierre de correa y candado. Elegancia atemporal con historia real, el favorito de la Princesa Grace.',
+  10500,
+  'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=800&q=80',
+  '["https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=800&q=80"]',
+  'handbag',
+  'excellent',
+  'available',
+  'prive',
+  10,
+  NOW(),
+  NOW(),
+  NOW()
+),
+(
+  'Lady Dior Large',
+  'Dior',
+  'El bolso preferido de Lady Di en cuero cannage con charms D.I.O.R. Lujo parisino en su máxima expresión.',
+  5200,
+  'https://images.unsplash.com/photo-1614179818511-5e8ea9c7b5a5?w=800&q=80',
+  '["https://images.unsplash.com/photo-1614179818511-5e8ea9c7b5a5?w=800&q=80"]',
+  'handbag',
+  'excellent',
+  'available',
+  'prive',
+  11,
+  NOW(),
+  NOW(),
+  NOW()
+)
+
+ON CONFLICT DO NOTHING;
