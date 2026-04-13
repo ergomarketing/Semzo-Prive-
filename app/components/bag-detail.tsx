@@ -466,7 +466,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       <div className="container mx-auto px-4 pb-12">
         <div className="grid lg:grid-cols-2 gap-12">
           <div className="space-y-4">
-            <div className="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden group">
+            <div className="relative aspect-square bg-white rounded-2xl overflow-hidden group">
               {bag.availability.status === "rented" && (
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
                   <div className="text-center text-white">
@@ -506,7 +506,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`aspect-square bg-slate-50 rounded-lg overflow-hidden border-2 transition-all ${
+                  className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all ${
                     selectedImage === index
                       ? "border-indigo-dark shadow-md"
                       : "border-transparent hover:border-slate-200"
@@ -846,7 +846,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {bagsToShow.slice(0, 4).map((relatedBag) => (
                 <Link key={relatedBag.id} href={`/catalog/${relatedBag.id}`} className="group">
-                  <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3">
+                  <div className="aspect-square bg-white rounded-xl overflow-hidden mb-3">
                     <Image
                       src={relatedBag.image || "/placeholder.svg"}
                       alt={relatedBag.name}
