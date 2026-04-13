@@ -29,19 +29,17 @@ export async function POST(request: Request) {
 
     console.log(`[v0] Updating order for ${updates.length} bags:`, updates)
 
-    // Actualizar display_order en lote con upsert
-    const bagUpdates = updates.map((u: { id: string; display_order: number }) => ({
-      id: u.id,
-      display_order: u.display_order,
-    }))
+    // Actualizar display_order individualmente para cada bolso
+    for (const u of updates as { id: string; display_order: number }[]) {
+      const { error: updateError } = await supabase
+        .from("bags")
+        .update({ display_order: u.display_order })
+        .eq("id", u.id)
 
-    const { error: upsertError } = await supabase
-      .from("bags")
-      .upsert(bagUpdates, { onConflict: "id", ignoreDuplicates: false })
-
-    if (upsertError) {
-      console.error("[v0] Error upserting bag order:", upsertError)
-      throw upsertError
+      if (updateError) {
+        console.error("[v0] Error updating bag order for id", u.id, updateError)
+        throw updateError
+      }
     }
 
     // Revalidar páginas del catálogo para reflejar cambios inmediatamente
