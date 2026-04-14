@@ -35,20 +35,10 @@ export async function GET(request: NextRequest) {
       const result = await supabase.auth.exchangeCodeForSession(code)
       error = result.error
       data = result.data
-    } else if (token_hash) {
-      // Intentar verificar con el type proporcionado, o probar varios tipos
-      const typesToTry = type ? [type] : ["signup", "email", "magiclink"]
-      
-      for (const otpType of typesToTry) {
-        const result = await supabase.auth.verifyOtp({ token_hash, type: otpType as "signup" | "email" | "magiclink" })
-        if (!result.error && result.data?.user) {
-          error = null
-          data = result.data
-          break
-        }
-        error = result.error
-        data = result.data
-      }
+    } else if (token_hash && type) {
+      const result = await supabase.auth.verifyOtp({ token_hash, type })
+      error = result.error
+      data = result.data
     }
 
 
@@ -83,9 +73,7 @@ export async function GET(request: NextRequest) {
               email_confirmed: true,
               created_at: new Date().toISOString(),
             })
-            if (insertError) {
-              console.log("[v0] Profile insert error (non-blocking):", insertError.message)
-            }
+            // Error de perfil no bloquea el flujo
           } else {
             await supabaseService
               .from("profiles")
@@ -94,7 +82,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (syncError) {
-        console.log("[v0] Profile sync error (non-blocking):", syncError)
+        // Error de sync no bloquea el flujo
       }
 
       // RESTAURAR CONTEXTO ORIGINAL: prioridad: next param > cookie > plan > cart > dashboard
