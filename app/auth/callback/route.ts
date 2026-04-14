@@ -85,21 +85,19 @@ export async function GET(request: NextRequest) {
         // Error de sync no bloquea el flujo
       }
 
-      // RESTAURAR CONTEXTO ORIGINAL: prioridad: next param > cookie > plan > cart > dashboard
-      const returnUrl = cookieStore.get('checkout_return_url')?.value
-
+      // Si hay next explícito en la URL (no perdido por Supabase), usarlo directamente
       if (next) {
-        // next tiene la URL original donde estaba el usuario (bolso, carrito, etc.)
         return NextResponse.redirect(new URL(next, request.url))
-      } else if (returnUrl) {
-        cookieStore.delete('checkout_return_url')
-        return NextResponse.redirect(new URL(returnUrl, request.url))
-      } else if (origin === "checkout" && plan) {
-        return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
-      } else {
-        // Último recurso: ir al dashboard del usuario
-        return NextResponse.redirect(new URL("/dashboard", request.url))
       }
+
+      // Si viene de checkout con plan en la URL, ir al checkout
+      if (origin === "checkout" && plan) {
+        return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
+      }
+
+      // Redirigir a /auth/welcome que lee localStorage para recuperar el contexto original
+      // (bolso que estaba viendo, carrito, etc.) guardado antes de confirmar el email
+      return NextResponse.redirect(new URL("/auth/welcome", request.url))
     } else {
       // Si hubo error, asegurar que no haya sesión parcial
       await supabase.auth.signOut()
