@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   const plan = requestUrl.searchParams.get("plan")
   const origin = requestUrl.searchParams.get("origin")
 
+  console.log("[v0] Auth callback params:", { code: !!code, token_hash: !!token_hash, type, next, plan, origin })
+
   if (code || token_hash) {
     const cookieStore = await cookies()
 
@@ -35,47 +37,58 @@ export async function GET(request: NextRequest) {
       const result = await supabase.auth.exchangeCodeForSession(code)
       error = result.error
       data = result.data
-    } else if (token_hash && type) {
-      const result = await supabase.auth.verifyOtp({ token_hash, type })
+    } else if (token_hash) {
+      // Si no hay type, intentar con "signup" por defecto, luego "email" si falla
+      const otpType = type || "signup"
+      let result = await supabase.auth.verifyOtp({ token_hash, type: otpType })
+      
+      // Si falla con signup, intentar con email
+      if (result.error && otpType === "signup") {
+        result = await supabase.auth.verifyOtp({ token_hash, type: "email" })
+      }
+      
       error = result.error
       data = result.data
     }
 
+    console.log("[v0] Auth result:", { error: error?.message, hasUser: !!data?.user })
+
     if (!error) {
       if (data.user) {
         try {
-          const { createClient } = await import("@supabase/supabase-js")
-          const supabaseService = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { persistSession: false } }
-          )
+          if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            const { createClient } = await import("@supabase/supabase-js")
+            const supabaseService = createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false } }
+            )
 
-          // Garantizar que el perfil existe (primer login con Apple puede no tener perfil)
-          const { data: existingProfile } = await supabaseService
-            .from("profiles")
-            .select("id")
-            .eq("id", data.user.id)
-            .maybeSingle()
-
-          if (!existingProfile) {
-            const fullName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ""
-            const parts = fullName.split(" ")
-            await supabaseService.from("profiles").insert({
-              id: data.user.id,
-              email: data.user.email || "",
-              full_name: fullName,
-              first_name: parts[0] || "",
-              last_name: parts.slice(1).join(" ") || "",
-              membership_status: "free",
-              email_confirmed: true,
-              created_at: new Date().toISOString(),
-            })
-          } else {
-            await supabaseService
+            const { data: existingProfile } = await supabaseService
               .from("profiles")
-              .update({ email_confirmed: true, updated_at: new Date().toISOString() })
+              .select("id")
               .eq("id", data.user.id)
+              .maybeSingle()
+
+            if (!existingProfile) {
+              const fullName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ""
+              const parts = fullName.split(" ")
+              await supabaseService.from("profiles").insert({
+                id: data.user.id,
+                email: data.user.email || "",
+                full_name: fullName,
+                first_name: parts[0] || "",
+                last_name: parts.slice(1).join(" ") || "",
+                membership_status: "free",
+                email_confirmed: true,
+                created_at: new Date().toISOString(),
+              })
+            } else {
+              await supabaseService
+                .from("profiles")
+                .update({ email_confirmed: true, updated_at: new Date().toISOString() })
+                .eq("id", data.user.id)
+            }
           }
         } catch (syncError) {
           // No bloquear el flujo si falla

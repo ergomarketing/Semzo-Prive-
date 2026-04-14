@@ -180,14 +180,6 @@ export default function CatalogSection() {
   return (
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-serif font-light text-slate-900 mb-4">Nuestra Colección</h2>
-          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-            Descubre nuestra selección de bolsos de lujo disponibles para cada nivel de membresía. Todos los bolsos son
-            auténticos y han sido cuidadosamente seleccionados por nuestros expertos.
-          </p>
-        </div>
-
         <Tabs defaultValue="all" className="w-full">
           <div className="flex justify-center mb-8">
             <TabsList className="bg-slate-100">

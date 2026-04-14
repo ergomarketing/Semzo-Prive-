@@ -10,7 +10,7 @@ export default function AuthError() {
   const router = useRouter()
 
   const error = searchParams.get("error") || "unknown_error"
-  const description = searchParams.get("description") || "Ha ocurrido un error desconocido"
+  const description = searchParams.get("description") || searchParams.get("message") || "Ha ocurrido un error desconocido"
 
   const getErrorMessage = (error: string) => {
     switch (error) {
