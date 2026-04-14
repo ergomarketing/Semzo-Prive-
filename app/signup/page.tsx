@@ -38,11 +38,21 @@ function SignupContent() {
     if (bag) setSelectedBag(bag)
   }, [searchParams])
 
-  // Redirigir si el usuario ya está logueado
+  // Redirigir si el usuario ya está logueado — llevar al carrito con contexto
   useEffect(() => {
     if (!authLoading && user) {
       const plan = searchParams.get("plan")
-      const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+      const bag = searchParams.get("bag")
+      let redirectUrl = "/cart"
+      if (plan && bag) {
+        redirectUrl = `/cart?plan=${plan}&bag=${bag}`
+      } else if (plan) {
+        redirectUrl = `/cart?plan=${plan}`
+      } else if (bag) {
+        redirectUrl = `/cart?bag=${bag}`
+      } else {
+        redirectUrl = "/dashboard"
+      }
       router.push(redirectUrl)
     }
   }, [user, authLoading, router, searchParams])
@@ -119,10 +129,18 @@ function SignupContent() {
       // Guardar returnUrl en localStorage para recuperarlo tras confirmar email
       // Supabase no preserva parámetros custom en el emailRedirectTo
       if (needsConfirmation) {
-        const returnUrl = selectedPlan ? "/cart" : selectedBag ? `/catalog/${selectedBag}` : null
-        if (returnUrl) {
-          localStorage.setItem("semzo_post_confirm_url", returnUrl)
+        // Si tiene plan → checkout con plan
+        // Si tiene bolso → carrito con bolso y plan si lo hay
+        // Siempre termina en el carrito para cerrar la compra
+        let returnUrl = "/cart"
+        if (selectedPlan && selectedBag) {
+          returnUrl = `/cart?plan=${selectedPlan}&bag=${selectedBag}`
+        } else if (selectedPlan) {
+          returnUrl = `/cart?plan=${selectedPlan}`
+        } else if (selectedBag) {
+          returnUrl = `/cart?bag=${selectedBag}`
         }
+        localStorage.setItem("semzo_post_confirm_url", returnUrl)
       }
 
       // Si NO requiere confirmación, sincronizar profile inmediatamente
