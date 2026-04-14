@@ -2,32 +2,12 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
 
-const MEMBERSHIP_ITEMS: Record<string, { id: string; name: string; price: string; description: string; image: string; brand: string }> = {
-  essentiel: {
-    id: "essentiel-membership-monthly",
-    name: "L'Essentiel",
-    price: "59€",
-    description: "La experiencia de entrada al lujo accesible.",
-    image: "/images/membership-essentiel.jpg",
-    brand: "Semzo Privé",
-  },
-  signature: {
-    id: "signature-membership-monthly",
-    name: "Signature",
-    price: "129€",
-    description: "La experiencia preferida por nuestras clientas más exigentes.",
-    image: "/images/membership-signature.jpg",
-    brand: "Semzo Privé",
-  },
-  prive: {
-    id: "prive-membership-monthly",
-    name: "Privé",
-    price: "189€",
-    description: "El acceso más exclusivo a nuestra colección más codiciada.",
-    image: "/images/membership-prive.jpg",
-    brand: "Semzo Privé",
-  },
+const MEMBERSHIP_PLANS: Record<string, { name: string; price: number; image: string }> = {
+  essentiel: { name: "L'Essentiel", price: 59, image: "/images/membership-essentiel.jpg" },
+  signature: { name: "Signature", price: 129, image: "/images/membership-signature.jpg" },
+  prive: { name: "Privé", price: 189, image: "/images/membership-prive.jpg" },
 }
 
 export default function WelcomePage() {
@@ -35,41 +15,70 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const savedUrl = localStorage.getItem("semzo_post_confirm_url")
-    if (savedUrl) {
-      localStorage.removeItem("semzo_post_confirm_url")
+    if (!savedUrl) {
+      router.replace("/dashboard")
+      return
+    }
 
-      // Extraer plan y bag de la URL guardada para pre-popular el carrito
+    localStorage.removeItem("semzo_post_confirm_url")
+
+    const buildCartAndRedirect = async () => {
       try {
         const url = new URL(savedUrl, window.location.origin)
         const plan = url.searchParams.get("plan")
+        const bagId = url.searchParams.get("bag")
 
-        if (plan && MEMBERSHIP_ITEMS[plan]) {
-          // Verificar si el carrito ya tiene este item
-          const existingCart = localStorage.getItem("cartItems")
-          const cartItems = existingCart ? JSON.parse(existingCart) : []
-          const alreadyInCart = cartItems.some((item: any) => item.id === MEMBERSHIP_ITEMS[plan].id)
+        if (!plan || !MEMBERSHIP_PLANS[plan]) {
+          router.replace(savedUrl)
+          return
+        }
 
-          if (!alreadyInCart) {
-            const membershipItem = {
-              ...MEMBERSHIP_ITEMS[plan],
-              billingCycle: "monthly",
-              itemType: "membership",
-            }
-            // Mantener items no-membresía existentes y añadir la membresía
-            const nonMembershipItems = cartItems.filter((item: any) =>
-              !item.itemType || item.itemType !== "membership"
-            )
-            localStorage.setItem("cartItems", JSON.stringify([...nonMembershipItems, membershipItem]))
+        const membership = MEMBERSHIP_PLANS[plan]
+        let bagBrand = ""
+        let bagName = ""
+        let bagImage = membership.image
+
+        // Buscar info del bolso en Supabase si hay bag param
+        if (bagId) {
+          const supabase = getSupabaseBrowser()
+          const { data: bag } = await supabase
+            .from("bags")
+            .select("name, brand, image_url, images")
+            .eq("id", bagId)
+            .maybeSingle()
+
+          if (bag) {
+            bagBrand = bag.brand || ""
+            bagName = bag.name || ""
+            bagImage = bag.images?.[0] || bag.image_url || membership.image
           }
         }
+
+        // Construir el item de membresía con el bolso en la descripción
+        const membershipItem = {
+          id: `${plan}-membership-monthly`,
+          name: membership.name.toUpperCase(),
+          price: `${membership.price}€`,
+          billingCycle: "monthly",
+          description: bagBrand && bagName ? `${bagBrand} ${bagName}` : `Membresía ${membership.name}`,
+          image: bagImage,
+          brand: bagBrand || "Semzo Privé",
+          itemType: "membership",
+        }
+
+        // Guardar en localStorage para que CartClient lo encuentre
+        const existingCart = localStorage.getItem("cartItems")
+        const cartItems = existingCart ? JSON.parse(existingCart) : []
+        const withoutMembership = cartItems.filter((i: any) => i.itemType !== "membership")
+        localStorage.setItem("cartItems", JSON.stringify([...withoutMembership, membershipItem]))
       } catch (e) {
-        // No bloquear la redirección si falla el parsing
+        // Si falla, redirigir de todas formas
       }
 
       router.replace(savedUrl)
-    } else {
-      router.replace("/dashboard")
     }
+
+    buildCartAndRedirect()
   }, [router])
 
   return (
