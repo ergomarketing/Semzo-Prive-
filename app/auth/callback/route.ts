@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
       const result = await supabase.auth.exchangeCodeForSession(code)
       error = result.error
       data = result.data
-    } else if (token_hash && type) {
-      const result = await supabase.auth.verifyOtp({ token_hash, type })
+    } else if (token_hash) {
+      // type viene de Supabase en ConfirmationURL, default a "signup" si falta
+      const otpType = type || "signup"
+      const result = await supabase.auth.verifyOtp({ token_hash, type: otpType })
       error = result.error
       data = result.data
     }
-
-
 
     if (!error && data?.user) {
       // Autenticación exitosa - sincronizar perfil
