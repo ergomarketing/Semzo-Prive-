@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   const plan = requestUrl.searchParams.get("plan")
   const origin = requestUrl.searchParams.get("origin")
 
+  console.log("[v0] Auth callback params:", { code: !!code, token_hash: !!token_hash, type, next, plan, origin })
+
   if (code || token_hash) {
     const cookieStore = await cookies()
 
@@ -35,11 +37,21 @@ export async function GET(request: NextRequest) {
       const result = await supabase.auth.exchangeCodeForSession(code)
       error = result.error
       data = result.data
-    } else if (token_hash && type) {
-      const result = await supabase.auth.verifyOtp({ token_hash, type })
+    } else if (token_hash) {
+      // Si no hay type, intentar con "signup" por defecto, luego "email" si falla
+      const otpType = type || "signup"
+      let result = await supabase.auth.verifyOtp({ token_hash, type: otpType })
+      
+      // Si falla con signup, intentar con email
+      if (result.error && otpType === "signup") {
+        result = await supabase.auth.verifyOtp({ token_hash, type: "email" })
+      }
+      
       error = result.error
       data = result.data
     }
+
+    console.log("[v0] Auth result:", { error: error?.message, hasUser: !!data?.user })
 
     if (!error) {
       if (data.user) {
