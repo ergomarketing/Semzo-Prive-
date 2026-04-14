@@ -116,6 +116,15 @@ function SignupContent() {
       const needsConfirmation = result.requiresEmailConfirmation
       setRequiresConfirmation(needsConfirmation)
 
+      // Guardar returnUrl en localStorage para recuperarlo tras confirmar email
+      // Supabase no preserva parámetros custom en el emailRedirectTo
+      if (needsConfirmation) {
+        const returnUrl = selectedPlan ? "/cart" : selectedBag ? `/catalog/${selectedBag}` : null
+        if (returnUrl) {
+          localStorage.setItem("semzo_post_confirm_url", returnUrl)
+        }
+      }
+
       // Si NO requiere confirmación, sincronizar profile inmediatamente
       if (!needsConfirmation) {
         try {
