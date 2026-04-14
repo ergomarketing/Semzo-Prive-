@@ -55,7 +55,7 @@ export default function DashboardHome() {
     )
   }
 
-  const { profile, membership, gift_cards, reservations } = data
+  const { profile, membership, gift_cards, reservations, flags } = data
 
   // Guard: membership puede no existir si el usuario es nuevo
   if (!membership) {
