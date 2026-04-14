@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
+import { useAuth } from "@/app/hooks/useAuth"
 
 function SignupContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -35,6 +37,15 @@ function SignupContent() {
     if (plan) setSelectedPlan(plan)
     if (bag) setSelectedBag(bag)
   }, [searchParams])
+
+  // Redirigir si el usuario ya está logueado
+  useEffect(() => {
+    if (!authLoading && user) {
+      const plan = searchParams.get("plan")
+      const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+      router.push(redirectUrl)
+    }
+  }, [user, authLoading, router, searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -154,6 +165,24 @@ function SignupContent() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Mostrar loading mientras verifica auth
+  if (authLoading) {
+    return (
+      <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
+        <p className="text-slate-600">Cargando...</p>
+      </div>
+    )
+  }
+
+  // Si hay usuario, el useEffect lo redirigirá
+  if (user) {
+    return (
+      <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
+        <p className="text-slate-600">Ya tienes sesion activa. Redirigiendo...</p>
+      </div>
+    )
   }
 
   return (

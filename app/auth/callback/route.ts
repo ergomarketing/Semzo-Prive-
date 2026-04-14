@@ -11,8 +11,6 @@ export async function GET(request: NextRequest) {
   const plan = requestUrl.searchParams.get("plan")
   const origin = requestUrl.searchParams.get("origin")
 
-  console.log("[v0] Auth callback params:", { code: !!code, token_hash: !!token_hash, type, next, plan, origin })
-
   if (code || token_hash) {
     const cookieStore = await cookies()
 
@@ -38,61 +36,53 @@ export async function GET(request: NextRequest) {
       error = result.error
       data = result.data
     } else if (token_hash) {
-      // Si no hay type, intentar con "signup" por defecto, luego "email" si falla
+      // type viene de Supabase en ConfirmationURL, default a "signup" si falta
       const otpType = type || "signup"
-      let result = await supabase.auth.verifyOtp({ token_hash, type: otpType })
-      
-      // Si falla con signup, intentar con email
-      if (result.error && otpType === "signup") {
-        result = await supabase.auth.verifyOtp({ token_hash, type: "email" })
-      }
-      
+      const result = await supabase.auth.verifyOtp({ token_hash, type: otpType })
       error = result.error
       data = result.data
     }
 
-    console.log("[v0] Auth result:", { error: error?.message, hasUser: !!data?.user })
+    if (!error && data?.user) {
+      // Autenticación exitosa - sincronizar perfil
+      try {
+        if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          const { createClient } = await import("@supabase/supabase-js")
+          const supabaseService = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false } }
+          )
 
-    if (!error) {
-      if (data.user) {
-        try {
-          if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            const { createClient } = await import("@supabase/supabase-js")
-            const supabaseService = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              process.env.SUPABASE_SERVICE_ROLE_KEY,
-              { auth: { persistSession: false } }
-            )
+          const { data: existingProfile } = await supabaseService
+            .from("profiles")
+            .select("id")
+            .eq("id", data.user.id)
+            .maybeSingle()
 
-            const { data: existingProfile } = await supabaseService
+          if (!existingProfile) {
+            const fullName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ""
+            const parts = fullName.split(" ")
+            const { error: insertError } = await supabaseService.from("profiles").insert({
+              id: data.user.id,
+              email: data.user.email || "",
+              full_name: fullName,
+              first_name: parts[0] || "",
+              last_name: parts.slice(1).join(" ") || "",
+              membership_status: "free",
+              email_confirmed: true,
+              created_at: new Date().toISOString(),
+            })
+            // Error de perfil no bloquea el flujo
+          } else {
+            await supabaseService
               .from("profiles")
-              .select("id")
+              .update({ email_confirmed: true, updated_at: new Date().toISOString() })
               .eq("id", data.user.id)
-              .maybeSingle()
-
-            if (!existingProfile) {
-              const fullName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ""
-              const parts = fullName.split(" ")
-              await supabaseService.from("profiles").insert({
-                id: data.user.id,
-                email: data.user.email || "",
-                full_name: fullName,
-                first_name: parts[0] || "",
-                last_name: parts.slice(1).join(" ") || "",
-                membership_status: "free",
-                email_confirmed: true,
-                created_at: new Date().toISOString(),
-              })
-            } else {
-              await supabaseService
-                .from("profiles")
-                .update({ email_confirmed: true, updated_at: new Date().toISOString() })
-                .eq("id", data.user.id)
-            }
           }
-        } catch (syncError) {
-          // No bloquear el flujo si falla
         }
+      } catch (syncError) {
+        // Error de sync no bloquea el flujo
       }
 
       // RESTAURAR CONTEXTO ORIGINAL: prioridad: next param > cookie > plan > cart > dashboard
@@ -111,9 +101,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL("/dashboard", request.url))
       }
     } else {
+      // Si hubo error, asegurar que no haya sesión parcial
+      await supabase.auth.signOut()
+      
+      const errorMessage = error?.message || "Error al confirmar email. El enlace puede haber expirado."
       return NextResponse.redirect(
         new URL(
-          `/auth/error?message=${encodeURIComponent("Error al confirmar email. El enlace puede haber expirado.")}`,
+          `/auth/error?message=${encodeURIComponent(errorMessage)}`,
           request.url,
         ),
       )
@@ -121,6 +115,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    new URL(`/auth/error?message=${encodeURIComponent("Enlace de confirmación inválido")}`, request.url),
+    new URL(`/auth/error?message=${encodeURIComponent("Enlace de confirmacion invalido o parametros faltantes")}`, request.url),
   )
 }
