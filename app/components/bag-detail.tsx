@@ -107,13 +107,13 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       signature: {
         name: "MEMBRESÍA SIGNATURE",
         price: 149,
-        quarterlyPrice: 379,
+        quarterlyPrice: 357,
         description: "Accede a este bolso y cámbialo por otro de la colección Signature cada mes.",
       },
       prive: {
         name: "MEMBRESÍA PRIVÉ",
         price: 279,
-        quarterlyPrice: 709,
+        quarterlyPrice: 669,
         description: "Accede a este bolso y cámbialo por otro de la colección Privé cada mes.",
       },
     }
