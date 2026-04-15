@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       if (data) {
         const bagName = `${data.brand} ${data.name}`
         const price =
-          data.price || (data.membership_type === "prive" ? 189 : data.membership_type === "signature" ? 129 : 59)
+          data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
         const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
 
         return {
@@ -138,9 +138,9 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
             price: item.price
               ? `${item.price}€/mes`
               : item.membership_type === "prive"
-                ? "189€/mes"
+                ? "279€/mes"
                 : item.membership_type === "signature"
-                  ? "129€/mes"
+                  ? "149€/mes"
                   : "59€/mes",
             image: item.images?.[0] || item.image_url || "/placeholder.svg",
             membership: item.membership_type || "essentiel",

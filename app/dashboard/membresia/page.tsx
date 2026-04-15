@@ -116,8 +116,8 @@ export default function MembresiaPage() {
   const membershipInfo: Record<string, { name: string; price: string; period: string }> = {
     petite: { name: "Petite", price: "19,99", period: "semana" },
     essentiel: { name: "L'Essentiel", price: "59", period: "mes" },
-    signature: { name: "Signature", price: "129", period: "mes" },
-    prive: { name: "Privé", price: "189", period: "mes" },
+    signature: { name: "Signature", price: "149", period: "mes" },
+    prive: { name: "Privé", price: "279", period: "mes" },
     free: { name: "Free", price: "0", period: "mes" },
   }
 

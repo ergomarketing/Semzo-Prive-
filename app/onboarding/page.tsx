@@ -115,7 +115,7 @@ export default function OnboardingPage() {
               <CardContent className="p-6">
                 <h3 className="font-serif text-xl text-[#1a1a4b] mb-2">Privé</h3>
                 <p className="text-slate-600 mb-4">Acceso ilimitado a toda la colección exclusiva</p>
-                <p className="font-serif text-2xl text-[#1a1a4b]">189€/mes</p>
+                <p className="font-serif text-2xl text-[#1a1a4b]">279€/mes</p>
               </CardContent>
             </Card>
           </div>

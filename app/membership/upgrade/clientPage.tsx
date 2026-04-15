@@ -39,7 +39,7 @@ const plans = [
   {
     id: "signature",
     name: "Signature",
-    price: "129€",
+    price: "149€",
     description: "La experiencia preferida por nuestras clientas más exigentes.",
     image: "/images/dior-lady-bag.jpg",
     imageAlt: "Dior - Lady Bag para la membresía Signature",
@@ -58,7 +58,7 @@ const plans = [
   {
     id: "prive",
     name: "Privé",
-    price: "189€",
+    price: "279€",
     description: "La experiencia definitiva para verdaderas conocedoras.",
     image: "/images/chanel-prive-pink.jpg",
     imageAlt: "Chanel - Elegancia rosa para la membresía Privé",

@@ -30,8 +30,8 @@ interface BagItem {
 
 const MEMBERSHIP_PRICES: Record<string, number> = {
   essentiel: 59,
-  signature: 129,
-  prive: 189,
+  signature: 149,
+  prive: 279,
 }
 
 export default function CatalogSection() {
@@ -257,7 +257,7 @@ export default function CatalogSection() {
             <div className="mt-12 p-6 bg-rose-pastel/20 rounded-lg">
               <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Signature</h3>
               <p className="text-slate-700 mb-4">
-                Nuestra membresía Signature por 129€/mes te da acceso a bolsos de mayor valor y exclusividad. La
+                Nuestra membresía Signature por 149€/mes te da acceso a bolsos de mayor valor y exclusividad. La
                 experiencia preferida por nuestras clientas más exigentes.
               </p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
@@ -283,7 +283,7 @@ export default function CatalogSection() {
             <div className="mt-12 p-6 bg-indigo-dark/10 rounded-lg">
               <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Privé</h3>
               <p className="text-slate-700 mb-4">
-                La membresía Privé por 189€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La
+                La membresía Privé por 279€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La
                 experiencia definitiva para verdaderas conocedoras.
               </p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
