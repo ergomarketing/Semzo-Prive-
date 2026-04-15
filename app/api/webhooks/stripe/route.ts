@@ -503,46 +503,85 @@ export async function POST(req: NextRequest) {
                 to: finalRecipientEmail,
                 subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
                 html: `
-                  <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                    <div style="text-align: center; margin-bottom: 32px;">
-                      <h1 style="color: #1a1a4b; font-size: 28px; margin-bottom: 8px;">Gift Card Semzo Prive</h1>
-                      <p style="color: #c9a86c; font-size: 14px; letter-spacing: 2px; margin: 0;">ACCESO EXCLUSIVO AL LUJO</p>
-                    </div>
-                    
-                    <p style="color: #444; line-height: 1.6; font-size: 16px;">
-                      Hola${finalRecipientName ? ` ${finalRecipientName}` : ""},
-                    </p>
-                    <p style="color: #444; line-height: 1.6;">
-                      Alguien especial te ha regalado acceso al mundo del lujo con una Gift Card de <strong>${amountEuros}€</strong>.
-                    </p>
-                    
-                    ${giftCard.personal_message ? `
-                      <div style="background: #fdf8f4; border-left: 4px solid #c9a86c; padding: 20px; margin: 24px 0; border-radius: 4px; font-style: italic;">
-                        "${giftCard.personal_message}"
-                      </div>
-                    ` : ""}
-                    
-                    <div style="background: #1a1a4b; color: white; padding: 24px; border-radius: 8px; text-align: center; margin: 32px 0;">
-                      <p style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 2px; opacity: 0.8;">TU CODIGO</p>
-                      <p style="margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 4px;">${giftCard.code}</p>
-                    </div>
-                    
-                    <p style="color: #444; line-height: 1.6;">
-                      Usa este codigo en el checkout para aplicar tu credito a cualquier membresia o pase de bolso.
-                    </p>
-                    
-                    <div style="text-align: center; margin: 32px 0;">
-                      <a href="${siteUrl}/membresias" style="background: #1a1a4b; color: white; padding: 14px 32px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                        EXPLORAR MEMBRESIAS
-                      </a>
-                    </div>
-                    
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                    <p style="color: #999; font-size: 12px; text-align: center;">
-                      Semzo Prive · El regalo perfecto para quien valora la elegancia<br />
-                      <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a>
-                    </p>
-                  </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gift Card Semzo Prive</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f5f5f5; color: #111; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <div style="background-color: #1a1a4b; padding: 30px 20px; text-align: center;">
+      <img src="https://www.semzoprive.com/images/logo-20semzo-20prive.png" alt="Semzo Prive" style="max-width: 200px; height: auto;" />
+      <p style="color: rgba(255,255,255,0.7); margin: 10px 0 0; font-size: 14px;">Acceso exclusivo al lujo</p>
+    </div>
+    
+    <!-- Content -->
+    <div style="padding: 40px 30px; text-align: center; background-color: white;">
+      <h2 style="color: #1a1a4b; margin-top: 0; font-size: 24px;">Has recibido una Gift Card</h2>
+      
+      <p style="color: #444; line-height: 1.6; font-size: 16px;">
+        Hola${finalRecipientName ? ` ${finalRecipientName}` : ""},
+      </p>
+      
+      <p style="color: #444; line-height: 1.6; font-size: 16px;">
+        Alguien especial te ha regalado acceso al mundo del lujo con una Gift Card de <strong style="color: #1a1a4b;">${amountEuros}€</strong>.
+      </p>
+      
+      <!-- Imagen Gift Card -->
+      <div style="margin: 30px 0;">
+        <img src="https://www.semzoprive.com/images/gift-card-semzo.jpg" alt="Gift Card Semzo Prive" style="max-width: 100%; height: auto; border-radius: 12px;" />
+      </div>
+      
+      ${giftCard.personal_message ? `
+      <!-- Mensaje Personal -->
+      <div style="background-color: rgba(244, 196, 204, 0.15); border-left: 4px solid #f4c4cc; padding: 15px; margin: 25px 0; border-radius: 0 8px 8px 0; text-align: left;">
+        <p style="color: #444; margin: 0; font-style: italic; line-height: 1.6;">"${giftCard.personal_message}"</p>
+      </div>
+      ` : ""}
+      
+      <!-- Codigo -->
+      <div style="background-color: #1a1a4b; color: white; padding: 25px; border-radius: 10px; margin: 30px 0;">
+        <p style="margin: 0 0 10px 0; font-size: 12px; letter-spacing: 2px; opacity: 0.8; text-transform: uppercase;">Tu codigo de Gift Card</p>
+        <p style="margin: 0; font-size: 28px; font-weight: bold; letter-spacing: 4px;">${giftCard.code}</p>
+      </div>
+      
+      <p style="color: #444; line-height: 1.6; font-size: 16px;">
+        Usa este codigo en el checkout para aplicar tu credito a cualquier membresia o reserva de bolso.
+      </p>
+      
+      <!-- Boton CTA -->
+      <div style="margin: 30px 0;">
+        <a href="${siteUrl}/membresias" style="display: inline-block; background-color: #f3c3cc; color: #1a1a4b; padding: 14px 35px; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 16px;">
+          Explorar Membresias
+        </a>
+      </div>
+      
+      <!-- Info Box -->
+      <div style="background-color: rgba(244, 196, 204, 0.15); border-left: 4px solid #f4c4cc; padding: 15px; margin: 25px 0; border-radius: 0 8px 8px 0; text-align: left;">
+        <strong style="color: #1a1a4b;">Informacion importante:</strong>
+        <ul style="color: #444; margin: 10px 0 0; padding-left: 20px;">
+          <li>Tu Gift Card tiene una validez de <strong>2 anos</strong></li>
+          <li>Puedes usarla en cualquier membresia o reserva</li>
+          <li>El saldo restante queda disponible para futuras compras</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background-color: #1a1a4b; padding: 20px; text-align: center;">
+      <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">
+        © 2025 Semzo Prive. Todos los derechos reservados.<br />
+        <a href="mailto:contacto@semzoprive.com" style="color: rgba(255,255,255,0.7);">contacto@semzoprive.com</a>
+      </p>
+    </div>
+    
+  </div>
+</body>
+</html>
                 `,
               }).catch(() => {});
             }
