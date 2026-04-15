@@ -46,7 +46,15 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && user) {
       const plan = searchParams.get("plan")
-      const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+      const bag = searchParams.get("bag")
+      let redirectUrl = "/dashboard"
+      if (plan && bag) {
+        redirectUrl = `/cart?plan=${plan}&bag=${bag}`
+      } else if (plan) {
+        redirectUrl = `/cart?plan=${plan}`
+      } else if (bag) {
+        redirectUrl = `/cart?bag=${bag}`
+      }
 
       setTimeout(() => {
         router.push(redirectUrl)
@@ -132,8 +140,61 @@ export default function LoginPage() {
 
       if (data.user) {
         setMessage("¡Login exitoso! Redirigiendo...")
-        const plan = searchParams.get("plan")
-        const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+        
+        // Leer returnUrl del localStorage (guardado en signup)
+        const savedUrl = localStorage.getItem("semzo_post_confirm_url")
+        const plan = searchParams.get("plan") || savedUrl?.match(/plan=([^&]+)/)?.[1]
+        const bag = searchParams.get("bag") || savedUrl?.match(/bag=([^&]+)/)?.[1]
+        
+        // Si hay bolso, construir el carrito antes de redirigir
+        if (bag && plan) {
+          try {
+            const { data: bagData } = await supabase
+              .from("bags")
+              .select("name, brand, image_url, images, membership_type")
+              .eq("id", bag)
+              .maybeSingle()
+            
+            const membershipType = plan || bagData?.membership_type
+            const membershipPrices: Record<string, { name: string; price: number }> = {
+              essentiel: { name: "L'Essentiel", price: 59 },
+              signature: { name: "Signature", price: 149 },
+              prive: { name: "Privé", price: 279 },
+            }
+            
+            if (membershipType && membershipPrices[membershipType]) {
+              const membership = membershipPrices[membershipType]
+              const membershipItem = {
+                id: `${membershipType}-membership-monthly`,
+                name: membership.name.toUpperCase(),
+                price: `${membership.price}€`,
+                billingCycle: "monthly",
+                description: bagData ? `${bagData.brand} ${bagData.name}` : `Membresía ${membership.name}`,
+                image: bagData?.images?.[0] || bagData?.image_url || `/images/membership-${membershipType}.jpg`,
+                brand: bagData?.brand || "Semzo Privé",
+                itemType: "membership",
+              }
+              
+              const existingCart = localStorage.getItem("cartItems")
+              const cartItems = existingCart ? JSON.parse(existingCart) : []
+              const withoutMembership = cartItems.filter((i: any) => i.itemType !== "membership")
+              localStorage.setItem("cartItems", JSON.stringify([...withoutMembership, membershipItem]))
+            }
+          } catch (e) {
+            // continuar sin carrito
+          }
+        }
+        
+        localStorage.removeItem("semzo_post_confirm_url")
+        
+        let redirectUrl = "/dashboard"
+        if (plan && bag) {
+          redirectUrl = `/cart?plan=${plan}&bag=${bag}`
+        } else if (plan) {
+          redirectUrl = `/cart?plan=${plan}`
+        } else if (bag) {
+          redirectUrl = `/cart?bag=${bag}`
+        }
 
         setTimeout(() => {
           router.push(redirectUrl)
@@ -149,7 +210,15 @@ export default function LoginPage() {
   const handleSMSSuccess = (user: any) => {
     setMessage("¡Login exitoso! Redirigiendo...")
     const plan = searchParams.get("plan")
-    const redirectUrl = plan ? `/dashboard?plan=${plan}` : "/dashboard"
+    const bag = searchParams.get("bag")
+    let redirectUrl = "/dashboard"
+    if (plan && bag) {
+      redirectUrl = `/cart?plan=${plan}&bag=${bag}`
+    } else if (plan) {
+      redirectUrl = `/cart?plan=${plan}`
+    } else if (bag) {
+      redirectUrl = `/cart?bag=${bag}`
+    }
 
     setTimeout(() => {
       router.push(redirectUrl)
