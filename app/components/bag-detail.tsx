@@ -868,6 +868,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         <LoginModal
           open={showLoginModal}
           onOpenChange={setShowLoginModal}
+          plan={bag.membership}
+          bag={bag.id}
           onSuccess={() => {
             setShowLoginModal(false)
             if (pendingAction) {
