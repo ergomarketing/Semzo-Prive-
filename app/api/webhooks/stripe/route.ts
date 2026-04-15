@@ -446,30 +446,37 @@ export async function POST(req: NextRequest) {
 
         // --- GIFT CARD PURCHASE ---
         if (pi.metadata?.type === "gift_card") {
-          const recipientEmail = pi.metadata?.recipient_email;
-          const recipientName = pi.metadata?.recipient_name;
           const purchaserId = pi.metadata?.user_id;
 
-          console.log("🎁 Gift card payment succeeded:", { 
-            paymentIntentId: pi.id, 
-            amount: pi.amount, 
-            purchaserId, 
-            recipientEmail 
-          });
-
-          // Buscar la gift card pendiente creada con este PaymentIntent
-          const amountCents = pi.amount;
-          const { data: giftCard, error: giftCardError } = await supabase
+          // Buscar la gift card por stripe_payment_intent_id (forma más precisa)
+          // o por purchased_by + status + amount como fallback
+          let giftCard = null;
+          
+          // Primero buscar por payment_intent_id (método preferido)
+          const { data: giftCardByPI } = await supabase
             .from("gift_cards")
-            .select("id, code, amount, personal_message")
-            .eq("purchased_by", purchaserId)
+            .select("id, code, amount, personal_message, recipient_email, recipient_name")
+            .eq("stripe_payment_intent_id", pi.id)
             .eq("status", "pending")
-            .eq("amount", amountCents)
-            .order("created_at", { ascending: false })
-            .limit(1)
             .maybeSingle();
-
-          console.log("🎁 Gift card lookup result:", { giftCard, giftCardError, amountCents, purchaserId });
+          
+          if (giftCardByPI) {
+            giftCard = giftCardByPI;
+          } else {
+            // Fallback: buscar por purchased_by + amount (para gift cards antiguas)
+            const amountCents = pi.amount;
+            const { data: giftCardByAmount } = await supabase
+              .from("gift_cards")
+              .select("id, code, amount, personal_message, recipient_email, recipient_name")
+              .eq("purchased_by", purchaserId)
+              .eq("status", "pending")
+              .eq("amount", amountCents)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            giftCard = giftCardByAmount;
+          }
 
           if (giftCard) {
             // Activar la gift card
@@ -483,14 +490,17 @@ export async function POST(req: NextRequest) {
               })
               .eq("id", giftCard.id);
 
-            // Enviar email al destinatario
-            if (recipientEmail) {
+            // Enviar email al destinatario (usar datos del gift card, no de metadata)
+            const finalRecipientEmail = giftCard.recipient_email || pi.metadata?.recipient_email;
+            const finalRecipientName = giftCard.recipient_name || pi.metadata?.recipient_name;
+            
+            if (finalRecipientEmail) {
               const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
               const amountEuros = (giftCard.amount / 100).toFixed(0);
               const emailService = EmailServiceProduction.getInstance();
 
               await emailService.sendWithResend({
-                to: recipientEmail,
+                to: finalRecipientEmail,
                 subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
                 html: `
                   <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
@@ -500,7 +510,7 @@ export async function POST(req: NextRequest) {
                     </div>
                     
                     <p style="color: #444; line-height: 1.6; font-size: 16px;">
-                      Hola${recipientName ? ` ${recipientName}` : ""},
+                      Hola${finalRecipientName ? ` ${finalRecipientName}` : ""},
                     </p>
                     <p style="color: #444; line-height: 1.6;">
                       Alguien especial te ha regalado acceso al mundo del lujo con una Gift Card de <strong>${amountEuros}€</strong>.
@@ -538,24 +548,22 @@ export async function POST(req: NextRequest) {
             }
 
             // Notificar al admin
-            const emailService = EmailServiceProduction.getInstance();
-            await emailService.sendWithResend({
+            const adminEmailService = EmailServiceProduction.getInstance();
+            const amountEurosAdmin = (giftCard.amount / 100).toFixed(0);
+            await adminEmailService.sendWithResend({
               to: "mailbox@semzoprive.com",
-              subject: `[Admin] Nueva Gift Card vendida - ${(amountCents / 100).toFixed(0)}€`,
+              subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
               html: `
                 <div style="font-family: Arial, sans-serif; padding: 20px;">
                   <h2 style="color: #1a1a4b;">Nueva Gift Card vendida</h2>
                   <p><strong>Codigo:</strong> ${giftCard.code}</p>
-                  <p><strong>Monto:</strong> ${(amountCents / 100).toFixed(0)}€</p>
-                  <p><strong>Destinatario:</strong> ${recipientName || "N/A"} (${recipientEmail || "N/A"})</p>
+                  <p><strong>Monto:</strong> ${amountEurosAdmin}€</p>
+                  <p><strong>Destinatario:</strong> ${finalRecipientName || "N/A"} (${finalRecipientEmail || "N/A"})</p>
                   <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
                 </div>
               `,
             }).catch(() => {});
 
-            console.log("✅ Gift card ACTIVATED:", giftCard.code);
-          } else {
-            console.error("❌ Gift card NOT FOUND for payment:", { amountCents, purchaserId, paymentIntentId: pi.id });
           }
           break;
         }

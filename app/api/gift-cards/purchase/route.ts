@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         recipient_name: recipientName || null,
         personal_message: personalMessage || null,
         expires_at: expiresAt.toISOString(),
+        stripe_payment_intent_id: paymentIntent.id, // Para identificar en el webhook
       })
       .select()
       .single()
