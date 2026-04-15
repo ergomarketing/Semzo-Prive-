@@ -30,8 +30,8 @@ const plans = [
   {
     name: "Signature",
     id: "signature",
-    priceMonthly: "129€",
-    priceQuarterly: "329€",
+    priceMonthly: "149€",
+    priceQuarterly: "379€",
     quarterlyDiscount: "15%",
     description: "La elección favorita de nuestras clientas",
     image: "/images/chanel-signature.jpeg",
@@ -51,8 +51,8 @@ const plans = [
   {
     name: "Privé",
     id: "prive",
-    priceMonthly: "189€",
-    priceQuarterly: "479€",
+    priceMonthly: "279€",
+    priceQuarterly: "709€",
     quarterlyDiscount: "15%",
     description: "La experiencia de lujo definitiva",
     image: "/images/hermes-prive.jpeg",

@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react"
 const PLAN = {
   membershipType: "signature",
   billingCycle: "monthly",
-  price: 129,
+  price: 149,
   label: "La experiencia preferida por nuestras clientas más exigentes.",
   priceSuffix: "/mes",
   features: [

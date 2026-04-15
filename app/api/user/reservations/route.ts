@@ -48,8 +48,8 @@ function getPriceForMembership(bag: any, membershipType: string | null): number 
   // Precios de membresía mensual (el usuario ya paga esto)
   // Si tiene membresía activa, el precio de la reserva es 0
   const membershipPrices: Record<string, number> = {
-    signature: 129,
-    prive: 189,
+    signature: 149,
+    prive: 279,
     essentiel: 59,
   }
 

@@ -6,8 +6,8 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 
 const MEMBERSHIP_PLANS: Record<string, { name: string; price: number; image: string }> = {
   essentiel: { name: "L'Essentiel", price: 59, image: "/images/membership-essentiel.jpg" },
-  signature: { name: "Signature", price: 129, image: "/images/membership-signature.jpg" },
-  prive: { name: "Privé", price: 189, image: "/images/membership-prive.jpg" },
+  signature: { name: "Signature", price: 149, image: "/images/membership-signature.jpg" },
+  prive: { name: "Privé", price: 279, image: "/images/membership-prive.jpg" },
 }
 
 export default function WelcomePage() {

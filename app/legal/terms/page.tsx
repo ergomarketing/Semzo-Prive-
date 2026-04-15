@@ -200,7 +200,7 @@ export default function TermsPage() {
               </div>
 
               <div className="p-6 rounded-lg border border-slate-200">
-                <h4 className="font-semibold text-lg text-slate-900 mb-3">Signature (129 € / mes)</h4>
+                <h4 className="font-semibold text-lg text-slate-900 mb-3">Signature (149 € / mes)</h4>
                 <p className="text-slate-700 mb-2">
                   Acceso a un (1) bolso al mes de colecciones premium, conforme a las condiciones del servicio.
                 </p>
@@ -210,7 +210,7 @@ export default function TermsPage() {
               </div>
 
               <div className="p-6 rounded-lg border border-slate-200">
-                <h4 className="font-semibold text-lg text-slate-900 mb-3">Privé (189 € / mes)</h4>
+                <h4 className="font-semibold text-lg text-slate-900 mb-3">Privé (279 € / mes)</h4>
                 <p className="text-slate-700 mb-2">
                   Acceso a un (1) bolso al mes de colecciones exclusivas, conforme a las condiciones del servicio.
                 </p>

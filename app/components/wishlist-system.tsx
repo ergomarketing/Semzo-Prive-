@@ -62,7 +62,7 @@ export default function WishlistSystem() {
         id: "chanel-classic-flap",
         name: "Classic Flap Medium",
         brand: "Chanel",
-        price: "129€/mes",
+        price: "149€/mes",
         retailPrice: "8.200€",
         image: "/placeholder.svg?height=80&width=80",
         membership: "signature",

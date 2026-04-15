@@ -45,8 +45,8 @@ const plans = [
   {
     id: "signature",
     name: "Signature",
-    priceMonthly: "129€",
-    priceQuarterly: "310€",
+    priceMonthly: "149€",
+    priceQuarterly: "379€",
     quarterlyDiscount: "20%",
     description: "La experiencia preferida por nuestras clientas más exigentes.",
     image: "/images/dior-lady-bag.jpg",
@@ -65,8 +65,8 @@ const plans = [
   {
     id: "prive",
     name: "Privé",
-    priceMonthly: "189€",
-    priceQuarterly: "453€",
+    priceMonthly: "279€",
+    priceQuarterly: "709€",
     quarterlyDiscount: "20%",
     description: "La experiencia definitiva para verdaderas conocedoras.",
     image: "/images/chanel-prive-pink.jpg",

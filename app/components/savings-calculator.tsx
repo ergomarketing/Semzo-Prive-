@@ -19,8 +19,8 @@ const BAG_PRICES = {
 const MEMBERSHIP_PRICES = {
   petite: 29,
   essentiel: 59,
-  signature: 129,
-  prive: 189,
+  signature: 149,
+  prive: 279,
 }
 
 // Nombres de membresías
