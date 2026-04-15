@@ -126,20 +126,18 @@ function SignupContent() {
       const needsConfirmation = result.requiresEmailConfirmation
       setRequiresConfirmation(needsConfirmation)
 
-      // Guardar returnUrl en localStorage para recuperarlo tras confirmar email
-      // Supabase no preserva parámetros custom en el emailRedirectTo
-      if (needsConfirmation) {
-        // Si tiene plan → checkout con plan
-        // Si tiene bolso → carrito con bolso y plan si lo hay
-        // Siempre termina en el carrito para cerrar la compra
-        let returnUrl = "/cart"
-        if (selectedPlan && selectedBag) {
-          returnUrl = `/cart?plan=${selectedPlan}&bag=${selectedBag}`
-        } else if (selectedPlan) {
-          returnUrl = `/cart?plan=${selectedPlan}`
-        } else if (selectedBag) {
-          returnUrl = `/cart?bag=${selectedBag}`
-        }
+      // Guardar returnUrl SIEMPRE en localStorage (tanto si requiere confirmación como si no)
+      // Si requiere confirmación: lo lee welcome/page.tsx tras confirmar el email
+      // Si no requiere confirmación: lo lee auth/login tras iniciar sesión
+      let returnUrl = ""
+      if (selectedPlan && selectedBag) {
+        returnUrl = `/cart?plan=${selectedPlan}&bag=${selectedBag}`
+      } else if (selectedPlan) {
+        returnUrl = `/cart?plan=${selectedPlan}`
+      } else if (selectedBag) {
+        returnUrl = `/cart?bag=${selectedBag}`
+      }
+      if (returnUrl) {
         localStorage.setItem("semzo_post_confirm_url", returnUrl)
       }
 

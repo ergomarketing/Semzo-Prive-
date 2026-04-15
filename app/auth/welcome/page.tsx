@@ -28,35 +28,44 @@ export default function WelcomePage() {
         const plan = url.searchParams.get("plan")
         const bagId = url.searchParams.get("bag")
 
-        if (!plan || !MEMBERSHIP_PLANS[plan]) {
-          router.replace(savedUrl)
-          return
-        }
-
-        const membership = MEMBERSHIP_PLANS[plan]
-        let bagBrand = ""
-        let bagName = ""
-        let bagImage = membership.image
+        const supabase = getSupabaseBrowser()
 
         // Buscar info del bolso en Supabase si hay bag param
+        let bagBrand = ""
+        let bagName = ""
+        let bagImage = ""
+        let bagMembershipType = plan // usar el plan de la URL o inferirlo del bolso
+
         if (bagId) {
-          const supabase = getSupabaseBrowser()
           const { data: bag } = await supabase
             .from("bags")
-            .select("name, brand, image_url, images")
+            .select("name, brand, image_url, images, membership_type")
             .eq("id", bagId)
             .maybeSingle()
 
           if (bag) {
             bagBrand = bag.brand || ""
             bagName = bag.name || ""
-            bagImage = bag.images?.[0] || bag.image_url || membership.image
+            bagImage = bag.images?.[0] || bag.image_url || ""
+            // Si no hay plan en la URL, usar el membership_type del bolso
+            if (!plan && bag.membership_type) {
+              bagMembershipType = bag.membership_type
+            }
           }
         }
 
+        // Si no hay plan, redirigir sin construir carrito
+        if (!bagMembershipType || !MEMBERSHIP_PLANS[bagMembershipType]) {
+          router.replace(savedUrl)
+          return
+        }
+
+        const membership = MEMBERSHIP_PLANS[bagMembershipType]
+        if (!bagImage) bagImage = membership.image
+
         // Construir el item de membresía con el bolso en la descripción
         const membershipItem = {
-          id: `${plan}-membership-monthly`,
+          id: `${bagMembershipType}-membership-monthly`,
           name: membership.name.toUpperCase(),
           price: `${membership.price}€`,
           billingCycle: "monthly",
