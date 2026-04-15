@@ -450,9 +450,16 @@ export async function POST(req: NextRequest) {
           const recipientName = pi.metadata?.recipient_name;
           const purchaserId = pi.metadata?.user_id;
 
+          console.log("🎁 Gift card payment succeeded:", { 
+            paymentIntentId: pi.id, 
+            amount: pi.amount, 
+            purchaserId, 
+            recipientEmail 
+          });
+
           // Buscar la gift card pendiente creada con este PaymentIntent
           const amountCents = pi.amount;
-          const { data: giftCard } = await supabase
+          const { data: giftCard, error: giftCardError } = await supabase
             .from("gift_cards")
             .select("id, code, amount, personal_message")
             .eq("purchased_by", purchaserId)
@@ -461,6 +468,8 @@ export async function POST(req: NextRequest) {
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
+
+          console.log("🎁 Gift card lookup result:", { giftCard, giftCardError, amountCents, purchaserId });
 
           if (giftCard) {
             // Activar la gift card
@@ -545,6 +554,8 @@ export async function POST(req: NextRequest) {
             }).catch(() => {});
 
             console.log("✅ Gift card ACTIVATED:", giftCard.code);
+          } else {
+            console.error("❌ Gift card NOT FOUND for payment:", { amountCents, purchaserId, paymentIntentId: pi.id });
           }
           break;
         }
