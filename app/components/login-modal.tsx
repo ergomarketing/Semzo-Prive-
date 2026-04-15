@@ -16,9 +16,11 @@ interface LoginModalProps {
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
   onClose?: () => void
+  plan?: string
+  bag?: string
 }
 
-export function LoginModal({ open, onOpenChange, onSuccess, onClose }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange, onSuccess, onClose, plan, bag }: LoginModalProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -211,7 +213,11 @@ export function LoginModal({ open, onOpenChange, onSuccess, onClose }: LoginModa
                     }}
                     onClick={() => {
                       handleClose()
-                      window.location.href = "/signup"
+                      const params = new URLSearchParams()
+                      if (plan) params.set("plan", plan)
+                      if (bag) params.set("bag", bag)
+                      const query = params.toString()
+                      window.location.href = `/signup${query ? `?${query}` : ""}`
                     }}
                   >
                     Unirse al Club
