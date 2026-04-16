@@ -288,12 +288,25 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
 
-      // Replace idempotente: eliminar membresía existente y añadir la nueva
+      const newItemId = `${planKey}-membership-monthly${sessionBag ? `-${sessionBag}` : ""}`
+
+      // Idempotente:
+      // 1. misma membresía + mismo bolso → no hacer nada
+      // 2. distinta membresía o distinto bolso → reemplazar
+      // 3. no existe → crear
       const existingMembership = items.find((i: any) => i.itemType === "membership")
-      if (existingMembership) removeItem(existingMembership.id)
+      if (existingMembership) {
+        if (existingMembership.id === newItemId) {
+          // Mismo item exacto, no duplicar — solo limpiar params
+          router.replace("/cart", { scroll: false })
+          return
+        }
+        // Diferente membresía o bolso → reemplazar
+        removeItem(existingMembership.id)
+      }
 
       addItem({
-        id: `${planKey}-membership-monthly`,
+        id: newItemId,
         name: membership.name.toUpperCase(),
         price: `${membership.price}€`,
         billingCycle: "monthly",
