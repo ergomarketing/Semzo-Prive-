@@ -1016,11 +1016,15 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
                       }
                     } else {
-                      checkoutBody.priceId = priceId
                       checkoutBody.membershipType = type
                       checkoutBody.billingCycle = cycle
                       if (appliedGiftCard) {
+                        // Gift card parcial: cobrar solo el resto con price_data dinámico
+                        checkoutBody.amountCents = Math.round(finalAmount * 100)
+                        checkoutBody.productName = `Membresía ${type} (Gift Card aplicada)`
                         checkoutBody.gift_card_id = appliedGiftCard.id
+                      } else {
+                        checkoutBody.priceId = priceId
                       }
                     }
                     // Pasar cupón a Stripe para que lo aplique en el checkout
