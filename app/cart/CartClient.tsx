@@ -236,7 +236,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     checkAuth()
   }, [items.length])
 
-  // Si hay plan/bag en la URL, siempre construir/reemplazar el item de membresía
+  // Rehidratación desde URL: construye/reemplaza membresía y limpia params
   useEffect(() => {
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
@@ -244,7 +244,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     if (!urlPlan && !urlBag) return
 
     const buildFromUrl = async () => {
-      // Determinar planKey: directo de URL o inferir del bolso
       let planKey = urlPlan || ""
       let bagBrand = ""
       let bagName = ""
@@ -272,8 +271,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
 
-      const hasMembershipItem = items.some((i: any) => i.itemType === "membership")
-      if (hasMembershipItem) return
+      // Replace idempotente: eliminar membresía existente y añadir la nueva
+      const existingMembership = items.find((i: any) => i.itemType === "membership")
+      if (existingMembership) removeItem(existingMembership.id)
 
       addItem({
         id: `${planKey}-membership-monthly`,
@@ -285,6 +285,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         brand: bagBrand || "Semzo Privé",
         itemType: "membership",
       })
+
+      // Limpiar query params para evitar rehidratación doble
+      router.replace("/cart", { scroll: false })
     }
 
     buildFromUrl()
