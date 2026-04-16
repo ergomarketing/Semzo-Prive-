@@ -236,41 +236,45 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     checkAuth()
   }, [items.length])
 
-  // Si el carrito está vacío y hay plan/bag en la URL, construir el carrito
+  // Si hay plan/bag en la URL, siempre construir/reemplazar el item de membresía
   useEffect(() => {
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
 
     if (!urlPlan && !urlBag) return
 
-    // Esperar a que el contexto hidrate localStorage
-    const timer = setTimeout(async () => {
-      if (items.length > 0) return // ya hay items, no sobreescribir
-
-      const planKey = urlPlan || ""
-      const membership = MEMBERSHIP_PLANS[planKey]
-
-      if (!membership) return
-
+    const buildFromUrl = async () => {
+      // Determinar planKey: directo de URL o inferir del bolso
+      let planKey = urlPlan || ""
       let bagBrand = ""
       let bagName = ""
-      let bagImage = `/images/membership-${planKey}.jpg`
+      let bagImage = ""
 
       if (urlBag) {
         try {
           const supabase = getSupabaseBrowser()
           const { data: bag } = await supabase
             .from("bags")
-            .select("name, brand, image_url, images")
+            .select("name, brand, image_url, images, membership_type")
             .eq("id", urlBag)
             .maybeSingle()
           if (bag) {
             bagBrand = bag.brand || ""
             bagName = bag.name || ""
-            bagImage = bag.images?.[0] || bag.image_url || bagImage
+            bagImage = bag.images?.[0] || bag.image_url || ""
+            if (!planKey && bag.membership_type) planKey = bag.membership_type
           }
         } catch {}
       }
+
+      const membership = MEMBERSHIP_PLANS[planKey]
+      if (!membership) return
+
+      if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
+
+      // Siempre reemplazar el item de membresía (eliminar el existente primero)
+      const existingMembership = items.find((i: any) => i.itemType === "membership")
+      if (existingMembership) removeItem(existingMembership.id)
 
       addItem({
         id: `${planKey}-membership-monthly`,
@@ -282,10 +286,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         brand: bagBrand || "Semzo Privé",
         itemType: "membership",
       })
-    }, 300)
+    }
 
-    return () => clearTimeout(timer)
-  }, [searchParams, items.length])
+    buildFromUrl()
+  }, [searchParams.get("plan"), searchParams.get("bag")])
 
   useEffect(() => {
     if (verificationSessionId && user) {
