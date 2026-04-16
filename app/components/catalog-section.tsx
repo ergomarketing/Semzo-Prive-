@@ -58,7 +58,7 @@ export default function CatalogSection() {
         // Ordenar por display_order (manual desde admin), fallback a brand
         const { data, error} = await supabase
           .from("bags")
-          .select("*")
+          .select("id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type")
           .order("display_order", { ascending: true, nullsFirst: false })
           .order("brand", { ascending: true })
 
@@ -169,8 +169,24 @@ export default function CatalogSection() {
     return (
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center">
-            <p className="text-lg text-slate-600">Cargando catálogo...</p>
+          <div className="flex justify-center mb-8">
+            <div className="flex gap-2">
+              {["Todos", "L'Essentiel", "Signature", "Privé"].map((tab) => (
+                <div key={tab} className="h-9 w-24 rounded-md bg-slate-100 animate-pulse" />
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg overflow-hidden border border-slate-100">
+                <div className="aspect-square bg-slate-100 animate-pulse" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-slate-100 animate-pulse rounded w-2/3" />
+                  <div className="h-3 bg-slate-100 animate-pulse rounded w-1/2" />
+                  <div className="h-8 bg-slate-100 animate-pulse rounded w-full mt-4" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

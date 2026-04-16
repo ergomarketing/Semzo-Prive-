@@ -12,7 +12,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { Checkbox } from "@/components/ui/checkbox"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { toast } from "react-toastify"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import SMSAuthModal from "@/app/components/sms-auth-modal"
 import { LoginModal } from "@/app/components/login-modal"
 import { useRequireAuth } from "@/app/hooks/useRequireAuth"
@@ -79,9 +79,16 @@ function analyzeCartItems(items: any[]) {
   }
 }
 
+const MEMBERSHIP_PLANS: Record<string, { name: string; price: number }> = {
+  essentiel: { name: "L'Essentiel", price: 59 },
+  signature: { name: "Signature", price: 149 },
+  prive: { name: "Privé", price: 279 },
+}
+
 export default function CartClient({ initialUser }: { initialUser?: any } = {}) {
-  const { items, removeItem, total, itemCount, clearCart } = useCart()
+  const { items, removeItem, total, itemCount, clearCart, addItem } = useCart()
   const [user, setUser] = useState<any>(initialUser || null)
+  const searchParams = useSearchParams()
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [identityVerified, setIdentityVerified] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -226,10 +233,59 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       }
     }
 
-    if (items.length > 0) {
-      checkAuth()
-    }
+    checkAuth()
   }, [items.length])
+
+  // Si el carrito está vacío y hay plan/bag en la URL, construir el carrito
+  useEffect(() => {
+    const urlPlan = searchParams.get("plan")
+    const urlBag = searchParams.get("bag")
+
+    if (!urlPlan && !urlBag) return
+
+    // Esperar a que el contexto hidrate localStorage
+    const timer = setTimeout(async () => {
+      if (items.length > 0) return // ya hay items, no sobreescribir
+
+      const planKey = urlPlan || ""
+      const membership = MEMBERSHIP_PLANS[planKey]
+
+      if (!membership) return
+
+      let bagBrand = ""
+      let bagName = ""
+      let bagImage = `/images/membership-${planKey}.jpg`
+
+      if (urlBag) {
+        try {
+          const supabase = getSupabaseBrowser()
+          const { data: bag } = await supabase
+            .from("bags")
+            .select("name, brand, image_url, images")
+            .eq("id", urlBag)
+            .maybeSingle()
+          if (bag) {
+            bagBrand = bag.brand || ""
+            bagName = bag.name || ""
+            bagImage = bag.images?.[0] || bag.image_url || bagImage
+          }
+        } catch {}
+      }
+
+      addItem({
+        id: `${planKey}-membership-monthly`,
+        name: membership.name.toUpperCase(),
+        price: `${membership.price}€`,
+        billingCycle: "monthly",
+        description: bagBrand && bagName ? `${bagBrand} ${bagName}` : `Membresía ${membership.name}`,
+        image: bagImage,
+        brand: bagBrand || "Semzo Privé",
+        itemType: "membership",
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchParams, items.length])
 
   useEffect(() => {
     if (verificationSessionId && user) {

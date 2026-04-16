@@ -16,11 +16,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut, Loader2 } from "lucide-react"
+import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useEffect } from "react"
-import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/app/hooks/useAuth"
 
 export default function DashboardLayoutClient({
@@ -82,14 +80,20 @@ export default function DashboardLayoutClient({
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full bg-slate-50">
-        <Sidebar className="border-r border-slate-200 hidden md:flex" collapsible="offcanvas">
+        {/* Sidebar: overlay completo en móvil, fijo en desktop */}
+        <Sidebar
+          className="border-r border-slate-200"
+          collapsible="offcanvas"
+        >
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link href="/" className="group">
               <span className="text-xl font-serif text-indigo-dark group-hover:text-indigo-dark/80 transition-colors">
                 Semzo Privé
               </span>
             </Link>
-            <p className="text-sm text-slate-600 font-serif mt-2">Bienvenida</p>
+            <p className="text-sm text-slate-600 font-serif mt-2">
+              Bienvenida, {userName}
+            </p>
           </SidebarHeader>
 
           <SidebarContent className="p-2">
@@ -123,13 +127,13 @@ export default function DashboardLayoutClient({
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex-1">
-          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6">
-            <SidebarTrigger className="text-slate-700" />
+        <SidebarInset className="flex-1 min-w-0">
+          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 md:px-6">
+            <SidebarTrigger className="text-slate-700 shrink-0" />
             <Separator orientation="vertical" className="h-6" />
-            <h1 className="text-lg font-serif text-slate-600">Dashboard</h1>
+            <h1 className="text-lg font-serif text-slate-600 truncate">Dashboard</h1>
           </header>
-          <main className="flex-1 p-6">{children}</main>
+          <main className="flex-1 p-4 md:p-6">{children}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>
