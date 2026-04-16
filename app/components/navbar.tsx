@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation"
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, loading, signOut } = useAuth()
+  const { user, profile, loading, signOut } = useAuth()
   const { itemCount } = useCart()
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith("/admin")
@@ -163,19 +163,19 @@ export default function Navbar() {
                     <Button className="rounded-none px-3 sm:px-4 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-slate-800 text-white hover:bg-slate-700 flex items-center space-x-2">
                       <User className="w-3 h-3" />
                       <span className="hidden sm:inline">
-                        {user.profile?.full_name ||
-                          (user.profile?.first_name && user.profile?.last_name
-                            ? `${user.profile.first_name} ${user.profile.last_name}`
+                        {profile?.full_name ||
+                          (profile?.first_name && profile?.last_name
+                            ? `${profile.first_name} ${profile.last_name}`
                             : null) ||
-                          (user.metadata?.first_name && user.metadata?.last_name
-                            ? `${user.metadata.first_name} ${user.metadata.last_name}`
+                          (user.user_metadata?.first_name && user.user_metadata?.last_name
+                            ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                             : null) ||
                           user.email?.split("@")[0] ||
                           "Usuario"}
                       </span>
                       <span className="sm:hidden">
-                        {user.profile?.first_name ||
-                          user.metadata?.first_name ||
+                        {profile?.first_name ||
+                          user.user_metadata?.first_name ||
                           user.email?.split("@")[0]?.slice(0, 8) ||
                           "Usuario"}
                       </span>
