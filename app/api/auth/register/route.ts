@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, phone, plan, origin, returnUrl } = body
+    const { email, password, firstName, lastName, phone, plan, bag, origin, returnUrl } = body
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     const callbackUrl = new URL(`${siteUrl}/auth/callback`)
     if (returnUrl) callbackUrl.searchParams.set("next", returnUrl)
     if (plan) callbackUrl.searchParams.set("plan", plan)
+    if (bag) callbackUrl.searchParams.set("bag", bag)
     if (origin) callbackUrl.searchParams.set("origin", origin)
 
     const { data: authData, error: authError } = await supabase.auth.signUp({

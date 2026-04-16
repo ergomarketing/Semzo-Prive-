@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get("type") as "signup" | "recovery" | "email" | null
   const next = requestUrl.searchParams.get("next")
   const plan = requestUrl.searchParams.get("plan")
+  const bag = requestUrl.searchParams.get("bag")
   const origin = requestUrl.searchParams.get("origin")
 
   if (code || token_hash) {
@@ -95,9 +96,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
       }
 
-      // Redirigir a /auth/welcome que lee localStorage para recuperar el contexto original
-      // (bolso que estaba viendo, carrito, etc.) guardado antes de confirmar el email
-      return NextResponse.redirect(new URL("/auth/welcome", request.url))
+      // Redirigir a /auth/welcome con plan y bag en la URL (no depender de localStorage)
+      const welcomeUrl = new URL("/auth/welcome", request.url)
+      if (plan) welcomeUrl.searchParams.set("plan", plan)
+      if (bag) welcomeUrl.searchParams.set("bag", bag)
+      return NextResponse.redirect(welcomeUrl)
     } else {
       // Si hubo error, asegurar que no haya sesión parcial
       await supabase.auth.signOut()

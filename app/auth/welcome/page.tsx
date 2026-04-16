@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 
 const MEMBERSHIP_PLANS: Record<string, { name: string; price: number; image: string }> = {
@@ -12,10 +12,16 @@ const MEMBERSHIP_PLANS: Record<string, { name: string; price: number; image: str
 
 export default function WelcomePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Leer plan y bag de la URL (vienen del callback) o de localStorage (fallback)
+    const urlPlan = searchParams.get("plan")
+    const urlBag = searchParams.get("bag")
     const savedUrl = localStorage.getItem("semzo_post_confirm_url")
-    if (!savedUrl) {
+    
+    // Si no hay nada en URL ni localStorage, ir al dashboard
+    if (!urlPlan && !urlBag && !savedUrl) {
       router.replace("/dashboard")
       return
     }
@@ -24,9 +30,15 @@ export default function WelcomePage() {
 
     const buildCartAndRedirect = async () => {
       try {
-        const url = new URL(savedUrl, window.location.origin)
-        const plan = url.searchParams.get("plan")
-        const bagId = url.searchParams.get("bag")
+        // Priorizar URL params, fallback a savedUrl
+        let plan = urlPlan
+        let bagId = urlBag
+        
+        if (!plan && !bagId && savedUrl) {
+          const url = new URL(savedUrl, window.location.origin)
+          plan = url.searchParams.get("plan")
+          bagId = url.searchParams.get("bag")
+        }
 
         const supabase = getSupabaseBrowser()
 
@@ -84,7 +96,17 @@ export default function WelcomePage() {
         // Si falla, redirigir de todas formas
       }
 
-      router.replace(savedUrl)
+      // Construir URL de redirección con los parámetros
+      let redirectUrl = "/dashboard"
+      if (plan && bagId) {
+        redirectUrl = `/cart?plan=${plan}&bag=${bagId}`
+      } else if (plan) {
+        redirectUrl = `/cart?plan=${plan}`
+      } else if (bagId) {
+        redirectUrl = `/cart?bag=${bagId}`
+      }
+      
+      router.replace(redirectUrl)
     }
 
     buildCartAndRedirect()
