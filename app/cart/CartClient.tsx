@@ -236,44 +236,77 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     checkAuth()
   }, [items.length])
 
-  // Si el carrito está vacío y hay plan/bag en la URL, construir el carrito
+  // Rehidratación desde URL o sessionStorage (fallback SMS): construye/reemplaza membresía
   useEffect(() => {
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
 
-    if (!urlPlan && !urlBag) return
+    // Fallback: leer sessionStorage si no hay params en URL (caso SMS)
+    let sessionPlan = urlPlan
+    let sessionBag = urlBag
+    if (!sessionPlan && !sessionBag) {
+      try {
+        const ctx = sessionStorage.getItem("semzo_purchase_context")
+        if (ctx) {
+          const parsed = JSON.parse(ctx)
+          sessionPlan = parsed.plan || null
+          sessionBag = parsed.bag || null
+        }
+      } catch {}
+    }
 
-    // Esperar a que el contexto hidrate localStorage
-    const timer = setTimeout(async () => {
-      if (items.length > 0) return // ya hay items, no sobreescribir
+    if (!sessionPlan && !sessionBag) return
 
-      const planKey = urlPlan || ""
-      const membership = MEMBERSHIP_PLANS[planKey]
+    const buildFromUrl = async () => {
+      // Limpiar sessionStorage al usarlo
+      sessionStorage.removeItem("semzo_purchase_context")
 
-      if (!membership) return
-
+      let planKey = sessionPlan || ""
       let bagBrand = ""
       let bagName = ""
-      let bagImage = `/images/membership-${planKey}.jpg`
+      let bagImage = ""
 
-      if (urlBag) {
+      if (sessionBag) {
         try {
           const supabase = getSupabaseBrowser()
           const { data: bag } = await supabase
             .from("bags")
-            .select("name, brand, image_url, images")
-            .eq("id", urlBag)
+            .select("name, brand, image_url, images, membership_type")
+            .eq("id", sessionBag)
             .maybeSingle()
           if (bag) {
             bagBrand = bag.brand || ""
             bagName = bag.name || ""
-            bagImage = bag.images?.[0] || bag.image_url || bagImage
+            bagImage = bag.images?.[0] || bag.image_url || ""
+            if (!planKey && bag.membership_type) planKey = bag.membership_type
           }
         } catch {}
       }
 
+      const membership = MEMBERSHIP_PLANS[planKey]
+      if (!membership) return
+
+      if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
+
+      const newItemId = `${planKey}-membership-monthly${sessionBag ? `-${sessionBag}` : ""}`
+
+      // Idempotente:
+      // 1. misma membresía + mismo bolso → no hacer nada
+      // 2. distinta membresía o distinto bolso → reemplazar
+      // 3. no existe → crear
+      const existingMembership = items.find((i: any) => i.itemType === "membership")
+      if (existingMembership) {
+        if (existingMembership.id === newItemId) {
+          // Mismo item exacto, no duplicar — solo limpiar params
+          router.replace("/cart", { scroll: false })
+          return
+        }
+        // Diferente membresía o bolso → reemplazar
+        removeItem(existingMembership.id)
+      }
+
       addItem({
-        id: `${planKey}-membership-monthly`,
+        id: newItemId,
         name: membership.name.toUpperCase(),
         price: `${membership.price}€`,
         billingCycle: "monthly",
@@ -282,10 +315,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         brand: bagBrand || "Semzo Privé",
         itemType: "membership",
       })
-    }, 300)
 
-    return () => clearTimeout(timer)
-  }, [searchParams, items.length])
+      // Limpiar query params para evitar rehidratación doble
+      router.replace("/cart", { scroll: false })
+    }
+
+    buildFromUrl()
+  }, [searchParams.get("plan"), searchParams.get("bag")])
 
   useEffect(() => {
     if (verificationSessionId && user) {

@@ -86,22 +86,26 @@ export async function GET(request: NextRequest) {
         // Error de sync no bloquea el flujo
       }
 
-      // Obtener plan y bag de: 1) URL params, 2) user metadata (guardado durante registro)
+      // Contexto de compra: priorizar URL params, luego user_metadata como fallback
       const userMetadata = data.user.user_metadata || {}
-      const finalPlan = plan || userMetadata.pending_plan
-      const finalBag = bag || userMetadata.pending_bag
+      const finalPlan = plan || userMetadata.pending_plan || null
+      const finalBag = bag || userMetadata.pending_bag || null
 
       // Si viene de checkout con plan (sin bolso), ir directo al checkout
       if (origin === "checkout" && finalPlan && !finalBag) {
         return NextResponse.redirect(new URL(`/checkout?plan=${finalPlan}`, request.url))
       }
 
-      // SIEMPRE pasar por /auth/welcome para construir el carrito correctamente
-      // (incluso si hay next, welcome construye el carrito y luego redirige)
-      const welcomeUrl = new URL("/auth/welcome", request.url)
-      if (finalPlan) welcomeUrl.searchParams.set("plan", finalPlan)
-      if (finalBag) welcomeUrl.searchParams.set("bag", finalBag)
-      return NextResponse.redirect(welcomeUrl)
+      // Si hay contexto de compra, redirigir directo a /cart con params explícitos
+      if (finalPlan || finalBag) {
+        const cartUrl = new URL("/cart", request.url)
+        if (finalPlan) cartUrl.searchParams.set("plan", finalPlan)
+        if (finalBag) cartUrl.searchParams.set("bag", finalBag)
+        return NextResponse.redirect(cartUrl)
+      }
+
+      // Sin contexto de compra: welcome como fallback (maneja localStorage legacy)
+      return NextResponse.redirect(new URL("/auth/welcome", request.url))
     } else {
       // Si hubo error, asegurar que no haya sesión parcial
       await supabase.auth.signOut()
