@@ -66,9 +66,9 @@ export default function WelcomePage() {
           }
         }
 
-        // Si no hay plan, redirigir sin construir carrito
+        // Si no hay plan válido, redirigir al dashboard
         if (!bagMembershipType || !MEMBERSHIP_PLANS[bagMembershipType]) {
-          router.replace(savedUrl)
+          router.replace("/dashboard")
           return
         }
 

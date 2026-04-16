@@ -91,17 +91,13 @@ export async function GET(request: NextRequest) {
       const finalPlan = plan || userMetadata.pending_plan
       const finalBag = bag || userMetadata.pending_bag
 
-      // Si hay next explícito en la URL, usarlo directamente
-      if (next) {
-        return NextResponse.redirect(new URL(next, request.url))
-      }
-
-      // Si viene de checkout con plan, ir al checkout
-      if (origin === "checkout" && finalPlan) {
+      // Si viene de checkout con plan (sin bolso), ir directo al checkout
+      if (origin === "checkout" && finalPlan && !finalBag) {
         return NextResponse.redirect(new URL(`/checkout?plan=${finalPlan}`, request.url))
       }
 
-      // Redirigir a /auth/welcome con plan y bag (desde URL o metadata)
+      // SIEMPRE pasar por /auth/welcome para construir el carrito correctamente
+      // (incluso si hay next, welcome construye el carrito y luego redirige)
       const welcomeUrl = new URL("/auth/welcome", request.url)
       if (finalPlan) welcomeUrl.searchParams.set("plan", finalPlan)
       if (finalBag) welcomeUrl.searchParams.set("bag", finalBag)
