@@ -29,24 +29,24 @@ export default function WelcomePage() {
     localStorage.removeItem("semzo_post_confirm_url")
 
     const buildCartAndRedirect = async () => {
+      // Declarar fuera del try para que redirectUrl las use aunque falle el try
+      let plan = urlPlan
+      let bagId = urlBag
+
+      if (!plan && !bagId && savedUrl) {
+        const url = new URL(savedUrl, window.location.origin)
+        plan = url.searchParams.get("plan")
+        bagId = url.searchParams.get("bag")
+      }
+
       try {
-        // Priorizar URL params, fallback a savedUrl
-        let plan = urlPlan
-        let bagId = urlBag
-        
-        if (!plan && !bagId && savedUrl) {
-          const url = new URL(savedUrl, window.location.origin)
-          plan = url.searchParams.get("plan")
-          bagId = url.searchParams.get("bag")
-        }
 
         const supabase = getSupabaseBrowser()
 
-        // Buscar info del bolso en Supabase si hay bag param
         let bagBrand = ""
         let bagName = ""
         let bagImage = ""
-        let bagMembershipType = plan // usar el plan de la URL o inferirlo del bolso
+        let bagMembershipType = plan
 
         if (bagId) {
           const { data: bag } = await supabase
