@@ -362,11 +362,13 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <SMSAuthModal 
-        isOpen={showSMSModal} 
-        onClose={() => setShowSMSModal(false)} 
-        onSuccess={handleSMSSuccess} 
+      <SMSAuthModal
+        isOpen={showSMSModal}
+        onClose={() => setShowSMSModal(false)}
+        onSuccess={handleSMSSuccess}
         mode="login"
+        plan={searchParams.get("plan") ?? undefined}
+        bag={searchParams.get("bag") ?? undefined}
       />
     </div>
   )

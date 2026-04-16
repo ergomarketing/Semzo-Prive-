@@ -13,9 +13,11 @@ interface SMSAuthModalProps {
   onClose: () => void
   onSuccess: (user: any) => void
   mode?: "signup" | "login"
+  plan?: string
+  bag?: string
 }
 
-export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup" }: SMSAuthModalProps) {
+export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup", plan, bag }: SMSAuthModalProps) {
   const [step, setStep] = useState<"phone" | "code" | "profile">("phone")
   const [phone, setPhone] = useState("")
   const [code, setCode] = useState("")
@@ -293,7 +295,17 @@ const { data, error } = await supabase.auth.verifyOtp({
             </Button>
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">¿Problemas con SMS?</p>
-              <Button variant="outline" onClick={() => (window.location.href = "/signup")} className="w-full">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  if (plan) params.set("plan", plan)
+                  if (bag) params.set("bag", bag)
+                  const query = params.toString()
+                  window.location.href = `/signup${query ? `?${query}` : ""}`
+                }}
+                className="w-full"
+              >
                 Registrarse gratis con email
               </Button>
             </div>
