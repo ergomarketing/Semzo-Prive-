@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { Mail, CheckCircle2, AlertCircle } from "lucide-react"
+import { Mail, CheckCircle2, AlertCircle, Phone } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/app/hooks/useAuth"
+import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 
 function SignupContent() {
   const searchParams = useSearchParams()
@@ -30,6 +31,7 @@ function SignupContent() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [selectedBag, setSelectedBag] = useState<string | null>(null)
   const [requiresConfirmation, setRequiresConfirmation] = useState(false)
+  const [showSMSModal, setShowSMSModal] = useState(false)
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -244,6 +246,26 @@ function SignupContent() {
           </div>
         <div>
 
+        {/* Opción SMS */}
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-11 mb-4 border-slate-300 text-slate-700 font-serif"
+          onClick={() => setShowSMSModal(true)}
+        >
+          <Phone className="h-4 w-4 mr-2" />
+          Registrarse con SMS
+        </Button>
+
+        <div className="relative mb-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-slate-400">o con email</span>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -387,6 +409,21 @@ function SignupContent() {
         </div>
         </div>
       </div>
+
+      <SMSAuthModal
+        isOpen={showSMSModal}
+        onClose={() => setShowSMSModal(false)}
+        onSuccess={(user) => {
+          setShowSMSModal(false)
+          const cartUrl = selectedPlan || selectedBag
+            ? `/cart${selectedPlan ? `?plan=${selectedPlan}` : ""}${selectedBag ? `${selectedPlan ? "&" : "?"}bag=${selectedBag}` : ""}`
+            : "/dashboard"
+          router.push(cartUrl)
+        }}
+        mode="signup"
+        plan={selectedPlan ?? undefined}
+        bag={selectedBag ?? undefined}
+      />
     </div>
   )
 }
