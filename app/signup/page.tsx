@@ -103,8 +103,7 @@ function SignupContent() {
           lastName: formData.lastName,
           phone: formData.phone,
           plan: selectedPlan,
-          // Si viene del carrito/checkout, redirigir al cart. Si viene de un bolso, al bolso.
-          returnUrl: selectedPlan ? "/cart" : selectedBag ? `/catalog/${selectedBag}` : undefined,
+          returnUrl: selectedPlan || selectedBag ? "/cart" : undefined,
         }),
       })
 
