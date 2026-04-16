@@ -82,10 +82,16 @@ function SepaForm({ onComplete }: { onComplete: () => void }) {
         })
 
         // 4. Activar membresía (Identity + SEPA completados)
-        await fetch("/api/memberships/activate", {
+        const activateRes = await fetch("/api/memberships/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
+
+        const activateData = await activateRes.json()
+
+        if (!activateRes.ok) {
+          throw new Error(activateData.error || "Error activando la membresía")
+        }
 
         onComplete()
       } else {

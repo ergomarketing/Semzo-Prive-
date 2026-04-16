@@ -30,7 +30,7 @@ export async function POST() {
   // 3. Validar datos personales (profiles solo como datos de contacto)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, phone, document_number, address, city, postal_code")
+    .select("full_name, phone, document_number, shipping_address, shipping_city, shipping_postal_code")
     .eq("id", user.id)
     .single()
 
@@ -38,9 +38,9 @@ export async function POST() {
     profile?.full_name &&
     profile?.phone &&
     profile?.document_number &&
-    profile?.address &&
-    profile?.city &&
-    profile?.postal_code
+    profile?.shipping_address &&
+    profile?.shipping_city &&
+    profile?.shipping_postal_code
 
   if (!hasExtendedProfile) {
     return NextResponse.json({ error: "Datos personales incompletos" }, { status: 400 })
