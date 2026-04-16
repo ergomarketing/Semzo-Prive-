@@ -73,7 +73,7 @@ function SepaForm({ onComplete }: { onComplete: () => void }) {
 
       if (setupIntent?.status === "succeeded") {
         // 3. Guardar el payment_method_id en el perfil
-        await fetch("/api/sepa/save-mandate", {
+        const mandateRes = await fetch("/api/sepa/save-mandate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -81,11 +81,22 @@ function SepaForm({ onComplete }: { onComplete: () => void }) {
           }),
         })
 
+        if (!mandateRes.ok) {
+          const mandateData = await mandateRes.json()
+          throw new Error(mandateData.error || "Error guardando el mandato bancario")
+        }
+
         // 4. Activar membresía (Identity + SEPA completados)
-        await fetch("/api/memberships/activate", {
+        const activateRes = await fetch("/api/memberships/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
+
+        const activateData = await activateRes.json()
+
+        if (!activateRes.ok) {
+          throw new Error(activateData.error || "Error activando la membresía")
+        }
 
         onComplete()
       } else {

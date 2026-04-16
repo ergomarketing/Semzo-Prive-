@@ -50,6 +50,12 @@ export async function POST(request: NextRequest) {
       password: password,
       options: {
         emailRedirectTo: callbackUrl.toString(),
+        data: {
+          first_name: firstName || null,
+          last_name: lastName || null,
+          pending_plan: plan || null,
+          pending_bag: bag || null,
+        },
       },
     })
 

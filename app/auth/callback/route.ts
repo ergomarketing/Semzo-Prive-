@@ -86,20 +86,21 @@ export async function GET(request: NextRequest) {
         // Error de sync no bloquea el flujo
       }
 
-      // Si hay next explícito en la URL (no perdido por Supabase), usarlo directamente
-      if (next) {
-        return NextResponse.redirect(new URL(next, request.url))
+      // Obtener plan y bag de: 1) URL params, 2) user metadata (guardado durante registro)
+      const userMetadata = data.user.user_metadata || {}
+      const finalPlan = plan || userMetadata.pending_plan
+      const finalBag = bag || userMetadata.pending_bag
+
+      // Si viene de checkout con plan (sin bolso), ir directo al checkout
+      if (origin === "checkout" && finalPlan && !finalBag) {
+        return NextResponse.redirect(new URL(`/checkout?plan=${finalPlan}`, request.url))
       }
 
-      // Si viene de checkout con plan en la URL, ir al checkout
-      if (origin === "checkout" && plan) {
-        return NextResponse.redirect(new URL(`/checkout?plan=${plan}`, request.url))
-      }
-
-      // Redirigir a /auth/welcome con plan y bag en la URL (no depender de localStorage)
+      // SIEMPRE pasar por /auth/welcome para construir el carrito correctamente
+      // (incluso si hay next, welcome construye el carrito y luego redirige)
       const welcomeUrl = new URL("/auth/welcome", request.url)
-      if (plan) welcomeUrl.searchParams.set("plan", plan)
-      if (bag) welcomeUrl.searchParams.set("bag", bag)
+      if (finalPlan) welcomeUrl.searchParams.set("plan", finalPlan)
+      if (finalBag) welcomeUrl.searchParams.set("bag", finalBag)
       return NextResponse.redirect(welcomeUrl)
     } else {
       // Si hubo error, asegurar que no haya sesión parcial

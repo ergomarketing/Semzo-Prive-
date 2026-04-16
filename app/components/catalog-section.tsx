@@ -748,6 +748,8 @@ function BagCard({
       <LoginModal
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
+        plan={bag.membership_type || membershipTier}
+        bag={bag.id}
         onSuccess={() => {
           setShowLoginModal(false)
           if (pendingAction) {
