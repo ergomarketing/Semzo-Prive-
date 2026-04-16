@@ -270,11 +270,11 @@ export default function ProcesoClient() {
           <div className="container mx-auto px-4 text-center">
             <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto font-light">
               Descubre más sobre nuestras{" "}
-              <Link href="/membresias" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
+              <Link href="/#membresias" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
                 membresías disponibles
               </Link>{" "}
               o explora nuestra{" "}
-              <Link href="/coleccion" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
+              <Link href="/catalog" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
                 colección completa
               </Link>
               .
