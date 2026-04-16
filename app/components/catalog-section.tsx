@@ -495,30 +495,22 @@ function BagCard({
       const data = await response.json()
 
       if (!response.ok) {
+        setIsReserving(false)
+
+        // Sin membresía activa → redirigir al carrito con contexto de compra
         if (
+          data.error?.includes("membresía debe estar activa") ||
           data.error?.includes("requiere una membresía") ||
           data.error?.includes("Actualiza tu membresía") ||
           data.requiresPass
         ) {
-          setIsReserving(false)
-          toast({
-            title: "🌟 Actualiza tu membresía",
-            description: data.error,
-            action: (
-              <Button
-                size="sm"
-                onClick={() => {
-                  window.location.href = "/membresias"
-                }}
-                className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
-              >
-                Ver Membresías
-              </Button>
-            ),
-            duration: 8000,
-          })
+          const cartUrl = new URL("/cart", window.location.origin)
+          if (bag.membership_type) cartUrl.searchParams.set("plan", bag.membership_type.toLowerCase())
+          cartUrl.searchParams.set("bag", bag.id)
+          router.push(cartUrl.pathname + cartUrl.search)
           return
         }
+
         throw new Error(data.error || "Error al crear la reserva")
       }
 
