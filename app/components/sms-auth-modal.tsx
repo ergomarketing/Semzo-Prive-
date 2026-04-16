@@ -58,6 +58,13 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup", plan
   }, [isOpen])
 
   const handleSendCode = async (isResend = false) => {
+    // Guardar contexto de compra en sessionStorage antes de autenticar
+    if (!isResend && (plan || bag)) {
+      const ctx: Record<string, string> = {}
+      if (plan) ctx.plan = plan
+      if (bag) ctx.bag = bag
+      sessionStorage.setItem("semzo_purchase_context", JSON.stringify(ctx))
+    }
     setLoading(true)
     setError("")
 

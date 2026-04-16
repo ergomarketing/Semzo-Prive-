@@ -236,26 +236,43 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     checkAuth()
   }, [items.length])
 
-  // Rehidratación desde URL: construye/reemplaza membresía y limpia params
+  // Rehidratación desde URL o sessionStorage (fallback SMS): construye/reemplaza membresía
   useEffect(() => {
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
 
-    if (!urlPlan && !urlBag) return
+    // Fallback: leer sessionStorage si no hay params en URL (caso SMS)
+    let sessionPlan = urlPlan
+    let sessionBag = urlBag
+    if (!sessionPlan && !sessionBag) {
+      try {
+        const ctx = sessionStorage.getItem("semzo_purchase_context")
+        if (ctx) {
+          const parsed = JSON.parse(ctx)
+          sessionPlan = parsed.plan || null
+          sessionBag = parsed.bag || null
+        }
+      } catch {}
+    }
+
+    if (!sessionPlan && !sessionBag) return
 
     const buildFromUrl = async () => {
-      let planKey = urlPlan || ""
+      // Limpiar sessionStorage al usarlo
+      sessionStorage.removeItem("semzo_purchase_context")
+
+      let planKey = sessionPlan || ""
       let bagBrand = ""
       let bagName = ""
       let bagImage = ""
 
-      if (urlBag) {
+      if (sessionBag) {
         try {
           const supabase = getSupabaseBrowser()
           const { data: bag } = await supabase
             .from("bags")
             .select("name, brand, image_url, images, membership_type")
-            .eq("id", urlBag)
+            .eq("id", sessionBag)
             .maybeSingle()
           if (bag) {
             bagBrand = bag.brand || ""
