@@ -272,9 +272,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
       if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
 
-      // Siempre reemplazar el item de membresía (eliminar el existente primero)
-      const existingMembership = items.find((i: any) => i.itemType === "membership")
-      if (existingMembership) removeItem(existingMembership.id)
+      const hasMembershipItem = items.some((i: any) => i.itemType === "membership")
+      if (hasMembershipItem) return
 
       addItem({
         id: `${planKey}-membership-monthly`,
