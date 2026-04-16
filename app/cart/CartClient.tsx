@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import SMSAuthModal from "@/app/components/sms-auth-modal"
 import { LoginModal } from "@/app/components/login-modal"
 import { useRequireAuth } from "@/app/hooks/useRequireAuth"
+import { useAuth } from "@/app/hooks/useAuth"
 
 function analyzeCartItems(items: any[]) {
   const bagPassItem = items.find((item) => {
@@ -87,8 +88,16 @@ const MEMBERSHIP_PLANS: Record<string, { name: string; price: number }> = {
 
 export default function CartClient({ initialUser }: { initialUser?: any } = {}) {
   const { items, removeItem, total, itemCount, clearCart, addItem } = useCart()
+  const { user: authUser } = useAuth()
   const [user, setUser] = useState<any>(initialUser || null)
   const searchParams = useSearchParams()
+
+  // Sincronizar user con useAuth (fuente de verdad más fiable que getSession)
+  useEffect(() => {
+    if (authUser && !user) {
+      setUser(authUser)
+    }
+  }, [authUser])
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [identityVerified, setIdentityVerified] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -1016,11 +1025,15 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
                       }
                     } else {
-                      checkoutBody.priceId = priceId
                       checkoutBody.membershipType = type
                       checkoutBody.billingCycle = cycle
                       if (appliedGiftCard) {
+                        // Gift card parcial: cobrar solo el resto con price_data dinámico
+                        checkoutBody.amountCents = Math.round(finalAmount * 100)
+                        checkoutBody.productName = `Membresía ${type} (Gift Card aplicada)`
                         checkoutBody.gift_card_id = appliedGiftCard.id
+                      } else {
+                        checkoutBody.priceId = priceId
                       }
                     }
                     // Pasar cupón a Stripe para que lo aplique en el checkout
