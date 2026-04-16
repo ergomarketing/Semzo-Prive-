@@ -103,6 +103,7 @@ function SignupContent() {
           lastName: formData.lastName,
           phone: formData.phone,
           plan: selectedPlan,
+          bag: selectedBag,
           returnUrl: selectedPlan || selectedBag ? "/cart" : undefined,
         }),
       })
