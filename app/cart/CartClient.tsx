@@ -87,7 +87,7 @@ const MEMBERSHIP_PLANS: Record<string, { name: string; price: number }> = {
 }
 
 export default function CartClient({ initialUser }: { initialUser?: any } = {}) {
-  const { items, removeItem, total, itemCount, clearCart, addItem } = useCart()
+  const { items, removeItem, total, itemCount, clearCart, addItem, isHydrated } = useCart()
   const { user: authUser } = useAuth()
   const [user, setUser] = useState<any>(initialUser || null)
   const searchParams = useSearchParams()
@@ -247,6 +247,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
   // Rehidratación desde URL o sessionStorage (fallback SMS): construye/reemplaza membresía
   useEffect(() => {
+    // Esperar a que CartProvider hidrate localStorage ANTES de intentar construir el carrito
+    // Evita race condition donde la hidratación sobrescribe los items añadidos desde URL
+    if (!isHydrated) return
+
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
 
@@ -330,7 +334,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     }
 
     buildFromUrl()
-  }, [searchParams.get("plan"), searchParams.get("bag")])
+  }, [isHydrated, searchParams.get("plan"), searchParams.get("bag")])
 
   useEffect(() => {
     if (verificationSessionId && user) {

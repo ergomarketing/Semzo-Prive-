@@ -24,6 +24,7 @@ interface CartContextType {
   total: number
   hasMembership: () => boolean
   replaceMembership: (newItems: CartItem[]) => void
+  isHydrated: boolean
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -142,6 +143,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         total,
         hasMembership,
         replaceMembership,
+        isHydrated,
       }}
     >
       {children}
