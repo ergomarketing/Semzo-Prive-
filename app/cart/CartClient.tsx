@@ -274,7 +274,8 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       // Limpiar sessionStorage al usarlo
       sessionStorage.removeItem("semzo_purchase_context")
 
-      let planKey = sessionPlan || ""
+      // Normalizar a minúsculas para que coincida con MEMBERSHIP_PLANS
+      let planKey = (sessionPlan || "").toLowerCase()
       let bagBrand = ""
       let bagName = ""
       let bagImage = ""
@@ -282,22 +283,29 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       if (sessionBag) {
         try {
           const supabase = getSupabaseBrowser()
-          const { data: bag } = await supabase
-            .from("bags")
-            .select("name, brand, image_url, images, membership_type")
-            .eq("id", sessionBag)
-            .maybeSingle()
-          if (bag) {
-            bagBrand = bag.brand || ""
-            bagName = bag.name || ""
-            bagImage = bag.images?.[0] || bag.image_url || ""
-            if (!planKey && bag.membership_type) planKey = bag.membership_type
+          if (supabase) {
+            const { data: bag } = await supabase
+              .from("bags")
+              .select("name, brand, image_url, images, membership_type")
+              .eq("id", sessionBag)
+              .maybeSingle()
+            if (bag) {
+              bagBrand = bag.brand || ""
+              bagName = bag.name || ""
+              bagImage = bag.images?.[0] || bag.image_url || ""
+              if (!planKey && bag.membership_type) planKey = bag.membership_type.toLowerCase()
+            }
           }
-        } catch {}
+        } catch (err) {
+          console.error("[v0] CartClient buildFromUrl bag fetch error:", err)
+        }
       }
 
       const membership = MEMBERSHIP_PLANS[planKey]
-      if (!membership) return
+      if (!membership) {
+        console.warn("[v0] CartClient buildFromUrl: plan no valido", { planKey, sessionPlan, sessionBag })
+        return
+      }
 
       if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
 
