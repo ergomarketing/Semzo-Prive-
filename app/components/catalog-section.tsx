@@ -55,12 +55,26 @@ export default function CatalogSection() {
       }
 
       try {
-        // Ordenar por display_order (manual desde admin), fallback a brand
-        const { data, error} = await supabase
+        const selectCols =
+          "id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type"
+
+        // Intento 1: ordenar por display_order (manual desde admin)
+        let { data, error } = await supabase
           .from("bags")
-          .select("id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type")
+          .select(selectCols)
           .order("display_order", { ascending: true, nullsFirst: false })
           .order("brand", { ascending: true })
+
+        // Fallback: si la columna display_order no existe en producción, reintentar sin ella
+        if (error) {
+          console.warn("[catalog] Fallback sin display_order:", error.message)
+          const retry = await supabase
+            .from("bags")
+            .select(selectCols)
+            .order("brand", { ascending: true })
+          data = retry.data
+          error = retry.error
+        }
 
         if (error) throw error
 

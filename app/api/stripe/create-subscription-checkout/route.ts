@@ -151,8 +151,10 @@ export async function POST(request: NextRequest) {
         .eq("id", userId)
     }
 
-    // Determinar modo: subscription si hay membershipType, payment para pases
-    const isSubscription = !!membershipType
+    // Determinar modo:
+    // - subscription: hay membershipType Y priceId (flujo normal recurrente)
+    // - payment: hay amountCents sin priceId (pases, gift card parcial, pagos únicos)
+    const isSubscription = !!(membershipType && priceId)
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
