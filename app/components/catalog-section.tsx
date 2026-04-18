@@ -34,11 +34,12 @@ const MEMBERSHIP_PRICES: Record<string, number> = {
   prive: 279,
 }
 
-export default function CatalogSection() {
+export default function CatalogSection({ initialBags = [] }: { initialBags?: BagItem[] } = {}) {
   const { user } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
-  const [bags, setBags] = useState<BagItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [bags, setBags] = useState<BagItem[]>(initialBags)
+  // Si hay initialBags del server, no mostrar loading
+  const [loading, setLoading] = useState(initialBags.length === 0)
   const [userMembership, setUserMembership] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
@@ -48,6 +49,9 @@ export default function CatalogSection() {
   const supabase = useMemo(() => getSupabaseBrowser(), [])
 
   useEffect(() => {
+    // Si ya tenemos bolsos del server (SSR), no re-fetchear en cliente
+    if (initialBags.length > 0) return
+
     const loadBags = async () => {
       if (!supabase) {
         setLoading(false)
