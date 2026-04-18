@@ -1,8 +1,42 @@
 import type { Metadata } from "next"
 import CatalogSection from "../components/catalog-section"
+import { createClient } from "../lib/supabase/server"
 
 // ISR: Revalidate every 10 minutes (600 seconds) - reduces function invocations
 export const revalidate = 600
+
+const BAG_SELECT_COLS =
+  "id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type"
+
+async function fetchInitialBags() {
+  try {
+    const supabase = await createClient()
+
+    // Intento 1: con display_order
+    let { data, error } = await supabase
+      .from("bags")
+      .select(BAG_SELECT_COLS)
+      .order("display_order", { ascending: true, nullsFirst: false })
+      .order("brand", { ascending: true })
+
+    // Fallback si display_order no existe en producción
+    if (error) {
+      const retry = await supabase.from("bags").select(BAG_SELECT_COLS).order("brand", { ascending: true })
+      data = retry.data
+      error = retry.error
+    }
+
+    if (error) {
+      console.error("[catalog SSR] Error cargando bolsos:", error.message)
+      return []
+    }
+
+    return data ?? []
+  } catch (err) {
+    console.error("[catalog SSR] Excepción:", err)
+    return []
+  }
+}
 
 export const metadata: Metadata = {
   title: "Catálogo de Bolsos de Lujo - Chanel, Dior, Louis Vuitton",
@@ -29,7 +63,9 @@ export const metadata: Metadata = {
   },
 }
 
-export default function CatalogPage() {
+export default async function CatalogPage() {
+  const initialBags = await fetchInitialBags()
+
   return (
     <main className="pt-24">
       <div className="bg-gradient-to-b from-rose-nude/10 to-white py-12">
@@ -41,7 +77,7 @@ export default function CatalogPage() {
           </p>
         </div>
       </div>
-      <CatalogSection />
+      <CatalogSection initialBags={initialBags} />
     </main>
   )
 }
