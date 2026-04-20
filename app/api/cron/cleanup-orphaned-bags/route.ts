@@ -51,30 +51,53 @@ export async function GET(request: Request) {
 
     console.log(`[CRON] Found ${potentialOrphanedBags.length} potential orphaned bags`)
 
-    // 2. For each bag, check if there's an active reservation
+    // 2. For each bag, determine if it's truly orphaned.
+    // REGLA IMPORTANTE: solo se libera un bolso si TUVO una reserva que caducó/canceló.
+    // Si un bolso está "rented" y NUNCA tuvo reserva -> es bloqueo manual del admin, NO tocar.
     const orphanedBagIds: string[] = []
 
     for (const bag of potentialOrphanedBags) {
-      const { data: activeReservation, error: reservationError } = await supabase
+      // 2a. ¿Tiene reserva activa? Si sí, saltar (el bolso está en uso legítimo).
+      const { data: activeReservation, error: activeError } = await supabase
         .from("reservations")
         .select("id, status, is_admin_rent")
         .eq("bag_id", bag.id)
-        .in("status", ["confirmed", "active", "pending", "in_progress"])
+        .in("status", ["confirmed", "active", "pending", "in_progress", "preparing"])
         .limit(1)
         .maybeSingle()
 
-      if (reservationError) {
-        console.error(`[CRON] Error checking reservation for bag ${bag.id}:`, reservationError)
+      if (activeError) {
+        console.error(`[CRON] Error checking active reservation for bag ${bag.id}:`, activeError)
         continue
       }
 
-      // No liberar si tiene reserva activa O si es un alquiler manual del admin
-      if (!activeReservation) {
-        orphanedBagIds.push(bag.id)
-        console.log(`[CRON] Bag ${bag.id} (${bag.name}) is orphaned - status: ${bag.status}, updated: ${bag.updated_at}`)
-      } else if (activeReservation.is_admin_rent) {
-        console.log(`[CRON] Bag ${bag.id} (${bag.name}) has admin rental - skipping cleanup`)
+      if (activeReservation) {
+        console.log(`[CRON] Bag ${bag.id} (${bag.name}) has active reservation - skipping`)
+        continue
       }
+
+      // 2b. ¿Existe alguna reserva histórica (cualquier status) para este bolso?
+      // Si NUNCA tuvo reserva => bloqueo manual del admin => NO liberar.
+      const { count: totalReservations, error: countError } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("bag_id", bag.id)
+
+      if (countError) {
+        console.error(`[CRON] Error counting reservations for bag ${bag.id}:`, countError)
+        continue
+      }
+
+      if (!totalReservations || totalReservations === 0) {
+        console.log(`[CRON] Bag ${bag.id} (${bag.name}) has NO reservation history - admin-locked, skipping`)
+        continue
+      }
+
+      // 2c. Tuvo reservas pero ninguna activa => realmente huérfano, liberar.
+      orphanedBagIds.push(bag.id)
+      console.log(
+        `[CRON] Bag ${bag.id} (${bag.name}) is orphaned - status: ${bag.status}, history: ${totalReservations} reservations, none active`,
+      )
     }
 
     if (orphanedBagIds.length === 0) {
