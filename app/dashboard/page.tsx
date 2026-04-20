@@ -21,16 +21,72 @@ export default function DashboardHome() {
   const { user, loading: authLoading } = useAuth()
   const [showIdentityModal, setShowIdentityModal] = useState(false)
   const [membershipTypeForVerification, setMembershipTypeForVerification] = useState<string>("")
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false)
+
+  // Detectar webviews de apps (Instagram, Facebook, TikTok) que rompen cookies de Supabase
+  useEffect(() => {
+    if (typeof navigator === "undefined") return
+    const ua = navigator.userAgent || ""
+    const inApp = /Instagram|FBAN|FBAV|FB_IAB|Messenger|Line|Twitter|MicroMessenger|TikTok|Snapchat/i.test(ua)
+    setIsInAppBrowser(inApp)
+  }, [])
+
+  // Si auth ya terminó de cargar y no hay usuario, redirigir a login
+  // Evita el spinner infinito en webviews de apps que bloquean cookies
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const timer = setTimeout(() => {
+        router.replace("/auth/login?redirect=/dashboard")
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [authLoading, user, router])
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
-  // Verificación de identidad: se muestra solo cuando el usuario intenta reservar, NO al cargar el dashboard
+  // Si no hay sesión y estamos en webview de app, mostrar CTA para abrir en navegador
+  if (!authLoading && !user && isInAppBrowser) {
+    const externalUrl = typeof window !== "undefined" ? window.location.href : "https://semzoprive.com/dashboard"
+    return (
+      <div className="max-w-lg mx-auto py-12 px-4">
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-900 space-y-3">
+            <p className="font-medium">
+              Para acceder a tu cuenta necesitas abrir la web en tu navegador (Safari o Chrome). Los navegadores
+              integrados de Instagram y otras apps no permiten mantener la sesión iniciada.
+            </p>
+            <Button
+              onClick={() => window.open(externalUrl, "_blank")}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-serif w-full"
+            >
+              Abrir en mi navegador
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   // ESTABILIDAD: No mostrar nada hasta que Auth termine de cargar
-  if (authLoading || isLoading || !user) {
+  if (authLoading || (user && isLoading)) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+      </div>
+    )
+  }
+
+  // Si no hay user después de que authLoading termino, el useEffect redirige.
+  // Mientras tanto mostrar spinner con fallback accionable.
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
+        <p className="text-sm text-slate-600">Redirigiendo al login…</p>
+        <Button variant="outline" onClick={() => router.replace("/auth/login?redirect=/dashboard")}>
+          Ir al login ahora
+        </Button>
       </div>
     )
   }
