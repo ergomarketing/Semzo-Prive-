@@ -3,6 +3,24 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 3 del flujo de suscripcion: REGISTRO
+ *
+ * Responsabilidades (validado 2026-04-16):
+ * - Crear usuario en Supabase Auth con signUp
+ * - Guardar pending_plan / pending_bag en user_metadata (fallback cross-device)
+ * - Construir callbackUrl con next, plan, bag, origin (contexto en URL)
+ * - Upsert en profiles: id, email, full_name, first_name, last_name, auth_method
+ * - Phone se guarda en paso separado para respetar constraint profiles_phone_unique
+ * - Notificar al admin del nuevo registro (no bloqueante)
+ *
+ * NO tocar sin avisar: este endpoint forma parte del contrato con signup/page.tsx,
+ * auth/callback y auth/welcome. Cambiar el shape del body o la respuesta rompe el flujo.
+ * ============================================================================
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

@@ -423,14 +423,29 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     return userMembership.isActive
   }
 
-  // AUTO-RESERVA: Cuando el usuario llega con ?reserve=1 tras activar membresía,
-  // disparar handleQuickReserve automáticamente sin que tenga que hacer clic.
+  // ============================================================================
+  // FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+  // ============================================================================
+  // PASO 10 del flujo de suscripcion: AUTO-RESERVA DEL BOLSO
+  //
+  // Cuando el usuario llega con ?reserve=1 (desde onboarding-complete tras
+  // activar membresia), disparar handleQuickReserve automaticamente.
+  //
+  // Condiciones antes de disparar:
+  //  - No se ha disparado ya (autoReserveTriggered)
+  //  - searchParams.reserve === "1"
+  //  - authUser presente y authLoading terminado
+  //  - userMembership.isActive true (esperar a fetchUserMembership)
+  //
+  // Tras disparar: limpiar ?reserve=1 de la URL con replaceState para que
+  // un refresh no vuelva a activarlo.
+  // ============================================================================
   useEffect(() => {
     if (autoReserveTriggered) return
     if (searchParams.get("reserve") !== "1") return
     if (authLoading) return
     if (!authUser) return
-    if (!userMembership.isActive) return // Esperar a que fetchUserMembership termine
+    if (!userMembership.isActive) return
 
     setAutoReserveTriggered(true)
     toast({
@@ -438,7 +453,6 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       description: `Reservando ${bag.brand} ${bag.name}...`,
     })
     handleQuickReserve()
-    // Limpiar el query param para que al refrescar no se redispare
     const url = new URL(window.location.href)
     url.searchParams.delete("reserve")
     window.history.replaceState({}, "", url.toString())

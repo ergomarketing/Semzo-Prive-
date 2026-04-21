@@ -946,8 +946,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     const cycle = billingCycle || "monthly"
                     const type = membershipType || "essentiel"
 
-                    // Guardar el bolso seleccionado para reservarlo automáticamente tras activar membresía.
-                    // El bag_id viene del searchParams o del id del item (formato: plan-membership-monthly-<bagId>)
+                    // ==============================================================
+                    // PASO 10 (setup): Guardar bolso pendiente para auto-reserva
+                    // --------------------------------------------------------------
+                    // El bolso escogido se guarda ANTES del pago en localStorage,
+                    // para que tras completar Identity + SEPA, onboarding-complete
+                    // pueda redirigir a /catalog/[bagId]?reserve=1 y cerrar la
+                    // reserva automáticamente en bag-detail.
+                    //
+                    // El bag_id se obtiene de searchParams o se extrae del id del
+                    // item de membresía (formato: <plan>-membership-<cycle>-<bagId>).
+                    // ==============================================================
                     try {
                       const urlBagId = searchParams.get("bag")
                       let pendingBagId = urlBagId || null
@@ -955,7 +964,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       if (!pendingBagId) {
                         const membershipItem = items.find((it: any) => it.id?.includes("-membership-"))
                         if (membershipItem?.id) {
-                          // id format: "<plan>-membership-<cycle>-<bagId>"
                           const parts = String(membershipItem.id).split("-")
                           if (parts.length >= 4) {
                             pendingBagId = parts.slice(3).join("-")
@@ -971,10 +979,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                             savedAt: new Date().toISOString(),
                           }),
                         )
-                        console.log("[v0] Saved pending reservation:", pendingBagId)
                       }
-                    } catch (e) {
-                      console.error("[v0] Error saving pending reservation:", e)
+                    } catch {
+                      // No bloquear pago si localStorage falla (webviews restrictivos)
                     }
 
                     // GIFT CARD 100% — no pasa por Stripe

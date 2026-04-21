@@ -16,13 +16,25 @@ const stripe = new Stripe(stripeSecretKey || "", {
 })
 
 /**
- * FASE 2 - CHECKOUT DE SUSCRIPCIÓN
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 6 del flujo de suscripcion: CHECKOUT DE STRIPE (SUBSCRIPCION)
  *
  * Responsabilidades:
  * 1. Crear/recuperar stripe_customer_id
- * 2. Crear Checkout Session en modo subscription
- * 3. NO activar membresía (lo hace el webhook)
- * 4. NO usar PaymentIntent
+ * 2. Crear Checkout Session en modo subscription (o payment para bag-pass)
+ * 3. NO activar membresia (lo hace el webhook de Stripe → user_memberships)
+ * 4. NO usar PaymentIntent manual
+ *
+ * baseUrl CRITICO (no tocar):
+ * - NEXT_PUBLIC_SITE_URL si esta definida
+ * - production → semzoprive.com (NUNCA VERCEL_URL: pide login de Vercel)
+ * - preview → VERCEL_URL (solo devs)
+ * - local → http://localhost:3000
+ *
+ * success_url = {baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}
+ * ============================================================================
  */
 export async function POST(request: NextRequest) {
   try {

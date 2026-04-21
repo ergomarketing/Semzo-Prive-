@@ -1,5 +1,20 @@
 "use client"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 4b del flujo de suscripcion: WELCOME (fallback)
+ *
+ * Solo se alcanza cuando el callback NO tiene plan/bag en URL ni user_metadata.
+ * Como segundo intento lee localStorage (semzo_post_confirm_url) y recupera
+ * el bolso desde la tabla bags para construir el item de membresia en el
+ * carrito antes de redirigir a /cart.
+ *
+ * Si no hay contexto recuperable en ningun lado → /dashboard.
+ * ============================================================================
+ */
+
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"

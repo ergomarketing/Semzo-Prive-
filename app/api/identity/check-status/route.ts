@@ -10,6 +10,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
 })
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 7c del flujo de suscripcion: CHECK STATUS DE IDENTITY
+ *
+ * Consulta Stripe directamente con el session_id (no depende de la DB que
+ * puede no haberse actualizado via webhook todavia).
+ *
+ * Si stripeSession.status === "verified":
+ *  - Upsert en identity_verifications (FUENTE DE VERDAD identidad)
+ *    con status "verified" y verified_at
+ *  - Update user_memberships a status "active" si estaba en
+ *    paid_pending_verification / pending_verification / pending
+ *
+ * Aceptar ambos status "verified" y "approved" en consumidores
+ * (compatibilidad historica con versiones previas).
+ * ============================================================================
+ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

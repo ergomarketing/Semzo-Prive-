@@ -1,5 +1,28 @@
 "use client"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 8 del flujo de suscripcion: MANDATO SEPA (IBAN)
+ *
+ * Solo se alcanza tras pago confirmado + Identity verified.
+ *
+ * Secuencia (no cambiar orden):
+ *   1. POST /api/sepa/create-setup-intent → clientSecret
+ *   2. stripe.confirmSepaDebitSetup con IbanElement
+ *   3. Si setupIntent.status === "succeeded":
+ *        a. POST /api/sepa/save-mandate  (guarda payment_method_id en profiles)
+ *        b. POST /api/memberships/activate  (activa user_memberships)
+ *        c. Solo si activate.ok → onComplete()
+ *
+ * Tras onComplete: PASO 10 (auto-reserva)
+ *   - Lee localStorage.semzo_pending_reservation (guardado en el carrito)
+ *   - Si hay bolso → /catalog/[bagId]?reserve=1 para cerrar la reserva
+ *   - Si no hay bolso → /dashboard
+ * ============================================================================
+ */
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Elements, IbanElement, useStripe, useElements } from "@stripe/react-stripe-js"

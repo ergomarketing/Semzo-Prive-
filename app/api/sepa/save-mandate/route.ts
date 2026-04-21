@@ -2,6 +2,20 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 8b del flujo de suscripcion: GUARDAR MANDATO SEPA
+ *
+ * Recibe el paymentMethodId generado tras confirmSepaDebitSetup y lo persiste
+ * en profiles.sepa_payment_method_id + sepa_mandate_accepted_at.
+ *
+ * Este endpoint es llamado DESPUES de que Stripe confirme el SetupIntent,
+ * y ANTES de /api/memberships/activate. Si falla, el usuario ve error y no
+ * se activa la membresia (el front valida mandateRes.ok).
+ * ============================================================================
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
