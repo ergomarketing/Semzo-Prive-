@@ -946,6 +946,44 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     const cycle = billingCycle || "monthly"
                     const type = membershipType || "essentiel"
 
+                    // ==============================================================
+                    // PASO 10 (setup): Guardar bolso pendiente para auto-reserva
+                    // --------------------------------------------------------------
+                    // El bolso escogido se guarda ANTES del pago en localStorage,
+                    // para que tras completar Identity + SEPA, onboarding-complete
+                    // pueda redirigir a /catalog/[bagId]?reserve=1 y cerrar la
+                    // reserva automáticamente en bag-detail.
+                    //
+                    // El bag_id se obtiene de searchParams o se extrae del id del
+                    // item de membresía (formato: <plan>-membership-<cycle>-<bagId>).
+                    // ==============================================================
+                    try {
+                      const urlBagId = searchParams.get("bag")
+                      let pendingBagId = urlBagId || null
+
+                      if (!pendingBagId) {
+                        const membershipItem = items.find((it: any) => it.id?.includes("-membership-"))
+                        if (membershipItem?.id) {
+                          const parts = String(membershipItem.id).split("-")
+                          if (parts.length >= 4) {
+                            pendingBagId = parts.slice(3).join("-")
+                          }
+                        }
+                      }
+
+                      if (pendingBagId) {
+                        localStorage.setItem(
+                          "semzo_pending_reservation",
+                          JSON.stringify({
+                            bagId: pendingBagId,
+                            savedAt: new Date().toISOString(),
+                          }),
+                        )
+                      }
+                    } catch {
+                      // No bloquear pago si localStorage falla (webviews restrictivos)
+                    }
+
                     // GIFT CARD 100% — no pasa por Stripe
                     if (finalAmount === 0 && appliedGiftCard) {
                       const resolvedType = membershipType || type

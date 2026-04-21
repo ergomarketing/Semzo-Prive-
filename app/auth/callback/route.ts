@@ -2,6 +2,24 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 4 del flujo de suscripcion: CALLBACK DE CONFIRMACION DE EMAIL
+ *
+ * Responsabilidades (validado 2026-04-16):
+ * - Maneja tanto PKCE (code) como email confirmation (token_hash)
+ * - Sincroniza profiles si no existe (idempotente)
+ * - Lee plan/bag de URL (prioridad) o user_metadata (fallback cross-device)
+ * - Redirige con prioridad:
+ *     1. origin=checkout + plan → /checkout?plan=
+ *     2. plan o bag presentes → /cart?plan=&bag=
+ *     3. Sin contexto → /auth/welcome (fallback para localStorage legacy)
+ *
+ * NO cambiar la prioridad de redireccion: welcome es solo fallback, no primary path.
+ * ============================================================================
+ */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")

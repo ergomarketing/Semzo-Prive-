@@ -20,7 +20,7 @@ import {
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { useCart } from "@/app/contexts/cart-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
 import { LoginModal } from "@/app/components/login-modal"
@@ -81,7 +81,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const { addItem, addItems, hasMembership, replaceMembership } = useCart()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedMembership, setSelectedMembership] = useState<string>("petite")
+  const [autoReserveTriggered, setAutoReserveTriggered] = useState(false)
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -420,6 +422,41 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const canReserveWithMembership = () => {
     return userMembership.isActive
   }
+
+  // ============================================================================
+  // FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+  // ============================================================================
+  // PASO 10 del flujo de suscripcion: AUTO-RESERVA DEL BOLSO
+  //
+  // Cuando el usuario llega con ?reserve=1 (desde onboarding-complete tras
+  // activar membresia), disparar handleQuickReserve automaticamente.
+  //
+  // Condiciones antes de disparar:
+  //  - No se ha disparado ya (autoReserveTriggered)
+  //  - searchParams.reserve === "1"
+  //  - authUser presente y authLoading terminado
+  //  - userMembership.isActive true (esperar a fetchUserMembership)
+  //
+  // Tras disparar: limpiar ?reserve=1 de la URL con replaceState para que
+  // un refresh no vuelva a activarlo.
+  // ============================================================================
+  useEffect(() => {
+    if (autoReserveTriggered) return
+    if (searchParams.get("reserve") !== "1") return
+    if (authLoading) return
+    if (!authUser) return
+    if (!userMembership.isActive) return
+
+    setAutoReserveTriggered(true)
+    toast({
+      title: "Completando tu reserva",
+      description: `Reservando ${bag.brand} ${bag.name}...`,
+    })
+    handleQuickReserve()
+    const url = new URL(window.location.href)
+    url.searchParams.delete("reserve")
+    window.history.replaceState({}, "", url.toString())
+  }, [searchParams, authLoading, authUser, userMembership.isActive, autoReserveTriggered])
 
   useEffect(() => {
     const fetchUserMembership = async () => {

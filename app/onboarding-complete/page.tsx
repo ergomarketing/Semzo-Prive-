@@ -1,5 +1,28 @@
 "use client"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 8 del flujo de suscripcion: MANDATO SEPA (IBAN)
+ *
+ * Solo se alcanza tras pago confirmado + Identity verified.
+ *
+ * Secuencia (no cambiar orden):
+ *   1. POST /api/sepa/create-setup-intent → clientSecret
+ *   2. stripe.confirmSepaDebitSetup con IbanElement
+ *   3. Si setupIntent.status === "succeeded":
+ *        a. POST /api/sepa/save-mandate  (guarda payment_method_id en profiles)
+ *        b. POST /api/memberships/activate  (activa user_memberships)
+ *        c. Solo si activate.ok → onComplete()
+ *
+ * Tras onComplete: PASO 10 (auto-reserva)
+ *   - Lee localStorage.semzo_pending_reservation (guardado en el carrito)
+ *   - Si hay bolso → /catalog/[bagId]?reserve=1 para cerrar la reserva
+ *   - Si no hay bolso → /dashboard
+ * ============================================================================
+ */
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Elements, IbanElement, useStripe, useElements } from "@stripe/react-stripe-js"
@@ -215,13 +238,32 @@ function OnboardingCompleteContent() {
   const router = useRouter()
   const [sepaCompleted, setSepaCompleted] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
+  const [redirectMessage, setRedirectMessage] = useState("Tu cuenta esta lista. Redirigiendo al dashboard...")
 
   const handleSepaComplete = () => {
     setSepaCompleted(true)
     setRedirecting(true)
+
+    // Si el usuario escogió un bolso antes de pagar, continuar con la reserva.
+    let nextUrl = "/dashboard"
+    try {
+      const pending = localStorage.getItem("semzo_pending_reservation")
+      if (pending) {
+        const parsed = JSON.parse(pending)
+        if (parsed?.bagId) {
+          nextUrl = `/catalog/${parsed.bagId}?reserve=1`
+          setRedirectMessage("Membresía activa. Redirigiendo a tu bolso para completar la reserva...")
+          // Limpiar para evitar loops en futuros logins
+          localStorage.removeItem("semzo_pending_reservation")
+        }
+      }
+    } catch (e) {
+      console.error("[v0] Error leyendo pending reservation:", e)
+    }
+
     setTimeout(() => {
-      router.push("/dashboard")
-    }, 2000)
+      router.push(nextUrl)
+    }, 1500)
   }
 
   return (
@@ -281,7 +323,7 @@ function OnboardingCompleteContent() {
                 Configuracion completada
               </h1>
               <p className="text-muted-foreground">
-                Tu cuenta esta lista. Redirigiendo al dashboard...
+                {redirectMessage}
               </p>
               {redirecting && (
                 <Loader2 className="h-5 w-5 mx-auto animate-spin text-muted-foreground" />

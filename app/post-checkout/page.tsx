@@ -1,5 +1,25 @@
 "use client"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 7a del flujo de suscripcion: POST-CHECKOUT (retorno de Stripe)
+ *
+ * Recibe ?session_id=CHECKOUT_SESSION_ID y hace polling a
+ * /api/stripe/verify-session con backoff hasta MAX_ATTEMPTS.
+ *
+ * Cuando status === active / trialing:
+ *  - Si identity_verified === true → /dashboard
+ *  - Si identity NO verificada → launchIdentityVerification()
+ *    que crea Stripe Identity session y redirige a data.url (hosted),
+ *    o fallback a /verify-identity si no hay url.
+ *
+ * Si tras MAX_ATTEMPTS el webhook no ha reflejado el pago, igualmente
+ * se lanza Identity para no bloquear al usuario.
+ * ============================================================================
+ */
+
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense } from "react"

@@ -1,5 +1,24 @@
 "use client"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 7b del flujo de suscripcion: RESULTADO DE IDENTITY
+ *
+ * Stripe Identity redirige aqui con ?session_id=VERIFICATION_SESSION_ID.
+ * Si el placeholder literal aparece (Stripe no lo reemplazo) → /dashboard.
+ *
+ * Llama a /api/identity/check-status y segun el resultado:
+ *  - verified === true || status === "verified"  → /onboarding-complete (SEPA)
+ *  - status requires_input / canceled → estado rejected, mostrar reintentar
+ *  - cualquier otro → estado error
+ *
+ * La transicion a /onboarding-complete tiene setTimeout 2000ms intencional
+ * para que el usuario vea el check verde antes de redirigir.
+ * ============================================================================
+ */
+
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"

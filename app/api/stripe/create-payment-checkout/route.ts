@@ -6,6 +6,19 @@ export const dynamic = "force-dynamic"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 6 (variante): CHECKOUT DE PAGO UNICO (bag-pass / pagos no recurrentes)
+ *
+ * - mode: payment (no subscription)
+ * - payment_method_types: ["card"] (sepa_debit solo es valido en subscription)
+ * - success_url = {baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}
+ *
+ * baseUrl: usar dominio de produccion, nunca VERCEL_URL (pide login de Vercel).
+ * ============================================================================
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -53,9 +66,15 @@ export async function POST(req: NextRequest) {
       await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
     }
 
+    // IMPORTANTE: evitar VERCEL_URL en produccion (URL *.vercel.app pide login de Vercel).
+    const vercelEnv = process.env.VERCEL_ENV
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+      (vercelEnv === "production"
+        ? "https://semzoprive.com"
+        : vercelEnv === "preview" && process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000")
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",

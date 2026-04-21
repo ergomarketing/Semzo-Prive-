@@ -7,6 +7,22 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 })
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 8a del flujo de suscripcion: CREAR SETUP INTENT DE SEPA
+ *
+ * - Crea customer en Stripe si no existe (con email, nombre, telefono)
+ * - Crea SetupIntent con:
+ *     payment_method_types: ["sepa_debit"]
+ *     usage: "off_session"
+ *     mandate_data con customer_acceptance type "online" (ip + user_agent)
+ *     metadata.purpose: "sepa_mandate_for_incidences"
+ *
+ * Devuelve clientSecret que el front usa con confirmSepaDebitSetup.
+ * ============================================================================
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()

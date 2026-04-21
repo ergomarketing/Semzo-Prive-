@@ -2,6 +2,27 @@ import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 
+/**
+ * ============================================================================
+ * FLUJO VALIDADO — NO MODIFICAR SIN CONSULTAR
+ * ============================================================================
+ * PASO 9 del flujo de suscripcion: ACTIVAR MEMBRESIA
+ *
+ * Se llama DESPUES de save-mandate y solo activa si:
+ *  - Identity esta verified / approved
+ *  - profiles.sepa_payment_method_id esta seteado
+ *  - Membresia existe en estado activable (pending_sepa, pending_verification,
+ *    paid_pending_verification) o ya activa (idempotente)
+ *
+ * Al activar:
+ *  - user_memberships.status = "active"  (FUENTE DE VERDAD)
+ *  - profiles.membership_status = "active"  (sync para dashboard)
+ *  - profiles.membership_type = <plan>  (sync para dashboard)
+ *
+ * NO valida campos de direccion de envio: eso se completa al reservar
+ * (paso 10 → bag-detail), no aqui. No anadir validaciones de shipping_*.
+ * ============================================================================
+ */
 export async function POST() {
   const supabase = createRouteHandlerClient({ cookies })
 

@@ -31,16 +31,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<boolean> => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, first_name, last_name, email, phone, avatar_url")
         .eq("id", userId)
         .maybeSingle()
-      setProfile(data ?? null)
+
+      // Si el usuario fue eliminado de Supabase pero el token sigue en el webview,
+      // el perfil devuelve null sin error. Forzar signOut para limpiar la sesión huerfana.
+      if (!data || error) {
+        setProfile(null)
+        return false // indica que el usuario no existe en DB
+      }
+      setProfile(data)
+      return true
     } catch {
       setProfile(null)
+      return false
     }
   }
 
@@ -62,8 +71,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return
 
         const sessionUser = data.session?.user ?? null
-        setUser(sessionUser)
-        if (sessionUser) await fetchProfile(sessionUser.id)
+        if (sessionUser) {
+          const profileExists = await fetchProfile(sessionUser.id)
+          if (!profileExists) {
+            // Usuario eliminado de DB pero token sigue en cookie/webview — forzar cierre
+            await supabase.auth.signOut()
+            setUser(null)
+          } else {
+            setUser(sessionUser)
+          }
+        } else {
+          setUser(null)
+        }
         clearTimeout(safetyTimeout)
         setLoading(false)
       } catch (e: any) {
@@ -82,17 +101,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (isMounted) {
-        const sessionUser = session?.user ?? null
-        setUser(sessionUser)
-        if (sessionUser) {
-          await fetchProfile(sessionUser.id)
+    } =     supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return
+      const sessionUser = session?.user ?? null
+      if (sessionUser) {
+        const profileExists = await fetchProfile(sessionUser.id)
+        if (!profileExists) {
+          // Sesion huerfana (usuario eliminado) — limpiar sin causar loop
+          await supabase.auth.signOut()
+          setUser(null)
         } else {
-          setProfile(null)
+          setUser(sessionUser)
         }
-        setLoading(false)
+      } else {
+        setUser(null)
+        setProfile(null)
       }
+      setLoading(false)
     })
 
     return () => {
