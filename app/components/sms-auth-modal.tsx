@@ -27,6 +27,9 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup", plan
   const [canResend, setCanResend] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resendAttempts, setResendAttempts] = useState(0)
+  // Guardamos el usuario verificado para usarlo en el step "profile"
+  // sin depender de auth.updateUser (que requiere sesion refrescada)
+  const [verifiedUser, setVerifiedUser] = useState<any>(null)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -215,6 +218,8 @@ const { data, error } = await supabase.auth.verifyOtp({
           .maybeSingle()
 
         if (!finalProfile?.full_name) {
+          // Guardar usuario para usarlo en step profile sin llamar auth.updateUser
+          setVerifiedUser(data.user)
           setStep("profile")
           return
         }
@@ -233,39 +238,49 @@ const { data, error } = await supabase.auth.verifyOtp({
     setLoading(true)
     setError("")
 
+    // Usar el usuario guardado en el step anterior.
+    // NO usar auth.updateUser aqui: inmediatamente tras verifyOtp la sesion
+    // no esta completamente refrescada en el cliente browser y falla con
+    // "Auth session missing". Actualizar profiles directamente con el id
+    // del usuario verificado es equivalente y no requiere sesion refrescada.
+    const userId = verifiedUser?.id
+    if (!userId) {
+      setError("Sesion no encontrada. Vuelve a verificar tu número.")
+      setLoading(false)
+      return
+    }
+
     try {
       const supabase = getSupabaseBrowser()
 
-      if (!supabase) {
-        setError("Error de configuración. Contacta al administrador.")
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          full_name: name,
-          first_name: name.split(" ")[0],
-          last_name: name.split(" ").slice(1).join(" "),
-        },
-      })
-
-      if (error) {
-        setError(`Error actualizando perfil: ${error.message}`)
-        return
-      }
+      const nameParts = name.trim().split(" ")
+      const firstName = nameParts[0] || ""
+      const lastName = nameParts.slice(1).join(" ") || ""
 
       const { error: profileUpdateError } = await supabase
         .from("profiles")
         .update({
-          full_name: name,
-          first_name: name.split(" ")[0],
-          last_name: name.split(" ").slice(1).join(" "),
+          full_name: name.trim(),
+          first_name: firstName,
+          last_name: lastName,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", data.user?.id)
+        .eq("id", userId)
 
-      onSuccess(data.user)
+      if (profileUpdateError) {
+        setError(`Error guardando nombre: ${profileUpdateError.message}`)
+        return
+      }
+
+      // Intentar actualizar user_metadata de forma no bloqueante
+      // (puede fallar si la sesion no esta lista, pero no bloquea el flujo)
+      supabase.auth.updateUser({
+        data: { full_name: name.trim(), first_name: firstName, last_name: lastName },
+      }).catch(() => {
+        // No bloquear si falla — el perfil ya fue actualizado en la tabla profiles
+      })
+
+      onSuccess(verifiedUser)
       onClose()
     } catch (err) {
       setError("Error completando registro")
