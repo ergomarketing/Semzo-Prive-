@@ -47,6 +47,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true
 
+    // Safety timeout: en webviews (Instagram, FB) getSession puede colgar indefinidamente
+    // si las cookies están bloqueadas. Forzar loading=false tras 5s para que la UI reaccione.
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) {
+        console.warn("[Auth] Safety timeout: forzando loading=false tras 5s")
+        setLoading(false)
+      }
+    }, 5000)
+
     const loadSession = async () => {
       try {
         const { data } = await supabase.auth.getSession()
@@ -55,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const sessionUser = data.session?.user ?? null
         setUser(sessionUser)
         if (sessionUser) await fetchProfile(sessionUser.id)
+        clearTimeout(safetyTimeout)
         setLoading(false)
       } catch (e: any) {
         if (e?.name !== "AbortError") {
@@ -62,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (isMounted) {
           setUser(null)
+          clearTimeout(safetyTimeout)
           setLoading(false)
         }
       }
@@ -86,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false
+      clearTimeout(safetyTimeout)
       subscription.unsubscribe()
     }
   }, [])
