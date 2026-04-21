@@ -44,6 +44,17 @@ export default function DashboardHome() {
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
+  // Si la membresia esta en estado intermedio, guiar al usuario al paso que falta
+  useEffect(() => {
+    if (!data?.membership) return
+    const rawStatus = data.membership.raw_status
+    if (rawStatus === "pending_verification" || rawStatus === "paid_pending_verification") {
+      router.replace("/verify-identity")
+    } else if (rawStatus === "pending_sepa") {
+      router.replace("/onboarding-complete")
+    }
+  }, [data?.membership?.raw_status, router])
+
   // Si no hay sesión y estamos en webview de app, mostrar CTA para abrir en navegador
   if (!authLoading && !user && isInAppBrowser) {
     const externalUrl = typeof window !== "undefined" ? window.location.href : "https://semzoprive.com/dashboard"

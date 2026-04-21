@@ -29,18 +29,23 @@ export async function GET() {
     const emailComplete = !profile?.email?.endsWith("@phone.semzoprive.com")
 
     // 2. MEMBERSHIP - Estado de membresía (ÚNICA source of truth: user_memberships)
-    const { data: activeMembership } = await supabase
+    // Buscar cualquier membresia reciente del usuario, no solo activas,
+    // para poder guiar al usuario a completar pasos pendientes (Identity, SEPA).
+    const { data: anyMembership } = await supabase
       .from("user_memberships")
       .select("*")
       .eq("user_id", user.id)
-      .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
 
+    const activeMembership = anyMembership?.status === "active" ? anyMembership : null
+
     // user_memberships es la UNICA fuente de verdad
-    const membershipType = activeMembership?.membership_type || null
-    const membershipStatus = activeMembership ? "active" : "inactive"
+    const membershipType = anyMembership?.membership_type || null
+    // Exponer el estado real (active, pending_verification, pending_sepa, etc.)
+    // para que el frontend pueda redirigir al paso pendiente.
+    const membershipStatus = anyMembership?.status || "inactive"
 
     // Identity: leer de identity_verifications (FUENTE DE VERDAD)
     const { data: identityRecord } = await supabase
@@ -188,7 +193,10 @@ export async function GET() {
       },
       membership: {
         type: membershipType,
+        // Exponer el estado real del DB para que el dashboard pueda redirigir
+        // a Identity / SEPA cuando corresponda.
         status: isPetiteExpired ? "expired" : membershipStatus,
+        raw_status: anyMembership?.status || null,
         needs_verification: needsVerification,
         started_at: membershipStartedAt,
         ends_at: membershipEndsAt,
