@@ -239,10 +239,6 @@ const { data, error } = await supabase.auth.verifyOtp({
     setError("")
 
     // Usar el usuario guardado en el step anterior.
-    // NO usar auth.updateUser aqui: inmediatamente tras verifyOtp la sesion
-    // no esta completamente refrescada en el cliente browser y falla con
-    // "Auth session missing". Actualizar profiles directamente con el id
-    // del usuario verificado es equivalente y no requiere sesion refrescada.
     const userId = verifiedUser?.id
     if (!userId) {
       setError("Sesion no encontrada. Vuelve a verificar tu número.")
@@ -250,40 +246,42 @@ const { data, error } = await supabase.auth.verifyOtp({
       return
     }
 
+    // Llamar al endpoint server-side (usa supabaseAdmin, no depende de
+    // cookies/sesion del browser — funciona en webviews de Instagram/FB).
+    // AbortController con timeout de 8s para no quedarnos colgados.
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
     try {
-      const supabase = getSupabaseBrowser()
+      const res = await fetch("/api/auth/complete-sms-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          phone,
+          fullName: name.trim(),
+        }),
+        signal: controller.signal,
+      })
 
-      const nameParts = name.trim().split(" ")
-      const firstName = nameParts[0] || ""
-      const lastName = nameParts.slice(1).join(" ") || ""
+      clearTimeout(timeout)
 
-      const { error: profileUpdateError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: name.trim(),
-          first_name: firstName,
-          last_name: lastName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId)
-
-      if (profileUpdateError) {
-        setError(`Error guardando nombre: ${profileUpdateError.message}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(`No se pudo guardar el nombre${data?.message ? `: ${data.message}` : ""}. Inténtalo de nuevo.`)
+        setLoading(false)
         return
       }
 
-      // Intentar actualizar user_metadata de forma no bloqueante
-      // (puede fallar si la sesion no esta lista, pero no bloquea el flujo)
-      supabase.auth.updateUser({
-        data: { full_name: name.trim(), first_name: firstName, last_name: lastName },
-      }).catch(() => {
-        // No bloquear si falla — el perfil ya fue actualizado en la tabla profiles
-      })
-
       onSuccess(verifiedUser)
       onClose()
-    } catch (err) {
-      setError("Error completando registro")
+    } catch (err: any) {
+      clearTimeout(timeout)
+      if (err?.name === "AbortError") {
+        setError("La conexión tardó demasiado. Revisa tu internet e inténtalo de nuevo.")
+      } else {
+        setError("Error completando registro. Inténtalo de nuevo.")
+      }
     } finally {
       setLoading(false)
     }
