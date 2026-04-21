@@ -53,9 +53,15 @@ export async function POST(req: NextRequest) {
       await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
     }
 
+    // IMPORTANTE: evitar VERCEL_URL en produccion (URL *.vercel.app pide login de Vercel).
+    const vercelEnv = process.env.VERCEL_ENV
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+      (vercelEnv === "production"
+        ? "https://semzoprive.com"
+        : vercelEnv === "preview" && process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000")
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",

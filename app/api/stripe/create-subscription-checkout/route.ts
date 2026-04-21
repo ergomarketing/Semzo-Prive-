@@ -156,9 +156,17 @@ export async function POST(request: NextRequest) {
     // - payment: hay amountCents sin priceId (pases, gift card parcial, pagos únicos)
     const isSubscription = !!(membershipType && priceId)
 
+    // IMPORTANTE: NUNCA usar VERCEL_URL como destino de Stripe success/cancel_url:
+    // devuelve la URL interna *.vercel.app que exige login de Vercel al usuario.
+    // Detectar entorno por VERCEL_ENV: production => semzoprive.com, preview => VERCEL_URL (solo para devs).
+    const vercelEnv = process.env.VERCEL_ENV
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+      (vercelEnv === "production"
+        ? "https://semzoprive.com"
+        : vercelEnv === "preview" && process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000")
 
     const successUrl = `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${baseUrl}/cart?canceled=true`
