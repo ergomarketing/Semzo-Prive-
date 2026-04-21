@@ -27,26 +27,8 @@ export async function POST() {
     return NextResponse.json({ error: "Membresia no encontrada" }, { status: 400 })
   }
 
-  // 3. Validar datos personales (profiles solo como datos de contacto)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, phone, document_number, shipping_address, shipping_city, shipping_postal_code")
-    .eq("id", user.id)
-    .single()
-
-  const hasExtendedProfile =
-    profile?.full_name &&
-    profile?.phone &&
-    profile?.document_number &&
-    profile?.shipping_address &&
-    profile?.shipping_city &&
-    profile?.shipping_postal_code
-
-  if (!hasExtendedProfile) {
-    return NextResponse.json({ error: "Datos personales incompletos" }, { status: 400 })
-  }
-
-  // 4. Validar identidad verificada (FUENTE DE VERDAD: identity_verifications)
+  // 3. Validar identidad verificada (FUENTE DE VERDAD: identity_verifications)
+  // El perfil extendido (direccion, telefono, documento) se completa al reservar, no aqui.
   const { data: identityCheck } = await supabase
     .from("identity_verifications")
     .select("status")
@@ -59,15 +41,29 @@ export async function POST() {
     return NextResponse.json({ error: "Identidad no verificada" }, { status: 400 })
   }
 
-  // 5. Validar que esta en estado pending_sepa (listo para activar)
-  if (membership.status !== "pending_sepa") {
-    if (membership.status === "active") {
-      return NextResponse.json({ success: true, membership_status: "active" })
-    }
-    return NextResponse.json({ error: "Estado de membresia invalido" }, { status: 400 })
+  // 4. Validar SEPA guardado (FUENTE DE VERDAD: profiles.sepa_payment_method_id)
+  const { data: sepaProfile } = await supabase
+    .from("profiles")
+    .select("sepa_payment_method_id")
+    .eq("id", user.id)
+    .single()
+
+  if (!sepaProfile?.sepa_payment_method_id) {
+    return NextResponse.json({ error: "Mandato SEPA no configurado" }, { status: 400 })
   }
 
-  // 6. Activar membresia en user_memberships (FUENTE DE VERDAD)
+  // 5. Si ya esta activa, devolver exito (idempotente)
+  if (membership.status === "active") {
+    return NextResponse.json({ success: true, membership_status: "active" })
+  }
+
+  // 6. Aceptar pending_sepa, pending_verification, paid_pending_verification como validos para activar
+  const activatableStatuses = ["pending_sepa", "pending_verification", "paid_pending_verification"]
+  if (!activatableStatuses.includes(membership.status)) {
+    return NextResponse.json({ error: `Estado de membresia invalido: ${membership.status}` }, { status: 400 })
+  }
+
+  // 7. Activar membresia en user_memberships (FUENTE DE VERDAD)
   const { error: updateError } = await supabase
     .from("user_memberships")
     .update({
@@ -79,6 +75,16 @@ export async function POST() {
   if (updateError) {
     return NextResponse.json({ error: "Error activando membresia" }, { status: 500 })
   }
+
+  // 8. Sincronizar profiles.membership_status para que el dashboard refleje estado correcto
+  await supabase
+    .from("profiles")
+    .update({
+      membership_status: "active",
+      membership_type: membership.membership_type,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
 
   return NextResponse.json({
     success: true,
