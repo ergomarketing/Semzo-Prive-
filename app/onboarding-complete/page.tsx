@@ -215,13 +215,32 @@ function OnboardingCompleteContent() {
   const router = useRouter()
   const [sepaCompleted, setSepaCompleted] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
+  const [redirectMessage, setRedirectMessage] = useState("Tu cuenta esta lista. Redirigiendo al dashboard...")
 
   const handleSepaComplete = () => {
     setSepaCompleted(true)
     setRedirecting(true)
+
+    // Si el usuario escogió un bolso antes de pagar, continuar con la reserva.
+    let nextUrl = "/dashboard"
+    try {
+      const pending = localStorage.getItem("semzo_pending_reservation")
+      if (pending) {
+        const parsed = JSON.parse(pending)
+        if (parsed?.bagId) {
+          nextUrl = `/catalog/${parsed.bagId}?reserve=1`
+          setRedirectMessage("Membresía activa. Redirigiendo a tu bolso para completar la reserva...")
+          // Limpiar para evitar loops en futuros logins
+          localStorage.removeItem("semzo_pending_reservation")
+        }
+      }
+    } catch (e) {
+      console.error("[v0] Error leyendo pending reservation:", e)
+    }
+
     setTimeout(() => {
-      router.push("/dashboard")
-    }, 2000)
+      router.push(nextUrl)
+    }, 1500)
   }
 
   return (
@@ -281,7 +300,7 @@ function OnboardingCompleteContent() {
                 Configuracion completada
               </h1>
               <p className="text-muted-foreground">
-                Tu cuenta esta lista. Redirigiendo al dashboard...
+                {redirectMessage}
               </p>
               {redirecting && (
                 <Loader2 className="h-5 w-5 mx-auto animate-spin text-muted-foreground" />

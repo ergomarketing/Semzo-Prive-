@@ -946,6 +946,37 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     const cycle = billingCycle || "monthly"
                     const type = membershipType || "essentiel"
 
+                    // Guardar el bolso seleccionado para reservarlo automáticamente tras activar membresía.
+                    // El bag_id viene del searchParams o del id del item (formato: plan-membership-monthly-<bagId>)
+                    try {
+                      const urlBagId = searchParams.get("bag")
+                      let pendingBagId = urlBagId || null
+
+                      if (!pendingBagId) {
+                        const membershipItem = items.find((it: any) => it.id?.includes("-membership-"))
+                        if (membershipItem?.id) {
+                          // id format: "<plan>-membership-<cycle>-<bagId>"
+                          const parts = String(membershipItem.id).split("-")
+                          if (parts.length >= 4) {
+                            pendingBagId = parts.slice(3).join("-")
+                          }
+                        }
+                      }
+
+                      if (pendingBagId) {
+                        localStorage.setItem(
+                          "semzo_pending_reservation",
+                          JSON.stringify({
+                            bagId: pendingBagId,
+                            savedAt: new Date().toISOString(),
+                          }),
+                        )
+                        console.log("[v0] Saved pending reservation:", pendingBagId)
+                      }
+                    } catch (e) {
+                      console.error("[v0] Error saving pending reservation:", e)
+                    }
+
                     // GIFT CARD 100% — no pasa por Stripe
                     if (finalAmount === 0 && appliedGiftCard) {
                       const resolvedType = membershipType || type

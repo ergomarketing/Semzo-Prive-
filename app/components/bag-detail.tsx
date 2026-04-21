@@ -20,7 +20,7 @@ import {
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { useCart } from "@/app/contexts/cart-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
 import { LoginModal } from "@/app/components/login-modal"
@@ -81,7 +81,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const { addItem, addItems, hasMembership, replaceMembership } = useCart()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedMembership, setSelectedMembership] = useState<string>("petite")
+  const [autoReserveTriggered, setAutoReserveTriggered] = useState(false)
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -420,6 +422,27 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const canReserveWithMembership = () => {
     return userMembership.isActive
   }
+
+  // AUTO-RESERVA: Cuando el usuario llega con ?reserve=1 tras activar membresía,
+  // disparar handleQuickReserve automáticamente sin que tenga que hacer clic.
+  useEffect(() => {
+    if (autoReserveTriggered) return
+    if (searchParams.get("reserve") !== "1") return
+    if (authLoading) return
+    if (!authUser) return
+    if (!userMembership.isActive) return // Esperar a que fetchUserMembership termine
+
+    setAutoReserveTriggered(true)
+    toast({
+      title: "Completando tu reserva",
+      description: `Reservando ${bag.brand} ${bag.name}...`,
+    })
+    handleQuickReserve()
+    // Limpiar el query param para que al refrescar no se redispare
+    const url = new URL(window.location.href)
+    url.searchParams.delete("reserve")
+    window.history.replaceState({}, "", url.toString())
+  }, [searchParams, authLoading, authUser, userMembership.isActive, autoReserveTriggered])
 
   useEffect(() => {
     const fetchUserMembership = async () => {
