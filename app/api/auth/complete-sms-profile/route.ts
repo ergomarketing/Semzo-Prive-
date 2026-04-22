@@ -35,19 +35,11 @@ export async function POST(request: NextRequest) {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Validar que el userId existe y (si se pasó phone) que coincide
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("id, phone")
-      .eq("id", userId)
-      .maybeSingle()
+    // Validar que el userId existe en auth (no en profiles — puede ser nuevo)
+    const { data: authUser, error: authError } = await admin.auth.admin.getUserById(userId)
 
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 })
-    }
-
-    if (phone && profile.phone && profile.phone !== phone) {
-      return NextResponse.json({ error: "PHONE_MISMATCH" }, { status: 403 })
+    if (authError || !authUser?.user) {
+      return NextResponse.json({ error: "USER_NOT_FOUND" }, { status: 404 })
     }
 
     const trimmed = fullName.trim()
@@ -55,18 +47,23 @@ export async function POST(request: NextRequest) {
     const firstName = parts[0] || ""
     const lastName = parts.slice(1).join(" ") || ""
 
-    const { error: updateError } = await admin
+    // Upsert: cubre tanto el caso en que el perfil ya existe (update)
+    // como el caso en que aun no se ha creado (insert)
+    const { error: upsertError } = await admin
       .from("profiles")
-      .update({
+      .upsert({
+        id: userId,
+        email: authUser.user.email || `${authUser.user.phone}@phone.semzoprive.com`,
+        phone: authUser.user.phone || null,
         full_name: trimmed,
         first_name: firstName,
         last_name: lastName,
+        auth_method: "sms",
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
+      }, { onConflict: "id" })
 
-    if (updateError) {
-      return NextResponse.json({ error: "UPDATE_FAILED", message: updateError.message }, { status: 500 })
+    if (upsertError) {
+      return NextResponse.json({ error: "UPDATE_FAILED", message: upsertError.message }, { status: 500 })
     }
 
     // Sync user_metadata (no bloqueante — si falla, el dato ya está en profiles)
