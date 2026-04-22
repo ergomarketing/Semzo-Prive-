@@ -45,6 +45,8 @@ interface BagInventory {
   description?: string
   membership_type?: string
   retail_price?: string
+  cost_price?: string
+  serial_number?: string
   image_url?: string
   category?: string
   images: string[]
@@ -122,6 +124,8 @@ export default function InventorySystem() {
             description: bag.description,
             membership_type: bag.membership_type,
             retail_price: bag.retail_price,
+            cost_price: bag.cost_price != null ? String(bag.cost_price) : undefined,
+            serial_number: bag.serial_number || undefined,
             image_url: bag.image_url,
             category: bag.category,
             images: bag.images || [],
@@ -756,6 +760,29 @@ export default function InventorySystem() {
                 </div>
               </div>
 
+              {(selectedBag.serial_number || selectedBag.cost_price) && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Label className="text-[#1a1a4b] font-medium">Referencia interna</Label>
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                      Solo admin
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <Label className="text-slate-500 text-xs">Número de serie</Label>
+                      <p className="font-mono text-[#1a1a4b]">{selectedBag.serial_number || "—"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-slate-500 text-xs">Precio de coste</Label>
+                      <p className="text-[#1a1a4b] font-medium">
+                        {selectedBag.cost_price ? `${selectedBag.cost_price} €` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {selectedBag.currentRenter && (
                 <div className="p-4 bg-slate-100 rounded-lg border border-slate-200">
                   <Label className="text-[#1a1a4b] font-medium">Alquilado actualmente</Label>
@@ -891,6 +918,8 @@ function BagForm({
     description: bag?.description || "",
     membership_type: bag?.membership_type || "essentiel",
     retail_price: bag?.retail_price || "",
+    cost_price: bag?.cost_price || "",
+    serial_number: bag?.serial_number || "",
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
     image_url: bag?.image_url || "",
@@ -1034,6 +1063,49 @@ function BagForm({
             onChange={(e) => setFormData({ ...formData, retail_price: e.target.value })}
             className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
           />
+        </div>
+      </div>
+
+      {/* Referencia interna (solo admin, no visible al cliente) */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-[#1a1a4b]">Referencia interna</h4>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+            Solo admin
+          </Badge>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Información de uso interno. No se muestra al cliente en el catálogo.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="serial_number" className="text-[#1a1a4b]">
+              Número de serie
+            </Label>
+            <Input
+              id="serial_number"
+              type="text"
+              placeholder="Ej. A12345678"
+              value={formData.serial_number}
+              onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
+          <div>
+            <Label htmlFor="cost_price" className="text-[#1a1a4b]">
+              Precio de coste (€)
+            </Label>
+            <Input
+              id="cost_price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={formData.cost_price}
+              onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
         </div>
       </div>
 
