@@ -76,6 +76,24 @@ export async function GET(request: Request) {
         continue
       }
 
+      // 2a-bis. ¿Tiene una reserva admin_rent (cualquier status)? Si si, es bloqueo
+      // manual del admin — NUNCA tocar aunque este marcada como "completed" por error.
+      const { count: adminRentCount, error: adminRentError } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("bag_id", bag.id)
+        .eq("is_admin_rent", true)
+
+      if (adminRentError) {
+        console.error(`[CRON] Error checking admin rents for bag ${bag.id}:`, adminRentError)
+        continue
+      }
+
+      if (adminRentCount && adminRentCount > 0) {
+        console.log(`[CRON] Bag ${bag.id} (${bag.name}) has admin rent history - skipping`)
+        continue
+      }
+
       // 2b. ¿Existe alguna reserva histórica (cualquier status) para este bolso?
       // Si NUNCA tuvo reserva => bloqueo manual del admin => NO liberar.
       const { count: totalReservations, error: countError } = await supabase

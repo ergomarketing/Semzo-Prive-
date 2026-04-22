@@ -7,10 +7,16 @@ export async function GET() {
   try {
     const now = new Date()
 
+    // IMPORTANTE: excluimos reservas admin (is_admin_rent = true) de la
+    // auto-activacion y auto-completado. Esas reservas solo las gestiona
+    // el admin manualmente desde el panel de inventario (marcar alquilado /
+    // marcar disponible). De lo contrario, el bolso "bloqueado manualmente"
+    // volveria a disponible cuando caduque la fecha por defecto.
     const { data: toActivate } = await supabase
       .from("reservations")
       .select("*")
       .eq("status", "confirmed")
+      .or("is_admin_rent.is.null,is_admin_rent.eq.false")
       .lt("start_date", now.toISOString())
 
     if (toActivate && toActivate.length > 0) {
@@ -39,6 +45,7 @@ export async function GET() {
       .from("reservations")
       .select("*")
       .eq("status", "active")
+      .or("is_admin_rent.is.null,is_admin_rent.eq.false")
       .lt("end_date", now.toISOString())
 
     if (toComplete && toComplete.length > 0) {
