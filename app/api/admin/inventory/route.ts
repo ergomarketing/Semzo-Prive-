@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
           reservations: bag.reservations || [],
           membership_type: bag.membership_type,
           retail_price: bag.retail_price,
+          cost_price: bag.cost_price,
+          serial_number: bag.serial_number,
           daily_price: bag.daily_price,
           monthly_price: bag.monthly_price,
           price: bag.price,
@@ -117,29 +119,64 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Error al actualizar el estado del bolso" }, { status: 500 })
     }
 
-    // Si se marca como "rented", crear automáticamente una reserva administrativa
-    // Esto evita que el cron job lo detecte como "huérfano" y lo libere
+    // Si se marca como "rented", crear una reserva administrativa indefinida.
+    // - end_date muy lejano (+100 años) para que ningun cron la marque como caducada.
+    // - is_admin_rent = true para que los crons la ignoren.
+    // Primero comprobamos que no exista ya una reserva admin activa para este bolso
+    // (evita duplicados si el admin clickea dos veces).
     if (status === "rented") {
       const startDate = new Date()
       const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 7) // Por defecto 7 días
+      endDate.setFullYear(endDate.getFullYear() + 100)
 
       try {
-        await supabase.from("reservations").insert({
-          bag_id: bagId,
-          user_id: null, // Reserva administrativa sin usuario específico
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: "active",
-          is_admin_rent: true, // Flag para identificar alquileres manuales
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        const { data: existingAdminRent } = await supabase
+          .from("reservations")
+          .select("id")
+          .eq("bag_id", bagId)
+          .eq("is_admin_rent", true)
+          .in("status", ["active", "confirmed", "pending"])
+          .maybeSingle()
 
-        console.log(`[v0] Created administrative reservation for bag ${bagId}`)
+        if (!existingAdminRent) {
+          await supabase.from("reservations").insert({
+            bag_id: bagId,
+            user_id: null,
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            status: "active",
+            is_admin_rent: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          console.log(`[v0] Created administrative reservation for bag ${bagId}`)
+        } else {
+          console.log(`[v0] Admin reservation already exists for bag ${bagId}, skipping insert`)
+        }
       } catch (reservationError) {
         console.error("[v0] Error creating administrative reservation:", reservationError)
-        // No falla el update del bag, solo logueamos el error
+      }
+    }
+
+    // Si se marca como "available" o "maintenance", cerrar cualquier reserva admin activa.
+    // De lo contrario, quedarian activas indefinidamente y el cleanup las veria como
+    // "bolso alquilado por admin" aunque el admin ya lo hubiera desbloqueado.
+    if (status === "available" || status === "maintenance") {
+      try {
+        await supabase
+          .from("reservations")
+          .update({
+            status: "completed",
+            end_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("bag_id", bagId)
+          .eq("is_admin_rent", true)
+          .in("status", ["active", "confirmed", "pending"])
+
+        console.log(`[v0] Closed admin reservations for bag ${bagId}`)
+      } catch (closeError) {
+        console.error("[v0] Error closing admin reservation:", closeError)
       }
     }
 
@@ -202,6 +239,8 @@ export async function POST(request: NextRequest) {
         membership_type: body.membership_type || "essentiel",
         price: body.price ? Number.parseFloat(body.price) : null,
         retail_price: body.retail_price ? Number.parseFloat(body.retail_price) : null,
+        cost_price: body.cost_price ? Number.parseFloat(body.cost_price) : null,
+        serial_number: body.serial_number ? String(body.serial_number).trim() : null,
         condition: body.condition || "excellent",
         status: body.status || "available",
         image_url: body.image_url,

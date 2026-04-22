@@ -26,6 +26,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updated_at: new Date().toISOString(),
     }
 
+    // Campos de referencia interna (solo admin). Se aceptan strings vacios → null
+    // para permitir limpiar los valores desde el formulario.
+    if (body.cost_price !== undefined) {
+      updateData.cost_price =
+        body.cost_price === "" || body.cost_price === null ? null : Number.parseFloat(body.cost_price)
+    }
+    if (body.serial_number !== undefined) {
+      const trimmed = typeof body.serial_number === "string" ? body.serial_number.trim() : body.serial_number
+      updateData.serial_number = trimmed ? trimmed : null
+    }
+
     if (body.image_url !== undefined && body.image_url !== "") {
       updateData.image_url = body.image_url
     }
