@@ -31,25 +31,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  const fetchProfile = async (userId: string): Promise<boolean> => {
+  // Verifica el perfil via endpoint server (admin) — asi no depende de RLS del
+  // cliente del browser. Devuelve { exists, profile }.
+  // - exists === false SOLO si el usuario fue eliminado de auth.users (token huerfano)
+  // - Si hay error de red o timeout → asumimos que existe para no cerrar sesion valida
+  const fetchProfile = async (
+    userId: string,
+  ): Promise<{ exists: boolean; profile: Profile | null }> => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, first_name, last_name, email, phone, avatar_url")
-        .eq("id", userId)
-        .maybeSingle()
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 4000)
+      const res = await fetch(`/api/auth/verify-user?userId=${encodeURIComponent(userId)}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+      clearTimeout(timeout)
 
-      // Si el usuario fue eliminado de Supabase pero el token sigue en el webview,
-      // el perfil devuelve null sin error. Forzar signOut para limpiar la sesión huerfana.
-      if (!data || error) {
+      if (!res.ok) {
+        // Error de red: no cerrar sesion, asumir que existe
         setProfile(null)
-        return false // indica que el usuario no existe en DB
+        return { exists: true, profile: null }
       }
-      setProfile(data)
-      return true
+
+      const data = await res.json().catch(() => null)
+      if (!data) {
+        setProfile(null)
+        return { exists: true, profile: null }
+      }
+
+      if (data.exists === false) {
+        // Usuario eliminado de auth.users — token huerfano real
+        setProfile(null)
+        return { exists: false, profile: null }
+      }
+
+      setProfile(data.profile || null)
+      return { exists: true, profile: data.profile || null }
     } catch {
+      // Red/abort/fetch fallido: mantener sesion, solo sin profile
       setProfile(null)
-      return false
+      return { exists: true, profile: null }
     }
   }
 
@@ -72,13 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const sessionUser = data.session?.user ?? null
         if (sessionUser) {
-          const profileExists = await fetchProfile(sessionUser.id)
-          if (!profileExists) {
-            // Usuario eliminado de DB pero token sigue en cookie/webview — forzar cierre
+          // Fijamos user inmediatamente para desbloquear la UI; la verificacion
+          // del perfil corre en paralelo y solo cerrara sesion si el usuario fue
+          // realmente eliminado de auth.users.
+          setUser(sessionUser)
+          const { exists } = await fetchProfile(sessionUser.id)
+          if (!exists && isMounted) {
             await supabase.auth.signOut()
             setUser(null)
-          } else {
-            setUser(sessionUser)
           }
         } else {
           setUser(null)
@@ -105,13 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return
       const sessionUser = session?.user ?? null
       if (sessionUser) {
-        const profileExists = await fetchProfile(sessionUser.id)
-        if (!profileExists) {
-          // Sesion huerfana (usuario eliminado) — limpiar sin causar loop
+        setUser(sessionUser)
+        const { exists } = await fetchProfile(sessionUser.id)
+        if (!exists && isMounted) {
           await supabase.auth.signOut()
           setUser(null)
-        } else {
-          setUser(sessionUser)
         }
       } else {
         setUser(null)
