@@ -224,8 +224,20 @@ const { data, error } = await supabase.auth.verifyOtp({
           return
         }
 
-        onSuccess(data.user)
-        onClose()
+        // Usuario ya tiene nombre — navegar directamente a /cart con reload
+        // para que la sesion sea reconocida en el webview de Instagram
+        try {
+          const ctxRaw = sessionStorage.getItem("semzo_purchase_context")
+          const ctx = ctxRaw ? JSON.parse(ctxRaw) : {}
+          const params = new URLSearchParams()
+          if (ctx.plan || plan) params.set("plan", ctx.plan || plan || "")
+          if (ctx.bag || bag) params.set("bag", ctx.bag || bag || "")
+          sessionStorage.removeItem("semzo_purchase_context")
+          const query = params.toString()
+          window.location.href = `/cart${query ? `?${query}` : ""}`
+        } catch {
+          window.location.href = "/cart"
+        }
       }
     } catch (err) {
       setError("Error verificando código")
@@ -273,8 +285,21 @@ const { data, error } = await supabase.auth.verifyOtp({
         return
       }
 
-      onSuccess(verifiedUser)
-      onClose()
+      // En webviews de Instagram/Facebook las cookies de sesion no se propagan
+      // al resto de la pagina sin un reload completo. Hacemos navegacion dura
+      // hacia /cart preservando plan/bag para que el carrito arranque con sesion activa.
+      try {
+        const ctxRaw = sessionStorage.getItem("semzo_purchase_context")
+        const ctx = ctxRaw ? JSON.parse(ctxRaw) : {}
+        const params = new URLSearchParams()
+        if (ctx.plan || plan) params.set("plan", ctx.plan || plan || "")
+        if (ctx.bag || bag) params.set("bag", ctx.bag || bag || "")
+        sessionStorage.removeItem("semzo_purchase_context")
+        const query = params.toString()
+        window.location.href = `/cart${query ? `?${query}` : ""}`
+      } catch {
+        window.location.href = "/cart"
+      }
     } catch (err: any) {
       clearTimeout(timeout)
       if (err?.name === "AbortError") {
