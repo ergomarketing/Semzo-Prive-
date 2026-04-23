@@ -1117,13 +1117,26 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       body: JSON.stringify(checkoutBody),
                     })
 
-                    const data = await res.json()
-                    if (!res.ok) throw new Error(data.error || "Error al crear checkout")
-
-                    window.location.href = data.url
-                  } catch (error: any) {
-                    console.error("[v0] Checkout error:", error)
-                    toast.error(error.message || "Error al procesar el pago")
+  const data = await res.json()
+  if (!res.ok) {
+    // Log completo con TODA la informacion que devuelve el endpoint para diagnosticar
+    console.error("[v0] Checkout 500 response:", {
+      status: res.status,
+      error: data.error,
+      details: data.details,
+      type: data.type,
+      code: data.code,
+      param: data.param,
+      stack: data.stack,
+      fullBody: data,
+    })
+    throw new Error(data.details || data.error || "Error al crear checkout")
+  }
+  
+  window.location.href = data.url
+  } catch (error: any) {
+  console.error("[v0] Checkout error:", error)
+  toast.error(error.message || "Error al procesar el pago")
                   } finally {
                     setCheckoutLoading(false)
                   }
