@@ -55,12 +55,10 @@ export default function LoginPage() {
       } else if (bag) {
         redirectUrl = `/cart?bag=${bag}`
       }
-
-      setTimeout(() => {
-        router.push(redirectUrl)
-      }, 500)
+      // Navegacion dura para que el webview de Instagram aplique la sesion
+      window.location.href = redirectUrl
     }
-  }, [user, loading, router, searchParams])
+  }, [user, loading, searchParams])
 
   useEffect(() => {
     const urlMessage = searchParams.get("message")
