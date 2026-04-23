@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button"
 export default function VerificationCompleteClient({
   userId,
   intentId,
+  sessionId,
 }: {
   userId: string
   intentId?: string
+  sessionId?: string
 }) {
   const router = useRouter()
   const [status, setStatus] = useState<"checking" | "verified" | "pending">("checking")
@@ -26,7 +28,9 @@ export default function VerificationCompleteClient({
 
       try {
         const params = new URLSearchParams()
-        if (intentId) params.set("intentId", intentId)
+        // sessionId (vs_xxx) permite llamar a Stripe directamente — mucho mas rapido que esperar el webhook
+        if (sessionId) params.set("sessionId", sessionId)
+        else if (intentId) params.set("intentId", intentId)
         params.set("userId", userId)
 
         const response = await fetch(`/api/identity/check-status?${params.toString()}`)
@@ -79,8 +83,8 @@ export default function VerificationCompleteClient({
             <p className="text-gray-600 mt-2">
               Estamos procesando tu verificación de identidad. Esto puede tomar unos momentos.
             </p>
-            <p className="text-sm text-gray-500 mt-4">Consultando estado... ({attempts + 1}/20)</p>
-            {attempts > 5 && (
+            <p className="text-sm text-gray-500 mt-4">Consultando estado... ({attemptsRef.current + 1}/20)</p>
+            {attemptsRef.current > 5 && (
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
                   El proceso está tomando más tiempo de lo usual. Por favor espera mientras confirmamos tu verificación
