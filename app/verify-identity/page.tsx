@@ -1,12 +1,49 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { ShieldCheck, Camera, CreditCard, Clock, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function VerifyIdentityPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const pollingRef = useRef(true)
+
+  // Polling: detectar si el usuario completó la verificación en otro dispositivo (ej: móvil)
+  // y avanzar automáticamente sin que tenga que recargar la PC
+  useEffect(() => {
+    pollingRef.current = true
+
+    const poll = async () => {
+      if (!pollingRef.current) return
+      try {
+        const res = await fetch("/api/identity/check-status")
+        const data = await res.json()
+        if (data.verified) {
+          pollingRef.current = false
+          // Verificacion completada en otro dispositivo — avanzar al siguiente paso
+          if (data.membership_status === "pending_sepa") {
+            router.replace("/onboarding-complete")
+          } else {
+            router.replace("/dashboard")
+          }
+          return
+        }
+      } catch {
+        // error de red — no hacer nada, seguir intentando
+      }
+      if (pollingRef.current) setTimeout(poll, 5000)
+    }
+
+    // Primera consulta tras 3s (tiempo para que el webhook de Stripe llegue)
+    const t = setTimeout(poll, 3000)
+    return () => {
+      pollingRef.current = false
+      clearTimeout(t)
+    }
+  }, [router])
 
   const handleStart = async () => {
     setLoading(true)
