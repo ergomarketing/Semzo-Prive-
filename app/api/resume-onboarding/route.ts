@@ -16,6 +16,7 @@ type ResumeAction =
   | "resume_checkout"
   | "processing_payment"
   | "payment_incomplete"
+  | "pending_sepa"
 
 function isPaidStatus(status?: string | null) {
   return status === "succeeded" || status === "paid"
@@ -258,7 +259,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4) Payment + identity OK => activate membership idempotently
+    // 3.5) Identity OK pero SEPA pendiente => enrutar a onboarding-complete.
+    // El orquestador interno (syncMembershipFromStripe) solo activa si hay SEPA,
+    // asi que aqui detectamos el caso y devolvemos la accion correcta para el cliente.
+    const { data: profileSepa } = await supabase
+      .from("profiles")
+      .select("sepa_payment_method_id")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (!profileSepa?.sepa_payment_method_id) {
+      await supabase
+        .from("membership_intents")
+        .update({ status: "pending_sepa", updated_at: new Date().toISOString() })
+        .eq("id", intent.id)
+
+      return NextResponse.json({
+        action: "pending_sepa" as ResumeAction,
+        reason: "sepa_mandate_missing",
+      })
+    }
+
+    // 4) Payment + identity + SEPA OK => activate membership idempotently
     if (stripeSubscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
       const synced = await syncMembershipFromStripe(subscription)
