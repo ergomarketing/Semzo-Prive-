@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Info, Tag, Gift, Loader2, X, Check, Trash2, ArrowLeft, ShoppingBag, Shield } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -245,89 +245,81 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     checkAuth()
   }, [items.length])
 
-  // Rehidratación desde URL o sessionStorage (fallback SMS): construye/reemplaza membresía
+  // /cart es la única fuente de verdad del carrito. Este useEffect:
+  // 1. Lee plan/bag desde URL (o sessionStorage como fallback en el flujo SMS)
+  // 2. Construye el item de membresía y lo añade al cart
+  // 3. Limpia la URL para que no haya rehidratación doble
+  // Se ejecuta UNA SOLA VEZ tras isHydrated=true (guard por useRef).
+  const hasBuiltCartRef = useRef(false)
   useEffect(() => {
-    // Esperar a que CartProvider hidrate localStorage ANTES de intentar construir el carrito
-    // Evita race condition donde la hidratación sobrescribe los items añadidos desde URL
-    if (!isHydrated) return
+    if (!isHydrated || hasBuiltCartRef.current) return
 
     const urlPlan = searchParams.get("plan")
     const urlBag = searchParams.get("bag")
 
-    // Fallback: leer sessionStorage si no hay params en URL (caso SMS)
-    let sessionPlan = urlPlan
-    let sessionBag = urlBag
-    if (!sessionPlan && !sessionBag) {
+    // Fallback SMS: si el modal SMS hizo window.location.href y los params
+    // se perdieron, leemos el contexto que guardó antes de autenticar.
+    let plan = urlPlan
+    let bag = urlBag
+    if (!plan && !bag) {
       try {
         const ctx = sessionStorage.getItem("semzo_purchase_context")
         if (ctx) {
           const parsed = JSON.parse(ctx)
-          sessionPlan = parsed.plan || null
-          sessionBag = parsed.bag || null
+          plan = parsed.plan || null
+          bag = parsed.bag || null
         }
       } catch {}
     }
 
-    if (!sessionPlan && !sessionBag) return
+    if (!plan && !bag) return
 
-    const buildFromUrl = async () => {
-      // Limpiar sessionStorage al usarlo
+    // Marcar como ejecutado ANTES del await → evita doble ejecución
+    // en React Strict Mode y en reruns accidentales del efecto.
+    hasBuiltCartRef.current = true
+
+    const build = async () => {
       sessionStorage.removeItem("semzo_purchase_context")
 
-      // Normalizar a minúsculas para que coincida con MEMBERSHIP_PLANS
-      let planKey = (sessionPlan || "").toLowerCase()
+      let planKey = (plan || "").toLowerCase()
       let bagBrand = ""
       let bagName = ""
       let bagImage = ""
 
-      if (sessionBag) {
+      if (bag) {
         try {
           const supabase = getSupabaseBrowser()
           if (supabase) {
-            const { data: bag } = await supabase
+            const { data: bagData } = await supabase
               .from("bags")
               .select("name, brand, image_url, images, membership_type")
-              .eq("id", sessionBag)
+              .eq("id", bag)
               .maybeSingle()
-            if (bag) {
-              bagBrand = bag.brand || ""
-              bagName = bag.name || ""
-              bagImage = bag.images?.[0] || bag.image_url || ""
-              if (!planKey && bag.membership_type) planKey = bag.membership_type.toLowerCase()
+            if (bagData) {
+              bagBrand = bagData.brand || ""
+              bagName = bagData.name || ""
+              bagImage = bagData.images?.[0] || bagData.image_url || ""
+              if (!planKey && bagData.membership_type) planKey = bagData.membership_type.toLowerCase()
             }
           }
         } catch (err) {
-          console.error("[v0] CartClient buildFromUrl bag fetch error:", err)
+          console.error("[v0] CartClient build bag fetch error:", err)
         }
       }
 
       const membership = MEMBERSHIP_PLANS[planKey]
       if (!membership) {
-        console.warn("[v0] CartClient buildFromUrl: plan no valido", { planKey, sessionPlan, sessionBag })
+        console.warn("[v0] CartClient build: plan no valido", { planKey, plan, bag })
+        router.replace("/cart", { scroll: false })
         return
       }
 
       if (!bagImage) bagImage = `/images/membership-${planKey}.jpg`
 
-      const newItemId = `${planKey}-membership-monthly${sessionBag ? `-${sessionBag}` : ""}`
-
-      // Idempotente:
-      // 1. misma membresía + mismo bolso → no hacer nada
-      // 2. distinta membresía o distinto bolso → reemplazar
-      // 3. no existe → crear
-      const existingMembership = items.find((i: any) => i.itemType === "membership")
-      if (existingMembership) {
-        if (existingMembership.id === newItemId) {
-          // Mismo item exacto, no duplicar — solo limpiar params
-          router.replace("/cart", { scroll: false })
-          return
-        }
-        // Diferente membresía o bolso → reemplazar
-        removeItem(existingMembership.id)
-      }
-
+      // addItem del CartContext ya es idempotente para membresías:
+      // internamente elimina cualquier membresía anterior antes de añadir la nueva.
       addItem({
-        id: newItemId,
+        id: `${planKey}-membership-monthly${bag ? `-${bag}` : ""}`,
         name: membership.name.toUpperCase(),
         price: `${membership.price}€`,
         billingCycle: "monthly",
@@ -337,12 +329,11 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         itemType: "membership",
       })
 
-      // Limpiar query params para evitar rehidratación doble
       router.replace("/cart", { scroll: false })
     }
 
-    buildFromUrl()
-  }, [isHydrated, searchParams.get("plan"), searchParams.get("bag")])
+    build()
+  }, [isHydrated])
 
   useEffect(() => {
     if (verificationSessionId && user) {
