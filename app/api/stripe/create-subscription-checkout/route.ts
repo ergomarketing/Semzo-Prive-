@@ -39,6 +39,7 @@ const stripe = new Stripe(stripeSecretKey || "", {
 export async function POST(request: NextRequest) {
   try {
     if (!stripeSecretKey) {
+      console.error("[CHECKOUT DEBUG] ❌ STRIPE_SECRET_KEY missing")
       return NextResponse.json(
         { error: "Configuración de Stripe incompleta" },
         { status: 500 },
@@ -56,6 +57,17 @@ export async function POST(request: NextRequest) {
       gift_card_id,
       coupon,
     } = body
+
+    console.log("[CHECKOUT DEBUG] 1. body received", {
+      priceId,
+      membershipType,
+      billingCycle,
+      clientIntentId,
+      amountCents,
+      productName,
+      gift_card_id,
+      coupon,
+    })
 
     // VALIDATION: Required fields — priceId OR amountCents son suficientes
     if (!priceId && !amountCents) {
@@ -85,6 +97,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error("[CHECKOUT DEBUG] 2. auth failed", { authError })
       return NextResponse.json(
         { error: "Authentication required", details: "User must be logged in" },
         { status: 401 },
@@ -92,15 +105,23 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = user.id
+    console.log("[CHECKOUT DEBUG] 2. user authenticated", { userId, email: user.email })
 
     // Obtener perfil para email y stripe_customer_id
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("stripe_customer_id, full_name, email, auth_method")
       .eq("id", userId)
       .single()
 
-    const customerEmail: string | undefined = profile?.email || undefined
+    console.log("[CHECKOUT DEBUG] 3. profile fetched", {
+      hasProfile: !!profile,
+      profileError: profileError?.message,
+      stripe_customer_id: profile?.stripe_customer_id,
+      profileEmail: profile?.email,
+    })
+
+    const customerEmail: string | undefined = profile?.email || user.email || undefined
 
     // Determinar o crear el intent_id
     let intentId = clientIntentId
@@ -146,21 +167,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log("[CHECKOUT DEBUG] 4. intentId resolved", { intentId })
+
     // Get or create Stripe customer
     let stripeCustomerId = profile?.stripe_customer_id
 
     if (!stripeCustomerId) {
+      console.log("[CHECKOUT DEBUG] 5a. creating stripe customer", { customerEmail })
       const customer = await stripe.customers.create({
         email: customerEmail,
         name: profile?.full_name || undefined,
         metadata: { supabase_user_id: userId },
       })
       stripeCustomerId = customer.id
+      console.log("[CHECKOUT DEBUG] 5b. stripe customer created", { stripeCustomerId })
 
       await supabase
         .from("profiles")
         .update({ stripe_customer_id: stripeCustomerId })
         .eq("id", userId)
+    } else {
+      console.log("[CHECKOUT DEBUG] 5. using existing stripe customer", { stripeCustomerId })
     }
 
     // Determinar modo:
@@ -194,6 +221,15 @@ export async function POST(request: NextRequest) {
     // Si hay coupon aplicado desde el cart, pasarlo a Stripe directamente
     // coupon.code es el coupon.id de Stripe devuelto por validate-coupon
     const couponId: string | null = coupon?.code || null
+
+    console.log("[CHECKOUT DEBUG] 6. pre-session params", {
+      isSubscription,
+      priceId,
+      amountCents,
+      couponId,
+      baseUrl,
+      stripeCustomerId,
+    })
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription
       ? {
@@ -250,7 +286,21 @@ export async function POST(request: NextRequest) {
           customer_update: { address: "auto", name: "auto" },
         }
 
+    console.log("[CHECKOUT DEBUG] 7. calling stripe.checkout.sessions.create with", {
+      mode: sessionParams.mode,
+      customer: sessionParams.customer,
+      line_items: sessionParams.line_items,
+      discounts: (sessionParams as any).discounts,
+      allow_promotion_codes: (sessionParams as any).allow_promotion_codes,
+      success_url: sessionParams.success_url,
+    })
+
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
+
+    console.log("[CHECKOUT DEBUG] 8. stripe session created", {
+      id: checkoutSession.id,
+      url: checkoutSession.url,
+    })
 
     // Actualizar el intent con el checkout_session_id y cambiar status a pending_payment
     if (intentId && intentId !== "no_intent") {
@@ -269,16 +319,27 @@ export async function POST(request: NextRequest) {
       url: checkoutSession.url,
     })
   } catch (error: any) {
-    console.error("[SUBSCRIPTION CHECKOUT] ❌ Error:", {
+    // DIAGNOSTICO COMPLETO: stack + toda la estructura del error de Stripe
+    console.error("[CHECKOUT ERROR FULL]", {
       message: error?.message,
       type: error?.type,
       code: error?.code,
+      param: error?.param,
+      statusCode: error?.statusCode,
+      raw: error?.raw,
+      requestId: error?.requestId,
+      stack: error?.stack,
     })
 
+    // Devolvemos tambien el type/code/param para poder diagnosticar desde el cliente
     return NextResponse.json(
       {
         error: "Failed to create checkout session",
         details: error?.message || "Unknown error",
+        type: error?.type,
+        code: error?.code,
+        param: error?.param,
+        stack: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
       },
       { status: 500 },
     )
