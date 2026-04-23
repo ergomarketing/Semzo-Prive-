@@ -31,60 +31,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  // Verifica el perfil via endpoint server (admin) — asi no depende de RLS del
-  // cliente del browser. Devuelve { exists, profile }.
-  // - exists === false SOLO si el usuario fue eliminado de auth.users (token huerfano)
-  // - Si hay error de red o timeout → asumimos que existe para no cerrar sesion valida
-  const fetchProfile = async (
-    userId: string,
-  ): Promise<{ exists: boolean; profile: Profile | null }> => {
+  const fetchProfile = async (userId: string) => {
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 4000)
-      const res = await fetch(`/api/auth/verify-user?userId=${encodeURIComponent(userId)}`, {
-        signal: controller.signal,
-        cache: "no-store",
-      })
-      clearTimeout(timeout)
-
-      if (!res.ok) {
-        // Error de red: no cerrar sesion, asumir que existe
-        setProfile(null)
-        return { exists: true, profile: null }
-      }
-
-      const data = await res.json().catch(() => null)
-      if (!data) {
-        setProfile(null)
-        return { exists: true, profile: null }
-      }
-
-      if (data.exists === false) {
-        // Usuario eliminado de auth.users — token huerfano real
-        setProfile(null)
-        return { exists: false, profile: null }
-      }
-
-      setProfile(data.profile || null)
-      return { exists: true, profile: data.profile || null }
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, first_name, last_name, email, phone, avatar_url")
+        .eq("id", userId)
+        .maybeSingle()
+      setProfile(data ?? null)
     } catch {
-      // Red/abort/fetch fallido: mantener sesion, solo sin profile
       setProfile(null)
-      return { exists: true, profile: null }
     }
   }
 
   useEffect(() => {
     let isMounted = true
-
-    // Safety timeout: en webviews (Instagram, FB) getSession puede colgar indefinidamente
-    // si las cookies están bloqueadas. Forzar loading=false tras 5s para que la UI reaccione.
-    const safetyTimeout = setTimeout(() => {
-      if (isMounted) {
-        console.warn("[Auth] Safety timeout: forzando loading=false tras 5s")
-        setLoading(false)
-      }
-    }, 5000)
 
     const loadSession = async () => {
       try {
@@ -92,30 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return
 
         const sessionUser = data.session?.user ?? null
+        setUser(sessionUser)
         if (sessionUser) {
-          // Fijamos user inmediatamente para desbloquear la UI; la verificacion
-          // del perfil corre en paralelo y solo cerrara sesion si el usuario fue
-          // realmente eliminado de auth.users.
-          setUser(sessionUser)
-          const { exists } = await fetchProfile(sessionUser.id)
-          if (!exists && isMounted) {
-            await supabase.auth.signOut()
-            setUser(null)
-          }
-        } else {
-          setUser(null)
+          // No bloqueamos la UI por fetchProfile: corre en paralelo
+          fetchProfile(sessionUser.id)
         }
-        clearTimeout(safetyTimeout)
-        setLoading(false)
-      } catch (e: any) {
-        if (e?.name !== "AbortError") {
-          console.error("[Auth] Error getting session:", e)
-        }
-        if (isMounted) {
-          setUser(null)
-          clearTimeout(safetyTimeout)
-          setLoading(false)
-        }
+      } catch (e) {
+        console.error("[Auth] Error getting session:", e)
+        if (isMounted) setUser(null)
+      } finally {
+        if (isMounted) setLoading(false)
       }
     }
 
@@ -123,18 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } =     supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return
       const sessionUser = session?.user ?? null
+      setUser(sessionUser)
       if (sessionUser) {
-        setUser(sessionUser)
-        const { exists } = await fetchProfile(sessionUser.id)
-        if (!exists && isMounted) {
-          await supabase.auth.signOut()
-          setUser(null)
-        }
+        fetchProfile(sessionUser.id)
       } else {
-        setUser(null)
         setProfile(null)
       }
       setLoading(false)
@@ -142,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false
-      clearTimeout(safetyTimeout)
       subscription.unsubscribe()
     }
   }, [])
