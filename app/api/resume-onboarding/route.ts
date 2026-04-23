@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@/app/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator"
 
 export const dynamic = "force-dynamic"
@@ -20,17 +21,52 @@ function isPaidStatus(status?: string | null) {
   return status === "succeeded" || status === "paid"
 }
 
-export async function POST() {
+// Cliente admin para modo interno (webhooks sin cookies de sesión)
+function getAdminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    // Soporta dos modos:
+    //   1. Normal: cookie de sesion del usuario (flujos UI)
+    //   2. Interno: header x-internal-secret + body.userId (webhooks)
+    const internalSecret = request.headers.get("x-internal-secret")
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    let body: any = {}
+    try {
+      body = await request.json()
+    } catch {
+      // sin body: modo normal
     }
+
+    let userId: string | null = null
+    let supabase: any
+
+    if (internalSecret && webhookSecret && internalSecret === webhookSecret && body?.userId) {
+      // Modo interno (webhook): autenticacion por secreto, userId viene en body
+      userId = body.userId
+      supabase = getAdminClient()
+      console.log("[resume-onboarding] internal mode, userId:", userId)
+    } else {
+      // Modo normal: cookie de sesion
+      supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+      }
+      userId = user.id
+    }
+
+    // Wrapper para mantener la API interna usando `user.id`
+    const user = { id: userId! }
 
     // Leer estado de identidad de identity_verifications (FUENTE DE VERDAD)
     const { data: latestIdentity } = await supabase

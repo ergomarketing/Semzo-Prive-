@@ -113,48 +113,7 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           })
           .eq("id", intent.id)
 
-        // 2. Marcar identity como verificado - buscar cualquier membresía del usuario
-        // Incluir todos los estados posibles: pending_verification, active, paid_pending_verification
-        const { data: membership } = await supabase
-          .from("user_memberships")
-          .select("id, membership_type, status")
-          .eq("user_id", intent.user_id)
-          .in("status", ["pending_verification", "active", "paid_pending_verification", "pending_sepa"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (membership) {
-          await supabase
-            .from("user_memberships")
-            .update({
-              status: "pending_sepa",
-              identity_verified: true,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", membership.id)
-        }
-
-        // 3. Actualizar profile (identity verificado, membresía aún pendiente de SEPA)
-        // IMPORTANTE: Sincronizar también membership_type desde user_memberships
-        const profileUpdate: Record<string, any> = {
-          identity_verified: true,
-          stripe_verification_session_id: session.id,
-          membership_status: "pending_sepa",
-          updated_at: new Date().toISOString(),
-        }
-        
-        // Si encontramos la membresía, sincronizar el tipo
-        if (membership?.membership_type) {
-          profileUpdate.membership_type = membership.membership_type
-        }
-
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update(profileUpdate)
-          .eq("id", intent.user_id)
-
-        // 4. Actualizar identity_verifications a verified
+        // 2. Marcar identity_verifications como verified (fuente de verdad del estado identity)
         await supabase
           .from("identity_verifications")
           .update({
@@ -164,6 +123,30 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
             last_error: null,
           })
           .eq("stripe_verification_id", session.id)
+
+        // 3. Delegar la reconciliación del estado de la membresía al orquestador.
+        // `resume-onboarding` en modo interno consulta Stripe + identity_verifications
+        // + SEPA y calcula el estado correcto de user_memberships sin race conditions.
+        console.log("[RESUME ONBOARDING TRIGGERED]")
+        const siteUrl =
+          process.env.NEXT_PUBLIC_SITE_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+        try {
+          const resumeRes = await fetch(`${siteUrl}/api/resume-onboarding`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-secret": process.env.STRIPE_WEBHOOK_SECRET || "",
+            },
+            body: JSON.stringify({ userId: intent.user_id }),
+          })
+          if (!resumeRes.ok) {
+            const txt = await resumeRes.text().catch(() => "")
+            console.error("[identity-webhook] resume-onboarding failed:", resumeRes.status, txt)
+          }
+        } catch (err: any) {
+          console.error("[identity-webhook] resume-onboarding fetch error:", err?.message)
+        }
 
         // Email de acceso desbloqueado
         const { data: userProfile } = await supabase

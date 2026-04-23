@@ -44,6 +44,21 @@ export default function DashboardHome() {
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
+  // Red de seguridad: si el usuario vuelve al dashboard con estado inconsistente
+  // (ej: pago OK, identity verificado en otro dispositivo, pero user_memberships aún en pending),
+  // llamar al orquestador una vez para reconciliar contra Stripe + identity_verifications.
+  useEffect(() => {
+    if (authLoading || !user) return
+    ;(async () => {
+      try {
+        console.log("[RESUME ONBOARDING TRIGGERED]")
+        await fetch("/api/resume-onboarding", { method: "POST" })
+      } catch {
+        // sin bloqueo
+      }
+    })()
+  }, [authLoading, user?.id])
+
   // Si la membresia esta en estado intermedio, guiar al usuario al paso que falta
   useEffect(() => {
     if (!data?.membership) return

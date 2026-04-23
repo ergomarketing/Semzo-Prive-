@@ -77,6 +77,15 @@ function PostCheckoutContent() {
         if (data.status === "active" || data.status === "trialing") {
           if (data.user_id) verifiedUserId.current = data.user_id
 
+          // Reconciliar estado con la fuente de verdad antes de decidir redirect.
+          // Evita race conditions entre webhooks de Stripe y la UI.
+          try {
+            console.log("[RESUME ONBOARDING TRIGGERED]")
+            await fetch("/api/resume-onboarding", { method: "POST" })
+          } catch {
+            // no bloquear el flujo
+          }
+
           // SIEMPRE ir a verificación de identidad después del pago
           // Solo skip si explícitamente está verificado
           if (data.identity_verified === true) {

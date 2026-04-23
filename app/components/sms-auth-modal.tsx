@@ -224,8 +224,13 @@ const { data, error } = await supabase.auth.verifyOtp({
           return
         }
 
-        // Usuario ya tiene nombre — navegar directamente a /cart con reload
-        // para que la sesion sea reconocida en el webview de Instagram
+        // Usuario ya tiene nombre — reconciliar estado y navegar a /cart con reload
+        try {
+          console.log("[RESUME ONBOARDING TRIGGERED]")
+          await fetch("/api/resume-onboarding", { method: "POST" })
+        } catch {
+          // no bloquear el flujo
+        }
         try {
           const ctxRaw = sessionStorage.getItem("semzo_purchase_context")
           const ctx = ctxRaw ? JSON.parse(ctxRaw) : {}
@@ -283,6 +288,14 @@ const { data, error } = await supabase.auth.verifyOtp({
         setError(`No se pudo guardar el nombre${data?.message ? `: ${data.message}` : ""}. Inténtalo de nuevo.`)
         setLoading(false)
         return
+      }
+
+      // Reconciliar estado tras alta SMS: el usuario puede tener intent previo.
+      try {
+        console.log("[RESUME ONBOARDING TRIGGERED]")
+        await fetch("/api/resume-onboarding", { method: "POST" })
+      } catch {
+        // no bloquear el flujo
       }
 
       // En webviews de Instagram/Facebook las cookies de sesion no se propagan
