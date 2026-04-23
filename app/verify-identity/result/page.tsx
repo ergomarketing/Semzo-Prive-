@@ -45,15 +45,26 @@ function VerifyIdentityResultContent() {
         if (data.verified === true || data.status === "verified") {
           setStatus("approved")
 
-          // Identity OK: preguntar al orquestador el siguiente paso real
-          // (active → dashboard, pending_sepa → onboarding-complete)
-          // para evitar loop verify-identity → verify-identity.
+          // Identity OK: preguntar al orquestador el siguiente paso real.
+          // IMPORTANTE: en iOS Safari (Stripe Identity abre nueva pestaña) la cookie
+          // de sesion puede no existir en este contexto. Pasamos user_id explicito
+          // via modo interno (x-internal-secret) para no depender de la cookie.
           let nextUrl = "/onboarding-complete"
+          const verifiedUserId = data.user_id || null
+
           try {
             console.log("[RESUME ONBOARDING TRIGGERED]")
-            const resumeRes = await fetch("/api/resume-onboarding", { method: "POST" })
+            // Llamar via /api/identity/resume-after-verification que actua como
+            // puente server-side: recibe user_id, añade x-internal-secret sin
+            // exponerlo al cliente, y llama a resume-onboarding en modo interno.
+            const resumeRes = await fetch("/api/identity/resume-after-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: verifiedUserId, sessionId }),
+            })
             const resume = await resumeRes.json().catch(() => ({}))
             console.log("[verify-identity/result] resume action:", resume?.action)
+
             if (resume?.action === "active") {
               nextUrl = "/dashboard"
             } else if (resume?.action === "pending_sepa") {
