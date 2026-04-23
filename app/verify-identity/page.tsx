@@ -11,8 +11,9 @@ export default function VerifyIdentityPage() {
   const [error, setError] = useState<string | null>(null)
   const pollingRef = useRef(true)
 
-  // Polling: detectar si el usuario completó la verificación en otro dispositivo (ej: móvil)
-  // y avanzar automáticamente sin que tenga que recargar la PC
+  // Polling: detectar si el usuario completó la verificación en otro dispositivo
+  // (ej: escaneo QR desde PC y completa en móvil). Cuando Stripe confirma verified,
+  // la PC (que tiene la cookie de sesión) avanza el flujo por el orquestador.
   useEffect(() => {
     pollingRef.current = true
 
@@ -23,18 +24,34 @@ export default function VerifyIdentityPage() {
         const data = await res.json()
         if (data.verified) {
           pollingRef.current = false
-          // Verificacion completada en otro dispositivo — avanzar al siguiente paso
-          if (data.membership_status === "pending_sepa") {
+
+          // Identity OK → preguntar al orquestador el siguiente paso real.
+          // Regla de oro: Identity → SEPA → Active. Nunca saltarse SEPA.
+          try {
+            console.log("[RESUME ONBOARDING TRIGGERED]")
+            const resumeRes = await fetch("/api/resume-onboarding", { method: "POST" })
+            const resume = await resumeRes.json().catch(() => ({}))
+            console.log("[verify-identity] resume action:", resume?.action)
+
+            if (resume?.action === "active") {
+              router.replace("/dashboard")
+            } else if (resume?.action === "pending_sepa") {
+              router.replace("/onboarding-complete")
+            } else {
+              // Fallback seguro: si el orquestador no dio acción clara,
+              // ir a onboarding-complete (SEPA) — nunca a dashboard.
+              router.replace("/onboarding-complete")
+            }
+          } catch {
+            // Error en resume: fallback a onboarding-complete
             router.replace("/onboarding-complete")
-          } else {
-            router.replace("/dashboard")
           }
           return
         }
       } catch {
         // error de red — no hacer nada, seguir intentando
       }
-      if (pollingRef.current) setTimeout(poll, 5000)
+      if (pollingRef.current) setTimeout(poll, 3000)
     }
 
     // Primera consulta tras 3s (tiempo para que el webhook de Stripe llegue)
