@@ -44,23 +44,49 @@ export default function DashboardHome() {
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
 
-  // Red de seguridad: si el usuario vuelve al dashboard con estado inconsistente
-  // (ej: pago OK, identity verificado en otro dispositivo, pero user_memberships aún en pending),
-  // llamar al orquestador una vez para reconciliar contra Stripe + identity_verifications.
+  // Fuente de verdad unica: llamar a resume-onboarding y enrutar por su `action`.
+  // Evita el loop por SWR cacheado con raw_status viejo tras completar Identity.
+  const [resumeChecked, setResumeChecked] = useState(false)
   useEffect(() => {
     if (authLoading || !user) return
+    if (resumeChecked) return
+
     ;(async () => {
       try {
         console.log("[RESUME ONBOARDING TRIGGERED]")
-        await fetch("/api/resume-onboarding", { method: "POST" })
+        const res = await fetch("/api/resume-onboarding", { method: "POST" })
+        const resume = await res.json().catch(() => ({}))
+        console.log("[dashboard] resume action:", resume?.action)
+
+        if (resume?.action === "launch_identity") {
+          if (resume.verification_url) {
+            window.location.href = resume.verification_url
+          } else {
+            router.replace("/verify-identity")
+          }
+          return
+        }
+        if (resume?.action === "pending_sepa") {
+          router.replace("/onboarding-complete")
+          return
+        }
+        if (resume?.action === "resume_checkout") {
+          router.replace(resume.checkout_url || "/cart")
+          return
+        }
+        // action === "active" o cualquier otra → permanecer en dashboard
       } catch {
-        // sin bloqueo
+        // si falla resume, cae al fallback de raw_status abajo
+      } finally {
+        setResumeChecked(true)
       }
     })()
-  }, [authLoading, user?.id])
+  }, [authLoading, user?.id, resumeChecked, router])
 
-  // Si la membresia esta en estado intermedio, guiar al usuario al paso que falta
+  // Fallback de seguridad: solo se ejecuta si resume-onboarding no dio instruccion clara.
+  // Usa raw_status de SWR como ultima linea de defensa.
   useEffect(() => {
+    if (!resumeChecked) return
     if (!data?.membership) return
     const rawStatus = data.membership.raw_status
     if (rawStatus === "pending_verification" || rawStatus === "paid_pending_verification") {
@@ -68,7 +94,7 @@ export default function DashboardHome() {
     } else if (rawStatus === "pending_sepa") {
       router.replace("/onboarding-complete")
     }
-  }, [data?.membership?.raw_status, router])
+  }, [resumeChecked, data?.membership?.raw_status, router])
 
   // Si no hay sesión y estamos en webview de app, mostrar CTA para abrir en navegador
   if (!authLoading && !user && isInAppBrowser) {
