@@ -23,7 +23,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
-type VerificationStatus = "loading" | "approved" | "rejected" | "error"
+type VerificationStatus = "loading" | "approved" | "approved_no_session" | "rejected" | "error"
 
 function VerifyIdentityResultContent() {
   const searchParams = useSearchParams()
@@ -43,40 +43,43 @@ function VerifyIdentityResultContent() {
         const data = await res.json()
 
         if (data.verified === true || data.status === "verified") {
-          setStatus("approved")
-
-          // Identity OK: preguntar al orquestador el siguiente paso real.
-          // IMPORTANTE: en iOS Safari (Stripe Identity abre nueva pestaña) la cookie
-          // de sesion puede no existir en este contexto. Pasamos user_id explicito
-          // via modo interno (x-internal-secret) para no depender de la cookie.
-          let nextUrl = "/onboarding-complete"
-          const verifiedUserId = data.user_id || null
-
+          // Caso 1: móvil hizo Identity vía QR desde PC. El móvil no tiene cookie.
+          //         Mostrar mensaje "vuelve al ordenador" y NO intentar redirigir.
+          //         La PC detectará verified por polling y continuará sola.
+          //
+          // Caso 2: móvil con sesión propia (completó Identity en su propio login).
+          //         Tiene cookie → resume-onboarding enruta por action.
+          //
+          // Detectamos el caso llamando a resume-onboarding (requiere cookie).
+          // Si devuelve 401 → Caso 1 (QR). Si responde → Caso 2 (con sesión).
           try {
             console.log("[RESUME ONBOARDING TRIGGERED]")
-            // Llamar via /api/identity/resume-after-verification que actua como
-            // puente server-side: recibe user_id, añade x-internal-secret sin
-            // exponerlo al cliente, y llama a resume-onboarding en modo interno.
-            const resumeRes = await fetch("/api/identity/resume-after-verification", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId: verifiedUserId, sessionId }),
-            })
+            const resumeRes = await fetch("/api/resume-onboarding", { method: "POST" })
+
+            if (resumeRes.status === 401) {
+              // Sin sesión → móvil que completó Identity por QR desde PC
+              setStatus("approved_no_session")
+              return
+            }
+
             const resume = await resumeRes.json().catch(() => ({}))
             console.log("[verify-identity/result] resume action:", resume?.action)
 
+            setStatus("approved")
+            let nextUrl = "/onboarding-complete"
             if (resume?.action === "active") {
               nextUrl = "/dashboard"
             } else if (resume?.action === "pending_sepa") {
               nextUrl = "/onboarding-complete"
             }
-          } catch {
-            // fallback: onboarding-complete
-          }
 
-          setTimeout(() => {
-            window.location.href = nextUrl
-          }, 2000)
+            setTimeout(() => {
+              window.location.href = nextUrl
+            }, 2000)
+          } catch {
+            // Error de red: asumimos sin sesión para no mandarlo a login
+            setStatus("approved_no_session")
+          }
         } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
         } else {
@@ -103,6 +106,10 @@ function VerifyIdentityResultContent() {
       title: "Verificacion completada",
       message: "Tu identidad ha sido verificada. Ahora configura tu cuenta bancaria...",
     },
+    approved_no_session: {
+      title: "Verificacion completada",
+      message: "Tu identidad ha sido verificada correctamente. Vuelve a tu ordenador para completar el proceso — la pagina avanzara sola.",
+    },
     rejected: {
       title: "Verificacion no completada",
       message: "No hemos podido verificar tu identidad. Por favor intentalo de nuevo.",
@@ -126,7 +133,7 @@ function VerifyIdentityResultContent() {
           {status === "loading" && (
             <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
           )}
-          {status === "approved" && (
+          {(status === "approved" || status === "approved_no_session") && (
             <svg
               className="w-10 h-10 text-green-600"
               fill="none"
