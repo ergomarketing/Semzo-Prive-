@@ -11,6 +11,7 @@ import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, Smartphone } from "luci
 import { getSupabaseBrowser } from "@/app/lib/supabase"
 import { useAuth } from "../../hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
+import { hydrateCartFromUrl } from "@/app/lib/hydrate-cart"
 
 
 export default function LoginPage() {
@@ -144,45 +145,9 @@ export default function LoginPage() {
         const plan = searchParams.get("plan") || savedUrl?.match(/plan=([^&]+)/)?.[1]
         const bag = searchParams.get("bag") || savedUrl?.match(/bag=([^&]+)/)?.[1]
         
-        // Si hay bolso, construir el carrito antes de redirigir
-        if (bag && plan) {
-          try {
-            const { data: bagData } = await supabase
-              .from("bags")
-              .select("name, brand, image_url, images, membership_type")
-              .eq("id", bag)
-              .maybeSingle()
-            
-            const membershipType = plan || bagData?.membership_type
-            const membershipPrices: Record<string, { name: string; price: number }> = {
-              essentiel: { name: "L'Essentiel", price: 59 },
-              signature: { name: "Signature", price: 149 },
-              prive: { name: "Privé", price: 279 },
-            }
-            
-            if (membershipType && membershipPrices[membershipType]) {
-              const membership = membershipPrices[membershipType]
-              const membershipItem = {
-                id: `${membershipType}-membership-monthly`,
-                name: membership.name.toUpperCase(),
-                price: `${membership.price}€`,
-                billingCycle: "monthly",
-                description: bagData ? `${bagData.brand} ${bagData.name}` : `Membresía ${membership.name}`,
-                image: bagData?.images?.[0] || bagData?.image_url || `/images/membership-${membershipType}.jpg`,
-                brand: bagData?.brand || "Semzo Privé",
-                itemType: "membership",
-              }
-              
-              const existingCart = localStorage.getItem("cartItems")
-              const cartItems = existingCart ? JSON.parse(existingCart) : []
-              const withoutMembership = cartItems.filter((i: any) => i.itemType !== "membership")
-              localStorage.setItem("cartItems", JSON.stringify([...withoutMembership, membershipItem]))
-            }
-          } catch (e) {
-            // continuar sin carrito
-          }
-        }
-        
+        // Rehidratar el carrito con la función compartida (misma lógica que handleSMSSuccess)
+        await hydrateCartFromUrl(plan, bag)
+
         localStorage.removeItem("semzo_post_confirm_url")
         
         let redirectUrl = "/dashboard"
@@ -205,10 +170,15 @@ export default function LoginPage() {
     }
   }
 
-  const handleSMSSuccess = (user: any) => {
+  const handleSMSSuccess = async (user: any) => {
     setMessage("¡Login exitoso! Redirigiendo...")
     const plan = searchParams.get("plan")
     const bag = searchParams.get("bag")
+
+    // Rehidratar carrito ANTES de redirigir — sin esto el cart queda vacío
+    // y el checkout fallaría con amount=0.
+    await hydrateCartFromUrl(plan, bag)
+
     let redirectUrl = "/dashboard"
     if (plan && bag) {
       redirectUrl = `/cart?plan=${plan}&bag=${bag}`

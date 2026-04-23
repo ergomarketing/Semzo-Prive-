@@ -104,6 +104,22 @@ export async function GET(request: NextRequest) {
         // Error de sync no bloquea el flujo
       }
 
+      // Ejecutar orquestador para reconciliar estado de membresia/identity/sepa
+      // tras exchangeCodeForSession. Idempotente: si no hay intent, devuelve payment_incomplete y el flujo sigue.
+      try {
+        console.log("[RESUME ONBOARDING TRIGGERED]")
+        await fetch(`${requestUrl.origin}/api/resume-onboarding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Forward cookies para que resume-onboarding vea la sesión recién creada
+            cookie: request.headers.get("cookie") || "",
+          },
+        })
+      } catch {
+        // Error en resume no bloquea la redirección
+      }
+
       // Contexto de compra: priorizar URL params, luego user_metadata como fallback
       const userMetadata = data.user.user_metadata || {}
       const finalPlan = plan || userMetadata.pending_plan || null
