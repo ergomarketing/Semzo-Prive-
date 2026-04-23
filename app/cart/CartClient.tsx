@@ -541,50 +541,44 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       const supabase = getSupabaseBrowser()
 
       if (authMode === "register") {
-        const { data, error } = await supabase.auth.signUp({
+        // Flujo de compra: crear usuario desde el servidor con email_confirm=true
+        // para saltarse la verificacion por correo SOLO en este flujo. Los registros
+        // normales fuera del cart siguen requiriendo confirmacion de email.
+        const registerRes = await fetch("/api/auth/register-for-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: authEmail, password: authPassword }),
+        })
+        const registerData = await registerRes.json().catch(() => ({}))
+
+        if (!registerRes.ok && !registerData.exists) {
+          setAuthError(registerData.error || "No se pudo crear la cuenta")
+          return
+        }
+
+        // Tras crear (o si ya existia), login inmediato. Si el usuario ya existia y
+        // la contrasena es correcta, entra; si no, mostramos error claro.
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: authEmail,
           password: authPassword,
-          options: {
-            // Redirigir al callback con next=/cart para restaurar contexto del carrito
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/cart`,
-          },
         })
 
-        if (error) throw error
-
-        if (data.user) {
-          // Si signUp ya creo sesion (email confirmation desactivada en Supabase),
-          // data.session estara presente y podemos continuar con el pago directamente.
-          if (data.session) {
-            setUser(data.user)
-            setShowAuthModal(false)
-            toast.success("Cuenta creada. Completa tu pedido")
-            return
-          }
-
-          // Si email confirmation esta ACTIVA, signUp devuelve user pero session=null.
-          // Intentamos login inmediato: funcionara si el email ya esta confirmado
-          // (usuario que volvio a registrarse), y fallara con "Email not confirmed"
-          // si es un usuario realmente nuevo.
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: authEmail,
-            password: authPassword,
-          })
-
-          if (signInError) {
-            // Email no confirmado todavia: guiar al usuario
+        if (signInError) {
+          if (registerData.exists) {
             setAuthError(
-              "Cuenta creada. Revisa tu correo y confirma tu email para continuar con el pago.",
+              "Ya existe una cuenta con ese email. Introduce tu contrasena o usa Iniciar Sesion.",
             )
-            return
+          } else {
+            setAuthError(signInError.message || "Error iniciando sesion")
           }
+          return
+        }
 
-          if (signInData.user && signInData.session) {
-            setUser(signInData.user)
-            setShowAuthModal(false)
-            // Recargamos para que los endpoints server detecten la cookie de sesion
-            window.location.reload()
-          }
+        if (signInData.user && signInData.session) {
+          setUser(signInData.user)
+          setShowAuthModal(false)
+          // Recargar para que las cookies de sesion se propaguen a los endpoints server
+          window.location.reload()
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
