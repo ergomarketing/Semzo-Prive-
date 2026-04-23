@@ -85,8 +85,10 @@ export async function POST(request: NextRequest) {
     // Caracteristicas:
     //   - user_memberships existe en estado post-pago
     //   - stripe_subscription_id = NULL (Gift Card no crea subscription)
-    //   - No requiere SEPA (es prepago)
-    // Flujo simplificado: Identity decide activacion.
+    //
+    // IMPORTANTE: el flujo COMPLETO es el mismo que Stripe:
+    //   Identity → SEPA (mandato de respaldo) → Reserva bolso → Dashboard
+    // Este bloque sustituye la parte de "validar pago Stripe" que no aplica.
     // ============================================================
     const { data: giftCardMembership } = await supabase
       .from("user_memberships")
@@ -184,11 +186,45 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Identity OK → activar membresia (sin SEPA, sin Stripe subscription)
+      // Identity OK → validar SEPA. Aunque Gift Card es prepago, el mandato SEPA
+      // de respaldo SI se exige (ver cart: "Mandato SEPA uso limitado" y activate-membership).
+      const { data: profileSepaGc } = await supabase
+        .from("profiles")
+        .select("sepa_payment_method_id")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (!profileSepaGc?.sepa_payment_method_id) {
+        // Promover user_memberships a pending_sepa para que el dashboard enrute a /onboarding-complete
+        // (sin esto, pending_verification haria que el dashboard reenvie a /verify-identity y provoque loop).
+        if (giftCardMembership.status !== "pending_sepa") {
+          await supabase
+            .from("user_memberships")
+            .update({ status: "pending_sepa", updated_at: new Date().toISOString() })
+            .eq("id", giftCardMembership.id)
+        }
+
+        return NextResponse.json({
+          action: "pending_sepa" as ResumeAction,
+          reason: "sepa_mandate_missing",
+          source: "gift_card",
+        })
+      }
+
+      // Identity + SEPA OK → activar (la reserva del bolso la gestiona onboarding-complete tras activate)
       await supabase
         .from("user_memberships")
         .update({ status: "active", updated_at: new Date().toISOString() })
         .eq("id", giftCardMembership.id)
+
+      await supabase
+        .from("profiles")
+        .update({
+          membership_status: "active",
+          membership_type: giftCardMembership.membership_type,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
 
       return NextResponse.json({
         action: "active" as ResumeAction,
