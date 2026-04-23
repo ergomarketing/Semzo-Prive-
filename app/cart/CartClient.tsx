@@ -553,9 +553,38 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         if (error) throw error
 
         if (data.user) {
-          setUser(data.user)
-          setShowAuthModal(false)
-          toast.success("Cuenta creada. Ahora completa tus datos personales")
+          // Si signUp ya creo sesion (email confirmation desactivada en Supabase),
+          // data.session estara presente y podemos continuar con el pago directamente.
+          if (data.session) {
+            setUser(data.user)
+            setShowAuthModal(false)
+            toast.success("Cuenta creada. Completa tu pedido")
+            return
+          }
+
+          // Si email confirmation esta ACTIVA, signUp devuelve user pero session=null.
+          // Intentamos login inmediato: funcionara si el email ya esta confirmado
+          // (usuario que volvio a registrarse), y fallara con "Email not confirmed"
+          // si es un usuario realmente nuevo.
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: authPassword,
+          })
+
+          if (signInError) {
+            // Email no confirmado todavia: guiar al usuario
+            setAuthError(
+              "Cuenta creada. Revisa tu correo y confirma tu email para continuar con el pago.",
+            )
+            return
+          }
+
+          if (signInData.user && signInData.session) {
+            setUser(signInData.user)
+            setShowAuthModal(false)
+            // Recargamos para que los endpoints server detecten la cookie de sesion
+            window.location.reload()
+          }
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
