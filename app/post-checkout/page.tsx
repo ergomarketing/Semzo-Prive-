@@ -77,22 +77,42 @@ function PostCheckoutContent() {
         if (data.status === "active" || data.status === "trialing") {
           if (data.user_id) verifiedUserId.current = data.user_id
 
-          // Reconciliar estado con la fuente de verdad antes de decidir redirect.
-          // Evita race conditions entre webhooks de Stripe y la UI.
+          // Enrutar por la acción del orquestador (única fuente de verdad).
+          // Evita loops: resume-onboarding consulta Stripe + identity_verifications
+          // + SEPA y decide el siguiente paso coherente.
           try {
             console.log("[RESUME ONBOARDING TRIGGERED]")
-            await fetch("/api/resume-onboarding", { method: "POST" })
+            const resumeRes = await fetch("/api/resume-onboarding", { method: "POST" })
+            const resume = await resumeRes.json().catch(() => ({}))
+            console.log("[post-checkout] resume action:", resume?.action)
+
+            if (resume?.action === "active") {
+              setMessage("Membresía activa. Redirigiendo al dashboard...")
+              setTimeout(() => router.replace("/dashboard"), 800)
+              return
+            }
+            if (resume?.action === "pending_sepa") {
+              setMessage("Completa tu mandato SEPA para activar la membresía...")
+              setTimeout(() => router.replace("/onboarding-complete"), 800)
+              return
+            }
+            if (resume?.action === "launch_identity") {
+              if (resume.verification_url) {
+                window.location.href = resume.verification_url
+                return
+              }
+              await launchIdentityVerification()
+              return
+            }
           } catch {
-            // no bloquear el flujo
+            // fallback al comportamiento anterior si falla resume-onboarding
           }
 
-          // SIEMPRE ir a verificación de identidad después del pago
-          // Solo skip si explícitamente está verificado
+          // Fallback: si resume-onboarding falló, usar identity_verified
           if (data.identity_verified === true) {
             setMessage("Identidad verificada. Redirigiendo al dashboard...")
             setTimeout(() => router.replace("/dashboard"), 1000)
           } else {
-            // Pago OK, ahora verificación de identidad
             await launchIdentityVerification()
           }
           return

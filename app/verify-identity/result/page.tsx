@@ -44,9 +44,27 @@ function VerifyIdentityResultContent() {
 
         if (data.verified === true || data.status === "verified") {
           setStatus("approved")
-          // Redirigir a configuración SEPA después de Identity verificado
+
+          // Identity OK: preguntar al orquestador el siguiente paso real
+          // (active → dashboard, pending_sepa → onboarding-complete)
+          // para evitar loop verify-identity → verify-identity.
+          let nextUrl = "/onboarding-complete"
+          try {
+            console.log("[RESUME ONBOARDING TRIGGERED]")
+            const resumeRes = await fetch("/api/resume-onboarding", { method: "POST" })
+            const resume = await resumeRes.json().catch(() => ({}))
+            console.log("[verify-identity/result] resume action:", resume?.action)
+            if (resume?.action === "active") {
+              nextUrl = "/dashboard"
+            } else if (resume?.action === "pending_sepa") {
+              nextUrl = "/onboarding-complete"
+            }
+          } catch {
+            // fallback: onboarding-complete
+          }
+
           setTimeout(() => {
-            window.location.href = "/onboarding-complete"
+            window.location.href = nextUrl
           }, 2000)
         } else if (data.status === "requires_input" || data.status === "canceled") {
           setStatus("rejected")
