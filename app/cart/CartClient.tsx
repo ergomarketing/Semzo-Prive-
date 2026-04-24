@@ -1023,13 +1023,18 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     }
 
                     // PASO 1: Crear intent en DB ANTES de Stripe
+                    // IMPORTANTE: enviar `total` (precio original sin descuentos).
+                    // create-intent aplica coupon y gift card internamente; si enviamos
+                    // finalAmount (ya descontado) se aplicarian dos veces → amount_cents=0
+                    // y la Gift Card nunca se debitaria porque create-intent la salta
+                    // cuando amount ya esta a 0.
                     const intentRes = await fetch("/api/checkout/create-intent", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         membershipType: type,
                         billingCycle: cycle,
-                        amount: finalAmount,
+                        amount: total,
                         coupon: appliedCoupon,
                         giftCard: appliedGiftCard,
                       }),
