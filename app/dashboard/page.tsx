@@ -83,18 +83,9 @@ export default function DashboardHome() {
     })()
   }, [authLoading, user?.id, resumeChecked, router])
 
-  // Fallback de seguridad: solo se ejecuta si resume-onboarding no dio instruccion clara.
-  // Usa raw_status de SWR como ultima linea de defensa.
-  useEffect(() => {
-    if (!resumeChecked) return
-    if (!data?.membership) return
-    const rawStatus = data.membership.raw_status
-    if (rawStatus === "pending_verification" || rawStatus === "paid_pending_verification") {
-      router.replace("/verify-identity")
-    } else if (rawStatus === "pending_sepa") {
-      router.replace("/onboarding-complete")
-    }
-  }, [resumeChecked, data?.membership?.raw_status, router])
+  // NOTA: El fallback de raw_status fue eliminado porque causaba ERR_TOO_MANY_REDIRECTS.
+  // resume-onboarding es la UNICA fuente de verdad para enrutamiento.
+  // raw_status de SWR puede estar stale y generar loops.
 
   // Si no hay sesión y estamos en webview de app, mostrar CTA para abrir en navegador
   if (!authLoading && !user && isInAppBrowser) {
