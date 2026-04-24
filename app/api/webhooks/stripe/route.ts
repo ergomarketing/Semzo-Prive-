@@ -107,13 +107,6 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Recuperar la session con total_details expandido para garantizar que
-        // amount_discount (coupon de gift card) este disponible para el debit.
-        const expandedSession = await stripe.checkout.sessions.retrieve(
-          session.id,
-          { expand: ["total_details", "total_details.breakdown"] }
-        );
-
         const subscription = await stripe.subscriptions.retrieve(
           session.subscription as string
         );
@@ -188,52 +181,30 @@ export async function POST(req: NextRequest) {
             { onConflict: "user_id" }
           );
 
-        // Consumir gift card si había una aplicada en la suscripción.
-        // Usamos expandedSession.total_details.amount_discount (fuente de verdad
-        // del descuento aplicado por el coupon de gift card). El expand al principio
-        // del handler garantiza que este campo este presente.
+        // Consumir gift card si habia una aplicada.
+        // FUENTE DE VERDAD: membership_intents.gift_card_applied_cents
+        // (calculado en create-intent cuando el usuario pulso Pagar).
+        // Buscamos el intent mas reciente del usuario con gift card.
         if (giftCardId && userId) {
-          const amountDiscountCents = expandedSession.total_details?.amount_discount || 0;
-          let giftCardConsumedEuros = parseFloat((amountDiscountCents / 100).toFixed(2));
+          const { data: intent } = await supabase
+            .from("membership_intents")
+            .select("gift_card_applied_cents")
+            .eq("user_id", userId)
+            .gt("gift_card_applied_cents", 0)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          // Fallback: si no hay discount en total_details, calcular por diferencia
-          if (giftCardConsumedEuros === 0) {
-            const amountChargedEuros = (expandedSession.amount_total || 0) / 100;
-            const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
-            const originalPriceEuros = originalPriceCents / 100;
-            giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
-          }
-
-          console.log("[v0][webhook] gift card debit attempt:", {
-            giftCardId,
-            userId,
-            amountDiscountCents,
-            giftCardConsumedEuros,
-            sessionId: session.id,
-            sessionAmountTotal: expandedSession.amount_total,
-            totalDetails: expandedSession.total_details,
-          });
+          const appliedCents = intent?.gift_card_applied_cents || 0;
+          const giftCardConsumedEuros = parseFloat((appliedCents / 100).toFixed(2));
 
           if (giftCardConsumedEuros > 0) {
-            const { error: rpcError } = await supabase.rpc("consume_gift_card_atomic", {
+            await supabase.rpc("consume_gift_card_atomic", {
               p_gift_card_id: giftCardId,
               p_amount: giftCardConsumedEuros,
               p_user_id: userId,
               p_reference_id: session.id,
               p_reference_type: "membership",
-            });
-
-            if (rpcError) {
-              console.error("[v0][webhook] ❌ consume_gift_card_atomic RPC error:", rpcError);
-            } else {
-              console.log("[v0][webhook] ✅ Gift card consumed:", giftCardId, "eur:", giftCardConsumedEuros);
-            }
-          } else {
-            console.error("[v0][webhook] ❌ Gift card NOT consumed — amount=0", {
-              giftCardId,
-              sessionAmountTotal: expandedSession.amount_total,
-              amountDiscountCents,
             });
           }
         }
