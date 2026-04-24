@@ -177,13 +177,33 @@ export async function POST(req: NextRequest) {
             { onConflict: "user_id" }
           );
 
-        // Consumir gift card si había una aplicada en la suscripción
+        // Consumir gift card si había una aplicada en la suscripción.
+        // El descuento del coupon de gift card se refleja en session.total_details.amount_discount
+        // (NO en la diferencia entre price.unit_amount y amount_total, que puede ser 0
+        // si Stripe no aplica el descuento al line_item sino a nivel de invoice).
         if (giftCardId && userId) {
-          const amountChargedEuros = (session.amount_total || 0) / 100;
-          const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-          const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
-          const originalPriceEuros = originalPriceCents / 100;
-          const giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
+          // Fuente de verdad: total_details.amount_discount (lo que Stripe descontó via coupon)
+          const amountDiscountCents = session.total_details?.amount_discount || 0;
+
+          // Fallback: diferencia entre precio del plan y lo cobrado
+          let giftCardConsumedEuros = parseFloat((amountDiscountCents / 100).toFixed(2));
+
+          if (giftCardConsumedEuros === 0) {
+            // Fallback si total_details no tiene el descuento (ej: coupon aplicado a invoice)
+            const amountChargedEuros = (session.amount_total || 0) / 100;
+            const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+            const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
+            const originalPriceEuros = originalPriceCents / 100;
+            giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
+          }
+
+          console.log("[webhook] gift card calc:", {
+            giftCardId,
+            amountDiscountCents,
+            giftCardConsumedEuros,
+            sessionAmountTotal: session.amount_total,
+            sessionTotalDetails: session.total_details,
+          });
 
           if (giftCardConsumedEuros > 0) {
             await supabase.rpc("consume_gift_card_atomic", {
@@ -194,6 +214,12 @@ export async function POST(req: NextRequest) {
               p_reference_type: "membership",
             });
             console.log("✅ Gift card consumed for membership:", giftCardId, "amount:", giftCardConsumedEuros);
+          } else {
+            console.error("❌ Gift card NOT consumed — giftCardConsumedEuros=0", {
+              giftCardId,
+              sessionAmountTotal: session.amount_total,
+              amountDiscountCents,
+            });
           }
         }
 
