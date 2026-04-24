@@ -63,12 +63,10 @@ export async function GET(request: Request) {
               updated_at: now,
             }, { onConflict: "stripe_verification_id" })
 
-          // Activar user_memberships si hay una pendiente (FUENTE DE VERDAD para membresia)
-          await supabase
-            .from("user_memberships")
-            .update({ status: "active", updated_at: now })
-            .eq("user_id", userId)
-            .in("status", ["paid_pending_verification", "pending_verification", "pending"])
+          // REGLA DE ORO: Identity → SEPA → Active.
+          // NO activar user_memberships aqui. El unico con autoridad para promover
+          // user_memberships a "active" es resume-onboarding, DESPUES de validar SEPA.
+          // Aqui solo marcamos Identity verified.
         }
 
         return NextResponse.json({
