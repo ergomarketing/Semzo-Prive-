@@ -1094,15 +1094,16 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
                       }
                     } else {
+                      // MEMBRESIA: priceId ES OBLIGATORIO, mode SIEMPRE "subscription".
+                      // Gift Card se aplica EXCLUSIVAMENTE como descuento (coupon) en Stripe,
+                      // NUNCA como cambio de line_items ni de mode.
                       checkoutBody.membershipType = type
                       checkoutBody.billingCycle = cycle
+                      checkoutBody.priceId = priceId
                       if (appliedGiftCard) {
-                        // Gift card parcial: cobrar solo el resto con price_data dinámico
-                        checkoutBody.amountCents = Math.round(finalAmount * 100)
-                        checkoutBody.productName = `Membresía ${type} (Gift Card aplicada)`
                         checkoutBody.gift_card_id = appliedGiftCard.id
-                      } else {
-                        checkoutBody.priceId = priceId
+                        // Backend calcula Math.min(gift_card, plan_price) y crea coupon one-time
+                        checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
                       }
                     }
                     // Pasar cupón a Stripe para que lo aplique en el checkout

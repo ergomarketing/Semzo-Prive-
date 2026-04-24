@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       amountCents,
       productName,
       gift_card_id,
+      giftCardAmountEuros, // NUEVO: monto en euros de la gift card a aplicar como coupon
       coupon,
     } = body
 
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       amountCents,
       productName,
       gift_card_id,
+      giftCardAmountEuros,
       coupon,
     })
 
@@ -220,7 +222,58 @@ export async function POST(request: NextRequest) {
 
     // Si hay coupon aplicado desde el cart, pasarlo a Stripe directamente
     // coupon.code es el coupon.id de Stripe devuelto por validate-coupon
-    const couponId: string | null = coupon?.code || null
+    let couponId: string | null = coupon?.code || null
+
+    // GIFT CARD parcial en membresia: crear un coupon one-time en Stripe
+    // con amount_off = min(gift_card_balance, plan_price). El coupon se aplica
+    // como discount en la Checkout Session y Stripe cobra la diferencia.
+    // mode sigue siendo "subscription" y priceId se mantiene intacto.
+    if (isSubscription && gift_card_id && giftCardAmountEuros && giftCardAmountEuros > 0) {
+      try {
+        // Recuperar el precio del plan para no pasarnos del tope (guardrail 5)
+        const stripePrice = await stripe.prices.retrieve(priceId)
+        const planAmountCents = stripePrice.unit_amount || 0
+        const giftCardCents = Math.round(giftCardAmountEuros * 100)
+        const amountOffCents = Math.min(giftCardCents, planAmountCents)
+
+        console.log("[CHECKOUT DEBUG] gift card coupon calc", {
+          gift_card_id,
+          giftCardCents,
+          planAmountCents,
+          amountOffCents,
+        })
+
+        if (amountOffCents > 0) {
+          const giftCoupon = await stripe.coupons.create({
+            amount_off: amountOffCents,
+            currency: stripePrice.currency || "eur",
+            duration: "once",
+            max_redemptions: 1,
+            name: `Gift Card ${gift_card_id.slice(0, 8)}`,
+            metadata: {
+              gift_card_id,
+              user_id: userId,
+              intent_id: intentId,
+            },
+          })
+          couponId = giftCoupon.id
+          console.log("[CHECKOUT DEBUG] gift card coupon created", { couponId })
+        }
+      } catch (giftErr: any) {
+        console.error("[CHECKOUT DEBUG] gift card coupon creation failed", {
+          message: giftErr?.message,
+          code: giftErr?.code,
+        })
+        // Si falla la creacion del coupon, abortamos para NO cobrar el total sin descuento
+        return NextResponse.json(
+          {
+            error: "No se pudo aplicar la Gift Card",
+            details: giftErr?.message || "gift_card_coupon_failed",
+          },
+          { status: 500 },
+        )
+      }
+    }
 
     console.log("[CHECKOUT DEBUG] 6. pre-session params", {
       isSubscription,
@@ -297,9 +350,23 @@ export async function POST(request: NextRequest) {
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionParams)
 
+    // GUARDRAILS 9 + 10: validacion y logs temporales del modo de checkout
+    console.log("CHECKOUT MODE:", checkoutSession.mode)
+    console.log("HAS SUB:", !!checkoutSession.subscription)
+
+    if (isSubscription && checkoutSession.mode !== "subscription") {
+      console.error("[CHECKOUT GUARDRAIL] mode != subscription en flujo de membresia", {
+        sessionId: checkoutSession.id,
+        mode: checkoutSession.mode,
+        membershipType,
+        priceId,
+      })
+    }
+
     console.log("[CHECKOUT DEBUG] 8. stripe session created", {
       id: checkoutSession.id,
       url: checkoutSession.url,
+      mode: checkoutSession.mode,
     })
 
     // Actualizar el intent con el checkout_session_id y cambiar status a pending_payment
