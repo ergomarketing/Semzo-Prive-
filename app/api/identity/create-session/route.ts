@@ -114,31 +114,11 @@ export async function POST(req: Request) {
     intentId = membership.id
   }
 
-  // Reutilizar sesión pending existente si aún es válida
-  const { data: existing } = await supabase
-    .from("identity_verifications")
-    .select("stripe_verification_id, status")
-    .eq("user_id", user.id)
-    .in("status", ["pending", "processing"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // NO reutilizar sesiones anteriores: pueden tener return_url incorrecto
+  // de versiones previas del código. Siempre crear una sesión nueva.
+  // Esto garantiza que el return_url siempre apunte a semzoprive.com.
 
-  if (existing?.stripe_verification_id) {
-    try {
-      const session = await stripe.identity.verificationSessions.retrieve(
-        existing.stripe_verification_id
-      )
-      // Solo reusar si no está cancelada ni expirada y tiene URL
-      if (session.url && session.status !== "canceled") {
-        return NextResponse.json({ url: session.url, sessionId: session.id })
-      }
-    } catch {
-      // Sesión inválida — crear nueva
-    }
-  }
-
-  // Prioridad: variable de entorno > dominio de produccion hardcodeado > localhost
+  // Prioridad: variable de entorno > dominio de produccion hardcodeado
   const appUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
     "https://semzoprive.com"
