@@ -15,40 +15,23 @@ import { usePathname } from "next/navigation"
 function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: string; imageUrl?: string; excerpt?: string }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const url = typeof window !== "undefined" ? `${window.location.origin}/blog/${slug}` : `https://semzoprive.com/blog/${slug}`
+  const url = typeof window !== "undefined"
+    ? `${window.location.origin}/blog/${slug}`
+    : `https://semzoprive.com/blog/${slug}`
 
-  // Cerrar menú al clicar fuera
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
+  }, [])
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
-
-  // Web Share API (nativo en móvil — iOS Safari, Android Chrome)
-  // Cuando el usuario comparte desde móvil, la hoja nativa de iOS/Android
-  // muestra el título, descripción e imagen del artículo gracias al
-  // Open Graph definido en page.tsx. Instagram y Pinterest leen esos metadatos.
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title,
-          text: excerpt || title,
-          url,
-        })
-      } catch {
-        // Usuario canceló — no hacer nada
-      }
-      setOpen(false)
-      return
-    }
-    setOpen((v) => !v)
-  }
 
   const handleCopy = async () => {
     try {
@@ -65,32 +48,94 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
     setTimeout(() => { setCopied(false); setOpen(false) }, 2000)
   }
 
-  // Pinterest: usa la imagen del artículo directamente
-  const pinterestUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(imageUrl || "https://semzoprive.com/images/hero-luxury-bags.jpeg")}&description=${encodeURIComponent(title)}`
+  // Instagram Stories (móvil): copia el link y abre Instagram.
+  // El usuario pega el link en la pegatina de enlace de la historia.
+  const handleInstagramStory = async () => {
+    await navigator.clipboard.writeText(url).catch(() => {})
+    // Deep link a Instagram en móvil
+    window.location.href = "instagram://story-camera"
+    setOpen(false)
+  }
 
-  // WhatsApp: comparte link con título
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n${url}`)}`
+  // Instagram Feed (móvil): copia link y abre Instagram directamente
+  const handleInstagramFeed = async () => {
+    await navigator.clipboard.writeText(url).catch(() => {})
+    window.location.href = "instagram://"
+    setOpen(false)
+  }
+
+  // Pinterest: abre el pin creator con imagen y descripción del artículo
+  const coverImage = imageUrl || "https://semzoprive.com/images/hero-luxury-bags.jpeg"
+  const pinterestUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(coverImage)}&description=${encodeURIComponent(title)}`
+
+  // WhatsApp
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${excerpt ? excerpt + "\n\n" : ""}${url}`)}`
+
+  const itemClass = "w-full flex items-center gap-3 px-4 py-3 hover:bg-rose-nude text-indigo-dark text-sm transition-colors text-left"
 
   return (
     <div className="relative" ref={menuRef}>
       <Button
         variant="outline"
         className="border-indigo-dark text-indigo-dark bg-transparent hover:bg-indigo-dark hover:text-white"
-        onClick={handleNativeShare}
+        onClick={() => setOpen((v) => !v)}
       >
         <Share2 className="mr-2 h-4 w-4" />
         Compartir
       </Button>
 
-      {/* Menú de escritorio: solo visible si navigator.share no está disponible */}
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 w-52 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute right-0 bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
+
+          {/* Instagram — solo en móvil donde existe el deep link */}
+          {isMobile && (
+            <>
+              <button onClick={handleInstagramStory} className={itemClass}>
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#f09433"/>
+                      <stop offset="25%" stopColor="#e6683c"/>
+                      <stop offset="50%" stopColor="#dc2743"/>
+                      <stop offset="75%" stopColor="#cc2366"/>
+                      <stop offset="100%" stopColor="#bc1888"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="url(#ig-grad)"/>
+                  <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.5" fill="none"/>
+                  <circle cx="17.5" cy="6.5" r="1" fill="white"/>
+                </svg>
+                Añadir a Historia de Instagram
+              </button>
+              <button onClick={handleInstagramFeed} className={itemClass}>
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient id="ig-grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#f09433"/>
+                      <stop offset="25%" stopColor="#e6683c"/>
+                      <stop offset="50%" stopColor="#dc2743"/>
+                      <stop offset="75%" stopColor="#cc2366"/>
+                      <stop offset="100%" stopColor="#bc1888"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="url(#ig-grad2)"/>
+                  <rect x="7" y="7" width="4" height="4" rx="0.5" fill="white"/>
+                  <rect x="13" y="7" width="4" height="4" rx="0.5" fill="white"/>
+                  <rect x="7" y="13" width="4" height="4" rx="0.5" fill="white"/>
+                  <rect x="13" y="13" width="4" height="4" rx="0.5" fill="white"/>
+                </svg>
+                Compartir en Feed de Instagram
+              </button>
+              <div className="border-t border-gray-100" />
+            </>
+          )}
+
           {/* Pinterest */}
           <a
             href={pinterestUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 hover:bg-rose-nude text-indigo-dark text-sm transition-colors"
+            className={itemClass}
             onClick={() => setOpen(false)}
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="#E60023">
@@ -104,7 +149,7 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 hover:bg-rose-nude text-indigo-dark text-sm transition-colors"
+            className={itemClass}
             onClick={() => setOpen(false)}
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="#25D366">
@@ -114,11 +159,11 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
           </a>
 
           {/* Copiar enlace */}
-          <button
-            onClick={handleCopy}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-rose-nude text-indigo-dark text-sm transition-colors border-t border-gray-100"
-          >
-            {copied ? <Check className="h-4 w-4 shrink-0 text-green-600" /> : <Link2 className="h-4 w-4 shrink-0" />}
+          <button onClick={handleCopy} className={`${itemClass} border-t border-gray-100`}>
+            {copied
+              ? <Check className="h-4 w-4 shrink-0 text-green-600" />
+              : <Link2 className="h-4 w-4 shrink-0" />
+            }
             {copied ? "Enlace copiado" : "Copiar enlace"}
           </button>
         </div>
