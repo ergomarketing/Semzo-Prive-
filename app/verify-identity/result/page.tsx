@@ -108,7 +108,7 @@ function VerifyIdentityResultContent() {
     },
     approved_no_session: {
       title: "Verificacion completada",
-      message: "Tu identidad ha sido verificada correctamente. Vuelve a tu ordenador para completar el proceso — la pagina avanzara sola.",
+      message: "Tu identidad ha sido verificada. Cierra esta ventana y vuelve a la pestana de Semzo Prive en tu navegador (Safari o Chrome) — el proceso continuara automaticamente.",
     },
     rejected: {
       title: "Verificacion no completada",

@@ -31,10 +31,18 @@ export default function DashboardHome() {
     setIsInAppBrowser(inApp)
   }, [])
 
-  // Si auth ya terminó de cargar y no hay usuario, redirigir a login
-  // Evita el spinner infinito en webviews de apps que bloquean cookies
+  // Si auth terminó de cargar y no hay usuario, redirigir a login.
+  // EXCEPCION: si venimos del return_url de Stripe Identity (?from=identity),
+  // NO redirigir — la sesión está en el navegador principal, no en este webview.
+  // Redirigir en ese caso crea ERR_TOO_MANY_REDIRECTS.
   useEffect(() => {
     if (!authLoading && !user) {
+      const fromIdentity =
+        typeof window !== "undefined" &&
+        (document.referrer.includes("verify.stripe.com") ||
+          window.location.search.includes("from=identity") ||
+          window.location.pathname.includes("verify-identity"))
+      if (fromIdentity) return // no redirigir — mostrar pantalla "abre en Safari"
       const timer = setTimeout(() => {
         router.replace("/auth/login?redirect=/dashboard")
       }, 1500)
