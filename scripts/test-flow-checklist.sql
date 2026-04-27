@@ -1,26 +1,18 @@
 -- =====================================================================
--- CHECKLIST DE PRUEBAS - FLUJO COMPLETO SEMZO PRIVE
+-- CHECKLIST DE PRUEBAS - SEMZO PRIVE
 -- =====================================================================
--- COMO USAR:
--- 1. Pega este archivo entero en Supabase SQL Editor (NO ejecutes todavia).
--- 2. Pulsa Cmd+F (Mac) o Ctrl+H (Windows) y reemplaza:
---      EMAIL_DE_PRUEBA   ->  tu email real (ej: ergomara@hotmail.com)
---      CODIGO_GIFT_CARD  ->  el codigo de la gift card que vas a usar
--- 3. Ejecuta UN BLOQUE A LA VEZ, despues de hacer la accion en la web.
---    Para ejecutar solo un bloque: selecciona con el cursor y pulsa Run.
---
--- Si un bloque devuelve algo distinto a lo esperado, el flujo se rompio
--- en ESE paso. No avances al siguiente hasta que el actual este OK.
+-- USO:
+-- 1. Reemplaza con Ctrl+H:
+--      EMAIL_DE_PRUEBA   -> tu email real
+--      CODIGO_GIFT_CARD  -> codigo gift card que usaras
+-- 2. Selecciona TODO el archivo y pulsa Run despues de cada accion en la web.
+--    Cada query devuelve una columna "paso" para que sepas a que se refiere.
+-- 3. Si una query devuelve 0 filas o NULL en algo critico, ahi esta el bug.
 -- =====================================================================
 
-
--- =====================================================================
--- PASO 0 - ESTADO INICIAL (antes de empezar la prueba)
--- =====================================================================
--- Esperado: usuario NO existe, o existe pero SIN membership/intent/identity.
--- Si hay datos previos, ejecuta antes cleanup-test-user-keep-account.sql
+-- PASO 0: estado inicial
 SELECT
-  '0. ESTADO INICIAL' AS paso,
+  '0_INICIAL' AS paso,
   u.id AS user_id,
   u.email,
   u.created_at AS usuario_creado,
@@ -30,16 +22,9 @@ SELECT
 FROM auth.users u
 WHERE u.email = 'EMAIL_DE_PRUEBA';
 
-
--- =====================================================================
--- PASO 1 - ALTA POR SMS / EMAIL  (ejecutar despues de registrarte)
--- =====================================================================
--- Esperado tras crear cuenta y verificar OTP:
---   - auth.users   -> 1 fila con tu email
---   - profiles     -> 1 fila vinculada
--- Si profile_creado es NULL hay un bug en el trigger handle_new_user.
+-- PASO 1: alta usuario + profile
 SELECT
-  '1. ALTA' AS paso,
+  '1_ALTA' AS paso,
   u.id AS user_id,
   u.email,
   u.phone,
@@ -52,100 +37,91 @@ FROM auth.users u
 LEFT JOIN public.profiles p ON p.id = u.id
 WHERE u.email = 'EMAIL_DE_PRUEBA';
 
-
--- =====================================================================
--- PASO 2 - APLICAR GIFT CARD EN EL CARRITO  (ejecutar tras "Aplicar codigo")
--- =====================================================================
--- Esperado: la gift card existe, status='active', balance > 0.
+-- PASO 2: gift card disponible
 SELECT
-  '2. GIFT CARD' AS paso,
+  '2_GIFTCARD' AS paso,
   gc.code,
-  gc.status,
   gc.balance,
-  gc.original_amount,
-  gc.created_at,
+  gc.status,
   gc.expires_at
 FROM public.gift_cards gc
 WHERE gc.code = 'CODIGO_GIFT_CARD';
 
-
--- =====================================================================
--- PASO 3a - INTENT CREADO  (ejecutar al pulsar "Pagar", antes de Stripe)
--- =====================================================================
--- Esperado: 1 intent con gift_card_applied_cents > 0 y stripe_checkout_session_id.
+-- PASO 3a: intent creado al pulsar Pagar
 SELECT
-  '3a. INTENT' AS paso,
+  '3a_INTENT' AS paso,
   mi.id,
   mi.status,
   mi.amount_cents,
   mi.gift_card_applied_cents,
   mi.gift_card_code,
   mi.stripe_checkout_session_id,
-  mi.created_at
+  mi.created_at,
+  CASE
+    WHEN mi.amount_cents = 0 THEN 'BUG: amount_cents=0'
+    WHEN mi.gift_card_code IS NOT NULL AND mi.gift_card_applied_cents = 0 THEN 'BUG: gift card no aplicada'
+    ELSE 'OK'
+  END AS diagnostico
 FROM public.membership_intents mi
 JOIN auth.users u ON u.id = mi.user_id
 WHERE u.email = 'EMAIL_DE_PRUEBA'
 ORDER BY mi.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 3b - MEMBRESIA TRAS PAGO  (ejecutar al volver de Stripe Checkout)
--- =====================================================================
--- REGLA DE ORO: Identity -> SEPA -> Active.
--- Esperado: status = 'paid_pending_verification' (NUNCA 'active' aqui).
--- Si aparece 'active' = BUG critico (se salto Identity y SEPA).
+-- PASO 3b: membresia creada por webhook tras pago Stripe
 SELECT
-  '3b. MEMBRESIA TRAS PAGO' AS paso,
+  '3b_MEMBERSHIP' AS paso,
   um.id,
-  um.status AS status_actual,
-  CASE
-    WHEN um.status = 'paid_pending_verification' THEN 'OK - esperando Identity'
-    WHEN um.status = 'active'                    THEN 'BUG - se salto Identity/SEPA'
-    ELSE 'REVISAR - status inesperado'
-  END AS diagnostico,
+  um.status,
   um.membership_type,
+  um.billing_cycle,
   um.stripe_subscription_id,
-  um.created_at
+  um.stripe_customer_id,
+  um.created_at,
+  CASE
+    WHEN um.status = 'active' THEN 'BUG CRITICO: active sin SEPA - regla de oro violada'
+    WHEN um.status = 'paid_pending_verification' THEN 'OK: esperando Identity'
+    WHEN um.status = 'pending_sepa' THEN 'OK: Identity OK, esperando SEPA'
+    ELSE 'REVISAR: status=' || um.status
+  END AS diagnostico
 FROM public.user_memberships um
 JOIN auth.users u ON u.id = um.user_id
 WHERE u.email = 'EMAIL_DE_PRUEBA'
 ORDER BY um.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 3c - GIFT CARD DEBITADA  (ejecutar tras webhook checkout.session.completed)
--- =====================================================================
--- Esperado: balance reducido. Si balance = original_amount, el webhook no debito.
+-- PASO 3c: gift card debitada
 SELECT
-  '3c. GIFT CARD DEBITADA' AS paso,
+  '3c_GIFTCARD_DEBITADA' AS paso,
   gc.code,
   gc.balance AS balance_actual,
-  gc.original_amount,
-  (gc.original_amount - gc.balance) AS consumido,
+  gct.amount AS monto_debitado,
+  gct.transaction_type,
+  gct.reference_type,
+  gct.created_at,
   CASE
-    WHEN gc.balance < gc.original_amount THEN 'OK - debito aplicado'
-    ELSE 'BUG - webhook no debito la gift card'
+    WHEN gct.id IS NULL THEN 'BUG: gift card NO debitada'
+    ELSE 'OK: debitada ' || gct.amount || ' EUR'
   END AS diagnostico
 FROM public.gift_cards gc
-WHERE gc.code = 'CODIGO_GIFT_CARD';
+LEFT JOIN public.gift_card_transactions gct
+  ON gct.gift_card_id = gc.id
+  AND gct.transaction_type = 'debit'
+  AND gct.reference_type = 'membership'
+WHERE gc.code = 'CODIGO_GIFT_CARD'
+ORDER BY gct.created_at DESC NULLS LAST
+LIMIT 1;
 
-
--- =====================================================================
--- PASO 4a - IDENTITY VERIFICADA  (ejecutar tras completar Stripe Identity)
--- =====================================================================
--- Esperado: status = 'verified'.
+-- PASO 4a: identity verificada
 SELECT
-  '4a. IDENTITY' AS paso,
+  '4a_IDENTITY' AS paso,
   iv.stripe_verification_id,
   iv.status,
   iv.verified_at,
-  iv.created_at,
   CASE
-    WHEN iv.status = 'verified' THEN 'OK - Identity verificada'
-    WHEN iv.status IN ('pending','processing') THEN 'En curso - espera redirect'
-    ELSE 'BUG - status: ' || iv.status
+    WHEN iv.status = 'verified' THEN 'OK: Identity completada'
+    WHEN iv.status = 'requires_input' THEN 'PENDIENTE: usuario debe completar verificacion'
+    ELSE 'REVISAR: status=' || COALESCE(iv.status, 'NULL')
   END AS diagnostico
 FROM public.identity_verifications iv
 JOIN auth.users u ON u.id = iv.user_id
@@ -153,20 +129,19 @@ WHERE u.email = 'EMAIL_DE_PRUEBA'
 ORDER BY iv.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 4b - MEMBRESIA TRAS IDENTITY  (ejecutar despues de PASO 4a)
--- =====================================================================
--- Esperado: status sigue en 'paid_pending_verification' o pasa a 'pending_sepa'.
--- Si aparece 'active' aqui = BUG (se salto SEPA).
+-- PASO 4b: membresia DEBE seguir paid_pending_verification tras Identity
 SELECT
-  '4b. MEMBRESIA TRAS IDENTITY' AS paso,
+  '4b_MEMBERSHIP_TRAS_IDENTITY' AS paso,
   um.status,
+  um.sepa_payment_method_id,
   CASE
-    WHEN um.status = 'paid_pending_verification' THEN 'OK - esperando SEPA'
-    WHEN um.status = 'pending_sepa'              THEN 'OK - listo para firmar SEPA'
-    WHEN um.status = 'active'                    THEN 'BUG - se salto SEPA'
-    ELSE 'REVISAR - status: ' || um.status
+    WHEN um.status = 'active' AND um.sepa_payment_method_id IS NULL
+      THEN 'BUG CRITICO: active sin SEPA - check-status o webhook violo regla de oro'
+    WHEN um.status = 'paid_pending_verification'
+      THEN 'OK: esperando que el usuario firme SEPA'
+    WHEN um.status = 'pending_sepa'
+      THEN 'OK: redirigido a SEPA'
+    ELSE 'REVISAR: status=' || um.status
   END AS diagnostico
 FROM public.user_memberships um
 JOIN auth.users u ON u.id = um.user_id
@@ -174,66 +149,65 @@ WHERE u.email = 'EMAIL_DE_PRUEBA'
 ORDER BY um.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 5a - MANDATO SEPA  (ejecutar tras firmar el mandato)
--- =====================================================================
--- Esperado: 1 fila con stripe_payment_method_id y status='active'.
+-- PASO 5a: SEPA firmado
 SELECT
-  '5a. SEPA MANDATE' AS paso,
-  sm.stripe_payment_method_id,
-  sm.status,
-  sm.bank_name,
-  sm.last4,
-  sm.created_at
-FROM public.sepa_mandates sm
-JOIN auth.users u ON u.id = sm.user_id
+  '5a_SEPA' AS paso,
+  um.sepa_payment_method_id,
+  um.sepa_signed_at,
+  CASE
+    WHEN um.sepa_payment_method_id IS NULL THEN 'PENDIENTE: usuario no ha firmado SEPA'
+    ELSE 'OK: SEPA firmado'
+  END AS diagnostico
+FROM public.user_memberships um
+JOIN auth.users u ON u.id = um.user_id
 WHERE u.email = 'EMAIL_DE_PRUEBA'
-ORDER BY sm.created_at DESC
+ORDER BY um.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 5b - MEMBRESIA FINAL  (ejecutar despues de PASO 5a)
--- =====================================================================
--- Esperado: status='active' Y sepa_payment_method_id NO nulo.
--- Esta es la UNICA transicion legitima a 'active' en todo el flujo.
+-- PASO 5b: membresia activa tras SEPA - regla de oro completa
 SELECT
-  '5b. MEMBRESIA FINAL' AS paso,
+  '5b_MEMBERSHIP_ACTIVA' AS paso,
   um.status,
   um.membership_type,
-  um.sepa_payment_method_id,
   um.start_date,
   um.end_date,
+  iv.status AS identity_status,
+  um.sepa_payment_method_id IS NOT NULL AS sepa_firmado,
   CASE
-    WHEN um.status = 'active' AND um.sepa_payment_method_id IS NOT NULL
-      THEN 'OK - flujo completo'
+    WHEN um.status = 'active' AND iv.status = 'verified' AND um.sepa_payment_method_id IS NOT NULL
+      THEN 'OK: regla de oro cumplida - Identity + SEPA + Active'
     WHEN um.status = 'active' AND um.sepa_payment_method_id IS NULL
-      THEN 'BUG - active sin SEPA payment method'
-    ELSE 'INCOMPLETO - status: ' || um.status
+      THEN 'BUG: active sin SEPA'
+    WHEN um.status = 'active' AND iv.status != 'verified'
+      THEN 'BUG: active sin Identity'
+    ELSE 'PENDIENTE: status=' || um.status
   END AS diagnostico
 FROM public.user_memberships um
 JOIN auth.users u ON u.id = um.user_id
+LEFT JOIN public.identity_verifications iv ON iv.user_id = um.user_id
 WHERE u.email = 'EMAIL_DE_PRUEBA'
-ORDER BY um.created_at DESC
+ORDER BY um.created_at DESC, iv.created_at DESC
 LIMIT 1;
 
-
--- =====================================================================
--- PASO 6 - RESUMEN COMPLETO  (1 sola fila con todo el estado)
--- =====================================================================
--- Util para mandar copy/paste si algo fallo en cualquier paso.
+-- PASO 6: resumen completo del estado del usuario (ejecutar al final)
 SELECT
+  '6_RESUMEN' AS paso,
   u.email,
-  (SELECT iv.status FROM public.identity_verifications iv
-     WHERE iv.user_id = u.id ORDER BY iv.created_at DESC LIMIT 1) AS identity_status,
-  (SELECT sm.status FROM public.sepa_mandates sm
-     WHERE sm.user_id = u.id ORDER BY sm.created_at DESC LIMIT 1) AS sepa_status,
-  (SELECT um.status FROM public.user_memberships um
-     WHERE um.user_id = u.id ORDER BY um.created_at DESC LIMIT 1) AS membership_status,
-  (SELECT um.sepa_payment_method_id FROM public.user_memberships um
-     WHERE um.user_id = u.id ORDER BY um.created_at DESC LIMIT 1) IS NOT NULL AS tiene_sepa_pm,
-  (SELECT mi.gift_card_applied_cents FROM public.membership_intents mi
-     WHERE mi.user_id = u.id ORDER BY mi.created_at DESC LIMIT 1) AS gift_card_aplicado_cents
+  u.phone,
+  um.status AS membership_status,
+  um.membership_type,
+  um.stripe_subscription_id IS NOT NULL AS tiene_subscripcion,
+  iv.status AS identity_status,
+  um.sepa_payment_method_id IS NOT NULL AS sepa_firmado,
+  (SELECT count(*) FROM public.gift_card_transactions gct
+   JOIN public.gift_cards gc2 ON gc2.id = gct.gift_card_id
+   WHERE gc2.code = 'CODIGO_GIFT_CARD' AND gct.transaction_type = 'debit') AS gift_card_debits,
+  um.created_at AS membership_creado,
+  iv.verified_at AS identity_verificado,
+  um.sepa_signed_at AS sepa_firmado_at
 FROM auth.users u
-WHERE u.email = 'EMAIL_DE_PRUEBA';
+LEFT JOIN public.user_memberships um ON um.user_id = u.id
+LEFT JOIN public.identity_verifications iv ON iv.user_id = u.id
+WHERE u.email = 'EMAIL_DE_PRUEBA'
+ORDER BY um.created_at DESC NULLS LAST, iv.created_at DESC NULLS LAST
+LIMIT 1;
