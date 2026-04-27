@@ -62,7 +62,7 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
 
         if (!intentId && !userId) break
 
-        // AUDIT LOG: verification_session.created (implied from verified event)
+        // AUDIT LOG
         await supabase.from("audit_logs").insert({
           action_type: "verification_session_verified",
           entity_type: "stripe_identity_session",
@@ -77,43 +77,9 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           created_at: new Date().toISOString(),
         })
 
-        // Find intent by intent_id first (preferred), fallback to user_id
-        let intent: any = null
-        
-        if (intentId) {
-          const { data } = await supabase
-            .from("membership_intents")
-            .select("id, user_id, status")
-            .eq("id", intentId)
-            .maybeSingle()
-          intent = data
-        }
-        
-        if (!intent && userId) {
-          const { data } = await supabase
-            .from("membership_intents")
-            .select("id, user_id, status")
-            .eq("user_id", userId)
-            .eq("status", "paid_pending_verification")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle()
-          intent = data
-        }
-
-        if (!intent) break
-
-        // 1. Guardar verification_session_id en intent (tracking)
-        const { error: updateError } = await supabase
-          .from("membership_intents")
-          .update({
-            stripe_verification_session_id: session.id,
-            verified_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", intent.id)
-
-        // 2. Marcar identity_verifications como verified (fuente de verdad del estado identity)
+        // 1. PRIMERO marcar identity_verifications como verified (FUENTE DE VERDAD).
+        // Esto SIEMPRE se ejecuta, exista o no intent. Asi el flujo de Gift Card 100%
+        // (que no usa intent en paid_pending_verification) tambien queda verified.
         await supabase
           .from("identity_verifications")
           .update({
@@ -124,36 +90,78 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
           })
           .eq("stripe_verification_id", session.id)
 
-        // 3. Delegar la reconciliación del estado de la membresía al orquestador.
-        // `resume-onboarding` en modo interno consulta Stripe + identity_verifications
-        // + SEPA y calcula el estado correcto de user_memberships sin race conditions.
-        console.log("[RESUME ONBOARDING TRIGGERED]")
-        const siteUrl =
-          process.env.NEXT_PUBLIC_SITE_URL ||
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
-        try {
-          const resumeRes = await fetch(`${siteUrl}/api/resume-onboarding`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-internal-secret": process.env.STRIPE_WEBHOOK_SECRET || "",
-            },
-            body: JSON.stringify({ userId: intent.user_id }),
-          })
-          if (!resumeRes.ok) {
-            const txt = await resumeRes.text().catch(() => "")
-            console.error("[identity-webhook] resume-onboarding failed:", resumeRes.status, txt)
-          }
-        } catch (err: any) {
-          console.error("[identity-webhook] resume-onboarding fetch error:", err?.message)
+        // 2. Buscar intent (opcional, solo para tracking en flujos de pago Stripe)
+        let intent: any = null
+
+        if (intentId) {
+          const { data } = await supabase
+            .from("membership_intents")
+            .select("id, user_id, status")
+            .eq("id", intentId)
+            .maybeSingle()
+          intent = data
         }
 
-        // Email de acceso desbloqueado
-        const { data: userProfile } = await supabase
-          .from("profiles")
-          .select("full_name, email")
-          .eq("id", intent.user_id)
-          .single()
+        if (!intent && userId) {
+          const { data } = await supabase
+            .from("membership_intents")
+            .select("id, user_id, status")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          intent = data
+        }
+
+        // Resolver el user_id efectivo: del intent si existe, si no del metadata
+        const effectiveUserId = intent?.user_id || userId
+
+        // 3. Actualizar intent si existe (tracking de verification_session_id)
+        if (intent) {
+          await supabase
+            .from("membership_intents")
+            .update({
+              stripe_verification_session_id: session.id,
+              verified_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", intent.id)
+        }
+
+        // 4. Delegar reconciliacion del estado de membresia al orquestador.
+        // resume-onboarding consulta Stripe + identity_verifications + SEPA
+        // y calcula el estado correcto de user_memberships.
+        if (effectiveUserId) {
+          console.log("[RESUME ONBOARDING TRIGGERED]")
+          const siteUrl =
+            process.env.NEXT_PUBLIC_SITE_URL ||
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          try {
+            const resumeRes = await fetch(`${siteUrl}/api/resume-onboarding`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-internal-secret": process.env.STRIPE_WEBHOOK_SECRET || "",
+              },
+              body: JSON.stringify({ userId: effectiveUserId }),
+            })
+            if (!resumeRes.ok) {
+              const txt = await resumeRes.text().catch(() => "")
+              console.error("[identity-webhook] resume-onboarding failed:", resumeRes.status, txt)
+            }
+          } catch (err: any) {
+            console.error("[identity-webhook] resume-onboarding fetch error:", err?.message)
+          }
+        }
+
+        // 5. Email de acceso desbloqueado
+        const { data: userProfile } = effectiveUserId
+          ? await supabase
+              .from("profiles")
+              .select("full_name, email")
+              .eq("id", effectiveUserId)
+              .single()
+          : { data: null }
 
         if (userProfile?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
@@ -184,13 +192,14 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
         // Log audit
         await logAudit({
           actionType: "identity_verified",
-          entityType: "membership_intent",
-          entityId: intent.id,
+          entityType: intent ? "membership_intent" : "identity_verification",
+          entityId: intent?.id || session.id,
           actorType: "webhook",
           metadata: {
             verificationSessionId: session.id,
-            userId: intent.user_id,
-            intentStatus: intent.status,
+            userId: effectiveUserId,
+            intentStatus: intent?.status || null,
+            flow: intent ? "subscription" : "gift_card_100",
           },
         })
         break
