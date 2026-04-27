@@ -354,10 +354,13 @@ export async function POST(req: NextRequest) {
             ? new Date(renewalStart.getTime() + 7 * 24 * 60 * 60 * 1000)
             : new Date(subscription.current_period_end * 1000);
 
+        // REGLA DE ORO: NO promover a "active" desde aqui.
+        // Este branch es renovacion: solo actualizar datos de facturacion.
+        // El status "active" SOLO se otorga en: resume-onboarding, membership/activate, orchestrator.
+        // Si la membresia esta "active" se mantiene; si esta en otro estado, se respeta.
         await supabase
           .from("user_memberships")
           .update({
-            status: subscription.status,
             billing_cycle: renewalBillingCycle,
             start_date: renewalStart.toISOString(),
             end_date: renewalEnd.toISOString(),
@@ -433,23 +436,48 @@ export async function POST(req: NextRequest) {
 
         const { data: membership } = await supabase
           .from("user_memberships")
-          .select("user_id")
+          .select("user_id, status")
           .eq("stripe_subscription_id", subscription.id)
           .single();
 
         if (!membership?.user_id) break;
 
+        // REGLA DE ORO: NUNCA promover a "active" desde un webhook.
+        // Stripe puede mandar subscription.status="active" inmediatamente tras pago,
+        // antes de que el usuario haya completado Identity/SEPA. Si propagamos
+        // ese status, sobrescribimos "paid_pending_verification" y se rompe el flujo.
+        //
+        // Solo propagamos estados de degradacion / cancelacion reales.
+        // El status "active" SOLO se otorga en: resume-onboarding, membership/activate, orchestrator.
+        const stripeStatus = subscription.status;
+        const propagateStatuses = new Set([
+          "canceled",
+          "past_due",
+          "unpaid",
+          "incomplete_expired",
+          "paused",
+        ]);
+
+        const updatePayload: Record<string, unknown> = {
+          membership_type:
+            subscription.metadata?.membership_type || "petite",
+          updated_at: now,
+        };
+
+        if (propagateStatuses.has(stripeStatus)) {
+          updatePayload.status = stripeStatus;
+        }
+
         await supabase
           .from("user_memberships")
-          .update({
-            status: subscription.status,
-            membership_type:
-              subscription.metadata?.membership_type || "petite",
-            updated_at: now,
-          })
+          .update(updatePayload)
           .eq("stripe_subscription_id", subscription.id);
 
-        console.log("ℹ️ Subscription status updated:", membership.user_id);
+        console.log("ℹ️ Subscription updated:", {
+          user_id: membership.user_id,
+          stripe_status: stripeStatus,
+          local_status_kept: !propagateStatuses.has(stripeStatus) ? membership.status : null,
+        });
         break;
       }
 
