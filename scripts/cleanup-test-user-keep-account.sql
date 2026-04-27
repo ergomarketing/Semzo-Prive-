@@ -35,30 +35,37 @@ BEGIN
   RAISE NOTICE '------------------------------------------------------------';
 
   -- 2. Restaurar saldo de gift cards consumidas por el usuario
+  -- NOTA: la columna real en gift_cards es "amount" (centimos) y "original_amount".
+  -- Estrategia simple: para cada gift card que el usuario haya usado o referenciado
+  -- en intents, restauramos amount = original_amount y status = 'active'.
   v_giftcards := 0;
   v_refunded  := 0;
 
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'gift_card_transactions') THEN
-    WITH refunds AS (
-      SELECT gift_card_id, SUM(amount) AS total_refund
-      FROM public.gift_card_transactions
-      WHERE user_id = v_user_id AND amount > 0
-      GROUP BY gift_card_id
-    )
+  -- 2a. Restaurar gift cards canjeadas por este usuario (used_by)
+  UPDATE public.gift_cards
+  SET amount     = original_amount,
+      status     = 'active',
+      used_by    = NULL,
+      used_at    = NULL,
+      updated_at = NOW()
+  WHERE used_by = v_user_id;
+  GET DIAGNOSTICS v_giftcards = ROW_COUNT;
+  RAISE NOTICE '↩  Gift cards restauradas (used_by): %', v_giftcards;
+
+  -- 2b. Restaurar gift cards referenciadas en intents del usuario (parciales)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'membership_intents') THEN
     UPDATE public.gift_cards gc
-    SET balance    = gc.balance + r.total_refund,
+    SET amount     = gc.original_amount,
         status     = 'active',
-        used_at    = NULL,
         updated_at = NOW()
-    FROM refunds r
-    WHERE gc.id = r.gift_card_id;
-    GET DIAGNOSTICS v_giftcards = ROW_COUNT;
-
-    SELECT COALESCE(SUM(amount),0) INTO v_refunded
-    FROM public.gift_card_transactions
-    WHERE user_id = v_user_id AND amount > 0;
-
-    RAISE NOTICE '↩  Gift cards restauradas: % (€ % devueltos)', v_giftcards, v_refunded;
+    WHERE gc.id IN (
+      SELECT DISTINCT mi.gift_card_id
+      FROM public.membership_intents mi
+      WHERE mi.user_id = v_user_id
+        AND mi.gift_card_id IS NOT NULL
+    );
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RAISE NOTICE '↩  Gift cards restauradas (via intents): %', v_count;
   END IF;
 
   -- 3. Borrar transacciones de gift cards

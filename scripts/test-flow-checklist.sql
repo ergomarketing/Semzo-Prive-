@@ -30,10 +30,14 @@ FROM public.profiles
 WHERE id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA');
 
 -- PASO 2: gift card disponible
+-- NOTA: amount y original_amount estan en centimos (5000 = 50.00 EUR)
 SELECT
   '2_GIFTCARD' AS paso,
   code,
-  balance,
+  amount AS amount_actual_cents,
+  original_amount AS original_cents,
+  ROUND(amount::numeric / 100, 2) AS amount_eur,
+  ROUND(original_amount::numeric / 100, 2) AS original_eur,
   status,
   expires_at
 FROM public.gift_cards
@@ -76,11 +80,20 @@ ORDER BY created_at DESC
 LIMIT 1;
 
 -- PASO 3c: gift card debitada
+-- Tras pago: amount debe ser MENOR que original_amount.
+-- Si amount = original_amount tras pagar -> BUG: gift card NO debitada.
 SELECT
-  '3c_GIFTCARD_BALANCE' AS paso,
+  '3c_GIFTCARD_DEBIT' AS paso,
   code,
-  balance AS balance_actual,
-  status
+  ROUND(amount::numeric / 100, 2) AS amount_actual_eur,
+  ROUND(original_amount::numeric / 100, 2) AS original_eur,
+  ROUND((original_amount - amount)::numeric / 100, 2) AS consumido_eur,
+  status,
+  CASE
+    WHEN amount = original_amount THEN 'BUG: gift card NO debitada tras pago'
+    WHEN amount < original_amount THEN 'OK: gift card debitada'
+    ELSE 'REVISAR'
+  END AS diagnostico
 FROM public.gift_cards
 WHERE code = 'CODIGO_GIFT_CARD';
 
