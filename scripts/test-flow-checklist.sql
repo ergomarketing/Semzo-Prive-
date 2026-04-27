@@ -128,57 +128,56 @@ ORDER BY created_at DESC
 LIMIT 1;
 
 -- PASO 4b: membresia DEBE seguir paid_pending_verification tras Identity
+-- NOTA: sepa_payment_method_id esta en profiles, NO en user_memberships
 SELECT
   '4b_MEMBERSHIP_TRAS_IDENTITY' AS paso,
-  status,
-  sepa_payment_method_id,
+  m.status,
+  m.stripe_subscription_id,
+  p.sepa_payment_method_id,
   CASE
-    WHEN status = 'active' AND sepa_payment_method_id IS NULL
+    WHEN m.status = 'active' AND p.sepa_payment_method_id IS NULL
       THEN 'BUG CRITICO: active sin SEPA tras Identity'
-    WHEN status = 'paid_pending_verification' THEN 'OK'
-    WHEN status = 'pending_sepa' THEN 'OK: redirigido a SEPA'
-    ELSE 'REVISAR status'
+    WHEN m.status IN ('paid_pending_verification','pending_verification') THEN 'OK: aun espera SEPA'
+    WHEN m.status = 'pending_sepa' THEN 'OK: redirigido a SEPA'
+    ELSE 'REVISAR status: ' || m.status
   END AS diagnostico
-FROM public.user_memberships
-WHERE user_id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA')
-ORDER BY created_at DESC
-LIMIT 1;
+FROM public.user_memberships m
+LEFT JOIN public.profiles p ON p.id = m.user_id
+WHERE m.user_id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA')
+ORDER BY m.created_at DESC LIMIT 1;
 
--- PASO 5a: SEPA firmado
+-- PASO 5a: SEPA firmado (en profiles)
 SELECT
   '5a_SEPA' AS paso,
   sepa_payment_method_id,
-  sepa_signed_at,
-  status,
+  sepa_mandate_accepted_at,
   CASE
     WHEN sepa_payment_method_id IS NULL THEN 'PENDIENTE: usuario no firmo SEPA'
     ELSE 'OK: SEPA firmado'
   END AS diagnostico
-FROM public.user_memberships
-WHERE user_id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA')
-ORDER BY created_at DESC
-LIMIT 1;
+FROM public.profiles
+WHERE id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA');
 
 -- PASO 5b: membresia activa - regla de oro completa
 SELECT
   '5b_FINAL' AS paso,
-  status,
-  membership_type,
-  billing_cycle,
-  start_date,
-  end_date,
-  sepa_payment_method_id IS NOT NULL AS sepa_ok,
+  m.status,
+  m.membership_type,
+  m.billing_cycle,
+  m.start_date,
+  m.end_date,
+  p.sepa_payment_method_id IS NOT NULL AS sepa_ok,
   CASE
-    WHEN status = 'active' AND sepa_payment_method_id IS NOT NULL
+    WHEN m.status = 'active' AND p.sepa_payment_method_id IS NOT NULL
       THEN 'OK: regla de oro cumplida - Active con SEPA'
-    WHEN status = 'active' AND sepa_payment_method_id IS NULL
+    WHEN m.status = 'active' AND p.sepa_payment_method_id IS NULL
       THEN 'BUG: active sin SEPA'
-    ELSE 'PENDIENTE: status=' || status
+    ELSE 'PENDIENTE: status=' || m.status
   END AS diagnostico
-FROM public.user_memberships
-WHERE user_id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA')
-ORDER BY created_at DESC
-LIMIT 1;
+FROM public.user_memberships m
+LEFT JOIN public.profiles p ON p.id = m.user_id
+WHERE m.user_id = (SELECT id FROM auth.users WHERE email = 'EMAIL_DE_PRUEBA')
+ORDER BY m.created_at DESC LIMIT 1;
 
 -- PASO 6: total transacciones gift card (deberia ser 1 debito tras flujo OK)
 SELECT
