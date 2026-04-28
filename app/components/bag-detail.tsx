@@ -318,7 +318,6 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       console.log("[v0] Creating reservation for user:", userId, "bag:", bag.id)
 
       const startDate = new Date()
-      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week
 
       const response = await fetch("/api/user/reservations", {
         method: "POST",
@@ -329,20 +328,19 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         body: JSON.stringify({
           bag_id: bag.id,
           start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // fallback, server sobreescribe
         }),
       })
 
       const data = await response.json()
-      console.log("[v0] Reservation response:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Error al crear la reserva")
       }
 
       toast({
-        title: "¡Reserva exitosa!",
-        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
+        title: "Reserva exitosa",
+        description: `Has reservado ${bag.brand} ${bag.name}. La fecha de devolucion se ha calculado segun tu membresia.`,
       })
 
       router.push("/dashboard/reservas")
@@ -379,8 +377,6 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     try {
       const startDate = new Date()
       startDate.setHours(0, 0, 0, 0)
-      const endDate = new Date(startDate)
-      endDate.setDate(endDate.getDate() + 7)
 
       const response = await fetch("/api/user/reservations", {
         method: "POST",
@@ -391,7 +387,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         body: JSON.stringify({
           bag_id: bag.id,
           start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // fallback, server sobreescribe
         }),
       })
 
@@ -402,8 +398,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       }
 
       toast({
-        title: "¡Reserva exitosa!",
-        description: `Has reservado ${bag.brand} ${bag.name} por 7 días`,
+        title: "Reserva exitosa",
+        description: `Has reservado ${bag.brand} ${bag.name}. La fecha de devolucion se ha calculado segun tu membresia.`,
       })
 
       router.push("/dashboard/reservas")

@@ -492,12 +492,11 @@ function BagCard({
 
 
       const startDate = new Date()
-      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-
+      // end_date lo calcula el servidor segun billing_cycle (7d pase, 30d mensual, 90d trimestral)
       const requestBody: any = {
         bag_id: bag.id,
         start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // fallback 30d, server sobreescribe
       }
 
       if (passId) {

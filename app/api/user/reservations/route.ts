@@ -192,15 +192,12 @@ export async function POST(request: NextRequest) {
     }
 
     const startDate = new Date(start_date)
-    const endDate = new Date(end_date)
-
-    if (startDate >= endDate) {
-      return NextResponse.json({ error: "La fecha de inicio debe ser anterior a la fecha de fin" }, { status: 400 })
-    }
+    // end_date del cliente se ignora: el servidor calcula la duracion segun tipo de membresia/pase
+    // para evitar manipulacion y garantizar coherencia de inventario.
 
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("membership_type, status, end_date")
+      .select("membership_type, status, end_date, billing_cycle")
       .eq("user_id", userId)
       .eq("status", "active")
       .maybeSingle()
@@ -216,6 +213,23 @@ export async function POST(request: NextRequest) {
     }
 
     const effectivePlan = (membership.membership_type || "free").toString().toLowerCase()
+    const billingCycle = (membership.billing_cycle || "monthly").toString().toLowerCase()
+
+    // Calcular duracion segun tipo de membresia:
+    // - Pase semanal (bag-pass / weekly): 7 dias
+    // - Mensual (monthly):               30 dias
+    // - Trimestral (quarterly):          90 dias
+    const rentalDays =
+      usePassId
+        ? 7
+        : billingCycle === "quarterly"
+        ? 90
+        : billingCycle === "weekly"
+        ? 7
+        : 30 // mensual por defecto
+
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + rentalDays)
 
     // Obtener perfil: solo datos de contacto (email, nombre)
     const { data: userProfile } = await supabase
