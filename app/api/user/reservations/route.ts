@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const effectivePlan = membership.membership_type || "free"
+    const effectivePlan = (membership.membership_type || "free").toString().toLowerCase()
 
     // Obtener perfil: solo datos de contacto (email, nombre)
     const { data: userProfile } = await supabase
