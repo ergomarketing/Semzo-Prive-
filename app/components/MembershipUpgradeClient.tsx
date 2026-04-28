@@ -19,12 +19,12 @@ const PRICE_MAP: Record<string, Record<string, string>> = {
     quarterly: "price_1SxPFdKBSKEgBoTnUvzx5avc",
   },
   signature: {
-    monthly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
-    quarterly: "price_1SxPTWKBSKEgBoTnAw5WjZhI",
+    monthly: "price_1TMTLrKBSKEgBoTnu7JZzNty", // 149€/mes
+    quarterly: "price_1TMTUrKBSKEgBoTnBT60oMX0", // 357€/3 meses
   },
   prive: {
-    monthly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
-    quarterly: "price_1SxOtWKBSKEgBoTnbuFozBm9",
+    monthly: "price_1TMTIiKBSKEgBoTnJiVwAkWT", // 279€/mes
+    quarterly: "price_1TMTVlKBSKEgBoTn0vyFQQ4l", // 669€/3 meses
   },
 }
 
