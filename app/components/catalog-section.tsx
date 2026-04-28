@@ -539,7 +539,10 @@ function BagCard({
           return
         }
 
-        throw new Error(data.error || "Error al crear la reserva")
+        const fullMsg = data.details
+          ? `${data.error || "Error al crear la reserva"} (${data.details})`
+          : data.error || "Error al crear la reserva"
+        throw new Error(fullMsg)
       }
 
       setShowSuccess(true)
