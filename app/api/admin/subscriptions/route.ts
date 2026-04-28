@@ -27,14 +27,19 @@ export async function GET() {
       .order("created_at", { ascending: false })
 
     // Leer membresías desde user_memberships (FUENTE DE VERDAD)
-    const { data: activeMembers } = await supabaseAdmin
+    // NOTA: la columna real en user_memberships es end_date (no ends_at)
+    const { data: activeMembers, error: membersError } = await supabaseAdmin
       .from("user_memberships")
       .select(
-        "id, user_id, membership_type, status, created_at, updated_at, stripe_subscription_id, stripe_customer_id, ends_at, profiles!user_memberships_user_id_fkey(id, full_name, email)",
+        "id, user_id, membership_type, status, created_at, updated_at, stripe_subscription_id, stripe_customer_id, end_date, profiles!user_memberships_user_id_fkey(id, full_name, email)",
       )
       .in("status", ["active", "paid_pending_verification", "pending_sepa", "pending_verification"])
       .neq("membership_type", "free")
       .order("updated_at", { ascending: false })
+
+    if (membersError) {
+      console.error("[admin/subscriptions] user_memberships query error:", membersError)
+    }
 
     let allSubscriptions: any[] = []
 
@@ -89,7 +94,7 @@ export async function GET() {
               membership_type: member.membership_type,
               status: member.status,
               current_period_start: member.created_at,
-              current_period_end: member.ends_at || null,
+              current_period_end: (member as any).end_date || null,
               stripe_subscription_id: member.stripe_subscription_id,
               stripe_customer_id: member.stripe_customer_id,
               created_at: member.created_at,
