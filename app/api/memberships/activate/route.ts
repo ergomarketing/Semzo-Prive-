@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@/lib/supabase"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 
 /**
  * ============================================================================
@@ -24,16 +23,17 @@ import { cookies } from "next/headers"
  * ============================================================================
  */
 export async function POST() {
-  const supabase = createRouteHandlerClient({ cookies })
+  try {
+    const supabase = await createClient()
 
-  // 1️⃣ Usuario autenticado
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    // 1. Usuario autenticado
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
   // 2. Obtener membresia (FUENTE DE VERDAD)
   const { data: membership, error: membershipError } = await supabase
@@ -107,8 +107,15 @@ export async function POST() {
     })
     .eq("id", user.id)
 
-  return NextResponse.json({
-    success: true,
-    membership_status: "active",
-  })
+    return NextResponse.json({
+      success: true,
+      membership_status: "active",
+    })
+  } catch (err: any) {
+    console.error("[memberships/activate] Error:", err?.message, err?.stack)
+    return NextResponse.json(
+      { error: err?.message || "Error inesperado activando membresia" },
+      { status: 500 }
+    )
+  }
 }
