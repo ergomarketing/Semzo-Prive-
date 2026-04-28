@@ -13,6 +13,7 @@ import { addToWaitlist } from "@/lib/waitlistFunctions" // Declare or import the
 import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 import { LoginModal } from "@/app/components/login-modal"
+import { UpgradeMembershipDialog } from "@/app/components/upgrade-membership-dialog"
 
 interface BagItem {
   id: string
@@ -355,6 +356,8 @@ function BagCard({
   const [selectedPassId, setSelectedPassId] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
+  const [upgradeRequiredTier, setUpgradeRequiredTier] = useState<string>("prive")
 
   const { toast } = useToast()
   const { addItem } = useCart()
@@ -514,6 +517,13 @@ function BagCard({
 
       if (!response.ok) {
         setIsReserving(false)
+
+        // Bolso fuera de tier → mostrar dialog elegante de upgrade (no toast rojo)
+        if (data.needsUpgrade && data.requiredTier) {
+          setUpgradeRequiredTier(data.requiredTier)
+          setShowUpgradeDialog(true)
+          return
+        }
 
         // Sin membresía activa → redirigir al carrito con contexto de compra
         if (
@@ -786,6 +796,48 @@ function BagCard({
         onClose={() => {
           setShowLoginModal(false)
           setPendingAction(null)
+        }}
+      />
+
+      {/* Upgrade Membership Dialog (sustituye al toast de error tier-out) */}
+      <UpgradeMembershipDialog
+        open={showUpgradeDialog}
+        onOpenChange={setShowUpgradeDialog}
+        currentMembership={userMembership}
+        requiredTier={upgradeRequiredTier}
+        bagBrand={bag.brand}
+        bagName={bag.name}
+        bagImage={bag.images?.[0] || bag.image_url}
+        onBuyPass={() => {
+          // Reutilizar el mismo flujo que ya usa el carrito para los pases.
+          const tierNames: Record<string, string> = {
+            essentiel: "L'Essentiel",
+            signature: "Signature",
+            prive: "Privé",
+          }
+          const tierPrices: Record<string, number> = {
+            essentiel: 52,
+            signature: 99,
+            prive: 137,
+          }
+          const tier = upgradeRequiredTier
+          const bagPassItem = {
+            id: `bag-pass-${bag.id}-${Date.now()}`,
+            name: `Pase Bolso ${tierNames[tier] ?? tier}`,
+            price: `${tierPrices[tier] ?? 137}€`,
+            billingCycle: "weekly" as const,
+            description: `${bag.brand} ${bag.name}`,
+            image: bag.images?.[0] || bag.image_url || "/placeholder.svg?height=200&width=200",
+            brand: bag.brand,
+            itemType: "bag-pass" as const,
+          }
+          addItem(bagPassItem)
+          toast({
+            title: "Pase añadido al carrito",
+            description: `Completa tu compra para reservar ${bag.brand} ${bag.name}.`,
+            duration: 3000,
+          })
+          setTimeout(() => router.push("/cart"), 400)
         }}
       />
     </>
