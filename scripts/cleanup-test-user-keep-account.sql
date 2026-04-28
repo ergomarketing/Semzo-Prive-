@@ -136,10 +136,12 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   RAISE NOTICE '   user_memberships        borrados: %', v_count;
 
-  -- 13. Limpiar stripe_customer_id en profile (NO borrar el profile)
+  -- 13. Limpiar stripe_customer_id y datos SEPA en profile (NO borrar el profile)
   UPDATE public.profiles
-  SET stripe_customer_id = NULL,
-      updated_at = NOW()
+  SET stripe_customer_id        = NULL,
+      sepa_payment_method_id    = NULL,
+      sepa_mandate_accepted_at  = NULL,
+      updated_at                = NOW()
   WHERE id = v_user_id;
 
   RAISE NOTICE '------------------------------------------------------------';
