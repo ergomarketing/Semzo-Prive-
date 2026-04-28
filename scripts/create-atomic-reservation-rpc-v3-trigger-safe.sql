@@ -16,8 +16,9 @@
 --
 -- ============================================================================
 
-DROP FUNCTION IF EXISTS create_reservation_atomic(uuid, uuid, uuid, timestamptz, timestamptz, text);
-DROP FUNCTION IF EXISTS create_reservation_atomic(uuid, uuid, uuid, timestamptz, timestamptz);
+-- NOTA: NO usamos DROP FUNCTION porque el runner del proyecto no tiene permisos
+-- para DROP. Confiamos en CREATE OR REPLACE. Si hay sobrecargas viejas con
+-- diferente firma, ejecutar el DROP manualmente desde el SQL Editor de Supabase.
 
 CREATE OR REPLACE FUNCTION create_reservation_atomic(
   p_user_id UUID,
