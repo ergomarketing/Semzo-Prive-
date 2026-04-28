@@ -72,6 +72,26 @@ interface LogisticsSettings {
   created_at: string
 }
 
+interface PendingReservation {
+  id: string
+  user_id: string
+  status: string
+  start_date: string | null
+  end_date: string | null
+  created_at: string
+  bags: { id: string; name: string; brand: string } | null
+  profiles: {
+    id: string
+    email: string | null
+    full_name: string | null
+    shipping_address: string | null
+    shipping_city: string | null
+    shipping_postal_code: string | null
+    shipping_phone: string | null
+    shipping_country: string | null
+  } | null
+}
+
 function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
@@ -280,7 +300,10 @@ export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [showNewShipmentModal, setShowNewShipmentModal] = useState(false)
   const [creatingShipment, setCreatingShipment] = useState(false)
+  const [pendingReservations, setPendingReservations] = useState<PendingReservation[]>([])
+  const [selectedReservationId, setSelectedReservationId] = useState<string>("")
   const [newShipment, setNewShipment] = useState({
+    reservation_id: "" as string | "",
     recipient_name: "",
     recipient_address: "",
     recipient_city: "",
@@ -292,6 +315,51 @@ export default function LogisticsPage() {
     service_type: "PAQ_PREMIUM",
     notes: ""
   })
+
+  const loadPendingReservations = async () => {
+    try {
+      const res = await fetch("/api/admin/logistics/pending-shipments")
+      if (!res.ok) return
+      const json = await res.json()
+      setPendingReservations(json.data || [])
+    } catch (err) {
+      console.error("Error cargando reservas pendientes:", err)
+    }
+  }
+
+  const handleSelectReservation = (reservationId: string) => {
+    setSelectedReservationId(reservationId)
+    if (!reservationId) {
+      setNewShipment((prev) => ({
+        ...prev,
+        reservation_id: "",
+        recipient_name: "",
+        recipient_address: "",
+        recipient_city: "",
+        recipient_postal_code: "",
+        recipient_country: "ES",
+        recipient_phone: "",
+        recipient_email: "",
+      }))
+      return
+    }
+    const r = pendingReservations.find((x) => x.id === reservationId)
+    if (!r) return
+    const p = r.profiles
+    setNewShipment((prev) => ({
+      ...prev,
+      reservation_id: r.id,
+      recipient_name: p?.full_name || "",
+      recipient_email: p?.email || "",
+      recipient_phone: p?.shipping_phone || "",
+      recipient_address: p?.shipping_address || "",
+      recipient_city: p?.shipping_city || "",
+      recipient_postal_code: p?.shipping_postal_code || "",
+      recipient_country: p?.shipping_country
+        ? (p.shipping_country.toLowerCase().startsWith("es") ? "ES" : p.shipping_country.toUpperCase().slice(0, 2))
+        : "ES",
+    }))
+  }
 
   useEffect(() => {
     loadLogisticsData()
@@ -356,7 +424,9 @@ export default function LogisticsPage() {
       }
       
       setShowNewShipmentModal(false)
+      setSelectedReservationId("")
       setNewShipment({
+        reservation_id: "",
         recipient_name: "",
         recipient_address: "",
         recipient_city: "",
@@ -506,7 +576,10 @@ export default function LogisticsPage() {
             </div>
             <Button 
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => setShowNewShipmentModal(true)}
+              onClick={() => {
+                setShowNewShipmentModal(true)
+                loadPendingReservations()
+              }}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Envío
@@ -665,6 +738,36 @@ export default function LogisticsPage() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* Selector de reserva pendiente: autopobla los datos del cliente */}
+            <div className="space-y-2 rounded-lg border bg-blue-50/50 p-4">
+              <Label htmlFor="reservation_select" className="font-semibold">
+                Cargar desde reserva pendiente
+              </Label>
+              <p className="text-xs text-gray-600 -mt-1 mb-2">
+                Selecciona una reserva confirmada para autocompletar los datos del cliente.
+              </p>
+              <Select
+                value={selectedReservationId}
+                onValueChange={handleSelectReservation}
+              >
+                <SelectTrigger id="reservation_select">
+                  <SelectValue placeholder={
+                    pendingReservations.length === 0
+                      ? "No hay reservas pendientes de envio"
+                      : "Selecciona una reserva..."
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {pendingReservations.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.profiles?.full_name || r.profiles?.email || "Sin nombre"}
+                      {r.bags ? ` — ${r.bags.brand} ${r.bags.name}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="recipient_name">Nombre completo *</Label>

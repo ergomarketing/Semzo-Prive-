@@ -1057,16 +1057,20 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                         monthly: "price_1RP4LyKBSKEgBoTnJQobCsjs",
                         quarterly: "price_1SxPFdKBSKEgBoTnUvzx5avc",
                       },
-                      signature: {
-                        weekly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
-                        monthly: "price_1SSHULKBSKEgBoTn2lGSRuzh",
-                        quarterly: "price_1SxPTWKBSKEgBoTnAw5WjZhI",
-                      },
-                      prive: {
-                        weekly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
-                        monthly: "price_1SSHVKKBSKEgBoTnLoHhpUyV",
-                        quarterly: "price_1SxOtWKBSKEgBoTnbuFozBm9",
-                      },
+    signature: {
+      // Pase Signature 99€/sem: actualmente apunta al price del mensual.
+      // Sustituir por el price_id real del pase semanal cuando este disponible.
+      weekly: "price_1TMTLrKBSKEgBoTnu7JZzNty",
+      monthly: "price_1TMTLrKBSKEgBoTnu7JZzNty", // Signature 149€/mes
+      quarterly: "price_1TMTUrKBSKEgBoTnBT60oMX0", // Signature 357€/3 meses
+    },
+    prive: {
+      // Pase Prive 137€/sem: actualmente apunta al price del mensual.
+      // Sustituir por el price_id real del pase semanal cuando este disponible.
+      weekly: "price_1TMTIiKBSKEgBoTnJiVwAkWT",
+      monthly: "price_1TMTIiKBSKEgBoTnJiVwAkWT", // Prive 279€/mes
+      quarterly: "price_1TMTVlKBSKEgBoTn0vyFQQ4l", // Prive 669€/3 meses
+    },
                     }
 
                     const { bagPassItem: cartBagPass } = analyzeCartItems(items)
