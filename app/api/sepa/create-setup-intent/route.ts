@@ -63,23 +63,21 @@ export async function POST(request: NextRequest) {
         .eq("id", user.id)
     }
 
-    // Crear SetupIntent para SEPA Direct Debit
+    // Crear SetupIntent para SEPA Direct Debit.
+    // NOTA: mandate_data NO se pasa aqui. Stripe rechaza:
+    //   "The parameter mandate_data cannot be passed when creating a
+    //    SetupIntent unless confirm is set to true"
+    // El mandato se acepta en el cliente al llamar a stripe.confirmSepaDebitSetup,
+    // pasando { mandate_data: { customer_acceptance: { type: "online", online: {...} } } }.
     const setupIntent = await stripe.setupIntents.create({
       customer: stripeCustomerId,
       payment_method_types: ["sepa_debit"],
       usage: "off_session",
-      mandate_data: {
-        customer_acceptance: {
-          type: "online",
-          online: {
-            ip_address: request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
-            user_agent: request.headers.get("user-agent") || "unknown",
-          },
-        },
-      },
       metadata: {
         user_id: user.id,
         purpose: "sepa_mandate_for_incidences",
+        client_ip: request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
+        client_ua: (request.headers.get("user-agent") || "unknown").slice(0, 200),
       },
     })
 
