@@ -1,66 +1,69 @@
 import { ImageResponse } from "next/og"
-import { createClient } from "@supabase/supabase-js"
 
 // Open Graph image dinamica por producto. Next.js la genera al vuelo
 // y la devuelve cuando un crawler/usuario comparte la URL en redes sociales.
 // Tamano estandar OG: 1200x630.
+//
+// Runtime nodejs (no edge): mas compatible con @supabase/supabase-js y con
+// fetch de imagenes externas. Edge daba renders en blanco silenciosos.
 
-export const runtime = "edge"
+export const runtime = "nodejs"
 export const alt = "Bolso de lujo en Semzo Prive"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  ""
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+type Bag = {
+  brand: string
+  name: string
+  color: string | null
+  price: number | null
+  image_url: string | null
+  images: string[] | null
+  membership_type: string | null
+}
+
+async function fetchBag(id: string): Promise<Bag | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) return null
+
+  const isUuid = UUID_REGEX.test(id)
+  const filter = isUuid ? `id=eq.${encodeURIComponent(id)}` : `slug=eq.${encodeURIComponent(id)}`
+  const url = `${supabaseUrl}/rest/v1/bags?${filter}&select=brand,name,color,price,image_url,images,membership_type&limit=1`
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+      // Cachear 1h: la OG cambia poco, evita golpear BD en cada share.
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return null
+    const rows = (await res.json()) as Bag[]
+    return rows[0] || null
+  } catch {
+    return null
+  }
+}
 
 export default async function OGImage({ params }: { params: { id: string } }) {
   const { id } = params
-
-  let bag: {
-    brand: string
-    name: string
-    color: string | null
-    price: number | null
-    image_url: string | null
-    images: string[] | null
-    membership_type: string | null
-  } | null = null
-
-  if (supabaseUrl && supabaseKey) {
-    try {
-      const supabase = createClient(supabaseUrl, supabaseKey)
-      const isUuid = UUID_REGEX.test(id)
-      const { data } = isUuid
-        ? await supabase
-            .from("bags")
-            .select("brand, name, color, price, image_url, images, membership_type")
-            .eq("id", id)
-            .single()
-        : await supabase
-            .from("bags")
-            .select("brand, name, color, price, image_url, images, membership_type")
-            .eq("slug", id)
-            .single()
-      bag = data
-    } catch {
-      bag = null
-    }
-  }
+  const bag = await fetchBag(id)
 
   // Fallback si no encontramos el bolso: OG generica de Semzo Prive
   const brand = bag?.brand || "Semzo Prive"
   const name = bag?.name || "Bolsos de Lujo"
   const color = bag?.color && bag.color !== "Clasico" ? bag.color : ""
   const price =
-    bag?.price ||
-    (bag?.membership_type === "prive" ? 279 : bag?.membership_type === "signature" ? 149 : 59)
+    bag?.price || (bag?.membership_type === "prive" ? 279 : bag?.membership_type === "signature" ? 149 : 59)
   const bagImage = bag?.images?.[0] || bag?.image_url || null
 
   return new ImageResponse(
@@ -73,7 +76,6 @@ export default async function OGImage({ params }: { params: { id: string } }) {
         fontFamily: "serif",
       }}
     >
-      {/* Imagen del bolso */}
       <div
         style={{
           width: "55%",
@@ -114,7 +116,6 @@ export default async function OGImage({ params }: { params: { id: string } }) {
         )}
       </div>
 
-      {/* Info del bolso */}
       <div
         style={{
           width: "45%",

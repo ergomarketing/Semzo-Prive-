@@ -84,6 +84,32 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const searchParams = useSearchParams()
   const [selectedMembership, setSelectedMembership] = useState<string>("petite")
   const [autoReserveTriggered, setAutoReserveTriggered] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  // Compartir bolso: usa navigator.share en movil (sheet nativa con WhatsApp,
+  // Instagram, etc.) o cae a copiar URL al portapapeles en desktop.
+  const handleShare = async () => {
+    const colorSuffix = bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""
+    const shareUrl = typeof window !== "undefined" ? window.location.href : ""
+    const shareData = {
+      title: `${bag.brand} ${bag.name}${colorSuffix} - Semzo Prive`,
+      text: `Mira este bolso ${bag.brand} ${bag.name}${colorSuffix} en Semzo Prive`,
+      url: shareUrl,
+    }
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share(shareData)
+        return
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 2000)
+      }
+    } catch {
+      // Usuario cancelo el share o no hay clipboard - silencioso
+    }
+  }
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -570,8 +596,18 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   >
                     <Heart className={`h-6 w-6 ${inWishlist ? "fill-rose-500 text-rose-500" : "text-slate-400"}`} />
                   </button>
-                  <button className="p-2 rounded-full hover:bg-slate-100 transition-colors">
-                    <Share2 className="h-6 w-6 text-slate-400" />
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    aria-label={shareCopied ? "Enlace copiado" : "Compartir este bolso"}
+                    title={shareCopied ? "Enlace copiado" : "Compartir"}
+                    className="p-2 rounded-full hover:bg-slate-100 transition-colors relative"
+                  >
+                    {shareCopied ? (
+                      <Check className="h-6 w-6 text-emerald-600" />
+                    ) : (
+                      <Share2 className="h-6 w-6 text-slate-400" />
+                    )}
                   </button>
                 </div>
               </div>
