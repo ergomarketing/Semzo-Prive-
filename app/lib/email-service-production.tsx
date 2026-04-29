@@ -1602,7 +1602,7 @@ export class EmailServiceProduction {
               <p>Ya puedes reservar un nuevo bolso de nuestra coleccion.</p>
               
               <p style="text-align: center;">
-                <a href="https://semzoprive.com/catalogo" class="button">Explorar catalogo</a>
+                <a href="https://semzoprive.com/catalog" class="button">Explorar catalogo</a>
               </p>
             </div>
             <div class="footer">
