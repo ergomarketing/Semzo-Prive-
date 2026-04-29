@@ -190,6 +190,12 @@ export async function GET() {
         email_complete: emailComplete,
         phone: profile?.phone || "",
         auth_method: profile?.auth_method || null,
+        // Datos de envio para que el dashboard muestre "Configurada" cuando existan
+        shipping_address: profile?.shipping_address || null,
+        shipping_city: profile?.shipping_city || null,
+        shipping_postal_code: profile?.shipping_postal_code || null,
+        shipping_phone: profile?.shipping_phone || null,
+        shipping_country: profile?.shipping_country || null,
       },
       membership: {
         type: membershipType,

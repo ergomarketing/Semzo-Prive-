@@ -31,6 +31,7 @@ import {
   Download,
   ExternalLink,
   MapPin,
+  Trash2,
 } from "lucide-react"
 
 interface Shipment {
@@ -315,6 +316,29 @@ export default function LogisticsPage() {
     service_type: "PAQ_PREMIUM",
     notes: ""
   })
+
+  const handleDeleteShipment = async (shipmentId: string, recipientName: string) => {
+    const ok = window.confirm(
+      `Eliminar el envio de "${recipientName || "Sin nombre"}"?\n\nEsta accion NO se puede deshacer.`,
+    )
+    if (!ok) return
+
+    try {
+      const res = await fetch(`/api/admin/logistics/shipments/${shipmentId}`, {
+        method: "DELETE",
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(`Error al eliminar: ${data.error || "Desconocido"}`)
+        return
+      }
+      // Refrescar lista
+      loadLogisticsData()
+    } catch (err) {
+      console.error("[v0] Error eliminando envio:", err)
+      alert("Error al eliminar el envio")
+    }
+  }
 
   const loadPendingReservations = async () => {
     try {
@@ -658,6 +682,20 @@ export default function LogisticsPage() {
                                 Etiqueta Retorno
                               </Button>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
+                              onClick={() =>
+                                handleDeleteShipment(
+                                  shipment.id,
+                                  shipment.reservations?.profiles?.full_name || "",
+                                )
+                              }
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Eliminar
+                            </Button>
                           </div>
                         </div>
                       </div>
