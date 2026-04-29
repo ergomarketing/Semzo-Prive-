@@ -45,6 +45,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const canonicalPath = data.slug || data.id
     const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
 
+    // Imagen OG: foto real del bolso (la que mejor funciona en redes sociales).
+    // Decision pragmatica: la OG dinamica con satori daba problemas en edge,
+    // la imagen real es ideal para WhatsApp, Pinterest, X, Facebook.
+    const rawImage = data.images?.[0] || data.image_url || ""
+    const ogImage = rawImage.startsWith("http")
+      ? rawImage
+      : rawImage
+        ? `https://semzoprive.com${rawImage.startsWith("/") ? "" : "/"}${rawImage}`
+        : "https://semzoprive.com/images/hero-luxury-bags.jpeg"
+
     // Title SEO 50-60 chars. Marca+modelo+color PRIMERO (lo que la gente busca),
     // luego intencion+precio. Si cabe, anadimos branding "Semzo Prive".
     const baseTitle = `${bagName} - Alquiler desde ${price}€/mes`
@@ -67,10 +77,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         "alquilar bolso de lujo",
         "Semzo Prive",
       ],
-      // openGraph y twitter NO declaran "images" aqui.
-      // Next.js detecta automaticamente /app/catalog/[id]/opengraph-image.tsx
-      // y la usa como og:image y twitter:image. Esa imagen dinamica incluye
-      // marca + modelo + color + precio + branding, ideal para shares en redes.
+      // OG image: foto del bolso directa. Mas fiable que la OG dinamica
+      // con satori (que daba blanco en edge). Las redes sociales muestran
+      // perfectamente la foto real del producto.
       openGraph: {
         type: "website",
         locale: "es_ES",
@@ -78,11 +87,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         description,
         url: canonical,
         siteName: "Semzo Prive",
+        images: [
+          {
+            url: ogImage,
+            width: 1200,
+            height: 1200,
+            alt: `Alquiler ${bagName} - Bolso de lujo en Semzo Prive`,
+          },
+        ],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
+        images: [ogImage],
       },
       alternates: {
         canonical,
