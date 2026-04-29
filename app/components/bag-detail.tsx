@@ -878,7 +878,11 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             <h2 className="font-serif text-2xl text-slate-900 mb-8">También te puede gustar</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {bagsToShow.slice(0, 4).map((relatedBag) => (
-                <Link key={relatedBag.id} href={`/catalog/${relatedBag.id}`} className="group">
+                <Link
+                  key={relatedBag.id}
+                  href={`/catalog/${(relatedBag as { slug?: string }).slug || relatedBag.id}`}
+                  className="group"
+                >
                   <div className="aspect-square bg-white rounded-xl overflow-hidden mb-3">
                     <Image
                       src={relatedBag.image || "/placeholder.svg"}

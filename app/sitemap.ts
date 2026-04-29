@@ -104,11 +104,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey)
-      const { data: bags } = await supabase.from("bags").select("id, updated_at").eq("status", "available")
+      const { data: bags } = await supabase
+        .from("bags")
+        .select("id, slug, updated_at")
+        .eq("status", "available")
 
       if (bags) {
         bagUrls = bags.map((bag) => ({
-          url: `${baseUrl}/catalog/${bag.id}`,
+          // Preferimos slug por SEO. Si por algun motivo no hay slug, fallback a UUID.
+          url: `${baseUrl}/catalog/${bag.slug || bag.id}`,
           lastModified: bag.updated_at || currentDate,
           changeFrequency: "weekly" as const,
           priority: 0.8,

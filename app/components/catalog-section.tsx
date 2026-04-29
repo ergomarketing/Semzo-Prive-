@@ -655,7 +655,7 @@ function BagCard({
 
           {isAvailable ? (
             <div className="grid grid-cols-2 gap-2">
-              <Link href={`/catalog/${bag.id}`} className="block">
+              <Link href={`/catalog/${(bag as { slug?: string }).slug || bag.id}`} className="block">
                 <Button
                   variant="outline"
                   className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"

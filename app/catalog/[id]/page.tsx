@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import BagDetail from "../../components/bag-detail"
 import { createClient } from "@supabase/supabase-js"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import Navbar from "../../components/navbar"
-import Footer from "../../components/footer"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseKey =
@@ -14,125 +13,142 @@ const supabaseKey =
   process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   ""
 
+// Detecta si el segmento de URL es un UUID v4 (formato 8-4-4-4-12)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const isUuid = (s: string) => UUID_REGEX.test(s)
+
+// Busca un bolso aceptando slug o id. Si llega UUID y existe slug, devuelve la fila completa
+// para que la pagina pueda decidir hacer redirect.
+async function fetchBagByIdOrSlug(idOrSlug: string) {
+  if (!supabaseUrl || !supabaseKey) return null
+  const supabase = createClient(supabaseUrl, supabaseKey)
+
+  if (isUuid(idOrSlug)) {
+    const { data } = await supabase.from("bags").select("*").eq("id", idOrSlug).single()
+    return data
+  }
+  const { data } = await supabase.from("bags").select("*").eq("slug", idOrSlug).single()
+  return data
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
+  const data = await fetchBagByIdOrSlug(id)
 
-  if (supabaseUrl && supabaseKey) {
-    try {
-      const supabase = createClient(supabaseUrl, supabaseKey)
-      const { data } = await supabase.from("bags").select("*").eq("id", id).single()
+  if (data) {
+    const bagName = `${data.brand} ${data.name}`
+    const price =
+      data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
+    const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
+    // URL canonica SIEMPRE con slug (si existe), nunca con UUID
+    const canonicalPath = data.slug || data.id
+    const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
 
-      if (data) {
-        const bagName = `${data.brand} ${data.name}`
-        const price =
-          data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
-        const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
-
-        return {
-          title: `${bagName} - Alquiler desde ${price}€/mes`,
-          description:
-            data.description ||
-            `Alquila el bolso ${bagName} por solo ${price}€/mes. Incluye envío gratis, seguro y cambios ilimitados. Disponible en Semzo Privé.`,
-          keywords: [data.brand, data.name, "alquiler", "bolso lujo", data.membership_type],
-          openGraph: {
-            type: "website",
-            locale: "es_ES",
-            title: `${bagName} | Semzo Privé`,
-            description: `Alquila este elegante ${bagName} desde ${price}€/mes con envío gratis y seguro incluido.`,
-            images: [
-              {
-                url: imageUrl,
-                width: 1200,
-                height: 630,
-                alt: `${bagName} - Semzo Privé`,
-              },
-            ],
-            url: `https://semzoprive.com/catalog/${id}`,
-            siteName: "Semzo Privé",
+    return {
+      title: `${bagName} - Alquiler desde ${price}€/mes`,
+      description:
+        data.description ||
+        `Alquila el bolso ${bagName} por solo ${price}€/mes. Incluye envio gratis, seguro y cambios ilimitados. Disponible en Semzo Prive.`,
+      keywords: [data.brand, data.name, "alquiler", "bolso lujo", data.membership_type],
+      openGraph: {
+        type: "website",
+        locale: "es_ES",
+        title: `${bagName} | Semzo Prive`,
+        description: `Alquila este elegante ${bagName} desde ${price}€/mes con envio gratis y seguro incluido.`,
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: `${bagName} - Semzo Prive`,
           },
-          twitter: {
-            card: "summary_large_image",
-            title: `${bagName} - Alquiler ${price}€/mes`,
-            description: `Alquila este ${bagName} con Semzo Privé. Envío gratis y seguro incluido.`,
-            images: [imageUrl],
-          },
-          alternates: {
-            canonical: `https://semzoprive.com/catalog/${id}`,
-          },
-        }
-      }
-    } catch (error) {
-      console.error("Error generating metadata:", error)
+        ],
+        url: canonical,
+        siteName: "Semzo Prive",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${bagName} - Alquiler ${price}€/mes`,
+        description: `Alquila este ${bagName} con Semzo Prive. Envio gratis y seguro incluido.`,
+        images: [imageUrl],
+      },
+      alternates: {
+        canonical,
+      },
     }
   }
 
   return {
     title: "Bolso de Lujo",
-    description: "Descubre este elegante bolso de lujo disponible para alquiler en Semzo Privé.",
+    description: "Descubre este elegante bolso de lujo disponible para alquiler en Semzo Prive.",
   }
 }
 
 export default async function BagDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const data = await fetchBagByIdOrSlug(id)
+
+  // Si llego un UUID en la URL pero el bolso tiene slug, hacemos redirect 301 al slug.
+  // Esto consolida autoridad SEO en una sola URL canonica y respeta backlinks viejos.
+  if (data && isUuid(id) && data.slug && data.slug !== id) {
+    redirect(`/catalog/${data.slug}`)
+  }
 
   let bag = null
   let relatedBags: any[] = []
 
-  if (supabaseUrl && supabaseKey) {
-    try {
-      const supabase = createClient(supabaseUrl, supabaseKey)
+  if (data) {
+    bag = {
+      id: data.id,
+      slug: data.slug || null,
+      name: data.name,
+      brand: data.brand,
+      description:
+        data.description ||
+        `Elegante bolso ${data.brand} ${data.name}. Un diseno exclusivo que combina lujo y funcionalidad.`,
+      price: `${data.price}€/mes`,
+      retailPrice: `${data.retail_price}€`,
+      images: data.images || [data.image_url, data.image_url, data.image_url],
+      membership: data.membership_type || "essentiel",
+      color: data.color || "Clasico",
+      material: data.material || "Cuero premium",
+      dimensions: data.dimensions || "Medidas estandar",
+      condition: data.condition || "Excelente",
+      year: data.year || "2023",
+      availability: {
+        status: data.status === "available" ? ("available" as const) : ("rented" as const),
+      },
+      rating: data.rating || 4.8,
+      reviews: data.reviews || 50,
+      features: data.features || [
+        "Diseno iconico y atemporal",
+        "Materiales de la mas alta calidad",
+        "Perfecto para ocasiones especiales",
+        "Compartimentos organizados",
+        "Herrajes premium",
+      ],
+      careInstructions: data.care_instructions || [
+        "Evitar el contacto con agua y humedad excesiva",
+        "Guardar en lugar seco y ventilado",
+        "Limpiar con pano suave y seco",
+        "Evitar exposicion directa al sol",
+      ],
+    }
 
-      const { data, error: fetchError } = await supabase.from("bags").select("*").eq("id", id).single()
-
-      if (fetchError) {
-        console.error("[v0] Error fetching bag:", fetchError.message)
-      } else if (data) {
-        bag = {
-          id: data.id,
-          name: data.name,
-          brand: data.brand,
-          description:
-            data.description ||
-            `Elegante bolso ${data.brand} ${data.name}. Un diseño exclusivo que combina lujo y funcionalidad.`,
-          price: `${data.price}€/mes`,
-          retailPrice: `${data.retail_price}€`,
-          images: data.images || [data.image_url, data.image_url, data.image_url],
-          membership: data.membership_type || "essentiel",
-          color: data.color || "Clásico",
-          material: data.material || "Cuero premium",
-          dimensions: data.dimensions || "Medidas estándar",
-          condition: data.condition || "Excelente",
-          year: data.year || "2023",
-          availability: {
-            status: data.status === "available" ? ("available" as const) : ("rented" as const),
-          },
-          rating: data.rating || 4.8,
-          reviews: data.reviews || 50,
-          features: data.features || [
-            "Diseño icónico y atemporal",
-            "Materiales de la más alta calidad",
-            "Perfecto para ocasiones especiales",
-            "Compartimentos organizados",
-            "Herrajes premium",
-          ],
-          careInstructions: data.care_instructions || [
-            "Evitar el contacto con agua y humedad excesiva",
-            "Guardar en lugar seco y ventilado",
-            "Limpiar con paño suave y seco",
-            "Evitar exposición directa al sol",
-          ],
-        }
-
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey)
         const { data: relatedData } = await supabase
           .from("bags")
-          .select("id, name, brand, price, image_url, images, membership_type")
-          .neq("id", id)
+          .select("id, slug, name, brand, price, image_url, images, membership_type")
+          .neq("id", data.id)
           .eq("status", "available")
           .limit(3)
 
         if (relatedData) {
           relatedBags = relatedData.map((item) => ({
             id: item.id,
+            slug: item.slug || null,
             name: item.name,
             brand: item.brand,
             price: item.price
@@ -146,12 +162,10 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
             membership: item.membership_type || "essentiel",
           }))
         }
+      } catch (err) {
+        console.error("[v0] Supabase related bags error:", err)
       }
-    } catch (err) {
-      console.error("[v0] Supabase connection error:", err)
     }
-  } else {
-    console.error("[v0] Missing Supabase credentials - URL:", !!supabaseUrl, "Key:", !!supabaseKey)
   }
 
   if (!bag) {
@@ -162,13 +176,15 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
           <p className="text-slate-600 mb-8">El bolso que buscas no existe o ha sido removido.</p>
           <Link href="/catalog" className="inline-flex items-center text-indigo-dark hover:underline">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al Catálogo
+            Volver al Catalogo
           </Link>
         </div>
       </main>
     )
   }
 
+  // URL canonica SIEMPRE con slug si existe
+  const canonicalPath = bag.slug || bag.id
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -185,7 +201,7 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       priceCurrency: "EUR",
       availability:
         bag.availability.status === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: `https://semzoprive.com/catalog/${bag.id}`,
+      url: `https://semzoprive.com/catalog/${canonicalPath}`,
       priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
     },
     aggregateRating: {
