@@ -50,18 +50,39 @@ async function fetchBag(idOrSlug: string): Promise<BagData | null> {
   }
 }
 
-// Pre-validar que la URL de imagen responde. Si satori falla al cargar
-// la imagen, devuelve PNG vacio sin error. HEAD con timeout corto.
-async function validateImage(url: string): Promise<string | null> {
+// Descargar la imagen y devolverla como data URL en base64.
+// Por que no pasamos la URL directa a satori:
+//   1. Algunos CDNs no responden a HEAD (devolvian PNG vacio sin debug).
+//   2. satori NO soporta WebP ni AVIF: si la imagen es webp falla silencioso.
+//   3. Convertir a data URL en JPEG/PNG garantiza que satori la pueda parsear.
+//
+// Ojo: satori solo soporta JPEG, PNG. Si BD trae webp/avif, devolvemos null
+// para que se use el fallback con la inicial de la marca.
+async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3500)
-    const res = await fetch(url, { method: "HEAD", signal: controller.signal })
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(url, { signal: controller.signal })
     clearTimeout(timeout)
     if (!res.ok) return null
-    const ct = res.headers.get("content-type") || ""
-    if (!ct.startsWith("image/")) return null
-    return url
+
+    const contentType = res.headers.get("content-type") || ""
+    // Solo aceptamos formatos que satori parsea bien
+    if (!/^image\/(jpeg|jpg|png)/i.test(contentType)) return null
+
+    const buffer = await res.arrayBuffer()
+    // Limite de seguridad: 4MB max para no inflar la OG
+    if (buffer.byteLength > 4 * 1024 * 1024) return null
+
+    // ArrayBuffer -> base64 en edge runtime
+    const bytes = new Uint8Array(buffer)
+    let binary = ""
+    const chunkSize = 8192
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+    }
+    const base64 = btoa(binary)
+    return `data:${contentType};base64,${base64}`
   } catch {
     return null
   }
@@ -79,10 +100,11 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
     bag?.price ||
     (bag?.membership_type === "prive" ? 279 : bag?.membership_type === "signature" ? 149 : 59)
 
-  // URL imagen del bolso, validada (200 + content-type imagen).
+  // Imagen del bolso convertida a data URL para que satori la procese
+  // sin depender de fetch externo ni de formatos que no soporta (webp).
   const rawImage = bag?.images?.[0] || bag?.image_url || null
   const validUrl = rawImage && /^https?:\/\//.test(rawImage) ? rawImage : null
-  const bagImage = validUrl ? await validateImage(validUrl) : null
+  const bagImage = validUrl ? await fetchImageAsDataUrl(validUrl) : null
 
   // Paleta Semzo: crema (fondo), indigo profundo (texto principal),
   // dorado/champan (acentos). Coherente con el branding del sitio.
