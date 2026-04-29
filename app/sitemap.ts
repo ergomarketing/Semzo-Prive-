@@ -27,6 +27,11 @@ import { createClient } from "@supabase/supabase-js"
  *   - Catalog: max(updated_at) del catalogo (cuando realmente cambio).
  */
 
+// Forzar regeneracion cada hora para que cambios en BD (nuevos bolsos,
+// updated_at, imagenes) se reflejen sin esperar a un nuevo deploy.
+// Google no penaliza esto; al contrario, ayuda a descubrir contenido.
+export const revalidate = 3600
+
 // Fecha estable del ultimo cambio significativo de paginas estaticas.
 // Actualizar SOLO cuando se hagan cambios reales en home/proceso/legal.
 const STATIC_PAGES_LASTMOD = "2026-04-29"
