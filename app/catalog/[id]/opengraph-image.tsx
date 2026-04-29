@@ -4,10 +4,10 @@ import { ImageResponse } from "next/og"
 // y la devuelve cuando un crawler/usuario comparte la URL en redes sociales.
 // Tamano estandar OG: 1200x630.
 //
-// Runtime nodejs (no edge): mas compatible con @supabase/supabase-js y con
-// fetch de imagenes externas. Edge daba renders en blanco silenciosos.
+// Runtime edge: recomendado oficialmente por Next.js para ImageResponse
+// (Satori). Soporta fetch nativo y carga rapida de imagenes remotas.
 
-export const runtime = "nodejs"
+export const runtime = "edge"
 export const alt = "Bolso de lujo en Semzo Prive"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
@@ -66,7 +66,10 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   const color = bag?.color && bag.color !== "Clasico" ? bag.color : ""
   const price =
     bag?.price || (bag?.membership_type === "prive" ? 279 : bag?.membership_type === "signature" ? 149 : 59)
-  const bagImage = bag?.images?.[0] || bag?.image_url || null
+  // Solo aceptamos URLs http/https absolutas. Si no, satori puede fallar
+  // y tirar todo el render. Mejor mostrar el fallback sin imagen.
+  const rawImage = bag?.images?.[0] || bag?.image_url || null
+  const bagImage = rawImage && /^https?:\/\//.test(rawImage) ? rawImage : null
 
   return new ImageResponse(
     <div
