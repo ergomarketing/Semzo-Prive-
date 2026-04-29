@@ -4,13 +4,18 @@ import { CorreosAPI, CORREOS_PRODUCTS } from "@/lib/correos-api"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-// Direccion de remitente (Semzo Prive)
+// Direccion fija del remitente Semzo Prive.
+// Es la misma en TODOS los envios:
+//   - Envios de IDA: remitente = Semzo, destinatario = cliente (autocompletado)
+//   - Etiquetas de RETORNO: remitente = cliente, destinatario = Semzo
 const SENDER_INFO = {
   name: "Semzo Prive",
-  address: "Calle Principal 123", // TODO: Configurar en settings
-  city: "Madrid",
-  postalCode: "28001",
+  address: "Calle Tales de Mileto 1, Urb. Banana Beach, Bloque C3, Piso 2 FW",
+  city: "Marbella",
+  postalCode: "29603",
   country: "ES",
+  phone: "+34624239394",
+  email: "info@semzoprive.com",
 }
 
 function getMembershipDuration(planId: string): number {
@@ -317,8 +322,8 @@ export async function POST(request: NextRequest) {
             recipientCity: SENDER_INFO.city,
             recipientPostalCode: SENDER_INFO.postalCode,
             recipientCountry: SENDER_INFO.country,
-            recipientPhone: "+34 900 000 000", // Telefono Semzo
-            recipientEmail: "devoluciones@semzoprive.com",
+            recipientPhone: SENDER_INFO.phone,
+            recipientEmail: SENDER_INFO.email,
             weight,
             productCode,
             reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`
