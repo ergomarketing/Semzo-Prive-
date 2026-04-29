@@ -45,8 +45,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const canonicalPath = data.slug || data.id
     const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
 
-    // Title pegado a la intencion: marca + modelo + color + precio.
-    const title = `Alquila ${bagName} desde ${price}€/mes | Semzo Prive`
+    // Title SEO 50-60 chars. Marca+modelo+color PRIMERO (lo que la gente busca),
+    // luego intencion+precio. Si cabe, anadimos branding "Semzo Prive".
+    const baseTitle = `${bagName} - Alquiler desde ${price}€/mes`
+    const title = baseTitle.length <= 47 ? `${baseTitle} | Semzo Prive` : baseTitle
     // Meta description orientada a conversion (CTR en SERP): accion + producto + beneficio + envio.
     const description = `Alquila el ${bagName} desde ${price}€/mes. Accede a bolsos de lujo sin comprarlos. Envio rapido y seguro con Semzo Prive.`
 

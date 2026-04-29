@@ -84,6 +84,60 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const searchParams = useSearchParams()
   const [selectedMembership, setSelectedMembership] = useState<string>("petite")
   const [autoReserveTriggered, setAutoReserveTriggered] = useState(false)
+  const [shareMenuOpen, setShareMenuOpen] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  // En movil: navigator.share nativo (Instagram DMs, WhatsApp, etc.).
+  // En desktop: menu con Pinterest, X, Facebook, LinkedIn, copiar.
+  const handleShareClick = async () => {
+    const colorSuffix = bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""
+    const shareUrl = typeof window !== "undefined" ? window.location.href : ""
+    const shareTitle = `${bag.brand} ${bag.name}${colorSuffix} - Semzo Prive`
+    const shareText = `Mira este bolso ${bag.brand} ${bag.name}${colorSuffix} en Semzo Prive`
+
+    // En movil/tablets con share nativo, lo usamos directamente
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
+        return
+      } catch {
+        // Usuario cancelo o no soportado, continuar con menu
+      }
+    }
+    // Desktop: abrir menu con redes
+    setShareMenuOpen((open) => !open)
+  }
+
+  const copyShareUrl = async () => {
+    const shareUrl = typeof window !== "undefined" ? window.location.href : ""
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 2000)
+      } catch {
+        // silencioso
+      }
+    }
+  }
+
+  // URLs de share por red social (intent URLs estandar, no requieren API).
+  const shareUrls = (() => {
+    const url = typeof window !== "undefined" ? window.location.href : ""
+    const colorSuffix = bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""
+    const text = `Mira este bolso ${bag.brand} ${bag.name}${colorSuffix} en Semzo Prive`
+    const image = bag.images[0] || ""
+    return {
+      // Pinterest: critico para moda/lujo (alto trafico de descubrimiento)
+      pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(image)}&description=${encodeURIComponent(text)}`,
+      // X/Twitter
+      x: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+      // Facebook
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      // LinkedIn
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+    }
+  })()
 
   const membershipColors = {
     essentiel: "bg-rose-nude text-slate-900",
@@ -570,9 +624,116 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   >
                     <Heart className={`h-6 w-6 ${inWishlist ? "fill-rose-500 text-rose-500" : "text-slate-400"}`} />
                   </button>
-                  <button className="p-2 rounded-full hover:bg-slate-100 transition-colors">
-                    <Share2 className="h-6 w-6 text-slate-400" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={handleShareClick}
+                      aria-label="Compartir este bolso"
+                      aria-expanded={shareMenuOpen}
+                      aria-haspopup="menu"
+                      title="Compartir"
+                      className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                    >
+                      <Share2 className="h-6 w-6 text-slate-400" />
+                    </button>
+                    {shareMenuOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setShareMenuOpen(false)}
+                          aria-hidden="true"
+                        />
+                        <div
+                          role="menu"
+                          aria-label="Compartir en redes sociales"
+                          className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[200px]"
+                        >
+                          <a
+                            href={shareUrls.pinterest}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            role="menuitem"
+                            onClick={() => setShareMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E60023] text-white text-xs font-bold"
+                            >
+                              P
+                            </span>
+                            Pinterest
+                          </a>
+                          <a
+                            href={shareUrls.x}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            role="menuitem"
+                            onClick={() => setShareMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-white text-xs font-bold"
+                            >
+                              X
+                            </span>
+                            X (Twitter)
+                          </a>
+                          <a
+                            href={shareUrls.facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            role="menuitem"
+                            onClick={() => setShareMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1877F2] text-white text-xs font-bold"
+                            >
+                              f
+                            </span>
+                            Facebook
+                          </a>
+                          <a
+                            href={shareUrls.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            role="menuitem"
+                            onClick={() => setShareMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0A66C2] text-white text-xs font-bold"
+                            >
+                              in
+                            </span>
+                            LinkedIn
+                          </a>
+                          <div className="my-1 border-t border-slate-100" />
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              copyShareUrl()
+                              setShareMenuOpen(false)
+                            }}
+                            className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-slate-700"
+                            >
+                              {shareCopied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                            </span>
+                            {shareCopied ? "Enlace copiado" : "Copiar enlace"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
