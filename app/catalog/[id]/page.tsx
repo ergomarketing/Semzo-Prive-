@@ -41,7 +41,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const bagName = `${data.brand} ${data.name}${colorSuffix}`
     const price =
       data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
-    const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
     // URL canonica SIEMPRE con slug (si existe), nunca con UUID
     const canonicalPath = data.slug || data.id
     const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
@@ -66,19 +65,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         "alquilar bolso de lujo",
         "Semzo Prive",
       ],
+      // openGraph y twitter NO declaran "images" aqui.
+      // Next.js detecta automaticamente /app/catalog/[id]/opengraph-image.tsx
+      // y la usa como og:image y twitter:image. Esa imagen dinamica incluye
+      // marca + modelo + color + precio + branding, ideal para shares en redes.
       openGraph: {
         type: "website",
         locale: "es_ES",
         title,
         description,
-        images: [
-          {
-            url: imageUrl,
-            width: 1200,
-            height: 630,
-            alt: `Alquiler ${bagName} - Bolso de lujo en Semzo Prive`,
-          },
-        ],
         url: canonical,
         siteName: "Semzo Prive",
       },
@@ -86,7 +81,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         card: "summary_large_image",
         title,
         description,
-        images: [imageUrl],
       },
       alternates: {
         canonical,
@@ -209,10 +203,47 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       ? "https://schema.org/NewCondition"
       : "https://schema.org/UsedCondition"
 
+  // Breadcrumb structured data (Home > Catalogo > Marca > Modelo)
+  // Google lo muestra como ruta de navegacion en el SERP, mejora CTR.
+  // Nota: la marca NO se enlaza aun (no existe ruta cluster por marca). En Fase 2D
+  // crearemos /catalog/marca/[brand] y actualizaremos aqui el "item" del position 3.
+  const productName = `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Inicio",
+        item: "https://semzoprive.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Catalogo",
+        item: "https://semzoprive.com/catalog",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: bag.brand,
+        // Sin "item" hasta tener cluster por marca (Fase 2D).
+        // schema.org permite ListItem sin item, Google lo acepta como nodo intermedio.
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
+        name: productName,
+        item: `https://semzoprive.com/catalog/${canonicalPath}`,
+      },
+    ],
+  }
+
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`,
+    name: productName,
     brand: {
       "@type": "Brand",
       name: bag.brand,
@@ -247,6 +278,36 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <nav aria-label="Ruta de navegacion" className="container mx-auto px-4 pt-6">
+        <ol className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
+          <li>
+            <Link href="/" className="hover:text-indigo-dark hover:underline">
+              Inicio
+            </Link>
+          </li>
+          <li aria-hidden="true" className="text-slate-300">
+            /
+          </li>
+          <li>
+            <Link href="/catalog" className="hover:text-indigo-dark hover:underline">
+              Catalogo
+            </Link>
+          </li>
+          <li aria-hidden="true" className="text-slate-300">
+            /
+          </li>
+          <li>
+            <span className="text-slate-500">{bag.brand}</span>
+          </li>
+          <li aria-hidden="true" className="text-slate-300">
+            /
+          </li>
+          <li className="text-slate-700 font-medium" aria-current="page">
+            {bag.name}
+          </li>
+        </ol>
+      </nav>
       <BagDetail bag={bag} relatedBags={relatedBags} />
     </main>
   )
