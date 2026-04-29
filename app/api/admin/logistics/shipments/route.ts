@@ -4,13 +4,18 @@ import { CorreosAPI, CORREOS_PRODUCTS } from "@/lib/correos-api"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-// Direccion de remitente (Semzo Prive)
+// Direccion fija del remitente Semzo Prive.
+// Es la misma en TODOS los envios:
+//   - Envios de IDA: remitente = Semzo, destinatario = cliente (autocompletado)
+//   - Etiquetas de RETORNO: remitente = cliente, destinatario = Semzo
 const SENDER_INFO = {
   name: "Semzo Prive",
-  address: "Calle Principal 123", // TODO: Configurar en settings
-  city: "Madrid",
-  postalCode: "28001",
+  address: "Calle Tales de Mileto 1, Urb. Banana Beach, Bloque C3, Piso 2 FW",
+  city: "Marbella",
+  postalCode: "29603",
   country: "ES",
+  phone: "+34624239394",
+  email: "info@semzoprive.com",
 }
 
 function getMembershipDuration(planId: string): number {
@@ -245,6 +250,9 @@ export async function POST(request: NextRequest) {
     let correosResponse = null
     let returnTrackingNumber = null
     let returnCorreosResponse = null
+    let correosError: string | null = null
+    let correosConfigured = false
+    let correosEnabled = false
 
     // Intentar crear envío en Correos si está habilitado
     if (use_correos_api && carrier === "Correos") {
@@ -255,8 +263,15 @@ export async function POST(request: NextRequest) {
         .eq("carrier_name", "Correos")
         .single()
 
-      if (correosSettings?.api_credentials && correosSettings.is_enabled) {
-        const { clientId, clientSecret } = correosSettings.api_credentials as {
+      correosConfigured = !!correosSettings?.api_credentials
+      correosEnabled = !!correosSettings?.is_enabled
+
+      if (!correosConfigured) {
+        correosError = "No hay credenciales de Correos guardadas en logistics_settings"
+      } else if (!correosEnabled) {
+        correosError = "La integracion de Correos esta deshabilitada (is_enabled = false)"
+      } else {
+        const { clientId, clientSecret } = correosSettings!.api_credentials as {
           clientId: string
           clientSecret: string
         }
@@ -286,8 +301,10 @@ export async function POST(request: NextRequest) {
             reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`
           })
           correosTrackingNumber = correosResponse.codEnvio
-        } catch (correosError) {
-          console.error("[Logistics API] Error creating outbound Correos shipment:", correosError)
+        } catch (err: any) {
+          const msg = err?.message || String(err)
+          console.error("[Logistics API] Error creating outbound Correos shipment:", msg)
+          correosError = `Correos rechazo el envio de IDA: ${msg}`
         }
 
         // 2. Crear envío de RETORNO (Cliente -> Semzo) - etiqueta prepagada
@@ -305,15 +322,17 @@ export async function POST(request: NextRequest) {
             recipientCity: SENDER_INFO.city,
             recipientPostalCode: SENDER_INFO.postalCode,
             recipientCountry: SENDER_INFO.country,
-            recipientPhone: "+34 900 000 000", // Telefono Semzo
-            recipientEmail: "devoluciones@semzoprive.com",
+            recipientPhone: SENDER_INFO.phone,
+            recipientEmail: SENDER_INFO.email,
             weight,
             productCode,
             reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`
           })
           returnTrackingNumber = returnCorreosResponse.codEnvio
-        } catch (returnError) {
-          console.error("[Logistics API] Error creating return Correos shipment:", returnError)
+        } catch (err: any) {
+          const msg = err?.message || String(err)
+          console.error("[Logistics API] Error creating return Correos shipment:", msg)
+          if (!correosError) correosError = `Correos rechazo la etiqueta de RETORNO: ${msg}`
         }
       }
     }
@@ -390,6 +409,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...data,
       correos_success: !!correosTrackingNumber,
+      correos_configured: correosConfigured,
+      correos_enabled: correosEnabled,
+      correos_error: correosError, // motivo si Correos rechazo el envio
       return_label_created: !!returnTrackingNumber,
       return_tracking_number: returnTrackingNumber
     }, { status: 201 })

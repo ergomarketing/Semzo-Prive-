@@ -213,7 +213,7 @@ class CorreosAPI {
   <CodEtiquetador>SEMZOPRIVE</CodEtiquetador>
   <Care>000000</Care>
   <TotalBultos>1</TotalBultos>
-  <ModDevEtworkariqueta>2</ModDevEtiqueta>
+  <ModDevEtiqueta>2</ModDevEtiqueta>
   <Remitente>
     <Nombre>${this.escapeXML(shipment.senderName)}</Nombre>
     <Direccion>${this.escapeXML(shipment.senderAddress)}</Direccion>

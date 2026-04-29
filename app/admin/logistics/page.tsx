@@ -420,7 +420,14 @@ export default function LogisticsPage() {
       } else if (data.correos_success) {
         alert(`Envio creado con tracking: ${data.tracking_number}`)
       } else {
-        alert("Envio creado (sin tracking de Correos)")
+        // Envio guardado pero Correos NO genero etiqueta. Mostramos motivo real.
+        let motivo = data.correos_error || "Motivo desconocido."
+        if (!data.correos_configured) {
+          motivo = "No hay credenciales de Correos guardadas en la base de datos. Ve a Configuracion > Correos y guardalas."
+        } else if (!data.correos_enabled) {
+          motivo = "La integracion de Correos esta deshabilitada. Activala en Configuracion > Correos."
+        }
+        alert(`Envio guardado SIN tracking de Correos.\n\nMotivo:\n${motivo}\n\nEl envio existe en tu sistema pero NO esta registrado en Correos. Revisa la configuracion y vuelve a intentarlo.`)
       }
       
       setShowNewShipmentModal(false)
