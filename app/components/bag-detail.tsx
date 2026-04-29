@@ -952,7 +952,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               </p>
             </div>
 
-            <p className="text-slate-600 leading-relaxed">{bag.description}</p>
+            {/* whitespace-pre-line respeta los saltos de linea de la descripcion
+                (parrafos, listas) sin necesidad de markdown. Optimo para
+                descripciones GEO ricas con datos historicos y especificaciones. */}
+            <div className="text-slate-600 leading-relaxed whitespace-pre-line">{bag.description}</div>
 
             <div className="flex items-center justify-around py-4 border-y border-slate-100">
               <div className="flex items-center gap-2 text-sm text-slate-600">
