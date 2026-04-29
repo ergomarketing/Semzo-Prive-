@@ -185,16 +185,28 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
 
   // URL canonica SIEMPRE con slug si existe
   const canonicalPath = bag.slug || bag.id
+
+  // Mapear condicion del bolso a schema.org
+  const conditionRaw = (bag.condition || "").toLowerCase()
+  const itemCondition =
+    conditionRaw.includes("nuevo") || conditionRaw.includes("new")
+      ? "https://schema.org/NewCondition"
+      : "https://schema.org/UsedCondition"
+
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${bag.brand} ${bag.name}`,
+    name: `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`,
     brand: {
       "@type": "Brand",
       name: bag.brand,
     },
     description: bag.description,
     image: bag.images,
+    color: bag.color,
+    material: bag.material,
+    itemCondition,
+    sku: bag.id,
     offers: {
       "@type": "Offer",
       price: bag.price.replace("€/mes", ""),
@@ -203,6 +215,11 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
         bag.availability.status === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url: `https://semzoprive.com/catalog/${canonicalPath}`,
       priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+      seller: {
+        "@type": "Organization",
+        name: "Semzo Prive",
+        url: "https://semzoprive.com",
+      },
     },
     aggregateRating: {
       "@type": "AggregateRating",
