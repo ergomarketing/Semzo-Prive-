@@ -48,20 +48,22 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     // Title pegado a la intencion: marca + modelo + color + precio.
     const title = `Alquila ${bagName} desde ${price}€/mes | Semzo Prive`
-    const description = `Alquila el bolso ${bagName} por ${price}€/mes en Semzo Prive. Envio gratis, seguro incluido y cambios ilimitados. Bolsos de lujo originales con autenticidad garantizada.`
+    // Meta description orientada a conversion (CTR en SERP): accion + producto + beneficio + envio.
+    const description = `Alquila el ${bagName} desde ${price}€/mes. Accede a bolsos de lujo sin comprarlos. Envio rapido y seguro con Semzo Prive.`
 
     return {
       title,
       description,
       keywords: [
-        `alquilar ${data.brand} ${data.name}`,
-        `${data.brand} ${data.name} alquiler`,
+        // Variaciones de keyword principal para evitar canibalizacion y cubrir long-tail
         `alquiler bolso ${data.brand}`,
-        data.brand,
-        data.name,
-        ...(hasColor ? [`${data.brand} ${data.color}`, data.color] : []),
+        `bolso ${data.brand} alquiler`,
+        `alquilar ${data.brand} ${data.name}`,
+        `${data.brand} ${data.name}`,
+        ...(hasColor ? [`${data.brand} ${data.color}`, `bolso ${data.color}`] : []),
         "alquiler bolsos lujo",
-        "bolsos diseno",
+        "bolso lujo alquiler",
+        "alquilar bolso de lujo",
         "Semzo Prive",
       ],
       openGraph: {

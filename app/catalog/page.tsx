@@ -39,7 +39,7 @@ async function fetchInitialBags() {
 }
 
 export const metadata: Metadata = {
-  title: "Alquiler de Bolsos de Lujo desde 59€/mes - Chanel, Dior, Louis Vuitton | Semzo Prive",
+  title: "Alquiler de Bolsos de Lujo desde 59€/mes | Chanel y Dior",
   description:
     "Alquila bolsos originales de Chanel, Dior, Louis Vuitton, Fendi, Prada, Gucci y mas desde 59€/mes. Envio gratis, seguro incluido y autenticidad garantizada en Semzo Prive.",
   keywords: [
