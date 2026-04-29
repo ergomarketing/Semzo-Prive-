@@ -621,9 +621,9 @@ function BagCard({
         </div>
 
         <div className="relative aspect-square bg-gray-50">
-          <Image
-            src={bag.image_url || "/placeholder.svg"}
-            alt={`${bag.brand} ${bag.name}`}
+                <Image
+                  src={bag.image_url || "/placeholder.svg"}
+                  alt={`Alquiler ${bag.brand} ${bag.name}${(bag as { color?: string }).color && (bag as { color?: string }).color !== "Clasico" ? ` ${(bag as { color?: string }).color}` : ""} - Bolso de lujo`}
             width={500}
             height={500}
             className="object-contain w-full h-full p-4"

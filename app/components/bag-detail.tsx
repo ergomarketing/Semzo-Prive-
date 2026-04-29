@@ -509,7 +509,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               )}
               <Image
                 src={bag.images[selectedImage] || "/placeholder.svg"}
-                alt={bag.name}
+                alt={`Alquiler ${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""} - Bolso de lujo en Semzo Prive`}
                 width={600}
                 height={600}
                 className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-105"
@@ -547,7 +547,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 >
                   <Image
                     src={image || "/placeholder.svg"}
-                    alt={`${bag.name} - vista ${index + 1}`}
+                    alt={`${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""} - vista ${index + 1}`}
                     width={150}
                     height={150}
                     className="object-cover w-full h-full"
@@ -576,8 +576,11 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 </div>
               </div>
 
-              <p className="text-lg text-slate-500 mb-1">{bag.brand}</p>
-              <h1 className="font-serif text-4xl text-slate-900 mb-2">{bag.name}</h1>
+                <p className="text-lg text-slate-500 mb-1">{bag.brand}</p>
+                <h1 className="font-serif text-4xl text-slate-900 mb-2">
+                  Alquila {bag.brand} {bag.name}
+                  {bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}
+                </h1>
 
               <p className="text-sm text-slate-500 uppercase tracking-wide mb-2">
                 PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>

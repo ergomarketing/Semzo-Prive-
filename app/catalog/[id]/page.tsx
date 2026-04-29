@@ -36,7 +36,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const data = await fetchBagByIdOrSlug(id)
 
   if (data) {
-    const bagName = `${data.brand} ${data.name}`
+    const hasColor = data.color && data.color.trim() !== "" && data.color !== "Clasico"
+    const colorSuffix = hasColor ? ` ${data.color}` : ""
+    const bagName = `${data.brand} ${data.name}${colorSuffix}`
     const price =
       data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
     const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
@@ -44,23 +46,35 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const canonicalPath = data.slug || data.id
     const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
 
+    // Title pegado a la intencion: marca + modelo + color + precio.
+    const title = `Alquila ${bagName} desde ${price}€/mes | Semzo Prive`
+    const description = `Alquila el bolso ${bagName} por ${price}€/mes en Semzo Prive. Envio gratis, seguro incluido y cambios ilimitados. Bolsos de lujo originales con autenticidad garantizada.`
+
     return {
-      title: `${bagName} - Alquiler desde ${price}€/mes`,
-      description:
-        data.description ||
-        `Alquila el bolso ${bagName} por solo ${price}€/mes. Incluye envio gratis, seguro y cambios ilimitados. Disponible en Semzo Prive.`,
-      keywords: [data.brand, data.name, "alquiler", "bolso lujo", data.membership_type],
+      title,
+      description,
+      keywords: [
+        `alquilar ${data.brand} ${data.name}`,
+        `${data.brand} ${data.name} alquiler`,
+        `alquiler bolso ${data.brand}`,
+        data.brand,
+        data.name,
+        ...(hasColor ? [`${data.brand} ${data.color}`, data.color] : []),
+        "alquiler bolsos lujo",
+        "bolsos diseno",
+        "Semzo Prive",
+      ],
       openGraph: {
         type: "website",
         locale: "es_ES",
-        title: `${bagName} | Semzo Prive`,
-        description: `Alquila este elegante ${bagName} desde ${price}€/mes con envio gratis y seguro incluido.`,
+        title,
+        description,
         images: [
           {
             url: imageUrl,
             width: 1200,
             height: 630,
-            alt: `${bagName} - Semzo Prive`,
+            alt: `Alquiler ${bagName} - Bolso de lujo en Semzo Prive`,
           },
         ],
         url: canonical,
@@ -68,8 +82,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       },
       twitter: {
         card: "summary_large_image",
-        title: `${bagName} - Alquiler ${price}€/mes`,
-        description: `Alquila este ${bagName} con Semzo Prive. Envio gratis y seguro incluido.`,
+        title,
+        description,
         images: [imageUrl],
       },
       alternates: {
