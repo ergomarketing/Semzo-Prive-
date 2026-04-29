@@ -36,7 +36,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const data = await fetchBagByIdOrSlug(id)
 
   if (data) {
-    const bagName = `${data.brand} ${data.name}`
+    const hasColor = data.color && data.color.trim() !== "" && data.color !== "Clasico"
+    const colorSuffix = hasColor ? ` ${data.color}` : ""
+    const bagName = `${data.brand} ${data.name}${colorSuffix}`
     const price =
       data.price || (data.membership_type === "prive" ? 279 : data.membership_type === "signature" ? 149 : 59)
     const imageUrl = data.images?.[0] || data.image_url || "/images/hero-luxury-bags.jpeg"
@@ -44,23 +46,37 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const canonicalPath = data.slug || data.id
     const canonical = `https://semzoprive.com/catalog/${canonicalPath}`
 
+    // Title pegado a la intencion: marca + modelo + color + precio.
+    const title = `Alquila ${bagName} desde ${price}€/mes | Semzo Prive`
+    // Meta description orientada a conversion (CTR en SERP): accion + producto + beneficio + envio.
+    const description = `Alquila el ${bagName} desde ${price}€/mes. Accede a bolsos de lujo sin comprarlos. Envio rapido y seguro con Semzo Prive.`
+
     return {
-      title: `${bagName} - Alquiler desde ${price}€/mes`,
-      description:
-        data.description ||
-        `Alquila el bolso ${bagName} por solo ${price}€/mes. Incluye envio gratis, seguro y cambios ilimitados. Disponible en Semzo Prive.`,
-      keywords: [data.brand, data.name, "alquiler", "bolso lujo", data.membership_type],
+      title,
+      description,
+      keywords: [
+        // Variaciones de keyword principal para evitar canibalizacion y cubrir long-tail
+        `alquiler bolso ${data.brand}`,
+        `bolso ${data.brand} alquiler`,
+        `alquilar ${data.brand} ${data.name}`,
+        `${data.brand} ${data.name}`,
+        ...(hasColor ? [`${data.brand} ${data.color}`, `bolso ${data.color}`] : []),
+        "alquiler bolsos lujo",
+        "bolso lujo alquiler",
+        "alquilar bolso de lujo",
+        "Semzo Prive",
+      ],
       openGraph: {
         type: "website",
         locale: "es_ES",
-        title: `${bagName} | Semzo Prive`,
-        description: `Alquila este elegante ${bagName} desde ${price}€/mes con envio gratis y seguro incluido.`,
+        title,
+        description,
         images: [
           {
             url: imageUrl,
             width: 1200,
             height: 630,
-            alt: `${bagName} - Semzo Prive`,
+            alt: `Alquiler ${bagName} - Bolso de lujo en Semzo Prive`,
           },
         ],
         url: canonical,
@@ -68,8 +84,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       },
       twitter: {
         card: "summary_large_image",
-        title: `${bagName} - Alquiler ${price}€/mes`,
-        description: `Alquila este ${bagName} con Semzo Prive. Envio gratis y seguro incluido.`,
+        title,
+        description,
         images: [imageUrl],
       },
       alternates: {
@@ -185,16 +201,28 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
 
   // URL canonica SIEMPRE con slug si existe
   const canonicalPath = bag.slug || bag.id
+
+  // Mapear condicion del bolso a schema.org
+  const conditionRaw = (bag.condition || "").toLowerCase()
+  const itemCondition =
+    conditionRaw.includes("nuevo") || conditionRaw.includes("new")
+      ? "https://schema.org/NewCondition"
+      : "https://schema.org/UsedCondition"
+
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${bag.brand} ${bag.name}`,
+    name: `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`,
     brand: {
       "@type": "Brand",
       name: bag.brand,
     },
     description: bag.description,
     image: bag.images,
+    color: bag.color,
+    material: bag.material,
+    itemCondition,
+    sku: bag.id,
     offers: {
       "@type": "Offer",
       price: bag.price.replace("€/mes", ""),
@@ -203,6 +231,11 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
         bag.availability.status === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url: `https://semzoprive.com/catalog/${canonicalPath}`,
       priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+      seller: {
+        "@type": "Organization",
+        name: "Semzo Prive",
+        url: "https://semzoprive.com",
+      },
     },
     aggregateRating: {
       "@type": "AggregateRating",
