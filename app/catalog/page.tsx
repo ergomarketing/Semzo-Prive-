@@ -6,7 +6,7 @@ import { createClient } from "../lib/supabase/server"
 export const revalidate = 600
 
 const BAG_SELECT_COLS =
-  "id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type"
+  "id, slug, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type"
 
 async function fetchInitialBags() {
   try {
