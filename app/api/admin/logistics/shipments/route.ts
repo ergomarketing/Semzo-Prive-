@@ -245,6 +245,9 @@ export async function POST(request: NextRequest) {
     let correosResponse = null
     let returnTrackingNumber = null
     let returnCorreosResponse = null
+    let correosError: string | null = null
+    let correosConfigured = false
+    let correosEnabled = false
 
     // Intentar crear envío en Correos si está habilitado
     if (use_correos_api && carrier === "Correos") {
@@ -255,8 +258,15 @@ export async function POST(request: NextRequest) {
         .eq("carrier_name", "Correos")
         .single()
 
-      if (correosSettings?.api_credentials && correosSettings.is_enabled) {
-        const { clientId, clientSecret } = correosSettings.api_credentials as {
+      correosConfigured = !!correosSettings?.api_credentials
+      correosEnabled = !!correosSettings?.is_enabled
+
+      if (!correosConfigured) {
+        correosError = "No hay credenciales de Correos guardadas en logistics_settings"
+      } else if (!correosEnabled) {
+        correosError = "La integracion de Correos esta deshabilitada (is_enabled = false)"
+      } else {
+        const { clientId, clientSecret } = correosSettings!.api_credentials as {
           clientId: string
           clientSecret: string
         }
@@ -286,8 +296,10 @@ export async function POST(request: NextRequest) {
             reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`
           })
           correosTrackingNumber = correosResponse.codEnvio
-        } catch (correosError) {
-          console.error("[Logistics API] Error creating outbound Correos shipment:", correosError)
+        } catch (err: any) {
+          const msg = err?.message || String(err)
+          console.error("[Logistics API] Error creating outbound Correos shipment:", msg)
+          correosError = `Correos rechazo el envio de IDA: ${msg}`
         }
 
         // 2. Crear envío de RETORNO (Cliente -> Semzo) - etiqueta prepagada
@@ -312,8 +324,10 @@ export async function POST(request: NextRequest) {
             reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`
           })
           returnTrackingNumber = returnCorreosResponse.codEnvio
-        } catch (returnError) {
-          console.error("[Logistics API] Error creating return Correos shipment:", returnError)
+        } catch (err: any) {
+          const msg = err?.message || String(err)
+          console.error("[Logistics API] Error creating return Correos shipment:", msg)
+          if (!correosError) correosError = `Correos rechazo la etiqueta de RETORNO: ${msg}`
         }
       }
     }
@@ -390,6 +404,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...data,
       correos_success: !!correosTrackingNumber,
+      correos_configured: correosConfigured,
+      correos_enabled: correosEnabled,
+      correos_error: correosError, // motivo si Correos rechazo el envio
       return_label_created: !!returnTrackingNumber,
       return_tracking_number: returnTrackingNumber
     }, { status: 201 })
