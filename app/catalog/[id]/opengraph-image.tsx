@@ -54,6 +54,25 @@ async function fetchBag(id: string): Promise<Bag | null> {
   }
 }
 
+// Pre-validar que la URL de imagen responde antes de pasarla a satori.
+// Si dejamos que satori haga el fetch en edge y la imagen tarda mucho
+// o falla, devuelve un PNG en blanco silenciosamente. Hacemos HEAD con
+// timeout corto y solo pasamos la URL si responde 200.
+async function validateImage(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3500)
+    const res = await fetch(url, { method: "HEAD", signal: controller.signal })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const ct = res.headers.get("content-type") || ""
+    if (!ct.startsWith("image/")) return null
+    return url
+  } catch {
+    return null
+  }
+}
+
 // Next.js 15: params es siempre Promise en route segments dinamicos.
 // Awaitarlos es OBLIGATORIO; si no, "id" es undefined y el render falla con 500.
 export default async function OGImage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,10 +85,11 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   const color = bag?.color && bag.color !== "Clasico" ? bag.color : ""
   const price =
     bag?.price || (bag?.membership_type === "prive" ? 279 : bag?.membership_type === "signature" ? 149 : 59)
-  // Solo aceptamos URLs http/https absolutas. Si no, satori puede fallar
-  // y tirar todo el render. Mejor mostrar el fallback sin imagen.
+  // Solo aceptamos URLs http/https absolutas Y que respondan 200 con content-type imagen.
+  // Si no, satori puede fallar silenciosamente y devolver PNG vacio.
   const rawImage = bag?.images?.[0] || bag?.image_url || null
-  const bagImage = rawImage && /^https?:\/\//.test(rawImage) ? rawImage : null
+  const validUrl = rawImage && /^https?:\/\//.test(rawImage) ? rawImage : null
+  const bagImage = validUrl ? await validateImage(validUrl) : null
 
   return new ImageResponse(
     <div
