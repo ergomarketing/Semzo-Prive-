@@ -107,8 +107,10 @@ export const metadata: Metadata = {
     },
   },
 
+  // Verificacion de Google Search Console se hace via Google Analytics (servicio asociado).
+  // No se necesita meta tag aqui. Si en el futuro quieres anadir verificacion HTML,
+  // pega el content del meta tag "google-site-verification" en google: "..."
   verification: {
-    google: "G-0BMNYQLWLZ",
     other: {
       "p:domain_verify": "a98e3be6d7a4e44ba4587bc1cdba9e61",
     },

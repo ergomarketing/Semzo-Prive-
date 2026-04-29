@@ -1,36 +1,16 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 
-function parseFrontmatter(content: string): { metadata: Record<string, string>; content: string } {
-  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
-  const match = content.match(frontmatterRegex)
-
-  if (!match) {
-    return { metadata: {}, content }
-  }
-
-  const frontmatter = match[1]
-  const markdown = match[2]
-
-  const metadata: Record<string, string> = {}
-  frontmatter.split("\n").forEach((line) => {
-    const [key, ...valueParts] = line.split(":")
-    if (key && valueParts.length) {
-      const value = valueParts
-        .join(":")
-        .trim()
-        .replace(/^["']|["']$/g, "")
-      metadata[key.trim()] = value
-    }
-  })
-
-  return { metadata, content: markdown }
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://semzoprive.com"
   const currentDate = new Date().toISOString()
 
+  // Solo URLs publicas con valor SEO real.
+  // EXCLUIDAS: /membership/upgrade/* (requieren auth + membresia activa),
+  // /signup, /onboarding, /cart, /checkout, /dashboard, /admin, /reservations,
+  // /wishlist, /my-account, /post-checkout, /verification-complete, /verify-identity,
+  // /recommendations (requiere auth), /test-* (paginas internas),
+  // /invitation, /invitacion (noindex por privacidad).
   const staticUrls: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -51,34 +31,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/membership/upgrade`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/membership/upgrade/signature`,
+      url: `${baseUrl}/lista-privada`,
       lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 0.85,
     },
     {
-      url: `${baseUrl}/membership/upgrade/prive`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/membership/upgrade/essentiel`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/membership-signup`,
+      url: `${baseUrl}/calculadora-ahorro`,
       lastModified: currentDate,
       changeFrequency: "monthly",
-      priority: 0.85,
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/gift-cards`,
@@ -90,19 +52,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/blog`,
       lastModified: currentDate,
       changeFrequency: "weekly",
-      priority: 0.7,
+      priority: 0.75,
     },
     {
       url: `${baseUrl}/support`,
       lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/signup`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.7,
     },
     {
       url: `${baseUrl}/legal/terms`,
