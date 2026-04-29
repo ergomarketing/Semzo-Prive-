@@ -87,7 +87,7 @@ Material: Piel de cordero (lambskin) matelasse
 Dimensiones: 20 x 13 x 7 cm
 Cierre: Doble C entrelazada
 Cadena: Cadena dorada con piel entrelazada, ajustable
-Color: Verde menta — color de edicion estacional, raro de encontrar
+Color: Verde menta - color de edicion estacional, raro de encontrar
 
 Disponible en Semzo Prive desde 279€/mes (Membresia Prive). Precio de venta estimado: 5.500€. Los colores menta y pastel de Chanel son ediciones limitadas que se agotan en horas tras su lanzamiento.
 
@@ -146,7 +146,7 @@ Cierre: Solapa con cierre metalico dorado
 Asas: Asa superior corta de piel
 Color: Amarillo Tassil (conocido tambien como "Citron"), color de archivo dificil de encontrar
 
-Disponible en Semzo Prive desde 149€/mes (Membresia Signature). Precio de venta estimado en el mercado vintage: 2.000–2.800€ segun condicion. Las piezas vintage de LV en colores raros se han revalorizado un 40% en los ultimos 5 anos.
+Disponible en Semzo Prive desde 149€/mes (Membresia Signature). Precio de venta estimado en el mercado vintage: 2.000-2.800€ segun condicion. Las piezas vintage de LV en colores raros se han revalorizado un 40% en los ultimos 5 anos.
 
 Ideal para looks vintage, editoriales, fans del archivo Louis Vuitton y para quienes buscan una pieza unica que no se ve en cada esquina.',
     updated_at = NOW()
