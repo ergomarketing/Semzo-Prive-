@@ -54,8 +54,10 @@ async function fetchBag(id: string): Promise<Bag | null> {
   }
 }
 
-export default async function OGImage({ params }: { params: { id: string } }) {
-  const { id } = params
+// Next.js 15: params es siempre Promise en route segments dinamicos.
+// Awaitarlos es OBLIGATORIO; si no, "id" es undefined y el render falla con 500.
+export default async function OGImage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const bag = await fetchBag(id)
 
   // Fallback si no encontramos el bolso: OG generica de Semzo Prive
