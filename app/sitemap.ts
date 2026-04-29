@@ -39,23 +39,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const blogUrls: MetadataRoute.Sitemap = []
   let catalogLastMod = STATIC_PAGES_LASTMOD
 
-  // Blog posts (con fecha real del articulo)
+  // Blog posts (con fecha real del articulo + imagen para Google Images)
   try {
     const { listPosts } = await import("@/lib/blog-storage")
     const posts = await listPosts()
     for (const post of posts) {
+      const postImage = (post as { image?: string }).image
       blogUrls.push({
         url: `${baseUrl}/blog/${post.slug}`,
         lastModified: post.date || STATIC_PAGES_LASTMOD,
         changeFrequency: "monthly" as const,
         priority: 0.6,
+        ...(postImage ? { images: [postImage.startsWith("http") ? postImage : `${baseUrl}${postImage}`] } : {}),
       })
     }
   } catch {
     // silencioso - no bloquear el sitemap si el blog falla
   }
 
-  // Bolsos del catalogo (con updated_at real, prioridad diferenciada)
+  // Bolsos del catalogo (con updated_at real, prioridad diferenciada, imagenes para Google Images)
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -64,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const supabase = createClient(supabaseUrl, supabaseKey)
       const { data: bags } = await supabase
         .from("bags")
-        .select("id, slug, updated_at, membership_type")
+        .select("id, slug, updated_at, membership_type, image_url, images")
         .eq("status", "available")
         .order("updated_at", { ascending: false })
 
@@ -76,6 +78,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           // Bolsos de membresia Prive son productos top -> 0.6
           // Resto -> 0.5
           const isTopProduct = bag.membership_type === "prive" || bag.membership_type === "signature"
+
+          // Construir array de imagenes para Google Images.
+          // Priorizar bag.images (galeria), fallback a image_url. Maximo 5 por URL (Google).
+          const imagesArr = Array.isArray(bag.images) && bag.images.length > 0 ? bag.images : []
+          const finalImages = (imagesArr.length > 0 ? imagesArr : bag.image_url ? [bag.image_url] : [])
+            .filter((u): u is string => typeof u === "string" && u.length > 0)
+            .slice(0, 5)
+
           return {
             // Solo URL canonica con slug (no duplicamos UUID + slug).
             // Fallback a UUID solo si por alguna razon no hay slug en BD.
@@ -83,6 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             lastModified: bag.updated_at?.split("T")[0] || STATIC_PAGES_LASTMOD,
             changeFrequency: "monthly" as const,
             priority: isTopProduct ? 0.6 : 0.5,
+            ...(finalImages.length > 0 ? { images: finalImages } : {}),
           }
         })
       }
@@ -98,12 +109,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: STATIC_PAGES_LASTMOD,
       changeFrequency: "weekly",
       priority: 1.0,
+      images: [`${baseUrl}/images/hero-luxury-bags.jpeg`],
     },
     {
       url: `${baseUrl}/catalog`,
       lastModified: catalogLastMod, // refleja el bolso mas reciente
       changeFrequency: "weekly",
       priority: 0.9,
+      images: [`${baseUrl}/images/hero-luxury-bags.jpeg`],
     },
     {
       url: `${baseUrl}/proceso`,
