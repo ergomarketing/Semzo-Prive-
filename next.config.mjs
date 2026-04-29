@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // NOTA: NO usar `output: 'standalone'` en Vercel.
+  // Standalone es para self-hosting (Docker). En Vercel rompe la generacion
+  // de assets dinamicos como opengraph-image.tsx (devuelven HTML vacio
+  // 200 en vez del PNG). Vercel ya optimiza el bundle automaticamente.
 
   reactStrictMode: true,
   trailingSlash: false,
