@@ -19,6 +19,14 @@ const nextConfig = {
 
   async redirects() {
     return [
+      // /gift-cards no existe. Redirigir al catalogo para no perder
+      // el PageRank que Google tenia acumulado en esa URL antigua.
+      {
+        source: '/gift-cards',
+        destination: '/catalog',
+        permanent: true,
+      },
+
       // www → non-www
       {
         source: '/:path*',

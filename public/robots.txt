@@ -9,6 +9,7 @@ Disallow: /auth/
 Disallow: /api/
 
 # Flujos no indexables
+Disallow: /gift-cards
 Disallow: /cart
 Disallow: /checkout
 Disallow: /wishlist
