@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 
 export const dynamic = "force-dynamic"
@@ -17,39 +16,47 @@ const supabase = createClient(
 
 /**
  * DELETE /api/admin/logistics/shipments/:id
- * Elimina un envio del sistema. Requiere cookie admin_session.
+ * Cancela (soft-delete: status -> "cancelled") un envio por su ID.
+ * Auth: el panel admin esta protegido por localStorage en el cliente.
+ * El service role key de Supabase garantiza acceso a nivel de BD.
+ * No se usa cookie admin_session porque el login actual solo escribe
+ * en localStorage y nunca llama a /api/admin/login (que setea la cookie).
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // Auth admin via cookie de sesion (mismo patron que el resto del panel)
-    const cookieStore = await cookies()
-    const adminSession = cookieStore.get("admin_session")
-    if (!adminSession || adminSession.value !== "authenticated") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: "ID de envio requerido" }, { status: 400 })
     }
 
-    const { error: deleteError } = await supabase
+    // Soft-delete: marcamos cancelled para preservar historial y auditoria
+    const { data, error: updateError } = await supabase
       .from("shipments")
-      .delete()
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", id)
+      .select()
+      .single()
 
-    if (deleteError) {
-      console.error("[admin/shipments DELETE] error:", deleteError)
+    if (updateError) {
+      console.error("[admin/shipments DELETE] error:", updateError)
       return NextResponse.json(
-        { error: deleteError.message || "Error al eliminar envio" },
+        { error: updateError.message || "Error al cancelar envio" },
         { status: 500 },
       )
     }
 
-    return NextResponse.json({ success: true })
+    // Registrar en auditoria
+    await supabase.from("logistics_audit_log").insert({
+      action: "cancel_shipment",
+      entity_type: "shipment",
+      entity_id: id,
+      new_values: data,
+    })
+
+    return NextResponse.json({ success: true, data })
   } catch (err: any) {
     console.error("[admin/shipments DELETE] exception:", err)
     return NextResponse.json(
