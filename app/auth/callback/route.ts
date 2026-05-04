@@ -125,6 +125,18 @@ export async function GET(request: NextRequest) {
       const finalPlan = plan || userMetadata.pending_plan || null
       const finalBag = bag || userMetadata.pending_bag || null
 
+      // P1 (navegacion): si viene un param `next` con ruta interna segura,
+      // usarlo como destino prioritario (antes de la logica de plan/bag).
+      // Sanitizacion: solo rutas relativas (empiezan por /) para evitar
+      // open redirect a dominios externos.
+      if (next && next.startsWith("/")) {
+        const nextUrl = new URL(next, request.url)
+        // Doble check: el hostname debe coincidir con el de la request
+        if (nextUrl.hostname === requestUrl.hostname) {
+          return NextResponse.redirect(nextUrl)
+        }
+      }
+
       // Si viene de checkout con plan (sin bolso), ir directo al checkout
       if (origin === "checkout" && finalPlan && !finalBag) {
         return NextResponse.redirect(new URL(`/checkout?plan=${finalPlan}`, request.url))

@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
+// Cliente de servicio para operaciones de escritura que requieren service role.
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -15,6 +18,34 @@ function getSupabase() {
       persistSession: false,
     },
   })
+}
+
+// Obtiene el user_id autenticado desde la sesion de Supabase (cookies).
+// NUNCA confiar en x-user-id ni query param: cualquier cliente puede
+// manipularlos (IDOR). Unico patron seguro: extraer de la sesion server-side.
+async function getAuthenticatedUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      },
+    )
+    const { data: { user }, error } = await supabaseAuth.auth.getUser()
+    if (error || !user) return null
+    return user.id
+  } catch {
+    return null
+  }
 }
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com"
@@ -83,13 +114,14 @@ function getPriceForMembership(bag: any, membershipType: string | null): number 
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabase()
-    const userId = request.headers.get("x-user-id") || request.nextUrl.searchParams.get("user_id")
+
+    // P0 (IDOR): user_id SIEMPRE desde sesion autenticada, nunca de cabeceras
+    // ni query params que el cliente pueda falsificar.
+    const userId = await getAuthenticatedUserId()
 
     if (!userId) {
       return NextResponse.json({ error: "Usuario no autenticado", reservations: [] }, { status: 401 })
     }
-
-    console.log("[v0] Fetching reservations for user:", userId)
 
     const status = request.nextUrl.searchParams.get("status")
     const limit = Number.parseInt(request.nextUrl.searchParams.get("limit") || "50")
@@ -175,16 +207,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase()
-    const userId = request.headers.get("x-user-id")
-    console.log("[v0] POST /api/user/reservations - userId:", userId)
+
+    // P0 (IDOR): user_id siempre desde sesion, no desde cabecera x-user-id.
+    const userId = await getAuthenticatedUserId()
 
     if (!userId) {
       return NextResponse.json({ error: "Usuario no autenticado" }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log("[v0] Reservation request body:", body)
-
+    // P1 (privacidad): log solo campos no sensibles, nunca el body completo.
     const { bag_id, start_date, end_date, usePassId } = body
 
     if (!bag_id || !start_date || !end_date) {
@@ -273,7 +305,7 @@ export async function POST(request: NextRequest) {
       .eq("id", bag_id)
       .single()
 
-    console.log("[v0] Bag found:", bag, "Error:", bagError)
+    // No loguear datos completos del bolso (puede contener precios sensibles de contrato)
 
     if (bagError || !bag) {
       return NextResponse.json({ error: "Bolso no encontrado" }, { status: 404 })
@@ -296,8 +328,9 @@ export async function POST(request: NextRequest) {
 
     if (userMembershipPlan === "petite") {
       // 1. Verificar que la membresía Petite esté vigente (30 días desde started_at)
-      const membershipStartDate = activeIntent?.activated_at || activeIntent?.created_at || 
-        userMembershipRecord?.start_date
+      // Se usa membership.start_date (ya disponible en el scope): es la fuente
+      // de verdad de cuando comenzo la membresia activa del usuario.
+      const membershipStartDate = (membership as any).start_date || null
 
       if (!membershipStartDate) {
         return NextResponse.json(

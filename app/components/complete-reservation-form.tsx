@@ -218,49 +218,41 @@ export default function CompleteReservationForm({
 
     setIsSubmitting(true)
     try {
-      const { supabase } = await import("@/lib/supabase")
+      // P0 (integridad): toda creacion de reserva pasa por el endpoint servidor
+      // que verifica identidad desde la sesion, membresia activa, SEPA y antifraude.
+      // NUNCA insertar directamente en Supabase desde el cliente: saltaria todas
+      // las validaciones de dominio y permitia user_id = email (IDOR).
+      const res = await fetch("/api/user/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // envia cookies de sesion para auth server-side
+        body: JSON.stringify({
+          bag_id: selectedBag.id,
+          start_date: reservationDates.startDate.toISOString(),
+          end_date: reservationDates.endDate.toISOString(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setErrors({ general: data.error || "Error al procesar la reserva. Inténtalo de nuevo." })
+        return
+      }
 
       const reservationData = {
         bag: selectedBag,
         dates: reservationDates,
         customer: customerInfo,
         shipping: shippingInfo,
-        payment: paymentInfo,
         preferences,
         pricing,
         timestamp: new Date().toISOString(),
-        reservationId: `RES-${Date.now()}`,
+        reservationId: data.reservation?.id,
       }
 
-      const { data, error } = await supabase
-        .from("reservations")
-        .insert([
-          {
-            user_id: customerInfo.email, // Using email as identifier for now
-            bag_id: selectedBag.id,
-            start_date: reservationDates.startDate.toISOString(),
-            end_date: reservationDates.endDate.toISOString(),
-            total_amount: pricing.total,
-            status: "pending",
-            customer_info: customerInfo,
-            shipping_info: shippingInfo,
-            payment_info: { method: paymentInfo.method }, // Don't store sensitive payment data
-            preferences: preferences,
-            created_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-
-      if (error) {
-        console.error("[v0] ❌ Error storing reservation in Supabase:", error)
-        setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
-        return
-      }
-
-      console.log("[v0] ✅ Reserva guardada en Supabase exitosamente")
       onSubmit?.(reservationData)
     } catch (error) {
-      console.error("[v0] ❌ Error en reserva:", error)
       setErrors({ general: "Error al procesar la reserva. Inténtalo de nuevo." })
     } finally {
       setIsSubmitting(false)
