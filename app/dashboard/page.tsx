@@ -176,7 +176,8 @@ export default function DashboardHome() {
     )
   }
 
-  const membershipUIStatus = mapDBStatusToUI(membership?.status)
+  // Pasar end_date al mapper para que distinga cancelled_active vs cancelled
+  const membershipUIStatus = mapDBStatusToUI(membership?.status, membership?.end_date)
   const membershipLabel = getStatusLabel(membershipUIStatus)
   const membershipDescription = getStatusDescription(membershipUIStatus, membership?.type)
 
@@ -195,8 +196,9 @@ export default function DashboardHome() {
         ? profile.first_name.charAt(0).toUpperCase() + profile.first_name.slice(1)
         : "Usuario"
 
-  // FASE 5: Guard para cancelled - sin acceso
-  if (membership?.status === "cancelled") {
+  // Guard para cancelled SIN acceso vigente (end_date ya pasó).
+  // Si está cancelled_active mantenemos acceso al dashboard.
+  if (membershipUIStatus === "cancelled") {
     return (
       <div className="max-w-7xl mx-auto">
         <Alert variant="destructive">
@@ -271,6 +273,34 @@ export default function DashboardHome() {
         </Alert>
       )}
 
+      {/* Banner: cancelada con acceso vigente hasta end_date */}
+      {membershipUIStatus === "cancelled_active" && membership?.end_date && (
+        <Alert className="mb-6 bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-900 flex items-center justify-between flex-wrap gap-2">
+            <span>
+              <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
+              <strong>
+                {new Date(membership.end_date).toLocaleDateString("es-ES", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </strong>
+              . Después pasarás a la página pública.
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-transparent border-amber-400 text-amber-900 hover:bg-amber-100"
+              onClick={() => router.push("/dashboard/membresia")}
+            >
+              Reactivar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* FASE 5: Banner para past_due */}
       {membership?.status === "past_due" && (
         <Alert className="mb-6 bg-red-50 border-red-200">
@@ -335,8 +365,28 @@ export default function DashboardHome() {
             <Crown className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{membershipLabel}</div>
-            <p className="text-xs text-slate-600 mt-1">{membershipDescription}</p>
+            {/* Mostrar el nombre real del plan (L'Essentiel / Signature / Privé / Petite)
+                cuando hay acceso, en lugar de un label genérico "Free" o "Cancelada". */}
+            <div className="text-2xl font-serif font-bold text-indigo-dark">
+              {membership?.type
+                ? membership.type === "essentiel" || membership.type === "lessentiel"
+                  ? "L'Essentiel"
+                  : membership.type === "signature"
+                    ? "Signature"
+                    : membership.type === "prive"
+                      ? "Privé"
+                      : membership.type === "petite"
+                        ? "Petite"
+                        : membershipLabel
+                : membershipLabel}
+            </div>
+            <p className="text-xs text-slate-600 mt-1">
+              {membershipUIStatus === "cancelled_active"
+                ? `Cancelada · acceso hasta ${membership?.end_date ? new Date(membership.end_date).toLocaleDateString("es-ES") : "fin de periodo"}`
+                : membershipUIStatus === "active"
+                  ? `${membership?.billing_cycle === "quarterly" ? "Trimestral" : "Mensual"} · ${membershipDescription}`
+                  : membershipDescription}
+            </p>
           </CardContent>
         </Card>
 
@@ -435,7 +485,23 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600">Membresía</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {membershipLabel}
+                {membership?.type
+                  ? `${
+                      membership.type === "essentiel" || membership.type === "lessentiel"
+                        ? "L'Essentiel"
+                        : membership.type === "signature"
+                          ? "Signature"
+                          : membership.type === "prive"
+                            ? "Privé"
+                            : membership.type === "petite"
+                              ? "Petite"
+                              : membershipLabel
+                    }${
+                      membershipUIStatus === "cancelled_active"
+                        ? " (cancelada)"
+                        : ""
+                    }`
+                  : membershipLabel}
               </Badge>
             </div>
             <div className="flex items-center justify-between">

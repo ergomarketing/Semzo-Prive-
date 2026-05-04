@@ -110,35 +110,67 @@ export default function MembresiaPage() {
 
   const { profile, membership, passes, flags, gift_cards, reservations } = data
 
-  const isActive = membership.status === "active"
+  const uiStatus: string = membership?.ui_status || "inactive"
+  const isActive = uiStatus === "active"
+  const isCancelledActive = uiStatus === "cancelled_active"
   const isPetite = membership.type === "petite"
+  const isQuarterly = membership.billing_cycle === "quarterly"
+  // Tiene acceso efectivo (puede usar la app aunque esté cancelando)
+  const hasAccess = membership?.has_effective_access === true
 
   const membershipInfo: Record<string, { name: string; price: string; period: string }> = {
-    petite: { name: "Petite", price: "19,99", period: "semana" },
-    essentiel: { name: "L'Essentiel", price: "59", period: "mes" },
-    signature: { name: "Signature", price: "149", period: "mes" },
-    prive: { name: "Privé", price: "279", period: "mes" },
+    petite: { name: "Petite", price: "19,99", period: "mes" },
+    essentiel: { name: "L'Essentiel", price: isQuarterly ? "159" : "59", period: isQuarterly ? "trimestre" : "mes" },
+    signature: { name: "Signature", price: isQuarterly ? "399" : "149", period: isQuarterly ? "trimestre" : "mes" },
+    prive: { name: "Privé", price: isQuarterly ? "749" : "279", period: isQuarterly ? "trimestre" : "mes" },
     free: { name: "Free", price: "0", period: "mes" },
   }
 
   const currentMembership = membershipInfo[membership.type] || membershipInfo.free
 
+  // Etiquetas de duración para mostrar al usuario
+  const cycleDurationDays = isPetite ? 30 : isQuarterly ? 90 : 30
+  const bagDurationDays = isPetite ? 7 : 30
+  const maxBagsPerCycle = isPetite ? 4 : isQuarterly ? 3 : 1
+
+  const formatLongDate = (d: string | null | undefined) => {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+  }
+
   const petiteFeatures = [
-    "1 bolso por semana",
-    "Renovación flexible",
-    "Ampliable hasta 3 meses",
-    "Envío gratuito",
+    "Hasta 4 bolsos al mes",
+    "7 días por bolso (alquiler semanal con pase)",
+    "El conteo empieza al recibir el bolso",
+    "Envío y devolución gratuitos",
     "Seguro incluido",
-    "Pases de Bolso disponibles para colecciones premium",
+    "Pago mensual recurrente",
+  ]
+
+  const essentielFeatures = [
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso a la colección L'Essentiel",
+    "Envío y devolución gratuitos",
+    "Seguro incluido",
+  ]
+
+  const signatureFeatures = [
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso a Signature + L'Essentiel",
+    "Reservas prioritarias",
+    "Envío y devolución gratuitos",
+    "Seguro incluido",
   ]
 
   const priveFeatures = [
-    "Acceso completo al catálogo exclusivo",
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso completo al catálogo (Privé + Signature + L'Essentiel)",
     "Reservas prioritarias",
     "Lista de espera ilimitada",
-    "Envío gratuito",
-    "Soporte prioritario 24/7",
-    "Acceso anticipado a nuevas colecciones",
+    "Envío y devolución gratuitos",
     "Eventos exclusivos para miembros",
   ]
 
@@ -151,7 +183,9 @@ export default function MembresiaPage() {
 
   const getFeatures = () => {
     if (isPetite) return petiteFeatures
-    if (isActive) return priveFeatures
+    if (membership.type === "prive") return priveFeatures
+    if (membership.type === "signature") return signatureFeatures
+    if (membership.type === "essentiel" || membership.type === "lessentiel") return essentielFeatures
     return freeFeatures
   }
 

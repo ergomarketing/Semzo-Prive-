@@ -39,13 +39,29 @@ export async function GET() {
       .limit(1)
       .maybeSingle()
 
-    const activeMembership = anyMembership?.status === "active" ? anyMembership : null
+    // Una membresía cancelada con end_date futuro mantiene acceso. Por eso
+    // consideramos "con acceso efectivo" no solo a status='active' sino también
+    // a cancelling/cancelled mientras end_date sea futuro.
+    const membershipEndDateRaw = anyMembership?.end_date || (anyMembership as any)?.ends_at || null
+    const hasFutureEnd = membershipEndDateRaw
+      ? new Date(membershipEndDateRaw).getTime() > Date.now()
+      : false
+
+    const accessGrantingStatuses = ["active", "cancelling", "cancelled", "canceled", "past_due"]
+    const hasEffectiveAccess =
+      !!anyMembership &&
+      accessGrantingStatuses.includes(anyMembership.status) &&
+      (anyMembership.status === "active" ? true : hasFutureEnd)
+
+    // activeMembership: la membresía con derecho efectivo de uso (no solo active)
+    const activeMembership = hasEffectiveAccess ? anyMembership : null
 
     // user_memberships es la UNICA fuente de verdad
     const membershipType = anyMembership?.membership_type || null
     // Exponer el estado real (active, pending_verification, pending_sepa, etc.)
     // para que el frontend pueda redirigir al paso pendiente.
     const membershipStatus = anyMembership?.status || "inactive"
+    const billingCycle = (anyMembership as any)?.billing_cycle || "monthly"
 
     // Identity: leer de identity_verifications (FUENTE DE VERDAD)
     const { data: identityRecord } = await supabase
@@ -60,21 +76,19 @@ export async function GET() {
       identityRecord?.status === "verified" || identityRecord?.status === "approved"
     const needsVerification = activeMembership && !isIdentityVerified
 
-    // Calcular fechas de membresía
-    let membershipStartedAt = null
-    let membershipEndsAt = null
+    // Calcular fechas de membresía. La BD usa start_date/end_date como
+    // canónico; ends_at queda como fallback para registros antiguos.
+    let membershipStartedAt: string | null = null
+    let membershipEndsAt: string | null = null
 
-    if (activeMembership) {
-      membershipStartedAt = activeMembership.created_at
-        
-      // Para Petite: 30 días desde activación
-      if (membershipType === "petite" && activeMembership.ends_at) {
-        membershipEndsAt = activeMembership.ends_at
-      }
-      // Para otras membresías: ends_at puede ser null (lifetime)
-      else if (activeMembership.ends_at) {
-        membershipEndsAt = activeMembership.ends_at
-      }
+    if (anyMembership) {
+      membershipStartedAt =
+        (anyMembership as any).start_date ||
+        (anyMembership as any).started_at ||
+        anyMembership.created_at ||
+        null
+      membershipEndsAt =
+        (anyMembership as any).end_date || (anyMembership as any).ends_at || null
     }
 
     // 3. PASSES - Pases disponibles por tier
@@ -174,12 +188,32 @@ export async function GET() {
       !profile.email.endsWith("@phone.semzoprive.com") && 
       profile.email.includes("@")
     const needsEmail = !hasRealEmail
-    // canReserve NO depende de email - usuarios SMS pueden reservar
-    const canReserve = membershipStatus === "active" && totalAvailablePasses > 0
+    // canReserve: requiere acceso efectivo (no solo active) y reglas de pases para Petite.
+    // Para Petite exige pases disponibles. Para otros planes, acceso vigente y can_make_reservations.
+    const canMakeReservationsFlag =
+      (anyMembership as any)?.can_make_reservations !== false // default true si no existe el campo
+    const canReserve = hasEffectiveAccess && canMakeReservationsFlag &&
+      (membershipType === "petite" ? totalAvailablePasses > 0 : true)
 
     // Verificar si la membresía Petite expiró
     const isPetiteExpired =
       membershipType === "petite" && membershipEndsAt && new Date() > new Date(membershipEndsAt)
+
+    // ui_status: estado normalizado para la UI (incluye cancelled_active)
+    let uiStatus: string = "inactive"
+    if (membershipStatus === "active") uiStatus = "active"
+    else if (membershipStatus === "paused") uiStatus = "paused"
+    else if (membershipStatus === "past_due") uiStatus = "past_due"
+    else if (["cancelling", "cancelled", "canceled"].includes(membershipStatus)) {
+      uiStatus = hasFutureEnd ? "cancelled_active" : "cancelled"
+    } else if (membershipStatus === "pending_sepa") uiStatus = "pending_sepa"
+    else if (
+      membershipStatus === "pending_verification" ||
+      membershipStatus === "paid_pending_verification"
+    )
+      uiStatus = "pending_verification"
+    else if (membershipStatus === "initiated") uiStatus = "pending_payment"
+    else if (membershipStatus === "expired" || isPetiteExpired) uiStatus = "expired"
 
     // RESPUESTA CANÓNICA - Todo calculado en backend
     return NextResponse.json({
@@ -203,9 +237,15 @@ export async function GET() {
         // a Identity / SEPA cuando corresponda.
         status: isPetiteExpired ? "expired" : membershipStatus,
         raw_status: anyMembership?.status || null,
+        ui_status: uiStatus,
+        billing_cycle: billingCycle, // 'monthly' | 'quarterly'
+        has_effective_access: hasEffectiveAccess,
         needs_verification: needsVerification,
         started_at: membershipStartedAt,
         ends_at: membershipEndsAt,
+        // Alias canónicos (la BD usa start_date/end_date)
+        start_date: membershipStartedAt,
+        end_date: membershipEndsAt,
         petite_passes_used: membershipType === "petite" ? usedPassesInPeriod : null,
         petite_passes_max: membershipType === "petite" ? 4 : null,
       },

@@ -59,26 +59,34 @@ export async function POST(req: Request) {
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("es-ES")
       }
 
-      // Update BD: cancelled (con "ll")
+      // Update BD: cancelled con acceso vigente hasta end_date.
+      // can_make_reservations queda en true para que el usuario siga pudiendo
+      // gestionar reservas hasta el final del periodo pagado.
       await supabase
         .from("user_memberships")
         .update({
           status: "cancelled",
+          can_make_reservations: true,
           updated_at: new Date().toISOString(),
         })
         .eq("id", membership.id)
     } else {
-      // Prepaid/gift card: cancelar inmediatamente
+      // Prepaid/gift card: cancelar inmediatamente.
+      // Si aún hay end_date futuro mantenemos acceso, si no, se corta.
+      const endDate = membership.end_date ? new Date(membership.end_date) : null
+      const stillValid = endDate ? endDate.getTime() > Date.now() : false
+
       await supabase
         .from("user_memberships")
         .update({
           status: "cancelled",
+          can_make_reservations: stillValid,
           updated_at: new Date().toISOString(),
         })
         .eq("id", membership.id)
 
-      cancelDate = membership.end_date
-        ? new Date(membership.end_date).toLocaleDateString("es-ES")
+      cancelDate = endDate
+        ? endDate.toLocaleDateString("es-ES")
         : new Date().toLocaleDateString("es-ES")
     }
 
