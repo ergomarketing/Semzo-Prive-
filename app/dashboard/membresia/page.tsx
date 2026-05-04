@@ -110,35 +110,67 @@ export default function MembresiaPage() {
 
   const { profile, membership, passes, flags, gift_cards, reservations } = data
 
-  const isActive = membership.status === "active"
+  const uiStatus: string = membership?.ui_status || "inactive"
+  const isActive = uiStatus === "active"
+  const isCancelledActive = uiStatus === "cancelled_active"
   const isPetite = membership.type === "petite"
+  const isQuarterly = membership.billing_cycle === "quarterly"
+  // Tiene acceso efectivo (puede usar la app aunque esté cancelando)
+  const hasAccess = membership?.has_effective_access === true
 
   const membershipInfo: Record<string, { name: string; price: string; period: string }> = {
-    petite: { name: "Petite", price: "19,99", period: "semana" },
-    essentiel: { name: "L'Essentiel", price: "59", period: "mes" },
-    signature: { name: "Signature", price: "149", period: "mes" },
-    prive: { name: "Privé", price: "279", period: "mes" },
+    petite: { name: "Petite", price: "19,99", period: "mes" },
+    essentiel: { name: "L'Essentiel", price: isQuarterly ? "159" : "59", period: isQuarterly ? "trimestre" : "mes" },
+    signature: { name: "Signature", price: isQuarterly ? "399" : "149", period: isQuarterly ? "trimestre" : "mes" },
+    prive: { name: "Privé", price: isQuarterly ? "749" : "279", period: isQuarterly ? "trimestre" : "mes" },
     free: { name: "Free", price: "0", period: "mes" },
   }
 
   const currentMembership = membershipInfo[membership.type] || membershipInfo.free
 
+  // Etiquetas de duración para mostrar al usuario
+  const cycleDurationDays = isPetite ? 30 : isQuarterly ? 90 : 30
+  const bagDurationDays = isPetite ? 7 : 30
+  const maxBagsPerCycle = isPetite ? 4 : isQuarterly ? 3 : 1
+
+  const formatLongDate = (d: string | null | undefined) => {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+  }
+
   const petiteFeatures = [
-    "1 bolso por semana",
-    "Renovación flexible",
-    "Ampliable hasta 3 meses",
-    "Envío gratuito",
+    "Hasta 4 bolsos al mes",
+    "7 días por bolso (alquiler semanal con pase)",
+    "El conteo empieza al recibir el bolso",
+    "Envío y devolución gratuitos",
     "Seguro incluido",
-    "Pases de Bolso disponibles para colecciones premium",
+    "Pago mensual recurrente",
+  ]
+
+  const essentielFeatures = [
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso a la colección L'Essentiel",
+    "Envío y devolución gratuitos",
+    "Seguro incluido",
+  ]
+
+  const signatureFeatures = [
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso a Signature + L'Essentiel",
+    "Reservas prioritarias",
+    "Envío y devolución gratuitos",
+    "Seguro incluido",
   ]
 
   const priveFeatures = [
-    "Acceso completo al catálogo exclusivo",
+    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
+    "El conteo de 30 días empieza al recibir el bolso",
+    "Acceso completo al catálogo (Privé + Signature + L'Essentiel)",
     "Reservas prioritarias",
     "Lista de espera ilimitada",
-    "Envío gratuito",
-    "Soporte prioritario 24/7",
-    "Acceso anticipado a nuevas colecciones",
+    "Envío y devolución gratuitos",
     "Eventos exclusivos para miembros",
   ]
 
@@ -151,7 +183,9 @@ export default function MembresiaPage() {
 
   const getFeatures = () => {
     if (isPetite) return petiteFeatures
-    if (isActive) return priveFeatures
+    if (membership.type === "prive") return priveFeatures
+    if (membership.type === "signature") return signatureFeatures
+    if (membership.type === "essentiel" || membership.type === "lessentiel") return essentielFeatures
     return freeFeatures
   }
 
@@ -166,6 +200,18 @@ export default function MembresiaPage() {
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
               <strong>Email requerido:</strong> Necesitamos tu email real para confirmar reservas y notificaciones.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Banner: cancelada con acceso vigente */}
+        {isCancelledActive && (membership.end_date || membership.ends_at) && (
+          <Alert className="mb-6 bg-amber-50 border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-900">
+              <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
+              <strong>{formatLongDate(membership.end_date || membership.ends_at)}</strong>. Después
+              dejarás de tener acceso. Si cambias de opinión, puedes reactivarla en cualquier momento.
             </AlertDescription>
           </Alert>
         )}
@@ -234,10 +280,30 @@ export default function MembresiaPage() {
                     className={`px-3 py-1 text-xs rounded-full ${
                       isActive
                         ? "bg-rose-nude border border-rose-pastel/30 text-indigo-dark"
-                        : "bg-indigo-dark/5 text-indigo-dark/60"
+                        : isCancelledActive
+                          ? "bg-amber-50 border border-amber-200 text-amber-900"
+                          : uiStatus === "paused"
+                            ? "bg-blue-50 border border-blue-200 text-blue-900"
+                            : uiStatus === "past_due"
+                              ? "bg-red-50 border border-red-200 text-red-900"
+                              : "bg-indigo-dark/5 text-indigo-dark/60"
                     }`}
                   >
-                    {isActive ? "Activa" : "Inactiva"}
+                    {isActive
+                      ? isQuarterly
+                        ? "Activa · Trimestral"
+                        : isPetite
+                          ? "Activa · Petite"
+                          : "Activa · Mensual"
+                      : isCancelledActive
+                        ? "Cancelada (acceso vigente)"
+                        : uiStatus === "paused"
+                          ? "Pausada"
+                          : uiStatus === "past_due"
+                            ? "Pago pendiente"
+                            : uiStatus === "expired"
+                              ? "Expirada"
+                              : "Inactiva"}
                   </span>
                 </div>
                 <p className="font-serif text-3xl text-indigo-dark mb-6">
@@ -254,32 +320,68 @@ export default function MembresiaPage() {
                   ))}
                 </ul>
 
-                {isActive && membership.ends_at && (
+                {/* Bloque "Periodo de Membresía" — visible para todos los planes
+                    con acceso (active o cancelled_active). Aclara la diferencia
+                    entre tiempo de membresía y tiempo de reserva del bolso. */}
+                {hasAccess && (
                   <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
-                    <p className="text-sm text-indigo-dark">
-                      <strong>Miembro desde:</strong>{" "}
-                      {new Date(membership.started_at).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
-                    {isPetite && (
-                      <>
-                        <p className="text-sm text-indigo-dark mt-2">
-                          <strong>Válida hasta:</strong>{" "}
-                          {new Date(membership.ends_at).toLocaleDateString("es-ES", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
+                    <h4 className="font-medium text-indigo-dark mb-3 flex items-center gap-2">
+                      <Crown className="w-4 h-4" />
+                      Periodo de Membresía
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-indigo-dark/60">Tipo</p>
+                        <p className="text-indigo-dark font-medium">
+                          {isPetite
+                            ? "Petite (mensual)"
+                            : isQuarterly
+                              ? "Trimestral (90 días)"
+                              : "Mensual (30 días)"}
                         </p>
-                        <p className="text-sm text-indigo-dark mt-2">
-                          <strong>Pases usados:</strong> {membership.petite_passes_used} de{" "}
-                          {membership.petite_passes_max}
+                      </div>
+                      <div>
+                        <p className="text-indigo-dark/60">Estado</p>
+                        <p className="text-indigo-dark font-medium">
+                          {isCancelledActive ? "Cancelada · acceso vigente" : "Activa"}
                         </p>
-                      </>
-                    )}
+                      </div>
+                      <div>
+                        <p className="text-indigo-dark/60">Inicio del ciclo</p>
+                        <p className="text-indigo-dark font-medium">
+                          {formatLongDate(membership.start_date || membership.started_at)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-indigo-dark/60">
+                          {isCancelledActive
+                            ? "Fin de acceso"
+                            : isQuarterly
+                              ? "Fin del trimestre"
+                              : "Próxima renovación"}
+                        </p>
+                        <p className="text-indigo-dark font-medium">
+                          {formatLongDate(membership.end_date || membership.ends_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Aclaración importante: tiempo membresía vs tiempo reserva */}
+                    <div className="mt-4 pt-4 border-t border-rose-pastel/40">
+                      <p className="text-xs text-indigo-dark/70 leading-relaxed">
+                        <strong className="text-indigo-dark">¿Cómo funciona?</strong> Tu membresía dura{" "}
+                        <strong>{cycleDurationDays} días</strong> y te permite reservar{" "}
+                        <strong>
+                          {maxBagsPerCycle === 1
+                            ? "1 bolso"
+                            : `hasta ${maxBagsPerCycle} bolsos`}
+                        </strong>
+                        {isPetite ? " al mes" : isQuarterly ? " durante el trimestre (1 al mes)" : " este mes"}.
+                        Cada reserva tiene una duración de{" "}
+                        <strong>{bagDurationDays} días</strong> que empiezan a contar{" "}
+                        <strong>desde el día en que recibes el bolso</strong>, no desde que haces la reserva.
+                      </p>
+                    </div>
                   </div>
                 )}
 

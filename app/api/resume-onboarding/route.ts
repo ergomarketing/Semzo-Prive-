@@ -69,6 +69,43 @@ export async function POST(request: NextRequest) {
     // Wrapper para mantener la API interna usando `user.id`
     const user = { id: userId! }
 
+    // ============================================================
+    // GUARD: membresía cancelada con periodo aún vigente.
+    //
+    // Si el usuario canceló su membresía pero `end_date` sigue en el futuro,
+    // mantiene acceso hasta esa fecha. NO debe ser tratado como onboarding
+    // incompleto ni redirigido a /cart o checkout. Sin este guard, un intent
+    // antiguo sin pago confirmado provoca un bucle resume_checkout → /cart.
+    // ============================================================
+    const { data: existingMembership } = await supabase
+      .from("user_memberships")
+      .select("status, end_date, membership_type")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (
+      existingMembership &&
+      ["cancelled", "cancelling", "canceled"].includes(existingMembership.status)
+    ) {
+      const endDate = existingMembership.end_date ? new Date(existingMembership.end_date) : null
+      const stillValid = endDate ? endDate.getTime() > Date.now() : false
+
+      console.log("[resume-onboarding] cancelled membership detected", {
+        status: existingMembership.status,
+        end_date: existingMembership.end_date,
+        stillValid,
+      })
+
+      return NextResponse.json({
+        action: "active" as ResumeAction,
+        membership_status: stillValid ? "cancelled_active" : "cancelled_expired",
+        end_date: existingMembership.end_date,
+        membership_type: existingMembership.membership_type,
+      })
+    }
+
     // Leer estado de identidad de identity_verifications (FUENTE DE VERDAD)
     const { data: latestIdentity } = await supabase
       .from("identity_verifications")

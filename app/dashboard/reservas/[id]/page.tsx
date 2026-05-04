@@ -250,13 +250,6 @@ export default function ReservationDetailsPage() {
     })
   }
 
-  const calculateDays = (start: string, end: string) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  }
-
   const getMembershipPrice = () => {
     const membershipType = reservation?.membership_type || reservation?.profiles?.membership_type || "free"
 
@@ -316,12 +309,26 @@ export default function ReservationDetailsPage() {
   }
 
   const status = statusConfig[reservation.status] || statusConfig.pending
-  const days = calculateDays(reservation.start_date, reservation.end_date)
   const canCancel = ["pending", "confirmed"].includes(reservation.status)
   const priceInfo = getMembershipPrice()
 
   const membershipType = reservation.membership_type || reservation.profiles?.membership_type || "free"
   const membershipInfo = membershipLabels[membershipType.toLowerCase()] || membershipLabels.free
+
+  // Duracion real esperada del alquiler segun plan:
+  // - Petite: 7 dias por bolso (alquiler semanal con pase)
+  // - L'Essentiel / Signature / Prive: 30 dias por bolso
+  const isPetiteReservation = membershipType.toLowerCase() === "petite"
+  const expectedRentalDays = isPetiteReservation ? 7 : 30
+
+  // El conteo oficial empieza al recibir el bolso (delivered_at en shipments).
+  // Aproximamos: si la reserva esta "shipped" o "active"/"delivered" => ya entregada.
+  const deliveryDoneStatuses = ["shipped", "active", "delivered", "in_use", "returning"]
+  const alreadyDelivered = deliveryDoneStatuses.includes(reservation.status)
+  const deliveredAt: string | null =
+    (reservation as any).delivered_at ||
+    (reservation as any).shipments?.delivered_at ||
+    null
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -375,25 +382,49 @@ export default function ReservationDetailsPage() {
                 </div>
               </div>
 
-              {/* Fechas */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <Calendar className="h-5 w-5 text-slate-600" />
+              {/* Periodo de la reserva del bolso (NO de la membresia) */}
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package className="h-4 w-4 text-[#1a1a4b]" />
+                  <h4 className="font-medium text-[#1a1a4b]">Periodo de tu reserva</h4>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      <Calendar className="h-5 w-5 text-slate-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">
+                        {alreadyDelivered ? "Recibido el" : "Fecha de inicio prevista"}
+                      </p>
+                      <p className="font-medium text-slate-900">
+                        {formatDate(deliveredAt || reservation.start_date)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Fecha de inicio</p>
-                    <p className="font-medium text-slate-900">{formatDate(reservation.start_date)}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      <Calendar className="h-5 w-5 text-slate-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Fecha de devolución</p>
+                      <p className="font-medium text-slate-900">{formatDate(reservation.end_date)}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <Calendar className="h-5 w-5 text-slate-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Fecha de fin</p>
-                    <p className="font-medium text-slate-900">{formatDate(reservation.end_date)}</p>
-                  </div>
+
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    <strong>Duración:</strong> {expectedRentalDays} días por bolso
+                    {isPetiteReservation
+                      ? " (alquiler semanal con pase Petite)"
+                      : " (incluido en tu membresía)"}
+                    .{" "}
+                    {alreadyDelivered
+                      ? "El conteo empezó el día que recibiste el bolso."
+                      : "El conteo de los días empieza el día que recibes el bolso, no desde que reservas."}
+                  </p>
                 </div>
               </div>
 
@@ -469,8 +500,8 @@ export default function ReservationDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Duración</span>
-                <span className="font-medium">{days} días</span>
+                <span className="text-slate-600">Duración del alquiler</span>
+                <span className="font-medium">{expectedRentalDays} días</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Membresía</span>
