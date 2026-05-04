@@ -63,9 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Llamar a resume-onboarding en modo interno (sin cookie de sesion)
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
     console.log("[RESUME ONBOARDING TRIGGERED]")
     const resumeRes = await fetch(`${siteUrl}/api/resume-onboarding`, {

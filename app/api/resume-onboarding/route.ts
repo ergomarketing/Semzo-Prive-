@@ -180,9 +180,9 @@ export async function POST(request: NextRequest) {
         }
 
         if (!verificationUrl) {
-          const appUrl =
-            process.env.NEXT_PUBLIC_SITE_URL ||
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          // NEVER use VERCEL_URL: points to *.vercel.app which blocks real users
+          // with a Vercel login screen. Always fall back to the canonical domain.
+          const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
           const created = await stripe.identity.verificationSessions.create({
             type: "document",
@@ -397,9 +397,9 @@ export async function POST(request: NextRequest) {
 
       if (!isFreshIdentityVerified) {
         if (!verificationUrl) {
-          const appUrl =
-            process.env.NEXT_PUBLIC_SITE_URL ||
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          // NEVER use VERCEL_URL: points to *.vercel.app which blocks real users
+          // with a Vercel login screen. Always fall back to the canonical domain.
+          const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
           const created = await stripe.identity.verificationSessions.create({
             type: "document",

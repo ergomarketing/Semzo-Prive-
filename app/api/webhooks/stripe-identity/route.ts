@@ -133,9 +133,7 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
         // y calcula el estado correcto de user_memberships.
         if (effectiveUserId) {
           console.log("[RESUME ONBOARDING TRIGGERED]")
-          const siteUrl =
-            process.env.NEXT_PUBLIC_SITE_URL ||
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
           try {
             const resumeRes = await fetch(`${siteUrl}/api/resume-onboarding`, {
               method: "POST",

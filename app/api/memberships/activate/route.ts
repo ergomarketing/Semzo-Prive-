@@ -127,9 +127,7 @@ export async function POST() {
       }
       const planLabel = tierNames[membership.membership_type] || membership.membership_type
 
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://semzoprive.com")
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
       const subject = `Tu membresia ${planLabel} ya esta activa`
       const html = `
