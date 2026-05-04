@@ -73,41 +73,6 @@ async function notifyAdmin(subject: string, htmlContent: string) {
   }
 }
 
-function getPriceForMembership(bag: any, membershipType: string | null): number {
-  const membership = membershipType?.toLowerCase() || "free"
-
-  // Precios de membresía mensual (el usuario ya paga esto)
-  // Si tiene membresía activa, el precio de la reserva es 0
-  const membershipPrices: Record<string, number> = {
-    signature: 149,
-    prive: 279,
-    essentiel: 59,
-  }
-
-  // Si es Privé, SOLO Privé puede acceder
-  if (bag.membership?.toLowerCase() === "prive" && membership !== "prive") {
-    throw new Error("Tu membresía no permite acceder a la colección Privé")
-  }
-
-  // Si es Signature, necesita Signature o Privé
-  if (bag.membership?.toLowerCase() === "signature" && !["signature", "prive"].includes(membership)) {
-    throw new Error("Tu membresía no permite acceder a la colección Signature")
-  }
-
-  // Si es L'Essentiel, necesita Essentiel, Signature o Privé
-  if (bag.membership?.toLowerCase() === "essentiel" && !["essentiel", "signature", "prive"].includes(membership)) {
-    throw new Error("Tu membresía no permite acceder a la colección L'Essentiel")
-  }
-
-  // Si tiene membresía activa del nivel correcto, no paga extra
-  if (["signature", "prive", "essentiel"].includes(membership)) {
-    return 0 // Ya paga con su membresía
-  }
-
-  // Free/Petite paga el precio del bolso (pero nunca llegará aquí para Privé)
-  return bag.price || 0
-}
-
 /**
  * GET - Obtener todas las reservas del usuario autenticado
  */
