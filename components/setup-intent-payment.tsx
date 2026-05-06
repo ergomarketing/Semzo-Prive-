@@ -14,11 +14,18 @@ const stripePromise = getStripePromise()
 interface SetupIntentFormProps {
   userId: string
   membershipType: string
-  onSuccess: () => void
+  // Pasamos el setupIntentId al onSuccess para que el caller pueda
+  // referenciar la tarjeta verificada en pasos posteriores (gift card,
+  // upgrade, etc).
+  onSuccess: (result: { setupIntentId: string }) => void
   onError: (error: string) => void
+  // Si es false, NO se llama a confirm-payment-method internamente.
+  // El caller se encargara de hacerlo (caso gift card: lo hace
+  // purchase-with-gift-card cuando recibe setupIntentId).
+  autoConfirm?: boolean
 }
 
-function SetupIntentForm({ userId, membershipType, onSuccess, onError }: SetupIntentFormProps) {
+function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfirm = true }: SetupIntentFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -63,17 +70,19 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError }: SetupIn
         return
       }
 
-      const confirmResponse = await fetch("/api/stripe/confirm-payment-method", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setupIntentId: setupIntent.id, userId }),
-      })
+      if (autoConfirm) {
+        const confirmResponse = await fetch("/api/stripe/confirm-payment-method", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ setupIntentId: setupIntent.id, userId }),
+        })
 
-      if (!confirmResponse.ok) {
-        throw new Error("Error confirming payment method")
+        if (!confirmResponse.ok) {
+          throw new Error("Error confirming payment method")
+        }
       }
 
-      onSuccess()
+      onSuccess({ setupIntentId: setupIntent.id })
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error de conexión")
     } finally {

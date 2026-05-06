@@ -106,34 +106,33 @@ export default function MembershipUpgradeClient({ plan, userId }: Props) {
     setLoading(true)
 
     try {
-      // RAMA A: Gift card cubre el 100%
+      // RAMA A: Gift card cubre el 100% → pasa por /guarantee-card para
+      // verificar tarjeta de garantia antes de activar la membresia.
       if (finalAmount === 0 && appliedGiftCard) {
         if (!appliedGiftCard.id) {
           toast.error("Error interno: gift card sin ID. Vuelve a aplicarla.")
           return
         }
 
-        const res = await fetch("/api/memberships/purchase-with-gift-card", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            giftCardId: appliedGiftCard.id,
-            amountCents: Math.round(plan.price * 100),
-            membershipType: plan.membershipType,
-            billingCycle: plan.billingCycle,
-          }),
-        })
-
-        const data = await res.json()
-
-        if (!res.ok) {
-          toast.error(data.error || "Error al procesar gift card")
+        try {
+          sessionStorage.setItem(
+            "semzo_pending_gift_card_activation",
+            JSON.stringify({
+              userId,
+              giftCardId: appliedGiftCard.id,
+              amountCents: Math.round(plan.price * 100),
+              membershipType: plan.membershipType,
+              billingCycle: plan.billingCycle,
+              source: "upgrade",
+            }),
+          )
+        } catch {
+          toast.error("No se pudo continuar (almacenamiento local bloqueado).")
           return
         }
 
-        toast.success("¡Pago procesado! Ahora verifica tu identidad.")
-        router.push("/verify-identity")
+        toast.success("Verifica tu tarjeta de garantía para activar la membresía.")
+        router.push("/guarantee-card")
         return
       }
 
