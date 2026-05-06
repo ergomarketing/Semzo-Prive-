@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Gift, Copy, RefreshCw } from "lucide-react"
+import { Gift, Copy, RefreshCw, Plus } from "lucide-react"
 import { toast } from "sonner"
+import Link from "next/link"
 
 interface GiftCard {
   id: string
@@ -71,13 +72,22 @@ export default function UserGiftCardsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: "#1a2c4e" }}>
             Mis Gift Cards
           </h1>
           <p className="text-muted-foreground">Consulta el saldo y transacciones de tus tarjetas regalo</p>
         </div>
+        <Link href="/gift-cards">
+          <Button
+            className="w-full sm:w-auto"
+            style={{ backgroundColor: "#1a2c4e", color: "#ffffff" }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Comprar Gift Card
+          </Button>
+        </Link>
       </div>
 
       <Card className="border-0 shadow-lg" style={{ backgroundColor: "#d4a5a5", color: "white" }}>
@@ -99,7 +109,15 @@ export default function UserGiftCardsPage() {
           <CardContent className="py-12 text-center">
             <Gift className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No tienes Gift Cards</h3>
-            <p className="text-muted-foreground">Tus tarjetas regalo aparecerán aquí una vez las recibas</p>
+            <p className="text-muted-foreground mb-6">
+              Tus tarjetas regalo aparecerán aquí una vez las recibas o las compres
+            </p>
+            <Link href="/gift-cards">
+              <Button style={{ backgroundColor: "#1a2c4e", color: "#ffffff" }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Comprar Gift Card
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (

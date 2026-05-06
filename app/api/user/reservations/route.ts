@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { canCreateReservations } from "@/lib/membership-state-mapper"
 
 // Cliente de servicio para operaciones de escritura que requieren service role.
 function getSupabase() {
@@ -192,21 +193,96 @@ export async function POST(request: NextRequest) {
     // end_date del cliente se ignora: el servidor calcula la duracion segun tipo de membresia/pase
     // para evitar manipulacion y garantizar coherencia de inventario.
 
+    // GATE UNICO DE ELIGIBILIDAD: ya NO filtramos por status='active'.
+    // La fuente de verdad es can_make_reservations + end_date.
+    // Esto permite que membresias con status='cancelling' o 'cancelled'
+    // sigan operando hasta su end_date (acordado en cancel route).
+    //
+    // Tomamos la membresia mas reciente del usuario y delegamos la
+    // decision a canCreateReservations() en lib/membership-state-mapper.
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("membership_type, status, end_date, billing_cycle")
+      .select(
+        "membership_type, status, end_date, start_date, billing_cycle, can_make_reservations, cancel_at_period_end",
+      )
       .eq("user_id", userId)
-      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (!membership) {
       return NextResponse.json(
         {
-          error: "Tu membresía debe estar activa para realizar reservas.",
+          error: "No tienes una membresía. Activa una para realizar reservas.",
           membership_status: "inactive",
         },
         { status: 403 }
       )
+    }
+
+    const eligibility = canCreateReservations({
+      status: membership.status,
+      can_make_reservations: (membership as any).can_make_reservations,
+      end_date: membership.end_date,
+    })
+
+    if (!eligibility.allowed) {
+      // Mensaje al usuario segun la razon real (informativo, no tecnico).
+      const reasonMessages: Record<string, string> = {
+        no_membership: "No tienes una membresía activa.",
+        can_make_reservations_false:
+          "Tu membresía no permite crear nuevas reservas en este momento.",
+        end_date_passed: "Tu membresía ha expirado. Renueva para reservar de nuevo.",
+        status_expired: "Tu membresía ha expirado. Renueva para reservar de nuevo.",
+        status_incomplete_expired: "Tu membresía no llegó a activarse. Inicia el proceso de nuevo.",
+        status_initiated: "Tu membresía aún se está activando. Espera unos minutos.",
+        status_paused: "Tu membresía está pausada. Reactivala para reservar.",
+      }
+      const userMessage =
+        reasonMessages[eligibility.reason || ""] ||
+        "Tu membresía no permite crear nuevas reservas."
+
+      return NextResponse.json(
+        {
+          error: userMessage,
+          membership_status: membership.status,
+          reason: eligibility.reason,
+        },
+        { status: 403 },
+      )
+    }
+
+    // LIMITE DE RESERVAS SIMULTANEAS POR PLAN
+    // Para Petite el limite real son los pases (max 4 por ciclo, validados
+    // mas abajo). Para essentiel/signature/prive: 1 bolso simultaneo.
+    const planForLimit = (membership.membership_type || "").toLowerCase()
+    if (["essentiel", "lessentiel", "signature", "prive"].includes(planForLimit)) {
+      const activeReservationStates = [
+        "pending",
+        "confirmed",
+        "shipped",
+        "in_transit",
+        "active",
+        "delivered",
+        "in_use",
+      ]
+      const { count: activeReservations } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .in("status", activeReservationStates)
+
+      if ((activeReservations || 0) >= 1) {
+        return NextResponse.json(
+          {
+            error:
+              "Ya tienes una reserva en curso. Espera a devolver el bolso actual antes de reservar otro.",
+            simultaneousLimitReached: true,
+            activeReservations,
+          },
+          { status: 409 },
+        )
+      }
     }
 
     const effectivePlan = (membership.membership_type || "free").toString().toLowerCase()

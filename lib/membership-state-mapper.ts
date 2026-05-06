@@ -147,6 +147,76 @@ export function getStatusDescription(uiStatus: MembershipUIStatus, membershipTyp
 }
 
 /**
+ * Mapea un estado de Stripe.Subscription.status al vocabulario interno.
+ *
+ * IMPORTANTE: este mapping respeta la "REGLA DE ORO" del webhook:
+ *   nunca promover a "active" desde Stripe sin haber pasado por
+ *   identity/sepa. Por eso "active" de Stripe -> null aqui (no propagar).
+ *
+ * Solo propagamos estados de degradacion / cancelacion.
+ */
+export function mapStripeStatusToInternal(
+  stripeStatus: string | null | undefined,
+): MembershipDBStatus | null {
+  if (!stripeStatus) return null
+
+  // active de Stripe NO se propaga (lo otorgan resume-onboarding/activate)
+  const propagateMap: Record<string, MembershipDBStatus> = {
+    canceled: "cancelled",
+    incomplete_expired: "expired",
+    past_due: "past_due",
+    unpaid: "past_due",
+    paused: "paused",
+  }
+
+  return propagateMap[stripeStatus] ?? null
+}
+
+/**
+ * Decide si una membresia permite crear nuevas reservas.
+ * Esta es LA fuente unica de verdad de elegibilidad.
+ *
+ * Regla de negocio (acordada):
+ *   - can_make_reservations = true  (intencion explicita guardada por
+ *     los flujos de cancel/activate/orchestrator)
+ *   - membresia vigente por fecha (end_date NULL = recurrente activa, o
+ *     end_date > NOW())
+ *   - status sirve como senial secundaria: "expired" o "incomplete_expired"
+ *     bloquean siempre, aunque can_make_reservations no se haya limpiado.
+ *
+ * NOTA: cancel_at_period_end=true NO bloquea de forma ciega: el modelo
+ * actual permite reservar hasta end_date tras cancelar.
+ */
+export function canCreateReservations(membership: {
+  status?: string | null
+  can_make_reservations?: boolean | null
+  end_date?: string | null
+}): { allowed: boolean; reason?: string } {
+  if (!membership) return { allowed: false, reason: "no_membership" }
+
+  // Bloqueos duros independientemente del flag
+  const hardBlockStatuses = new Set(["expired", "incomplete_expired", "initiated", "paused"])
+  if (membership.status && hardBlockStatuses.has(membership.status)) {
+    return { allowed: false, reason: `status_${membership.status}` }
+  }
+
+  // Intencion explicita
+  if (membership.can_make_reservations === false) {
+    return { allowed: false, reason: "can_make_reservations_false" }
+  }
+
+  // Vigencia por fecha
+  if (membership.end_date) {
+    const end = new Date(membership.end_date).getTime()
+    if (end <= Date.now()) {
+      return { allowed: false, reason: "end_date_passed" }
+    }
+  }
+
+  return { allowed: true }
+}
+
+/**
  * Devuelve metadatos de un plan: ciclo, días por reserva, max bolsos.
  */
 export function getPlanMeta(
