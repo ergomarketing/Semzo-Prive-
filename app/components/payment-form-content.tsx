@@ -89,7 +89,43 @@ export default function PaymentFormContent({
     setCardError("")
 
     try {
+      // Flujo Gift Card con tarjeta de garantia obligatoria.
+      // Aunque la gift card cubra el coste, exigimos tarjeta on-file
+      // para poder cobrar incidencias (no devolucion, daños, etc).
       if (finalAmount <= 0 && appliedGiftCard) {
+        if (!stripe || !elements) throw new Error("Stripe no disponible")
+
+        const card = elements.getElement(CardElement)
+        if (!card) throw new Error("Por favor introduce una tarjeta de garantía")
+
+        // 1) Crear SetupIntent (no cobra, solo guarda tarjeta on-file)
+        const siRes = await fetch("/api/stripe/create-setup-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            membershipType: membershipType || "essentiel",
+          }),
+        })
+        const siData = await siRes.json()
+        if (!siRes.ok) throw new Error(siData.error || "Error creando verificación de tarjeta")
+
+        // 2) Confirmar tarjeta con Stripe (3D Secure si aplica)
+        const { error: setupErr, setupIntent } = await stripe.confirmCardSetup(
+          siData.clientSecret,
+          {
+            payment_method: {
+              card,
+              billing_details: { email: user.email },
+            },
+          },
+        )
+        if (setupErr) throw new Error(setupErr.message || "Error verificando la tarjeta de garantía")
+        if (setupIntent?.status !== "succeeded") {
+          throw new Error("No se pudo verificar la tarjeta de garantía. Inténtalo de nuevo.")
+        }
+
+        // 3) Activar membresia con gift card + tarjeta de garantia vinculada
         const res = await fetch("/api/memberships/purchase-with-gift-card", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -98,6 +134,7 @@ export default function PaymentFormContent({
             giftCardId: appliedGiftCard?.id,
             membershipType: membershipType || "essentiel",
             billingCycle: billingCycle || "monthly",
+            setupIntentId: setupIntent.id,
           }),
         })
 
@@ -305,13 +342,44 @@ export default function PaymentFormContent({
 
         {!needsExtendedForm || extendedFormCompleted ? (
           <>
-            {finalAmount > 0 && (
+            {/* Flujo gift card: gift card cubre el importe, pero pedimos
+                tarjeta de garantia obligatoria para cobrar incidencias. */}
+            {finalAmount <= 0 && appliedGiftCard && (
+              <div className="p-4 bg-rose-nude border border-rose-pastel/30 rounded-lg mb-4">
+                <p className="text-indigo-dark text-sm">
+                  Tu gift card cubre el importe de la membresía.{" "}
+                  <strong>No se realizará ningún cargo ahora.</strong>
+                </p>
+              </div>
+            )}
+
+            {finalAmount <= 0 && appliedGiftCard && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-1 text-sm">
+                      Tarjeta de garantía
+                    </h4>
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      Necesitamos tu tarjeta como respaldo para cubrir posibles incidencias
+                      (no devolución, daños o pérdida del bolso). Solo verificaremos que sea
+                      válida, <strong>no se realizará ningún cargo</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CardElement: visible cuando hay importe a cobrar O cuando
+                es flujo gift card (tarjeta de garantia obligatoria). */}
+            {(finalAmount > 0 || appliedGiftCard) && (
               <div className="border border-indigo-dark/20 rounded-lg p-4 mb-4">
                 <CardElement options={cardElementOptions} />
               </div>
             )}
 
-            {finalAmount <= 0 && (
+            {finalAmount <= 0 && !appliedGiftCard && (
               <div className="p-4 bg-rose-nude border border-rose-pastel/30 rounded-lg mb-4">
                 <p className="text-indigo-dark text-sm text-center">
                   Tu pedido está cubierto. No se realizará ningún cargo.
@@ -348,6 +416,8 @@ export default function PaymentFormContent({
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Procesando...
                 </span>
+              ) : finalAmount <= 0 && appliedGiftCard ? (
+                "Verificar tarjeta y confirmar"
               ) : finalAmount <= 0 ? (
                 "Confirmar pedido"
               ) : (
