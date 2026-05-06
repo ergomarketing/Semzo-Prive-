@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { EmailServiceProduction } from "@/app/lib/email-service-production";
+import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 
 export const dynamic = "force-dynamic";
 
@@ -447,25 +448,42 @@ export async function POST(req: NextRequest) {
         // antes de que el usuario haya completado Identity/SEPA. Si propagamos
         // ese status, sobrescribimos "paid_pending_verification" y se rompe el flujo.
         //
-        // Solo propagamos estados de degradacion / cancelacion reales.
-        // El status "active" SOLO se otorga en: resume-onboarding, membership/activate, orchestrator.
+        // Solo propagamos estados de degradacion / cancelacion reales via
+        // mapStripeStatusToInternal (vocabulario interno unificado).
         const stripeStatus = subscription.status;
-        const propagateStatuses = new Set([
-          "canceled",
-          "past_due",
-          "unpaid",
-          "incomplete_expired",
-          "paused",
-        ]);
+        const internalStatus = mapStripeStatusToInternal(stripeStatus);
+
+        // SIEMPRE persistir las banderas de cancelacion de Stripe (espejo).
+        // No son fuente de verdad para eligibilidad, pero si para auditoria
+        // y para que admin vea exactamente que dice Stripe sin tener que ir
+        // al dashboard.
+        const stripeCancelAtPeriodEnd = subscription.cancel_at_period_end === true;
+        const stripeCanceledAt = subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000).toISOString()
+          : null;
+        const stripeCurrentPeriodEnd = subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000).toISOString()
+          : null;
 
         const updatePayload: Record<string, unknown> = {
           membership_type:
             subscription.metadata?.membership_type || "petite",
+          cancel_at_period_end: stripeCancelAtPeriodEnd,
+          canceled_at: stripeCanceledAt,
+          current_period_end: stripeCurrentPeriodEnd,
           updated_at: now,
         };
 
-        if (propagateStatuses.has(stripeStatus)) {
-          updatePayload.status = stripeStatus;
+        // Solo propagar status si es un estado de degradacion legitimo.
+        // active de Stripe -> internalStatus=null -> no se sobrescribe el local.
+        if (internalStatus) {
+          updatePayload.status = internalStatus;
+          // Si Stripe dice canceled o expired, retiramos el permiso de
+          // crear nuevas reservas. El acceso (end_date) se mantiene segun
+          // current_period_end para no cortar de golpe.
+          if (internalStatus === "cancelled" || internalStatus === "expired") {
+            updatePayload.can_make_reservations = false;
+          }
         }
 
         await supabase
@@ -476,7 +494,9 @@ export async function POST(req: NextRequest) {
         console.log("ℹ️ Subscription updated:", {
           user_id: membership.user_id,
           stripe_status: stripeStatus,
-          local_status_kept: !propagateStatuses.has(stripeStatus) ? membership.status : null,
+          internal_status_applied: internalStatus,
+          cancel_at_period_end: stripeCancelAtPeriodEnd,
+          local_status_kept: !internalStatus ? membership.status : null,
         });
         break;
       }
