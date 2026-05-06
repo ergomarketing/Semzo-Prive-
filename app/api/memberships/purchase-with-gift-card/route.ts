@@ -1,34 +1,59 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import Stripe from "stripe"
 import { getMembershipPrice, validateMembershipType } from "@/lib/plan-config"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, giftCardId, billingCycle: rawBillingCycle, membershipType: rawMembershipType } = body
+    const {
+      userId,
+      giftCardId,
+      billingCycle: rawBillingCycle,
+      membershipType: rawMembershipType,
+      // setupIntentId: tarjeta de garantia. Opcional para mantener
+      // compatibilidad con flujos UI no migrados, pero RECOMENDADO.
+      // Cuando viene, vinculamos la tarjeta al customer Stripe para
+      // poder cobrar incidencias (no devolucion, daños, etc).
+      setupIntentId,
+    } = body
     const membershipType = rawMembershipType?.toLowerCase()
-    const billingCycle = ["weekly", "monthly", "quarterly"].includes(rawBillingCycle) ? rawBillingCycle : "monthly"
+    const billingCycle = ["weekly", "monthly", "quarterly"].includes(rawBillingCycle)
+      ? rawBillingCycle
+      : "monthly"
 
     if (!userId || !giftCardId || !billingCycle || !membershipType) {
-      return NextResponse.json({ error: "Faltan campos requeridos: userId, giftCardId, billingCycle, membershipType" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Faltan campos requeridos: userId, giftCardId, billingCycle, membershipType" },
+        { status: 400 },
+      )
     }
 
     if (!validateMembershipType(membershipType)) {
-      return NextResponse.json({ error: `Tipo de membresía inválido: ${membershipType}` }, { status: 400 })
+      return NextResponse.json(
+        { error: `Tipo de membresía inválido: ${membershipType}` },
+        { status: 400 },
+      )
     }
 
     const priceEuros = getMembershipPrice(membershipType, billingCycle)
     if (!priceEuros) {
-      return NextResponse.json({ error: `Precio no encontrado para membresía: ${membershipType} / ${billingCycle}` }, { status: 400 })
+      return NextResponse.json(
+        { error: `Precio no encontrado para membresía: ${membershipType} / ${billingCycle}` },
+        { status: 400 },
+      )
     }
 
-    // DB almacena amount en céntimos
     const amountCents = Math.round(priceEuros * 100)
 
     // 1. Verificar gift card
@@ -38,27 +63,86 @@ export async function POST(request: NextRequest) {
       .eq("id", giftCardId)
       .single()
 
-    if (gcErr || !gc) return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
-    if (!["active", "partial"].includes(gc.status)) return NextResponse.json({ error: "Gift card no está activa" }, { status: 400 })
-    if (gc.amount < amountCents) return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+    if (gcErr || !gc) {
+      return NextResponse.json({ error: "Gift card no encontrada" }, { status: 400 })
+    }
+    if (!["active", "partial"].includes(gc.status)) {
+      return NextResponse.json({ error: "Gift card no está activa" }, { status: 400 })
+    }
+    if (gc.amount < amountCents) {
+      return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+    }
 
-    // 2. Descontar saldo
+    // 2. Validar SetupIntent (tarjeta de garantía) ANTES de descontar saldo.
+    // Si la validacion falla, NO se descuenta la gift card.
+    let stripeCustomerId: string | null = null
+    let stripePaymentMethodId: string | null = null
+    let paymentMethodLast4: string | null = null
+    let paymentMethodBrand: string | null = null
+
+    if (setupIntentId) {
+      try {
+        const setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
+
+        if (setupIntent.status !== "succeeded") {
+          return NextResponse.json(
+            { error: "La tarjeta de garantía no se verificó correctamente. Inténtalo de nuevo." },
+            { status: 400 },
+          )
+        }
+
+        stripeCustomerId = (setupIntent.customer as string) || null
+        stripePaymentMethodId = (setupIntent.payment_method as string) || null
+
+        if (!stripeCustomerId || !stripePaymentMethodId) {
+          return NextResponse.json(
+            { error: "No se pudo recuperar la tarjeta de garantía. Inténtalo de nuevo." },
+            { status: 400 },
+          )
+        }
+
+        // Recuperar marca/last4 para mostrar al usuario
+        const pm = await stripe.paymentMethods.retrieve(stripePaymentMethodId)
+        paymentMethodLast4 = pm.card?.last4 || null
+        paymentMethodBrand = pm.card?.brand || null
+
+        // Guardar customer_id en profiles para futuras compras
+        await supabase
+          .from("profiles")
+          .update({ stripe_customer_id: stripeCustomerId, updated_at: new Date().toISOString() })
+          .eq("id", userId)
+      } catch (siErr: any) {
+        console.error("[gift-card] SetupIntent validation failed", siErr)
+        return NextResponse.json(
+          { error: "Error verificando la tarjeta de garantía: " + (siErr.message || "desconocido") },
+          { status: 400 },
+        )
+      }
+    }
+
+    // 3. Descontar saldo (solo despues de validar tarjeta)
     const newAmount = gc.amount - amountCents
     const { error: gcUpdateErr } = await supabase
       .from("gift_cards")
-      .update({ amount: newAmount, status: newAmount <= 0 ? "used" : "partial", updated_at: new Date().toISOString() })
+      .update({
+        amount: newAmount,
+        status: newAmount <= 0 ? "used" : "partial",
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", giftCardId)
 
-    if (gcUpdateErr) return NextResponse.json({ error: "Error actualizando gift card" }, { status: 500 })
+    if (gcUpdateErr) {
+      return NextResponse.json({ error: "Error actualizando gift card" }, { status: 500 })
+    }
 
-    // 3. Calcular fecha de fin
+    // 4. Calcular fecha de fin
     const endDate = new Date()
     if (billingCycle === "quarterly") endDate.setMonth(endDate.getMonth() + 3)
     else if (billingCycle === "weekly") endDate.setDate(endDate.getDate() + 7)
     else endDate.setMonth(endDate.getMonth() + 1)
 
-    // 4. Upsert membresía (pending_verification hasta que complete Identity)
-    const membershipPayload = {
+    // 5. Upsert membresía (pending_verification hasta que complete Identity)
+    const membershipPayload: Record<string, any> = {
       user_id: userId,
       membership_type: membershipType,
       billing_cycle: billingCycle,
@@ -66,7 +150,11 @@ export async function POST(request: NextRequest) {
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString(),
       stripe_subscription_id: null,
-      stripe_customer_id: null,
+      stripe_customer_id: stripeCustomerId,
+      stripe_payment_method_id: stripePaymentMethodId,
+      payment_method_verified: !!stripePaymentMethodId,
+      payment_method_last4: paymentMethodLast4,
+      payment_method_brand: paymentMethodBrand,
       failed_payment_count: 0,
       dunning_status: null,
       updated_at: new Date().toISOString(),
@@ -84,10 +172,13 @@ export async function POST(request: NextRequest) {
         code: membershipErr.code,
         payload: membershipPayload,
       })
-      return NextResponse.json({ error: "Error activando membresía: " + membershipErr.message }, { status: 500 })
+      return NextResponse.json(
+        { error: "Error activando membresía: " + membershipErr.message },
+        { status: 500 },
+      )
     }
 
-    // 5. Sincronizar profiles (pending_verification hasta Identity)
+    // 6. Sincronizar profiles
     await supabase
       .from("profiles")
       .update({
@@ -97,9 +188,16 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", userId)
 
-    return NextResponse.json({ success: true, message: "Membresía activada con gift card" })
+    return NextResponse.json({
+      success: true,
+      message: "Membresía activada con gift card",
+      payment_method_secured: !!stripePaymentMethodId,
+    })
   } catch (error: any) {
     console.error("[purchase-with-gift-card] unexpected error", error)
-    return NextResponse.json({ error: "Error inesperado: " + error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: "Error inesperado: " + error.message },
+      { status: 500 },
+    )
   }
 }

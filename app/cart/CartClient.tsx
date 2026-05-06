@@ -196,6 +196,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     }
   }
 
+  // Flag puesto por /guarantee-card cuando termino la activacion con
+  // gift card + tarjeta de garantia. Vacia el carrito al volver aqui.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("semzo_clear_cart_on_next_load") === "1") {
+        sessionStorage.removeItem("semzo_clear_cart_on_next_load")
+        clearCart()
+      }
+    } catch {}
+  }, [clearCart])
+
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = getSupabaseBrowser()
@@ -998,27 +1009,33 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       // No bloquear pago si localStorage falla (webviews restrictivos)
                     }
 
-                    // GIFT CARD 100% — no pasa por Stripe
+                    // GIFT CARD 100% — no pasa por Stripe pero exigimos
+                    // tarjeta de garantia. Redirigimos a /guarantee-card,
+                    // que tras verificar tarjeta llama a purchase-with-gift-card.
                     if (finalAmount === 0 && appliedGiftCard) {
                       const resolvedType = membershipType || type
                       const resolvedCycle = billingCycle || cycle
-                      const gcResponse = await fetch("/api/memberships/purchase-with-gift-card", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          userId: user.id,
-                          giftCardId: appliedGiftCard.id,
-                          amountCents: Math.round(Math.min(appliedGiftCard.balance, total) * 100),
-                          membershipType: resolvedType,
-                          billingCycle: resolvedCycle,
-                        }),
-                      })
-                      const gcData = await gcResponse.json()
-                      if (!gcResponse.ok) throw new Error(gcData.error || "Error al procesar gift card")
-                      clearCart()
-                      toast.success("Membresía activada con Gift Card")
-                      // Redirigir a verificación de identidad — mismo flujo que membresía via Stripe
-                      router.push("/verify-identity")
+                      try {
+                        sessionStorage.setItem(
+                          "semzo_pending_gift_card_activation",
+                          JSON.stringify({
+                            userId: user.id,
+                            giftCardId: appliedGiftCard.id,
+                            amountCents: Math.round(Math.min(appliedGiftCard.balance, total) * 100),
+                            membershipType: resolvedType,
+                            billingCycle: resolvedCycle,
+                            source: "cart",
+                            clearCartAfter: true,
+                          }),
+                        )
+                      } catch {
+                        toast.error("No se pudo continuar (almacenamiento local bloqueado).")
+                        setCheckoutLoading(false)
+                        return
+                      }
+
+                      toast.success("Verifica tu tarjeta de garantía para activar la membresía.")
+                      router.push("/guarantee-card")
                       return
                     }
 
