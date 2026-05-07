@@ -85,10 +85,14 @@ export async function POST() {
   }
 
   // 7. Activar membresia en user_memberships (FUENTE DE VERDAD)
+  // can_make_reservations: true es OBLIGATORIO porque la columna tiene
+  // DEFAULT false. Sin este flag el gate del endpoint /api/user/reservations
+  // bloquea al usuario aunque la membresia este activa.
   const { error: updateError } = await supabase
     .from("user_memberships")
     .update({
       status: "active",
+      can_make_reservations: true,
       updated_at: new Date().toISOString(),
     })
     .eq("id", membership.id)

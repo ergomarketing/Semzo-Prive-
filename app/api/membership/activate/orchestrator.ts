@@ -57,6 +57,11 @@ export async function syncMembershipFromStripe(
       ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
       : new Date(subscription.current_period_end * 1000)
 
+  // Si Stripe reporta activa/trialing, abrimos can_make_reservations.
+  // Para otros estados, lo dejamos en false (default seguro).
+  const isStripeActive =
+    subscription.status === "active" || subscription.status === "trialing"
+
   const { error } = await supabase
     .from("user_memberships")
     .upsert(
@@ -68,6 +73,7 @@ export async function syncMembershipFromStripe(
         status,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
+        can_make_reservations: isStripeActive,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" }
@@ -132,10 +138,14 @@ export async function syncMembershipFromStripe(
 
   if (shouldActivate) {
     // Activar en user_memberships (FUENTE DE VERDAD)
+    // can_make_reservations: true → habilita el gate de reservas.
+    // Sin esto, la membresia queda activa pero el endpoint
+    // /api/user/reservations bloquea al usuario.
     const { error: activationError } = await supabase
       .from("user_memberships")
       .update({
         status: "active",
+        can_make_reservations: true,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)

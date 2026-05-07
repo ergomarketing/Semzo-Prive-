@@ -249,9 +249,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Identity + SEPA OK → activar (la reserva del bolso la gestiona onboarding-complete tras activate)
+      // can_make_reservations: true es OBLIGATORIO porque la columna tiene
+      // DEFAULT false y sin esto el gate de reservas bloquea al usuario.
       await supabase
         .from("user_memberships")
-        .update({ status: "active", updated_at: new Date().toISOString() })
+        .update({
+          status: "active",
+          can_make_reservations: true,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", giftCardMembership.id)
 
       await supabase
