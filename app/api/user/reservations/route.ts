@@ -252,33 +252,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // LIMITE DE RESERVAS SIMULTANEAS POR PLAN
-    // Para Petite el limite real son los pases (max 4 por ciclo, validados
-    // mas abajo). Para essentiel/signature/prive: 1 bolso simultaneo.
+    // LIMITE DE RESERVAS POR CICLO DE FACTURACION
+    // Regla de negocio: el cupo se consume al RESERVAR, no al recibir.
+    // Cancelar una reserva NO devuelve el cupo del ciclo.
+    //
+    // - Petite: cupo via pases (max 4, validado mas abajo).
+    // - L'Essentiel monthly : 1 bolso/mes.
+    // - L'Essentiel quarterly: 3 bolsos/trimestre.
+    // - Signature monthly   : 1 bolso/mes.
+    // - Signature quarterly : 3 bolsos/trimestre.
+    // - Prive monthly       : 1 bolso/mes.
+    // - Prive quarterly     : 3 bolsos/trimestre.
     const planForLimit = (membership.membership_type || "").toLowerCase()
     if (["essentiel", "lessentiel", "signature", "prive"].includes(planForLimit)) {
-      const activeReservationStates = [
-        "pending",
-        "confirmed",
-        "shipped",
-        "in_transit",
-        "active",
-        "delivered",
-        "in_use",
-      ]
-      const { count: activeReservations } = await supabase
+      const cycleRaw = (membership.billing_cycle || "monthly").toLowerCase()
+      const isQuarterly = cycleRaw === "quarterly" || cycleRaw === "trimestral"
+      const cycleDays = isQuarterly ? 90 : 30
+      const maxBagsPerCycle = isQuarterly ? 3 : 1
+      const cycleMs = cycleDays * 24 * 60 * 60 * 1000
+      const nowMs = Date.now()
+
+      // Anclar ciclo al end_date para que coincida exactamente con la renovacion
+      let cycleStartMs: number
+      if (membership.end_date) {
+        const endMs = new Date(membership.end_date).getTime()
+        cycleStartMs = endMs - cycleMs
+        if (cycleStartMs > nowMs) cycleStartMs = nowMs - cycleMs
+      } else {
+        cycleStartMs = nowMs - cycleMs
+      }
+      const cycleStart = new Date(cycleStartMs).toISOString()
+
+      // Contar TODAS las reservas del ciclo, incluidas las canceladas
+      const { count: cycleReservations } = await supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
-        .in("status", activeReservationStates)
+        .gte("created_at", cycleStart)
 
-      if ((activeReservations || 0) >= 1) {
+      if ((cycleReservations || 0) >= maxBagsPerCycle) {
+        const errorMsg = isQuarterly
+          ? `Tu plan permite ${maxBagsPerCycle} bolsos por trimestre. Ya has alcanzado el máximo en este ciclo.`
+          : "Tu plan permite 1 bolso al mes. Ya reservaste un bolso en este ciclo. Podrás reservar otro en la próxima renovación."
         return NextResponse.json(
           {
-            error:
-              "Ya tienes una reserva en curso. Espera a devolver el bolso actual antes de reservar otro.",
-            simultaneousLimitReached: true,
-            activeReservations,
+            error: errorMsg,
+            cycleLimitReached: true,
+            cycleReservations,
+            maxBagsPerCycle,
+            cycleStart,
+            nextCycleAt: membership.end_date,
           },
           { status: 409 },
         )
