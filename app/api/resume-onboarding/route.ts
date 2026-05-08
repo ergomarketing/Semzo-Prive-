@@ -251,12 +251,13 @@ export async function POST(request: NextRequest) {
       // Identity + SEPA OK → activar (la reserva del bolso la gestiona onboarding-complete tras activate)
       // can_make_reservations: true es OBLIGATORIO porque la columna tiene
       // DEFAULT false y sin esto el gate de reservas bloquea al usuario.
+      const giftActivatedNow = new Date().toISOString()
       await supabase
         .from("user_memberships")
         .update({
           status: "active",
           can_make_reservations: true,
-          updated_at: new Date().toISOString(),
+          updated_at: giftActivatedNow,
         })
         .eq("id", giftCardMembership.id)
 
@@ -265,9 +266,25 @@ export async function POST(request: NextRequest) {
         .update({
           membership_status: "active",
           membership_type: giftCardMembership.membership_type,
-          updated_at: new Date().toISOString(),
+          updated_at: giftActivatedNow,
         })
         .eq("id", user.id)
+
+      // Cerrar activated_at en el intent para trazabilidad completa de admin
+      const { data: giftIntent } = await supabase
+        .from("membership_intents")
+        .select("id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (giftIntent?.id) {
+        await supabase
+          .from("membership_intents")
+          .update({ activated_at: giftActivatedNow, updated_at: giftActivatedNow })
+          .eq("id", giftIntent.id)
+      }
 
       return NextResponse.json({
         action: "active" as ResumeAction,
@@ -494,9 +511,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Cerrar el intent con activated_at para trazabilidad completa.
+    // Sin este campo, el intent queda en status="active" pero sin timestamp
+    // de activacion real, lo que rompe la auditoria de admin.
+    const activatedNow = new Date().toISOString()
     await supabase
       .from("membership_intents")
-      .update({ status: "active", updated_at: new Date().toISOString() })
+      .update({
+        status: "active",
+        activated_at: activatedNow,
+        updated_at: activatedNow,
+      })
       .eq("id", intent.id)
 
     // user_memberships ya se actualiza via syncMembershipFromStripe

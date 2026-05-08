@@ -184,29 +184,59 @@ export async function POST(req: NextRequest) {
 
         // Consumir gift card si habia una aplicada.
         // FUENTE DE VERDAD: membership_intents.gift_card_applied_cents
-        // (calculado en create-intent cuando el usuario pulso Pagar).
-        // Buscamos el intent mas reciente del usuario con gift card.
-        if (giftCardId && userId) {
-          const { data: intent } = await supabase
-            .from("membership_intents")
-            .select("gift_card_applied_cents")
-            .eq("user_id", userId)
-            .gt("gift_card_applied_cents", 0)
-            .order("created_at", { ascending: false })
+        // (calculado en create-intent cuando el usuario pulsó Pagar).
+        // Si gift_card_id no vino en los metadatos de Stripe (flujo mixto),
+        // lo buscamos en el intent de BD como fallback.
+        let resolvedGiftCardId = giftCardId;
+        let resolvedIntentId: string | null = null;
+
+        const { data: activeIntent } = await supabase
+          .from("membership_intents")
+          .select("id, gift_card_code, gift_card_applied_cents")
+          .eq("user_id", userId)
+          .gt("gift_card_applied_cents", 0)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        resolvedIntentId = activeIntent?.id || null;
+
+        // Si el webhook no trajo gift_card_id en metadata, buscar en BD por código
+        if (!resolvedGiftCardId && activeIntent?.gift_card_code) {
+          const { data: cardByCode } = await supabase
+            .from("gift_cards")
+            .select("id")
+            .ilike("code", activeIntent.gift_card_code)
             .limit(1)
             .maybeSingle();
+          resolvedGiftCardId = cardByCode?.id || null;
+        }
 
-          const appliedCents = intent?.gift_card_applied_cents || 0;
-          const giftCardConsumedEuros = parseFloat((appliedCents / 100).toFixed(2));
+        if (resolvedGiftCardId && activeIntent?.gift_card_applied_cents > 0) {
+          const giftCardConsumedEuros = parseFloat(
+            (activeIntent.gift_card_applied_cents / 100).toFixed(2)
+          );
+          const { error: consumeError } = await supabase.rpc("consume_gift_card_atomic", {
+            p_gift_card_id: resolvedGiftCardId,
+            p_amount: giftCardConsumedEuros,
+            p_user_id: userId,
+            p_reference_id: session.id,
+            p_reference_type: "membership",
+          });
 
-          if (giftCardConsumedEuros > 0) {
-            await supabase.rpc("consume_gift_card_atomic", {
-              p_gift_card_id: giftCardId,
-              p_amount: giftCardConsumedEuros,
-              p_user_id: userId,
-              p_reference_id: session.id,
-              p_reference_type: "membership",
-            });
+          if (!consumeError && resolvedIntentId) {
+            // Marcar el intent con gift_card_consumed_at para trazabilidad
+            await supabase
+              .from("membership_intents")
+              .update({
+                gift_card_consumed_at: now,
+                updated_at: now,
+              })
+              .eq("id", resolvedIntentId);
+          }
+
+          if (consumeError) {
+            console.error("[WEBHOOK] consume_gift_card_atomic failed:", consumeError.message);
           }
         }
 
