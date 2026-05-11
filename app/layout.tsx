@@ -1,3 +1,8 @@
+// Build marker: cambiar este comentario fuerza a Next a invalidar el modulo
+// y regenerar todos los chunks que dependen del layout. Usado para resolver
+// errores de webpack factory "Cannot read properties of undefined (reading 'call')"
+// causados por chunks obsoletos en el navegador tras multiples rebuilds del HMR.
+// Build: 2026-05-11T13:45
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
