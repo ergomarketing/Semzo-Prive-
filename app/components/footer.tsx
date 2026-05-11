@@ -1,22 +1,18 @@
 "use client"
 
-// Build: 2026-05-11T14:08 (invalida chunk cacheado)
+// Build: 2026-05-11T16:35 (orto + sin payment methods + marquee final)
 /*
  * Footer Semzo Prive - rediseno completo.
  *
- * Inspirado en cocoon.club pero adaptado a:
- *  - Paleta Semzo:   fondo indigo-dark (#1a1a4b), acentos rose-pastel y rose-nude,
- *                    texto blanco/blanco-translucido para autoridad.
- *  - Secciones reales del proyecto (sin links muertos como "Sell Your Bag" o
- *    "Careers" que no existen en Semzo).
- *  - Newsletter conectado al endpoint REAL `/api/newsletter/subscribe` que
- *    ya guarda los leads en la tabla `newsletter_subscriptions` y dispara
- *    notificacion a admin. NO se inventa logica nueva.
+ * Cambios respecto a version anterior:
+ *  - Ortografia corregida en todo el copy (tildes, n con tilde).
+ *  - Eliminados los logos de metodos de pago (no aportaban autoridad
+ *    y rompian la estetica luxe del footer).
+ *  - Restaurado el marquee deslizante en la zona inferior con copy de
+ *    autoridad sobre autenticidad y servicio premium.
  *
- * Tambien resuelve el hydration mismatch del footer anterior:
- *  - Se eliminan los `new Date().getFullYear()` y `<style>` inline que vivian
- *    dentro del JSX y causaban diferencias entre SSR y cliente.
- *  - El year se calcula una sola vez con suppressHydrationWarning en el span.
+ * Newsletter conectado al endpoint REAL /api/newsletter/subscribe que
+ * guarda los leads en `newsletter_subscriptions` y notifica al admin.
  */
 
 import Link from "next/link"
@@ -24,12 +20,13 @@ import { Instagram, Facebook, ArrowRight, Check } from "lucide-react"
 import { useState, type FormEvent } from "react"
 
 // ---- Datos estaticos del footer (extraidos para legibilidad) -------------
+// Los labels usan tildes y enes correctas para SEO y respeto a la lengua.
 
 const COMPANY_LINKS = [
   { label: "Sobre Nosotros", href: "/#nuestra-vision" },
-  { label: "Membresias", href: "/#membresias" },
-  { label: "Coleccion", href: "/catalog" },
-  { label: "Como Funciona", href: "/proceso" },
+  { label: "Membresías", href: "/#membresias" },
+  { label: "Colección", href: "/catalog" },
+  { label: "Cómo Funciona", href: "/proceso" },
   { label: "Magazine", href: "/blog" },
   { label: "Tarjetas Regalo", href: "/gift-cards" },
 ]
@@ -37,10 +34,10 @@ const COMPANY_LINKS = [
 const CUSTOMER_LINKS = [
   { label: "Centro de Soporte", href: "/support" },
   { label: "Preguntas Frecuentes", href: "/support#faq" },
-  { label: "Envios y Devoluciones", href: "/support#envios" },
-  { label: "Terminos y Condiciones", href: "/legal/terms" },
-  { label: "Politica de Privacidad", href: "/legal/privacy" },
-  { label: "Politica de Cookies", href: "/legal/cookies" },
+  { label: "Envíos y Devoluciones", href: "/support#envios" },
+  { label: "Términos y Condiciones", href: "/legal/terms" },
+  { label: "Política de Privacidad", href: "/legal/privacy" },
+  { label: "Política de Cookies", href: "/legal/cookies" },
 ]
 
 const SOCIAL_LINKS = [
@@ -54,6 +51,13 @@ const SOCIAL_LINKS = [
     href: "https://www.facebook.com/semzoprive",
     icon: Facebook,
   },
+] as const
+
+// Copy del marquee final. Mensaje de autoridad con la promesa de marca.
+const MARQUEE_PHRASES = [
+  "Servicio premium de alquiler de bolsos de lujo auténticos y certificados",
+  "Todas nuestras piezas son verificadas por expertos para garantizar autenticidad",
+  "Marca y plataforma de servicio premium en España",
 ] as const
 
 // ---- Sub-componente: Newsletter signup -----------------------------------
@@ -81,16 +85,16 @@ function NewsletterForm() {
 
       if (!res.ok || data.error) {
         setStatus("error")
-        setMessage(data.message || "No pudimos suscribirte, intentalo de nuevo.")
+        setMessage(data.message || "No pudimos suscribirte, inténtalo de nuevo.")
         return
       }
 
       setStatus("success")
-      setMessage(data.message || "Te has unido al club. Pronto recibiras novedades.")
+      setMessage(data.message || "Te has unido al club. Pronto recibirás novedades.")
       setEmail("")
     } catch {
       setStatus("error")
-      setMessage("Error de conexion. Intentalo de nuevo en un momento.")
+      setMessage("Error de conexión. Inténtalo de nuevo en un momento.")
     }
   }
 
@@ -98,7 +102,7 @@ function NewsletterForm() {
     <form onSubmit={handleSubmit} className="w-full max-w-md" noValidate>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <label htmlFor="footer-newsletter-email" className="sr-only">
-          Correo electronico
+          Correo electrónico
         </label>
         <div className="flex-1 relative">
           <input
@@ -109,7 +113,7 @@ function NewsletterForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Tu correo electronico"
+            placeholder="Tu correo electrónico"
             disabled={status === "loading"}
             className="w-full bg-white text-indigo-dark placeholder:text-indigo-dark/50 px-5 py-3.5 pr-14 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-pastel disabled:opacity-60"
             aria-describedby="footer-newsletter-status"
@@ -150,35 +154,40 @@ function NewsletterForm() {
   )
 }
 
-// ---- Sub-componente: Logos de metodos de pago (SVG inline accesibles) ----
+// ---- Sub-componente: Marquee de autoridad --------------------------------
+// Banda deslizante en la zona inferior del footer. Reemplaza a los logos de
+// metodos de pago que rompian la estetica luxe. Reutiliza la clase global
+// .marquee-track de globals.css que ya pausa al hover y respeta
+// prefers-reduced-motion.
 
-function PaymentMethods() {
-  // SVGs inline minimalistas en blanco sobre fondo oscuro para coherencia.
-  // role="img" + aria-label hace que sean accesibles por lectores de pantalla.
-  const badgeClass =
-    "h-8 w-12 flex items-center justify-center bg-white/95 rounded text-indigo-dark text-[10px] font-bold tracking-tight"
+function FooterMarquee() {
+  // Repetimos 6 veces para garantizar continuidad del scroll sin "saltos".
+  const phrases = Array.from({ length: 6 }).flatMap(() => MARQUEE_PHRASES)
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Metodos de pago aceptados">
-      <span className={badgeClass} role="img" aria-label="Visa">VISA</span>
-      <span className={badgeClass} role="img" aria-label="Mastercard">MC</span>
-      <span className={badgeClass} role="img" aria-label="American Express">AMEX</span>
-      <span className={badgeClass} role="img" aria-label="Apple Pay">Pay</span>
-      <span className={badgeClass} role="img" aria-label="Google Pay">GPay</span>
-      <span className={badgeClass} role="img" aria-label="PayPal">PayPal</span>
+    <div
+      className="overflow-hidden border-t border-white/10 py-4"
+      aria-label="Promesas de la marca Semzo Privé"
+    >
+      <div className="marquee-track">
+        {phrases.map((phrase, i) => (
+          <span
+            key={i}
+            className="text-xs md:text-sm uppercase tracking-[0.25em] text-rose-pastel/70 font-light px-8 whitespace-nowrap"
+          >
+            {phrase}
+            <span className="mx-6 text-rose-pastel/40" aria-hidden="true">
+              ✦
+            </span>
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
 
 // ---- Footer principal ----------------------------------------------------
-// IMPORTANTE: usar `export default function` en la declaracion (no separar
-// el export al final del archivo). En Next 15 con "use client", separar el
-// export rompe la generacion del proxy RSC y causa el error de webpack
-// factory "Cannot read properties of undefined (reading 'call')" en
-// RootLayout al intentar resolver el modulo.
+
 export default function Footer() {
-  // Year fijado al render. suppressHydrationWarning previene el mismatch
-  // si por alguna razon el server y el cliente difieren en zona horaria
-  // justo en el cambio de ano (caso extremo pero documentado en React 19).
   const year = new Date().getFullYear()
 
   return (
@@ -191,21 +200,21 @@ export default function Footer() {
             <Link
               href="/"
               className="font-serif text-3xl md:text-4xl tracking-wider mb-4 inline-block"
-              aria-label="Semzo Prive - Inicio"
+              aria-label="Semzo Privé - Inicio"
             >
-              SEMZO <span className="text-rose-pastel">PRIVE</span>
+              SEMZO <span className="text-rose-pastel">PRIVÉ</span>
             </Link>
             <p className="text-white/75 font-light leading-relaxed max-w-md text-sm md:text-base">
-              Accede a bolsos de lujo autenticados con la membresia de Semzo Prive.
-              Hermes, Chanel, Louis Vuitton y mas marcas exclusivas, sin compromiso de compra.
-              Tu armario de ensueno, a un solo paso.
+              Accede a bolsos de lujo autenticados con la membresía de Semzo Privé.
+              Hermès, Chanel, Louis Vuitton y más marcas exclusivas, sin compromiso
+              de compra. Tu armario de ensueño, a un solo paso.
             </p>
           </div>
 
           {/* Newsletter */}
           <div className="md:col-span-7">
             <h2 className="font-serif text-2xl md:text-3xl mb-4 leading-tight">
-              Unete al <span className="text-rose-pastel">club</span>
+              Únete al <span className="text-rose-pastel">club</span>
             </h2>
             <NewsletterForm />
           </div>
@@ -221,7 +230,7 @@ export default function Footer() {
           {/* Columna: Compania */}
           <div className="md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
-              Compania
+              Compañía
             </h3>
             <ul className="space-y-3">
               {COMPANY_LINKS.map((link) => (
@@ -240,7 +249,7 @@ export default function Footer() {
           {/* Columna: Atencion al cliente */}
           <div className="md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
-              Atencion al Cliente
+              Atención al Cliente
             </h3>
             <ul className="space-y-3">
               {CUSTOMER_LINKS.map((link) => (
@@ -280,9 +289,9 @@ export default function Footer() {
               </li>
               <li>
                 <address className="not-italic leading-relaxed">
-                  Av. Bulevar Principe Alfonso de Hohenlohe, s/n
+                  Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n
                   <br />
-                  Marbella, Malaga - Espana
+                  Marbella, Málaga - España
                 </address>
               </li>
             </ul>
@@ -330,16 +339,20 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Bloque inferior: copyright + metodos pago ----------------------- */}
+      {/* Marquee de autoridad: reemplaza a los logos de metodos de pago. */}
+      <FooterMarquee />
+
+      {/* Bloque inferior: copyright sobrio (sin metodos de pago) -------- */}
       <div className="border-t border-white/10">
-        <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/60 text-center md:text-left" suppressHydrationWarning>
-            &copy; {year} Semzo Prive. Todos los derechos reservados.
+        <div className="container mx-auto px-4 py-5">
+          <p
+            className="text-xs text-white/60 text-center"
+            suppressHydrationWarning
+          >
+            &copy; {year} Semzo Privé. Todos los derechos reservados.
           </p>
-          <PaymentMethods />
         </div>
       </div>
     </footer>
   )
 }
-
