@@ -86,8 +86,74 @@ export const metadata: Metadata = {
 export default async function CatalogPage() {
   const initialBags = await fetchInitialBags()
 
+  // Schema CollectionPage + ItemList para el listado.
+  // Google lo usa para:
+  //  1) Entender que la pagina lista productos (mejor categorizacion).
+  //  2) Generar sitelinks en SERP con las primeras fichas.
+  //  3) Habilitar aparicion en Google Shopping organico.
+  // Tomamos solo los primeros 12 bolsos para no inflar el HTML (Google
+  // recomienda max 100, pero menos es mas limpio y rapido).
+  const baseUrl = "https://semzoprive.com"
+  const itemListElements = initialBags.slice(0, 12).map((bag, index) => {
+    const slug = bag.slug || bag.id
+    const url = `${baseUrl}/catalog/${slug}`
+    const rawImage = bag.images?.[0] || bag.image_url || ""
+    // Normalizar imagen: descartar /bags/*/foto-N rotas
+    let image: string | undefined
+    if (typeof rawImage === "string" && rawImage.length > 0) {
+      const t = rawImage.trim()
+      if (/^https?:\/\//i.test(t)) image = t
+      else if (/^\/bags\//i.test(t)) image = undefined
+      else if (t.startsWith("/")) image = `${baseUrl}${t}`
+    }
+    return {
+      "@type": "ListItem",
+      position: index + 1,
+      url,
+      name: `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`,
+      ...(image ? { image } : {}),
+    }
+  })
+
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Catalogo de bolsos de lujo en alquiler",
+    description:
+      "Catalogo completo de bolsos de lujo originales disponibles para alquiler: Chanel, Dior, Louis Vuitton, Fendi, Prada, Gucci y mas.",
+    url: `${baseUrl}/catalog`,
+    inLanguage: "es-ES",
+    isPartOf: {
+      "@type": "WebSite",
+      name: "Semzo Prive",
+      url: baseUrl,
+    },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: initialBags.length,
+      itemListElement: itemListElements,
+    },
+  }
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: baseUrl },
+      { "@type": "ListItem", position: 2, name: "Catalogo", item: `${baseUrl}/catalog` },
+    ],
+  }
+
   return (
     <main className="pt-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       <div className="bg-gradient-to-b from-rose-nude/10 to-white py-12">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-serif text-4xl md:text-5xl text-slate-900 mb-6">
