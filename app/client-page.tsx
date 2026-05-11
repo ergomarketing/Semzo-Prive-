@@ -1,5 +1,6 @@
 "use client"
 
+// Marker para invalidar cache SSR tras cambios en cta-section: 2026-05-11T14:45
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import HeroSection from "./components/hero-section"
