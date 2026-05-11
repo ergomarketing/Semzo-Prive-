@@ -22,8 +22,6 @@ import Link from "next/link"
 import { Instagram, Facebook, ArrowRight, Check } from "lucide-react"
 import { useState, type FormEvent } from "react"
 
-export { Footer }
-
 // ---- Datos estaticos del footer (extraidos para legibilidad) -------------
 
 const COMPANY_LINKS = [
