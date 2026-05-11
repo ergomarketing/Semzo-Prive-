@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+// Config rebuild marker: 2026-05-11T13:50
+// Tocar este archivo fuerza un restart completo del dev server, lo que
+// regenera el manifest de webpack y resuelve errores de modulo factory
+// undefined ("Cannot read properties of undefined (reading 'call')") que
+// ocurren cuando el HMR acumula chunks obsoletos tras multiples rebuilds.
 const nextConfig = {
   // NOTA: NO usar `output: 'standalone'` en Vercel.
   // Standalone es para self-hosting (Docker). En Vercel rompe la generacion
