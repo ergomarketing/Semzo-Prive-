@@ -37,6 +37,24 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
+
+    /*
+     * Tokens del Sidebar (shadcn/ui).
+     * FIX contraste menu movil dashboard: el componente Sidebar usa
+     * `bg-sidebar` y `text-sidebar-foreground`. Sin estos tokens
+     * resolvian a transparente y el contenido detras se veia a traves
+     * del sheet movil, haciendo el menu ilegible.
+     * Valores: fondo blanco solido y texto oscuro coherente con el resto
+     * del dashboard. Accent rose-nude suave para hover/activo.
+     */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 222.2 47.4% 11.2%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 350 40% 96%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 222.2 84% 4.9%;
   }
 
   .dark {
