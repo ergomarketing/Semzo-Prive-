@@ -146,6 +146,40 @@
   animation-play-state: paused;
 }
 
+/*
+ * Animacion del banner de testimonios.
+ * Mas lenta que el footer (60s) porque las tarjetas son mas grandes
+ * y el usuario necesita tiempo para leerlas mientras pasan.
+ * Pausa al hover para que pueda leer comodamente la frase que le interese.
+ */
+@keyframes testimonials-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.testimonials-track {
+  display: flex;
+  width: max-content;
+  animation: testimonials-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.testimonials-track:hover {
+  animation-play-state: paused;
+}
+
+/* Respeta usuarios con preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .testimonials-track {
+    animation: none;
+  }
+}
+
 /* Usar fuentes del sistema en lugar de Google Fonts */
 .font-serif {
   font-family: "Playfair Display", "Georgia", "Times New Roman", serif;
