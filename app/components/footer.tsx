@@ -1,5 +1,6 @@
 "use client"
 
+// Build: 2026-05-11T14:08 (invalida chunk cacheado)
 /*
  * Footer Semzo Prive - rediseno completo.
  *
