@@ -169,8 +169,12 @@ function PaymentMethods() {
 }
 
 // ---- Footer principal ----------------------------------------------------
-
-function Footer() {
+// IMPORTANTE: usar `export default function` en la declaracion (no separar
+// el export al final del archivo). En Next 15 con "use client", separar el
+// export rompe la generacion del proxy RSC y causa el error de webpack
+// factory "Cannot read properties of undefined (reading 'call')" en
+// RootLayout al intentar resolver el modulo.
+export default function Footer() {
   // Year fijado al render. suppressHydrationWarning previene el mismatch
   // si por alguna razon el server y el cliente difieren en zona horaria
   // justo en el cambio de ano (caso extremo pero documentado en React 19).
@@ -338,4 +342,3 @@ function Footer() {
   )
 }
 
-export default Footer
