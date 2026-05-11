@@ -1,5 +1,6 @@
 "use client"
 
+// Build: 2026-05-11T16:50 (forzar revalidacion SSR y carga de imagenes)
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"

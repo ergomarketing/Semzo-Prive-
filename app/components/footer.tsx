@@ -164,18 +164,20 @@ function FooterMarquee() {
   // Repetimos 6 veces para garantizar continuidad del scroll sin "saltos".
   const phrases = Array.from({ length: 6 }).flatMap(() => MARQUEE_PHRASES)
   return (
+    // Marquee FUERA del bloque indigo, sobre fondo claro.
+    // Color de texto en rose-nude para mantener el contraste suave y luxe.
     <div
-      className="overflow-hidden border-t border-white/10 py-4"
+      className="overflow-hidden bg-white py-5 border-y border-rose-pastel/30"
       aria-label="Promesas de la marca Semzo Privé"
     >
       <div className="marquee-track">
         {phrases.map((phrase, i) => (
           <span
             key={i}
-            className="text-xs md:text-sm uppercase tracking-[0.25em] text-rose-pastel/70 font-light px-8 whitespace-nowrap"
+            className="text-xs md:text-sm uppercase tracking-[0.25em] text-rose-nude/70 font-light px-8 whitespace-nowrap"
           >
             {phrase}
-            <span className="mx-6 text-rose-pastel/40" aria-hidden="true">
+            <span className="mx-6 text-rose-pastel" aria-hidden="true">
               ✦
             </span>
           </span>
@@ -191,7 +193,9 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="bg-indigo-dark text-white">
+    <footer>
+      {/* ====== BLOQUE INDIGO: marca + newsletter + columnas ====== */}
+      <div className="bg-indigo-dark text-white">
       {/* Bloque superior: marca + newsletter ------------------------------ */}
       <div className="container mx-auto px-4 pt-16 pb-12">
         <div className="grid md:grid-cols-12 gap-10 md:gap-8">
@@ -339,14 +343,19 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Marquee de autoridad: reemplaza a los logos de metodos de pago. */}
+      </div>
+      {/* ====== FIN BLOQUE INDIGO ====== */}
+
+      {/* Marquee de autoridad FUERA del indigo, sobre fondo claro.
+       * Esta es la combinacion "elegante" pedida: el bloque azul cierra
+       * arriba, y debajo queda el marquee + copyright sobre fondo blanco. */}
       <FooterMarquee />
 
-      {/* Bloque inferior: copyright sobrio (sin metodos de pago) -------- */}
-      <div className="border-t border-white/10">
+      {/* Copyright sobrio sobre fondo claro (estilo anterior). */}
+      <div className="bg-white">
         <div className="container mx-auto px-4 py-5">
           <p
-            className="text-xs text-white/60 text-center"
+            className="text-xs text-indigo-dark/60 text-center"
             suppressHydrationWarning
           >
             &copy; {year} Semzo Privé. Todos los derechos reservados.
