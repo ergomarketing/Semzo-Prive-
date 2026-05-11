@@ -273,15 +273,15 @@ export default function DashboardHome() {
         </Alert>
       )}
 
-      {/* Banner: cancelada con acceso vigente hasta end_date */}
+      {/*
+       * Banner: cancelada con acceso vigente hasta end_date.
+       * Paleta Semzo:
+       *   fondo  rose-nude   (#fff0f3)
+       *   borde  rose-pastel (#f4c4cc)
+       *   texto  indigo-dark (#1a1a4b)
+       * Sustituye el amber/yellow default de shadcn por colores de marca.
+       */}
       {membershipUIStatus === "cancelled_active" && membership?.end_date && (
-        {/*
-         * Banner cancelada — paleta Semzo:
-         *   fondo  rose-nude   (#fff0f3)
-         *   borde  rose-pastel (#f4c4cc)
-         *   texto  indigo-dark (#1a1a4b)
-         * Sustituye el amber/yellow default de shadcn por colores de marca.
-         */}
         <Alert className="mb-6 bg-rose-nude border-rose-pastel">
           <AlertTriangle className="h-4 w-4 text-indigo-dark" />
           <AlertDescription className="text-indigo-dark flex items-center justify-between flex-wrap gap-2">
@@ -308,15 +308,15 @@ export default function DashboardHome() {
         </Alert>
       )}
 
-      {/* FASE 5: Banner para past_due */}
+      {/*
+       * FASE 5: Banner para past_due.
+       * Paleta Semzo con énfasis visual mayor:
+       *   fondo  rose-pastel/30 (rose-pastel suavizado para indicar urgencia)
+       *   borde  rose-pastel
+       *   texto  indigo-dark
+       * Se distingue del banner de cancelación normal por la intensidad del fondo.
+       */}
       {membership?.status === "past_due" && (
-        {/*
-         * Banner pago pendiente — paleta Semzo con énfasis visual mayor:
-         *   fondo  rose-pastel/30 (rose-pastel suavizado para indicar urgencia)
-         *   borde  rose-pastel
-         *   texto  indigo-dark
-         * Se distingue del banner de cancelación normal por la intensidad del fondo.
-         */}
         <Alert className="mb-6 bg-rose-pastel/30 border-rose-pastel">
           <AlertTriangle className="h-4 w-4 text-indigo-dark" />
           <AlertDescription className="text-indigo-dark">
