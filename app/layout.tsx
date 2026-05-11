@@ -4,10 +4,7 @@ import { Inter, Playfair_Display } from "next/font/google"
 import Script from "next/script"
 import "./globals.css"
 import Navbar from "./components/navbar"
-// Footer renombrado a site-footer para forzar a webpack a generar un module ID
-// nuevo y eliminar el chunk obsoleto del manifest que causaba el error
-// "Cannot read properties of undefined (reading 'call')" en RootLayout.
-import SiteFooter from "./components/site-footer"
+import Footer from "./components/footer"
 import CookieConsent from "./components/cookie-consent"
 import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
@@ -259,7 +256,7 @@ export default function RootLayout({
           <CartProvider>
             <Navbar />
             {children}
-            <SiteFooter />
+            <Footer />
             <CookieConsent />
             <Toaster />
           </CartProvider>
