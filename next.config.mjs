@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Config rebuild marker: 2026-05-11T13:50
+// Config rebuild marker: 2026-05-11T14:05 (force webpack manifest regen)
 // Tocar este archivo fuerza un restart completo del dev server, lo que
 // regenera el manifest de webpack y resuelve errores de modulo factory
 // undefined ("Cannot read properties of undefined (reading 'call')") que
