@@ -243,13 +243,15 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <Script id="chunk-error-handler" strategy="beforeInteractive">
+        {/*
+         * Chunk error handler: detecta errores explicitos de chunk loading y
+         * recarga la pagina una sola vez para recuperarse de chunks obsoletos.
+         * Movido a afterInteractive porque beforeInteractive en <body> NO esta
+         * soportado por Next 15 y estaba causando errores de manifest RSC al
+         * intentar registrar el script antes de que webpack inicializara.
+         */}
+        <Script id="chunk-error-handler" strategy="afterInteractive">
           {`
-            // Handler CONSERVADOR: solo detecta los errores explicitos de chunk
-            // loading. NO intenta atrapar "Cannot read properties of undefined
-            // (reading 'call')" porque ese patron tambien aparece en errores
-            // reales de runtime (no solo en stale chunks), y atraparlo causaba
-            // un loop infinito de recargas cuando el error subyacente era otro.
             if (typeof window !== "undefined") {
               window.addEventListener("error", function(e) {
                 if (e && e.message && (e.message.includes("ChunkLoadError") || e.message.includes("Loading chunk"))) {
