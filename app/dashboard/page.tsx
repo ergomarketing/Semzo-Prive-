@@ -275,9 +275,16 @@ export default function DashboardHome() {
 
       {/* Banner: cancelada con acceso vigente hasta end_date */}
       {membershipUIStatus === "cancelled_active" && membership?.end_date && (
-        <Alert className="mb-6 bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-900 flex items-center justify-between flex-wrap gap-2">
+        {/*
+         * Banner cancelada — paleta Semzo:
+         *   fondo  rose-nude   (#fff0f3)
+         *   borde  rose-pastel (#f4c4cc)
+         *   texto  indigo-dark (#1a1a4b)
+         * Sustituye el amber/yellow default de shadcn por colores de marca.
+         */}
+        <Alert className="mb-6 bg-rose-nude border-rose-pastel">
+          <AlertTriangle className="h-4 w-4 text-indigo-dark" />
+          <AlertDescription className="text-indigo-dark flex items-center justify-between flex-wrap gap-2">
             <span>
               <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
               <strong>
@@ -292,7 +299,7 @@ export default function DashboardHome() {
             <Button
               variant="outline"
               size="sm"
-              className="bg-transparent border-amber-400 text-amber-900 hover:bg-amber-100"
+              className="bg-transparent border-indigo-dark/30 text-indigo-dark hover:bg-rose-pastel/40"
               onClick={() => router.push("/dashboard/membresia")}
             >
               Reactivar
@@ -303,15 +310,22 @@ export default function DashboardHome() {
 
       {/* FASE 5: Banner para past_due */}
       {membership?.status === "past_due" && (
-        <Alert className="mb-6 bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-900">
+        {/*
+         * Banner pago pendiente — paleta Semzo con énfasis visual mayor:
+         *   fondo  rose-pastel/30 (rose-pastel suavizado para indicar urgencia)
+         *   borde  rose-pastel
+         *   texto  indigo-dark
+         * Se distingue del banner de cancelación normal por la intensidad del fondo.
+         */}
+        <Alert className="mb-6 bg-rose-pastel/30 border-rose-pastel">
+          <AlertTriangle className="h-4 w-4 text-indigo-dark" />
+          <AlertDescription className="text-indigo-dark">
             <strong>Problema con tu pago.</strong> Tu membresía está en riesgo. Por favor actualiza tu método de pago.
-            <div className="text-sm text-red-700 mt-2">Para evitar la suspensión del servicio.</div>
+            <div className="text-sm text-indigo-dark/75 mt-2">Para evitar la suspensión del servicio.</div>
             <Button
               variant="outline"
               size="sm"
-              className="ml-4 bg-transparent"
+              className="ml-4 bg-transparent border-indigo-dark/30 text-indigo-dark hover:bg-rose-nude"
               onClick={() => router.push("/dashboard/membresia")}
             >
               Actualizar Pago
