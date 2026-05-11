@@ -138,7 +138,10 @@
 .marquee-track {
   display: flex;
   width: max-content;
-  animation: marquee-footer 28s linear infinite;
+  /* Velocidad: 80s por ciclo completo. Antes era 28s y resultaba
+   * demasiado rapido para leer comodamente. Con 80s el texto se desliza
+   * suavemente y es legible sin necesidad de hacer hover. */
+  animation: marquee-footer 80s linear infinite;
   will-change: transform;
 }
 
