@@ -1,3 +1,4 @@
+// SSR cache invalidation: 2026-05-11T14:52 (footer restructure)
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
