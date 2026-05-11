@@ -19,9 +19,12 @@ export default function HeroSection() {
           src="/images/hero-luxury-bags-flatlay.jpeg"
           alt="Bolsos de lujo de diseñador"
           fill
-          // CLS FIX: sizes evita que Next.js sirva una imagen
-          // de tamano incorrecto que reflowe al final del LCP.
-          sizes="100vw"
+          // CLS + Perf FIX: sizes preciso evita que Next.js sirva una imagen
+          // de 1856x1306 cuando el viewport real solo necesita ~1382 (desktop).
+          // Lighthouse reportaba 96.7 KiB desperdiciados con sizes="100vw".
+          // Tope a 1400px en desktop ahorra ~50% del peso sin perder calidad.
+          sizes="(min-width: 1280px) 1400px, 100vw"
+          quality={80}
           className="object-cover object-center"
           priority
         />

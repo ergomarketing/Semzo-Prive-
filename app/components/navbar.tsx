@@ -138,15 +138,16 @@ export default function Navbar() {
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
 
-              <Link href="/cart" className="relative">
+              <Link href="/cart" className="relative" aria-label={itemCount > 0 ? `Carrito de compra con ${itemCount} artículo` : "Carrito de compra"}>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="rounded-none px-2 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  aria-label="Abrir carrito"
                 >
-                  <ShoppingBag className="w-4 h-4" />
+                  <ShoppingBag className="w-4 h-4" aria-hidden="true" />
                   {itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-rose-nude text-slate-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                    <span className="absolute -top-1 -right-1 bg-rose-nude text-slate-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium" aria-hidden="true">
                       {itemCount > 0 ? 1 : 0}
                     </span>
                   )}
@@ -185,8 +186,9 @@ export default function Navbar() {
                     onClick={handleLogout}
                     className="rounded-none px-2 py-2 text-xs bg-slate-600 text-white hover:bg-slate-500 transition-all duration-300"
                     title="Cerrar Sesión"
+                    aria-label="Cerrar sesión"
                   >
-                    <LogOut className="w-3 h-3" />
+                    <LogOut className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 </div>
               ) : (

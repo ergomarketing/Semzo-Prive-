@@ -100,6 +100,34 @@
   }
 }
 
+/*
+ * Animación marquee global y estable.
+ * CLS FIX: antes esta definición vivía en <style> inline DENTRO del footer.
+ * Eso provocaba que la animación y los display:flex se aplicaran sólo tras
+ * hidratar React, colapsando 4 líneas de texto en 1 → shift de 0.534 (el
+ * "elemento ofensor" reportado por Lighthouse como <footer class="py-16">).
+ * Definirla aquí garantiza que el navegador la aplique en el primer paint.
+ */
+@keyframes marquee-footer {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-footer 28s linear infinite;
+  will-change: transform;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
 /* Usar fuentes del sistema en lugar de Google Fonts */
 .font-serif {
   font-family: "Playfair Display", "Georgia", "Times New Roman", serif;

@@ -155,21 +155,15 @@ export default function Footer() {
             backgroundColor: "rgba(255, 240, 243, 0.2)",
           }}
         >
-          <div className="w-full overflow-hidden">
-            <style>{`
-              @keyframes marquee {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-              }
-              .marquee-track {
-                display: flex;
-                width: max-content;
-                animation: marquee 28s linear infinite;
-              }
-              .marquee-track:hover {
-                animation-play-state: paused;
-              }
-            `}</style>
+          {/*
+            CLS FIX: eliminado el <style> inline que vivía dentro de este JSX.
+            La animación marquee y display:flex ahora están en globals.css,
+            así Tailwind/Next sirven el CSS desde el primer paint y los dos
+            <span> NO empiezan apilados verticalmente para luego colapsar
+            (esa transición causaba el shift de 0.534 reportado por Lighthouse).
+            La clase `.marquee-track` es global y estable.
+          */}
+          <div className="w-full overflow-hidden" style={{ minHeight: "1.5rem" }}>
             <div className="marquee-track text-sm text-slate-500 whitespace-nowrap">
               <span className="pr-16">© {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.</span>
               <span className="pr-16">© {new Date().getFullYear()} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.</span>
