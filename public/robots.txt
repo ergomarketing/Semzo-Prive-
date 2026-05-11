@@ -1,15 +1,14 @@
 User-agent: *
 Allow: /
 
-# Áreas privadas
+# Áreas privadas (requieren login)
 Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /my-account/
 Disallow: /auth/
 Disallow: /api/
 
-# Flujos no indexables
-Disallow: /gift-cards
+# Flujos transaccionales (sin contenido SEO)
 Disallow: /cart
 Disallow: /checkout
 Disallow: /wishlist
@@ -19,10 +18,6 @@ Disallow: /reservations
 # Técnicos
 Disallow: /_next/
 Disallow: /test-*
-
-# Bloquear logo específico para Googlebot-Image
-User-agent: Googlebot-Image
-Disallow: /images/logo-20semzo-20prive.png
 
 # Sitemap
 Sitemap: https://semzoprive.com/sitemap.xml

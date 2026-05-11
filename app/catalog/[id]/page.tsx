@@ -223,6 +223,38 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       ? "https://schema.org/NewCondition"
       : "https://schema.org/UsedCondition"
 
+  // Normalizacion de imagenes para schema.org/Product.
+  // Google REQUIERE URLs absolutas en "image". Si pasamos "/bags/xxx/foto.png"
+  // (rutas en BD que no existen como assets fisicos) el rich snippet se descarta
+  // entero y la ficha pierde la posibilidad de mostrar precio en SERP.
+  // Filtramos igual que en sitemap: descartamos rutas /bags/*/foto-N que
+  // generaban los 27 errores en Google Search Console.
+  const baseUrl = "https://semzoprive.com"
+  const normalizedImages: string[] = (bag.images || [])
+    .map((u: string | null | undefined) => {
+      if (typeof u !== "string" || u.length === 0) return null
+      const trimmed = u.trim()
+      if (/^https?:\/\//i.test(trimmed)) return trimmed
+      if (/^\/bags\//i.test(trimmed)) return null // ruta sin asset fisico
+      if (trimmed.startsWith("/")) return `${baseUrl}${trimmed}`
+      return null
+    })
+    .filter((u: string | null): u is string => u !== null)
+
+  // Si despues de normalizar no quedan imagenes, usar la hero como fallback
+  // para que el schema siga siendo valido (sin image, Google no muestra rich snippet).
+  const productImages =
+    normalizedImages.length > 0 ? normalizedImages : [`${baseUrl}/images/hero-luxury-bags.jpeg`]
+
+  // Precio numerico (Google exige number, no string).
+  // bag.price viene como "59€/mes" -> extraemos solo el numero.
+  const priceNumeric = Number.parseFloat(String(bag.price).replace(/[^\d.]/g, "")) || 59
+
+  // Fecha de validez del precio: 1 año desde hoy en formato YYYY-MM-DD.
+  const priceValidUntil = new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+    .toISOString()
+    .split("T")[0]
+
   // Breadcrumb structured data (Home > Catalogo > Marca > Modelo)
   // Google lo muestra como ruta de navegacion en el SERP, mejora CTR.
   // Nota: la marca NO se enlaza aun (no existe ruta cluster por marca). En Fase 2D
@@ -260,6 +292,15 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
     ],
   }
 
+  // Product schema corregido:
+  // - price: NUMERO (no string), Google rechaza strings con simbolo.
+  // - businessFunction: LeaseOut indica que es ALQUILER no compra (key para
+  //   evitar penalizacion por intencion confusa en Shopping y SERP).
+  // - priceSpecification: BillingDuration mensual para que Google entienda
+  //   que el precio es por mes, no total.
+  // - SIN aggregateRating: Google penaliza ratings inventados desde 2025;
+  //   si en el futuro tenemos reviews reales agregadas las anadimos.
+  // - image: array de URLs absolutas normalizadas (sin /bags/*/foto-N rotos).
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -269,29 +310,32 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       name: bag.brand,
     },
     description: bag.description,
-    image: bag.images,
+    image: productImages,
     color: bag.color,
     material: bag.material,
     itemCondition,
     sku: bag.id,
     offers: {
       "@type": "Offer",
-      price: bag.price.replace("€/mes", ""),
+      price: priceNumeric,
       priceCurrency: "EUR",
+      businessFunction: "http://purl.org/goodrelations/v1#LeaseOut",
       availability:
         bag.availability.status === "available" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: `https://semzoprive.com/catalog/${canonicalPath}`,
-      priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+      url: `${baseUrl}/catalog/${canonicalPath}`,
+      priceValidUntil,
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: priceNumeric,
+        priceCurrency: "EUR",
+        unitCode: "MON", // UN/CEFACT: MON = mes
+        unitText: "mes",
+      },
       seller: {
         "@type": "Organization",
         name: "Semzo Prive",
-        url: "https://semzoprive.com",
+        url: baseUrl,
       },
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: bag.rating,
-      reviewCount: bag.reviews,
     },
   }
 

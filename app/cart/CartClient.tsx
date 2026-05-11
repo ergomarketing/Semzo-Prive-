@@ -1200,7 +1200,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                 Necesitas una cuenta para aplicar descuentos y completar tu compra
               </p>
               <Button
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => setShowLoginModal(true)}
                 className="bg-indigo-dark hover:bg-indigo-dark/90 text-white px-8"
               >
                 Crear cuenta o iniciar sesión
