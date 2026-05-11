@@ -240,53 +240,30 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         <Script id="chunk-error-handler" strategy="beforeInteractive">
           {`
+            // Handler CONSERVADOR: solo detecta los errores explicitos de chunk
+            // loading. NO intenta atrapar "Cannot read properties of undefined
+            // (reading 'call')" porque ese patron tambien aparece en errores
+            // reales de runtime (no solo en stale chunks), y atraparlo causaba
+            // un loop infinito de recargas cuando el error subyacente era otro.
             if (typeof window !== "undefined") {
-              var KEY = "chunk_reload_count";
-
-              // Detecta error de chunk: include "Loading chunk", "ChunkLoadError",
-              // o el patron mas profundo de webpack "Cannot read properties of undefined (reading 'call')"
-              // que ocurre cuando un factory de modulo no esta disponible (chunk eliminado entre builds).
-              function isChunkError(msg) {
-                if (!msg) return false;
-                return (
-                  msg.indexOf("ChunkLoadError") !== -1 ||
-                  msg.indexOf("Loading chunk") !== -1 ||
-                  msg.indexOf("Loading CSS chunk") !== -1 ||
-                  // Webpack factory error tipico cuando un modulo se renombra entre builds:
-                  (msg.indexOf("Cannot read properties of undefined") !== -1 && msg.indexOf("'call'") !== -1) ||
-                  (msg.indexOf("undefined is not an object") !== -1 && msg.indexOf("call") !== -1)
-                );
-              }
-
-              function tryReload() {
-                // Permite hasta 2 intentos de recarga antes de rendirse,
-                // con un cooldown corto entre intentos para esperar al servidor.
-                var count = parseInt(sessionStorage.getItem(KEY) || "0", 10);
-                if (count >= 2) return;
-                sessionStorage.setItem(KEY, String(count + 1));
-                // Pequeno delay para dar tiempo al dev server a terminar el rebuild
-                setTimeout(function() { window.location.reload(); }, 350);
-              }
-
               window.addEventListener("error", function(e) {
-                if (e && e.message && isChunkError(e.message)) {
-                  tryReload();
+                if (e && e.message && (e.message.includes("ChunkLoadError") || e.message.includes("Loading chunk"))) {
+                  var key = "chunk_reload_attempted";
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, "1");
+                    window.location.reload();
+                  }
                 }
               });
-
               window.addEventListener("unhandledrejection", function(e) {
-                var msg = e && e.reason && (e.reason.message || String(e.reason));
-                if (isChunkError(msg)) {
-                  tryReload();
+                var msg = e && e.reason && e.reason.message;
+                if (msg && (msg.includes("ChunkLoadError") || msg.includes("Loading chunk"))) {
+                  var key = "chunk_reload_attempted";
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, "1");
+                    window.location.reload();
+                  }
                 }
-              });
-
-              // Reset del contador cuando la pagina carga completa sin errores:
-              // permite que la proxima sesion de chunk-fail tambien pueda auto-recuperarse.
-              window.addEventListener("load", function() {
-                setTimeout(function() {
-                  sessionStorage.removeItem(KEY);
-                }, 2000);
               });
             }
           `}
