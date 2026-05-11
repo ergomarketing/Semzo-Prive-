@@ -207,7 +207,21 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
         />
 
-        {/* TikTok Pixel - loaded in body via dynamic import to avoid chunk errors */}
+        {/*
+         * TikTok Pixel movido al head (antes estaba en body).
+         * En Next 15 RSC, tener Scripts mezclados entre body y los Client
+         * Components del layout causa que webpack genere manifests inconsistentes
+         * tras HMR rebuilds, produciendo errores "factory is undefined".
+         * El head es el lugar canonico para los pixeles de tracking.
+         */}
+        <Script
+          id="tiktok-pixel"
+          strategy="afterInteractive"
+          src="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=D4A7JSJC77U1BLONR900&lib=ttq"
+        />
+        <Script id="tiktok-pixel-init" strategy="afterInteractive">
+          {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
+        </Script>
 
         {/* Google Analytics */}
         <Script
@@ -243,46 +257,6 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        {/*
-         * Chunk error handler: detecta errores explicitos de chunk loading y
-         * recarga la pagina una sola vez para recuperarse de chunks obsoletos.
-         * Movido a afterInteractive porque beforeInteractive en <body> NO esta
-         * soportado por Next 15 y estaba causando errores de manifest RSC al
-         * intentar registrar el script antes de que webpack inicializara.
-         */}
-        <Script id="chunk-error-handler" strategy="afterInteractive">
-          {`
-            if (typeof window !== "undefined") {
-              window.addEventListener("error", function(e) {
-                if (e && e.message && (e.message.includes("ChunkLoadError") || e.message.includes("Loading chunk"))) {
-                  var key = "chunk_reload_attempted";
-                  if (!sessionStorage.getItem(key)) {
-                    sessionStorage.setItem(key, "1");
-                    window.location.reload();
-                  }
-                }
-              });
-              window.addEventListener("unhandledrejection", function(e) {
-                var msg = e && e.reason && e.reason.message;
-                if (msg && (msg.includes("ChunkLoadError") || msg.includes("Loading chunk"))) {
-                  var key = "chunk_reload_attempted";
-                  if (!sessionStorage.getItem(key)) {
-                    sessionStorage.setItem(key, "1");
-                    window.location.reload();
-                  }
-                }
-              });
-            }
-          `}
-        </Script>
-        <Script
-          id="tiktok-pixel"
-          strategy="afterInteractive"
-          src="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=D4A7JSJC77U1BLONR900&lib=ttq"
-        />
-        <Script id="tiktok-pixel-init" strategy="afterInteractive">
-          {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
-        </Script>
         <AuthProvider>
           <CartProvider>
             <Navbar />
