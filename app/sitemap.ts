@@ -37,6 +37,37 @@ export const revalidate = 3600
 const STATIC_PAGES_LASTMOD = "2026-04-29"
 const LEGAL_LASTMOD = "2026-01-01"
 
+/**
+ * Normaliza una URL de imagen para el sitemap.
+ * Google exige URLs absolutas (con protocolo) en <image:loc>.
+ * - Si ya es http(s):// la devuelve tal cual.
+ * - Si empieza con / se prefija con baseUrl.
+ * - Si no es un string valido o es una ruta tipo "/bags/x/foto-1.png" que
+ *   no existe fisicamente, se descarta retornando null.
+ *
+ * Esto soluciona los 27 errores "URL no valida" que GSC reportaba
+ * porque algunas imagenes en BD se guardaron como rutas relativas
+ * a archivos que nunca se subieron al servidor.
+ */
+function normalizeImageUrl(url: unknown, baseUrl: string): string | null {
+  if (typeof url !== "string" || url.length === 0) return null
+  const trimmed = url.trim()
+
+  // URL absoluta valida: aceptar
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+
+  // Ruta relativa sospechosa: las "/bags/[slug]/foto-N.[png|jpg]" NO existen
+  // como assets reales (las imagenes viven en Vercel Blob o /images/).
+  // Las descartamos para no inflar el sitemap con 404 silenciosos.
+  if (/^\/bags\//i.test(trimmed)) return null
+
+  // Ruta relativa valida (ej. /images/hero.jpg): prefijar con baseUrl
+  if (trimmed.startsWith("/")) return `${baseUrl}${trimmed}`
+
+  // Cualquier otra cosa (data:, blob:, sin barra): descartar
+  return null
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://semzoprive.com"
 
@@ -50,12 +81,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const posts = await listPosts()
     for (const post of posts) {
       const postImage = (post as { image?: string }).image
+      const normalizedImage = normalizeImageUrl(postImage, baseUrl)
       blogUrls.push({
         url: `${baseUrl}/blog/${post.slug}`,
         lastModified: post.date || STATIC_PAGES_LASTMOD,
         changeFrequency: "monthly" as const,
         priority: 0.6,
-        ...(postImage ? { images: [postImage.startsWith("http") ? postImage : `${baseUrl}${postImage}`] } : {}),
+        ...(normalizedImage ? { images: [normalizedImage] } : {}),
       })
     }
   } catch {
@@ -86,9 +118,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
           // Construir array de imagenes para Google Images.
           // Priorizar bag.images (galeria), fallback a image_url. Maximo 5 por URL (Google).
+          // Cada URL pasa por normalizeImageUrl que descarta las invalidas
+          // (rutas /bags/[slug]/foto-N.png que no existen como assets).
           const imagesArr = Array.isArray(bag.images) && bag.images.length > 0 ? bag.images : []
-          const finalImages = (imagesArr.length > 0 ? imagesArr : bag.image_url ? [bag.image_url] : [])
-            .filter((u): u is string => typeof u === "string" && u.length > 0)
+          const candidateImages = imagesArr.length > 0 ? imagesArr : bag.image_url ? [bag.image_url] : []
+          const finalImages = candidateImages
+            .map((u) => normalizeImageUrl(u, baseUrl))
+            .filter((u): u is string => u !== null)
             .slice(0, 5)
 
           return {
