@@ -7,12 +7,16 @@ import Image from "next/image"
 
 export default function HeroSection() {
   return (
-    // CLS FIX: min-h-screen usa 100vh que CAMBIA en moviles cuando la barra
-    // de URL aparece/desaparece, causando shifts de 0.3-0.8 en CLS.
-    // Usamos 100svh (small viewport height) que es estable: representa
-    // la altura minima del viewport y no cambia con la UI del navegador.
-    // Fallback a min-h-screen para navegadores sin soporte svh (<2% mercado).
-    <section className="relative min-h-screen min-h-[100svh] overflow-hidden">
+    // Hero compacto: antes ocupaba 100svh (pantalla completa) lo que
+    // alargaba demasiado el scroll y aburria al usuario antes de llegar
+    // al contenido de valor (membresias, coleccion).
+    // Nuevas alturas:
+    //   movil:   620px  -> caben titulo + subtitulo + 2 CTAs sin que la
+    //                       imagen domine el viewport.
+    //   tablet:  680px
+    //   desktop: 78vh con tope de 760px (evita exceso en pantallas 4K).
+    // Mantiene estabilidad CLS porque son valores fijos, no porcentuales del viewport movil.
+    <section className="relative min-h-[620px] md:min-h-[680px] lg:min-h-[78vh] lg:max-h-[760px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
@@ -32,11 +36,11 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-12 md:pb-20 relative z-10">
+      {/* Content - paddings reducidos acorde a la nueva altura compacta */}
+      <div className="container mx-auto px-4 pt-28 md:pt-32 pb-10 md:pb-16 relative z-10">
         <div className="max-w-4xl">
           {/* Contenido principal */}
-          <div className="space-y-8 md:space-y-12 text-center lg:text-left">
+          <div className="space-y-6 md:space-y-10 text-center lg:text-left">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/80 mb-4 md:mb-6 font-medium">
                 Alquiler de bolsos de lujo mediante membresía
