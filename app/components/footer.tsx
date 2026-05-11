@@ -164,8 +164,10 @@ function FooterMarquee() {
   // Repetimos 6 veces para garantizar continuidad del scroll sin "saltos".
   const phrases = Array.from({ length: 6 }).flatMap(() => MARQUEE_PHRASES)
   return (
-    // Marquee FUERA del bloque indigo, sobre fondo claro.
-    // Color de texto en rose-nude para mantener el contraste suave y luxe.
+    // Marquee FUERA del bloque indigo, sobre fondo claro (como en produccion).
+    // Texto en indigo-dark/40 para legibilidad real sobre blanco manteniendo
+    // un look suave. Antes usaba text-rose-nude que es casi blanco (#fff0f3)
+    // y resultaba invisible.
     <div
       className="overflow-hidden bg-white py-5 border-y border-rose-pastel/30"
       aria-label="Promesas de la marca Semzo Privé"
@@ -174,7 +176,7 @@ function FooterMarquee() {
         {phrases.map((phrase, i) => (
           <span
             key={i}
-            className="text-xs md:text-sm uppercase tracking-[0.25em] text-rose-nude/70 font-light px-8 whitespace-nowrap"
+            className="text-xs md:text-sm uppercase tracking-[0.25em] text-indigo-dark/40 font-light px-8 whitespace-nowrap"
           >
             {phrase}
             <span className="mx-6 text-rose-pastel" aria-hidden="true">
