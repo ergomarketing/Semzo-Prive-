@@ -42,12 +42,19 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const { slug } = await props.params
   const post = await getPost(slug)
 
+  // CAUSA RAIZ del "Excluida por noindex" en GSC:
+  // Antes, si getPost fallaba (network, slug inexistente, timeout) devolviamos
+  // metadata con robots: noindex. Google cachea ese estado y la URL queda
+  // marcada como NO indexable de forma persistente, aunque luego la pagina
+  // renderice correctamente.
+  //
+  // Solucion: si no hay post, llamar notFound() devuelve HTTP 404 limpio.
+  // Google trata 404 mucho mejor que noindex:
+  //  - No consume crawl budget en revisitas.
+  //  - Si despues la URL vuelve a existir, se reindexa sin friccion.
+  //  - No queda "envenenada" la URL en el indice.
   if (!post) {
-    return {
-      title: "Artículo no encontrado | SEMZO Magazine",
-      description: "El artículo que buscas no está disponible.",
-      robots: { index: false, follow: false },
-    }
+    notFound()
   }
 
   const url = `https://semzoprive.com/blog/${slug}`
