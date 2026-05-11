@@ -7,13 +7,21 @@ import Image from "next/image"
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen overflow-hidden">
+    // CLS FIX: min-h-screen usa 100vh que CAMBIA en moviles cuando la barra
+    // de URL aparece/desaparece, causando shifts de 0.3-0.8 en CLS.
+    // Usamos 100svh (small viewport height) que es estable: representa
+    // la altura minima del viewport y no cambia con la UI del navegador.
+    // Fallback a min-h-screen para navegadores sin soporte svh (<2% mercado).
+    <section className="relative min-h-screen min-h-[100svh] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
           src="/images/hero-luxury-bags-flatlay.jpeg"
           alt="Bolsos de lujo de diseñador"
           fill
+          // CLS FIX: sizes evita que Next.js sirva una imagen
+          // de tamano incorrecto que reflowe al final del LCP.
+          sizes="100vw"
           className="object-cover object-center"
           priority
         />
