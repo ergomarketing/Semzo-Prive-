@@ -1,5 +1,6 @@
 "use client"
 
+// SSR cache invalidation: 2026-05-12T13:50 (item Recomendar a una Amiga)
 import type React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
@@ -16,7 +17,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut } from "lucide-react"
+import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -67,6 +68,13 @@ export default function DashboardLayoutClient({
       title: "Mi Wishlist",
       icon: Heart,
       href: "/wishlist",
+    },
+    {
+      // Programa "Recomendar a una amiga": cada socia tiene su codigo
+      // unico y link de referido. La pagina consume /api/referrals/me.
+      title: "Recomendar a una Amiga",
+      icon: Gift,
+      href: "/dashboard/referidos",
     },
   ]
 

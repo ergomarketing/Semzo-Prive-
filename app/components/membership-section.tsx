@@ -187,7 +187,7 @@ export default function MembershipSection() {
               >
                 <div>Pago Trimestral</div>
                 <div
-                  className={`text-xs font-bold mt-1 ${billingCycle === "quarterly" ? "text-rose-200" : "text-rose-500"}`}
+                  className={`text-xs font-bold mt-1 ${billingCycle === "quarterly" ? "text-rose-100" : "text-rose-700"}`}
                 >
                   Ahorra un 20%
                 </div>
@@ -310,7 +310,7 @@ export default function MembershipSection() {
                     </span>
 
                     {billingCycle === "quarterly" && (
-                      <div className="mt-2 text-rose-500 font-medium text-sm bg-rose-50 px-2 py-1 rounded-md inline-block">
+                      <div className="mt-2 text-rose-700 font-medium text-sm bg-rose-50 px-2 py-1 rounded-md inline-block">
                         ¡Ahorras un {plan.quarterlyDiscount}!
                       </div>
                     )}

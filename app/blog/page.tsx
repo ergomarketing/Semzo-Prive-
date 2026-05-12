@@ -103,7 +103,7 @@ export default async function BlogPage() {
                         </h3>
                         <p className="text-sm text-indigo-dark/70 line-clamp-2 mb-4">{post.excerpt}</p>
 
-                        <div className="flex items-center gap-3 text-xs text-indigo-dark/50">
+                        <div className="flex items-center gap-3 text-xs text-indigo-dark/75">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES", {

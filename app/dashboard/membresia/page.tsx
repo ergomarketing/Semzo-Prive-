@@ -194,11 +194,17 @@ export default function MembresiaPage() {
       <div className="container mx-auto px-4 max-w-4xl">
         <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">MI MEMBRESÍA</h1>
 
-        {/* Email Requirement Alert */}
+        {/*
+         * Avisos del dashboard — TODOS alineados a paleta Semzo:
+         *   fondo  rose-nude   (#fff0f3)
+         *   borde  rose-pastel (#f4c4cc)
+         *   texto  indigo-dark (#1a1a4b)
+         * Antes usaban amber/yellow default de shadcn que rompían la identidad.
+         */}
         {flags.needs_email && (
-          <Alert variant="default" className="mb-6 border-amber-500 bg-amber-50">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
+          <Alert variant="default" className="mb-6 border-rose-pastel bg-rose-nude">
+            <AlertTriangle className="h-4 w-4 text-indigo-dark" />
+            <AlertDescription className="text-indigo-dark">
               <strong>Email requerido:</strong> Necesitamos tu email real para confirmar reservas y notificaciones.
             </AlertDescription>
           </Alert>
@@ -206,9 +212,9 @@ export default function MembresiaPage() {
 
         {/* Banner: cancelada con acceso vigente */}
         {isCancelledActive && (membership.end_date || membership.ends_at) && (
-          <Alert className="mb-6 bg-amber-50 border-amber-200">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-900">
+          <Alert className="mb-6 bg-rose-nude border-rose-pastel">
+            <AlertTriangle className="h-4 w-4 text-indigo-dark" />
+            <AlertDescription className="text-indigo-dark">
               <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
               <strong>{formatLongDate(membership.end_date || membership.ends_at)}</strong>. Después
               dejarás de tener acceso. Si cambias de opinión, puedes reactivarla en cualquier momento.
@@ -253,7 +259,7 @@ export default function MembresiaPage() {
                   )}
                 </div>
                 {flags.needs_email && (
-                  <p className="text-sm text-amber-600 mt-1">Debes completar tu email para poder reservar</p>
+                  <p className="text-sm text-indigo-dark/80 mt-1">Debes completar tu email para poder reservar</p>
                 )}
               </div>
 
@@ -276,16 +282,26 @@ export default function MembresiaPage() {
                     {isActive && <Crown className="w-6 h-6 text-indigo-dark" />}
                     <h2 className="font-serif text-2xl text-indigo-dark">{currentMembership.name}</h2>
                   </div>
+                  {/*
+                   * Badge de estado — unificado a paleta Semzo.
+                   * Diferenciamos visualmente cada estado usando opacidad
+                   * y bordes en lugar de cambiar de familia cromática:
+                   *  active           → rose-nude + borde rose-pastel
+                   *  cancelled_active → rose-nude + borde rose-pastel/60 (mas sutil)
+                   *  paused           → indigo-dark/5 (gris neutro de marca)
+                   *  past_due         → rose-pastel/40 (rose mas intenso, aviso)
+                   *  otros            → indigo-dark/5
+                   */}
                   <span
                     className={`px-3 py-1 text-xs rounded-full ${
                       isActive
                         ? "bg-rose-nude border border-rose-pastel/30 text-indigo-dark"
                         : isCancelledActive
-                          ? "bg-amber-50 border border-amber-200 text-amber-900"
+                          ? "bg-rose-nude border border-rose-pastel/60 text-indigo-dark"
                           : uiStatus === "paused"
-                            ? "bg-blue-50 border border-blue-200 text-blue-900"
+                            ? "bg-indigo-dark/5 border border-indigo-dark/15 text-indigo-dark"
                             : uiStatus === "past_due"
-                              ? "bg-red-50 border border-red-200 text-red-900"
+                              ? "bg-rose-pastel/40 border border-rose-pastel text-indigo-dark"
                               : "bg-indigo-dark/5 text-indigo-dark/60"
                     }`}
                   >
@@ -486,9 +502,9 @@ export default function MembresiaPage() {
                 {/* Reanudar si está pausada */}
                 {membership.status === "paused" && (
                   <div className="mt-4">
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                      <p className="text-sm text-amber-800">Tu membresía está pausada. No se realizarán cobros hasta que la reanudes.</p>
-                    </div>
+                  <div className="bg-rose-nude border border-rose-pastel rounded-lg p-3 mb-3">
+                    <p className="text-sm text-indigo-dark">Tu membresía está pausada. No se realizarán cobros hasta que la reanudes.</p>
+                  </div>
                     <Button
                       onClick={() => handleMembershipAction("resume")}
                       disabled={!!actionLoading}

@@ -37,6 +37,24 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
+
+    /*
+     * Tokens del Sidebar (shadcn/ui).
+     * FIX contraste menu movil dashboard: el componente Sidebar usa
+     * `bg-sidebar` y `text-sidebar-foreground`. Sin estos tokens
+     * resolvian a transparente y el contenido detras se veia a traves
+     * del sheet movil, haciendo el menu ilegible.
+     * Valores: fondo blanco solido y texto oscuro coherente con el resto
+     * del dashboard. Accent rose-nude suave para hover/activo.
+     */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 222.2 47.4% 11.2%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 350 40% 96%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 222.2 84% 4.9%;
   }
 
   .dark {
@@ -97,6 +115,69 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/*
+ * Animación marquee global y estable.
+ * CLS FIX: antes esta definición vivía en <style> inline DENTRO del footer.
+ * Eso provocaba que la animación y los display:flex se aplicaran sólo tras
+ * hidratar React, colapsando 4 líneas de texto en 1 → shift de 0.534 (el
+ * "elemento ofensor" reportado por Lighthouse como <footer class="py-16">).
+ * Definirla aquí garantiza que el navegador la aplique en el primer paint.
+ */
+@keyframes marquee-footer {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  /* Velocidad: 120s por ciclo. Paso suave, legible y relajado. */
+  animation: marquee-footer 120s linear infinite;
+  will-change: transform;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/*
+ * Animacion del banner de testimonios.
+ * Mas lenta que el footer (60s) porque las tarjetas son mas grandes
+ * y el usuario necesita tiempo para leerlas mientras pasan.
+ * Pausa al hover para que pueda leer comodamente la frase que le interese.
+ */
+@keyframes testimonials-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.testimonials-track {
+  display: flex;
+  width: max-content;
+  animation: testimonials-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.testimonials-track:hover {
+  animation-play-state: paused;
+}
+
+/* Respeta usuarios con preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .testimonials-track {
+    animation: none;
   }
 }
 

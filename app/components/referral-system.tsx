@@ -1,45 +1,75 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Copy, Check, Gift, Users, Crown } from "lucide-react"
 
-interface ReferralData {
+interface ReferralStatsResponse {
   referralCode: string
-  referralsCount: number
-  freeMonthsEarned: number
+  referralLink: string
+  totalReferrals: number
   pendingReferrals: number
-  totalSavings: number
+  qualifiedReferrals: number
+  rewardedReferrals: number
+  balanceEuros: number
+}
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { credentials: "include" })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body?.error || `HTTP ${res.status}`)
+  }
+  return (await res.json()) as ReferralStatsResponse
 }
 
 export default function ReferralSystem() {
   const [copied, setCopied] = useState(false)
-  const [referralData, setReferralData] = useState<ReferralData>({
-    referralCode: "MARIA2024",
-    referralsCount: 3,
-    freeMonthsEarned: 1,
-    pendingReferrals: 2,
-    totalSavings: 129,
-  })
+  // Fase 1: leemos del backend real. Sin datos mock.
+  const { data, error, isLoading } = useSWR<ReferralStatsResponse>(
+    "/api/referrals/me",
+    fetcher,
+    { revalidateOnFocus: false },
+  )
 
-  const referralLink = `https://semzoprive.com/signup?ref=${referralData.referralCode}`
+  if (isLoading) {
+    return (
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-10 text-center text-slate-500">
+          Cargando tu programa de referidos...
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-10 text-center text-slate-500">
+          No hemos podido cargar tu programa de referidos. Vuelve a
+          intentarlo en unos segundos.
+        </CardContent>
+      </Card>
+    )
+  }
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(referralLink)
+    navigator.clipboard.writeText(data.referralLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const shareViaWhatsApp = () => {
-    const message = `¡Descubre Semzo Privé! 💎 Alquila bolsos de lujo de Chanel, Hermès, Dior y más. Con mi código obtienes 15% de descuento en tu primera mensualidad: ${referralLink}`
+    const message = `¡Descubre Semzo Privé! Alquila bolsos de lujo de Chanel, Hermès, Dior y más. Regístrate con mi enlace y obtén 50€ en crédito en tu primera membresía: ${data.referralLink}`
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
   }
 
   const shareViaEmail = () => {
-    const subject = "¡Descubre Semzo Privé - Bolsos de lujo por suscripción!"
-    const body = `Hola,\n\n¡Te tengo que contar sobre Semzo Privé! Es una plataforma increíble donde puedes alquilar bolsos de lujo de marcas como Chanel, Hermès, Dior y Louis Vuitton por una fracción del precio.\n\nCon mi código de referido obtienes un 15% de descuento en tu primera mensualidad:\n${referralLink}\n\n¡Es el arte de poseer sin comprar! 💎\n\nUn abrazo`
+    const subject = "Te invito a Semzo Privé — 50€ de crédito"
+    const body = `Hola,\n\nTe invito a Semzo Privé, la plataforma premium de alquiler de bolsos de lujo (Chanel, Hermès, Dior, Louis Vuitton y más).\n\nRegístrate con mi enlace y obtén 50€ en crédito Semzo Privé en tu primera membresía:\n${data.referralLink}\n\nUn abrazo`
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
   }
 
@@ -53,7 +83,8 @@ export default function ReferralSystem() {
             Programa de Referidos
           </CardTitle>
           <p className="text-slate-700 mt-2">
-            Invita a tus amigas y gana meses gratis. Ellas también obtienen descuentos especiales.
+            Invita a tus amigas y gana 50€ en crédito Semzo Privé. Ellas
+            también reciben 50€ al registrarse.
           </p>
         </CardHeader>
       </Card>
@@ -63,7 +94,7 @@ export default function ReferralSystem() {
         <Card className="border-0 shadow-md">
           <CardContent className="p-4 text-center">
             <Users className="h-8 w-8 text-indigo-dark mx-auto mb-2" />
-            <p className="text-2xl font-bold text-indigo-dark">{referralData.referralsCount}</p>
+            <p className="text-2xl font-bold text-indigo-dark">{data.totalReferrals}</p>
             <p className="text-sm text-slate-600">Amigas referidas</p>
           </CardContent>
         </Card>
@@ -71,8 +102,8 @@ export default function ReferralSystem() {
         <Card className="border-0 shadow-md">
           <CardContent className="p-4 text-center">
             <Crown className="h-8 w-8 text-rose-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-rose-500">{referralData.freeMonthsEarned}</p>
-            <p className="text-sm text-slate-600">Meses gratis ganados</p>
+            <p className="text-2xl font-bold text-rose-500">{data.qualifiedReferrals}</p>
+            <p className="text-sm text-slate-600">Cualificadas (60 días)</p>
           </CardContent>
         </Card>
 
@@ -81,7 +112,7 @@ export default function ReferralSystem() {
             <div className="h-8 w-8 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2">
               <span className="text-amber-600 font-bold">⏳</span>
             </div>
-            <p className="text-2xl font-bold text-amber-600">{referralData.pendingReferrals}</p>
+            <p className="text-2xl font-bold text-amber-600">{data.pendingReferrals}</p>
             <p className="text-sm text-slate-600">Pendientes</p>
           </CardContent>
         </Card>
@@ -91,8 +122,8 @@ export default function ReferralSystem() {
             <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
               <span className="text-green-600 font-bold">€</span>
             </div>
-            <p className="text-2xl font-bold text-green-600">{referralData.totalSavings}€</p>
-            <p className="text-sm text-slate-600">Ahorrado total</p>
+            <p className="text-2xl font-bold text-green-600">{data.balanceEuros}€</p>
+            <p className="text-sm text-slate-600">Crédito disponible</p>
           </CardContent>
         </Card>
       </div>
@@ -100,11 +131,16 @@ export default function ReferralSystem() {
       {/* Referral Link */}
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg font-serif text-indigo-dark">Tu enlace de referido</CardTitle>
+          <CardTitle className="text-lg font-serif text-indigo-dark">
+            Tu enlace de referido
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-1">
+            Código: <span className="font-mono font-semibold text-indigo-dark">{data.referralCode}</span>
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <Input value={referralLink} readOnly className="bg-slate-50 font-mono text-sm" />
+            <Input value={data.referralLink} readOnly className="bg-slate-50 font-mono text-sm" />
             <Button size="icon" onClick={copyToClipboard} variant="outline" className="flex-shrink-0">
               {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
@@ -112,7 +148,6 @@ export default function ReferralSystem() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Button onClick={shareViaWhatsApp} className="bg-green-600 hover:bg-green-700 text-white">
-              <span className="mr-2">📱</span>
               Compartir por WhatsApp
             </Button>
             <Button
@@ -120,7 +155,6 @@ export default function ReferralSystem() {
               variant="outline"
               className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
             >
-              <span className="mr-2">📧</span>
               Compartir por Email
             </Button>
           </div>
@@ -140,7 +174,8 @@ export default function ReferralSystem() {
               </div>
               <h4 className="font-semibold text-indigo-dark mb-2">Comparte tu enlace</h4>
               <p className="text-sm text-slate-600">
-                Envía tu enlace personalizado a tus amigas por WhatsApp, email o redes sociales.
+                Envía tu enlace personalizado a tus amigas por WhatsApp, email
+                o redes sociales.
               </p>
             </div>
 
@@ -148,9 +183,10 @@ export default function ReferralSystem() {
               <div className="w-12 h-12 bg-rose-pastel/50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-indigo-dark font-bold">2</span>
               </div>
-              <h4 className="font-semibold text-indigo-dark mb-2">Ellas se suscriben</h4>
+              <h4 className="font-semibold text-indigo-dark mb-2">Ella se registra</h4>
               <p className="text-sm text-slate-600">
-                Tus amigas obtienen 15% de descuento en su primera mensualidad usando tu código.
+                Tu amiga obtiene 50€ en crédito Semzo Privé al activar
+                cualquier membresía.
               </p>
             </div>
 
@@ -158,9 +194,10 @@ export default function ReferralSystem() {
               <div className="w-12 h-12 bg-indigo-dark rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-white font-bold">3</span>
               </div>
-              <h4 className="font-semibold text-indigo-dark mb-2">Tú ganas</h4>
+              <h4 className="font-semibold text-indigo-dark mb-2">Tú ganas 50€</h4>
               <p className="text-sm text-slate-600">
-                Por cada 3 referidos exitosos, obtienes 1 mes completamente gratis.
+                Cuando tu amiga completa 60 días de membresía, recibes 50€ en
+                crédito Semzo Privé.
               </p>
             </div>
           </div>
@@ -172,11 +209,11 @@ export default function ReferralSystem() {
         <CardContent className="p-4">
           <h4 className="font-semibold text-slate-800 mb-2">Términos y condiciones:</h4>
           <ul className="text-sm text-slate-600 space-y-1">
-            <li>• Las amigas referidas deben completar al menos 1 mes de suscripción</li>
-            <li>• Los meses gratis se acreditan automáticamente cada 3 referidos exitosos</li>
-            <li>• El descuento del 15% aplica solo para la primera mensualidad</li>
-            <li>• No hay límite en la cantidad de referidos que puedes hacer</li>
-            <li>• Los meses gratis no son transferibles ni canjeables por dinero</li>
+            <li>• La amiga referida debe completar al menos 60 días de membresía activa.</li>
+            <li>• Los 50€ son crédito Semzo Privé aplicable a futuras mensualidades.</li>
+            <li>• El crédito no es transferible ni canjeable por dinero.</li>
+            <li>• No hay límite en la cantidad de referidos que puedes hacer.</li>
+            <li>• Semzo Privé puede modificar o cancelar el programa con preaviso.</li>
           </ul>
         </CardContent>
       </Card>

@@ -8,7 +8,12 @@ export default function MarqueeBanner() {
   const repeatedText = Array(8).fill(`${text}${separator}`).join("")
 
   return (
-    <div className="bg-[#1a1a4b] overflow-hidden py-2">
+    // CLS FIX: altura minima fija para reservar espacio durante SSR.
+    // Como este componente es "use client", durante el render inicial
+    // ocupa 0px y al hidratarse anade ~32px, empujando TODO el contenido
+    // de abajo y aportando ~0.2-0.4 al CLS.
+    // h-9 = 36px, exactamente la altura final con py-2 + line-height.
+    <div className="bg-[#1a1a4b] overflow-hidden h-9 flex items-center">
       <div className="animate-marquee whitespace-nowrap">
         <span className="text-xs md:text-sm uppercase tracking-[0.2em] text-white/90 font-light">
           {repeatedText}

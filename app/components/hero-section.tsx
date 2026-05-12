@@ -7,13 +7,28 @@ import Image from "next/image"
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen overflow-hidden">
+    // Hero compacto: antes ocupaba 100svh (pantalla completa) lo que
+    // alargaba demasiado el scroll y aburria al usuario antes de llegar
+    // al contenido de valor (membresias, coleccion).
+    // Nuevas alturas:
+    //   movil:   620px  -> caben titulo + subtitulo + 2 CTAs sin que la
+    //                       imagen domine el viewport.
+    //   tablet:  680px
+    //   desktop: 78vh con tope de 760px (evita exceso en pantallas 4K).
+    // Mantiene estabilidad CLS porque son valores fijos, no porcentuales del viewport movil.
+    <section className="relative min-h-[620px] md:min-h-[680px] lg:min-h-[78vh] lg:max-h-[760px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
           src="/images/hero-luxury-bags-flatlay.jpeg"
           alt="Bolsos de lujo de diseñador"
           fill
+          // CLS + Perf FIX: sizes preciso evita que Next.js sirva una imagen
+          // de 1856x1306 cuando el viewport real solo necesita ~1382 (desktop).
+          // Lighthouse reportaba 96.7 KiB desperdiciados con sizes="100vw".
+          // Tope a 1400px en desktop ahorra ~50% del peso sin perder calidad.
+          sizes="(min-width: 1280px) 1400px, 100vw"
+          quality={80}
           className="object-cover object-center"
           priority
         />
@@ -21,11 +36,11 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-12 md:pb-20 relative z-10">
+      {/* Content - paddings reducidos acorde a la nueva altura compacta */}
+      <div className="container mx-auto px-4 pt-28 md:pt-32 pb-10 md:pb-16 relative z-10">
         <div className="max-w-4xl">
           {/* Contenido principal */}
-          <div className="space-y-8 md:space-y-12 text-center lg:text-left">
+          <div className="space-y-6 md:space-y-10 text-center lg:text-left">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/80 mb-4 md:mb-6 font-medium">
                 Alquiler de bolsos de lujo mediante membresía
@@ -67,6 +82,5 @@ export default function HeroSection() {
         </div>
       </div>
     </section>
-    // </CHANGE>
   )
 }
