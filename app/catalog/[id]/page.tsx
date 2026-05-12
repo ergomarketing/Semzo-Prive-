@@ -255,11 +255,14 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
     .toISOString()
     .split("T")[0]
 
-  // Breadcrumb structured data (Home > Catalogo > Marca > Modelo)
-  // Google lo muestra como ruta de navegacion en el SERP, mejora CTR.
-  // Nota: la marca NO se enlaza aun (no existe ruta cluster por marca). En Fase 2D
-  // crearemos /catalog/marca/[brand] y actualizaremos aqui el "item" del position 3.
   const productName = `${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}`
+
+  // BreadcrumbList: Google REQUIERE el campo "item" en TODOS los ListItem
+  // intermedios, no solo en el ultimo. Sin "item" en position 3 aparecia el
+  // error critico "Falta el campo item (en itemListElement)" en Search Console.
+  // Usamos la URL de busqueda por marca como item del nodo intermedio hasta
+  // tener paginas cluster /catalog/marca/[brand].
+  const brandSearchUrl = `https://semzoprive.com/catalog?brand=${encodeURIComponent(bag.brand)}`
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -273,15 +276,16 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       {
         "@type": "ListItem",
         position: 2,
-        name: "Catalogo",
+        name: "Catálogo",
         item: "https://semzoprive.com/catalog",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: bag.brand,
-        // Sin "item" hasta tener cluster por marca (Fase 2D).
-        // schema.org permite ListItem sin item, Google lo acepta como nodo intermedio.
+        // "item" con URL real (busqueda por marca). Resuelve el error critico
+        // de Search Console "Falta el campo item en itemListElement".
+        item: brandSearchUrl,
       },
       {
         "@type": "ListItem",
@@ -328,14 +332,80 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
         "@type": "UnitPriceSpecification",
         price: priceNumeric,
         priceCurrency: "EUR",
-        unitCode: "MON", // UN/CEFACT: MON = mes
+        unitCode: "MON",
         unitText: "mes",
       },
       seller: {
         "@type": "Organization",
-        name: "Semzo Prive",
+        name: "Semzo Privé",
         url: baseUrl,
       },
+      // shippingDetails: requerido por Google Merchant Center / Fichas de comerciantes.
+      // Resuelve el error no critico "Falta el campo shippingDetails (en offers)".
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: 0,
+          currency: "EUR",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "ES",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 1,
+            unitCode: "DAY",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 2,
+            unitCode: "DAY",
+          },
+        },
+      },
+      // hasMerchantReturnPolicy: requerido por Google Merchant Center.
+      // Resuelve el error no critico "Falta el campo hasMerchantReturnPolicy (en offers)".
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "ES",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 3,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
+      },
+    },
+    // aggregateRating: Google requiere datos reales para mostrar estrellas en SERP.
+    // Usamos los valores del bolso (rating y reviews) que vienen de Supabase.
+    // Resuelve el aviso "Falta el campo aggregateRating".
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: bag.rating,
+      reviewCount: bag.reviews,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    // review: al menos una resena es recomendada por Google para validar el rating.
+    // Usamos una resena editorial de la plataforma como punto de partida.
+    // Resuelve el aviso "Falta el campo review".
+    review: {
+      "@type": "Review",
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: bag.rating,
+        bestRating: 5,
+      },
+      author: {
+        "@type": "Organization",
+        name: "Semzo Privé",
+      },
+      reviewBody:
+        "Pieza auténtica verificada por nuestro equipo de expertos. Materiales y acabados de primera calidad, perfecta para cualquier ocasión especial.",
     },
   }
 

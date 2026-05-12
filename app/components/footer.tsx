@@ -169,19 +169,16 @@ function FooterMarquee() {
     // un look suave. Antes usaba text-rose-nude que es casi blanco (#fff0f3)
     // y resultaba invisible.
     <div
-      className="overflow-hidden bg-white py-5 border-y border-rose-pastel/30"
-      aria-label="Promesas de la marca Semzo Privé"
+      className="overflow-hidden bg-[#f5f4f2] py-4 border-t border-slate-200"
+      aria-label="Copyright Semzo Privé"
     >
       <div className="marquee-track">
         {phrases.map((phrase, i) => (
           <span
             key={i}
-            className="text-xs md:text-sm uppercase tracking-[0.25em] text-indigo-dark/40 font-light px-8 whitespace-nowrap"
+            className="text-xs text-slate-500 font-light px-12 whitespace-nowrap"
           >
             {phrase}
-            <span className="mx-6 text-rose-pastel" aria-hidden="true">
-              ✦
-            </span>
           </span>
         ))}
       </div>
