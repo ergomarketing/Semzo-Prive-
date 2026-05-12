@@ -6,7 +6,13 @@
  */
 import { getSupabaseServiceRole } from "@/lib/supabase"
 
-export type ReferralStatus = "pending" | "qualified" | "rewarded" | "cancelled"
+// Estados oficiales del programa (alineados con el CHECK del SQL v2).
+// pending  -> signup registrado, todavia sin primer pago
+// paid     -> pago primer mes, contando 60 dias
+// qualified-> cumplio 60 dias activos, credito pendiente de aplicar
+// rewarded -> credito de 50 EUR ya aplicado al referrer
+// rejected -> cancelado o invalidado (incluye antifraude)
+export type ReferralStatus = "pending" | "paid" | "qualified" | "rewarded" | "rejected"
 
 export interface ReferralRow {
   id: string
@@ -16,6 +22,7 @@ export interface ReferralRow {
   status: ReferralStatus
   qualified_at: string | null
   reward_applied_at: string | null
+  stripe_customer_id: string | null
   created_at: string
 }
 
@@ -24,17 +31,22 @@ export interface ReferralStats {
   referralLink: string
   totalReferrals: number
   pendingReferrals: number
+  paidReferrals: number
   qualifiedReferrals: number
   rewardedReferrals: number
+  rejectedReferrals: number
   balanceEuros: number
 }
 
 /**
- * Genera un codigo de referido limpio a partir de un nombre o email.
- * Solo mayusculas alfanumericas, max 8 chars + sufijo si choca.
+ * Genera un codigo de referido en formato NOMBRE + 4 digitos numericos
+ * aleatorios (ej: "MARIA8472"). La unicidad final se garantiza en DB con
+ * reintentos. Esta funcion solo produce el candidato.
  *
- * NOTA: la unicidad se garantiza con un retry en DB. Esta funcion solo
- * produce el candidato.
+ * Reglas:
+ *   - Sin acentos, solo alfanumericos, mayusculas
+ *   - 5 chars del nombre (recortado o rellenado con 'USER')
+ *   - 4 digitos aleatorios (0000-9999)
  */
 export function buildReferralCodeCandidate(seed: string): string {
   const cleaned = (seed || "")
@@ -42,8 +54,10 @@ export function buildReferralCodeCandidate(seed: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9]/g, "")
     .toUpperCase()
-  const base = cleaned.length >= 3 ? cleaned : `${cleaned}USER`
-  return base.slice(0, 8)
+  const padded = cleaned.length >= 3 ? cleaned : `${cleaned}USER`
+  const base = padded.slice(0, 5)
+  const suffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0")
+  return `${base}${suffix}`
 }
 
 /**
@@ -57,29 +71,31 @@ export async function getOrCreateReferralCode(userId: string): Promise<string | 
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("referral_code, first_name, email")
+    .select("referral_code, first_name, last_name, email")
     .eq("id", userId)
     .maybeSingle()
 
   if (profile?.referral_code) return profile.referral_code
 
-  // Generar y guardar con reintentos por si choca con otro codigo.
-  const seed = profile?.first_name || profile?.email || "USER"
-  let candidate = buildReferralCodeCandidate(seed)
-  let attempt = 0
-  while (attempt < 10) {
-    const try_code = attempt === 0 ? candidate : `${candidate}${attempt}`
+  // Seed prioriza nombre real, fallback a parte local del email.
+  const seed =
+    profile?.first_name ||
+    profile?.last_name ||
+    (profile?.email ? profile.email.split("@")[0] : "USER")
+
+  // Reintenta hasta 20 veces con codigos aleatorios diferentes.
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = buildReferralCodeCandidate(seed)
     const { error } = await admin
       .from("profiles")
-      .update({ referral_code: try_code })
+      .update({ referral_code: candidate })
       .eq("id", userId)
-    if (!error) return try_code
-    // Si error es unique-violation, reintentamos con sufijo.
+    if (!error) return candidate
+    // Si NO es unique-violation, error real -> abortar.
     if ((error as any)?.code !== "23505") {
       console.error("[v0] getOrCreateReferralCode update error:", error)
       return null
     }
-    attempt += 1
   }
   return null
 }
@@ -105,12 +121,22 @@ export async function getReferralStats(userId: string): Promise<ReferralStats | 
     .select("status")
     .eq("referrer_user_id", userId)
 
-  const totals = { total: 0, pending: 0, qualified: 0, rewarded: 0 }
+  const totals = {
+    total: 0,
+    pending: 0,
+    paid: 0,
+    qualified: 0,
+    rewarded: 0,
+    rejected: 0,
+  }
   for (const r of rows || []) {
     totals.total += 1
-    if (r.status === "pending") totals.pending += 1
-    else if (r.status === "qualified") totals.qualified += 1
-    else if (r.status === "rewarded") totals.rewarded += 1
+    const s = r.status as ReferralStatus
+    if (s === "pending") totals.pending += 1
+    else if (s === "paid") totals.paid += 1
+    else if (s === "qualified") totals.qualified += 1
+    else if (s === "rewarded") totals.rewarded += 1
+    else if (s === "rejected") totals.rejected += 1
   }
 
   const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com").replace(/\/$/, "")
@@ -120,27 +146,43 @@ export async function getReferralStats(userId: string): Promise<ReferralStats | 
     referralLink: `${baseUrl}/signup?ref=${code}`,
     totalReferrals: totals.total,
     pendingReferrals: totals.pending,
+    paidReferrals: totals.paid,
     qualifiedReferrals: totals.qualified,
     rewardedReferrals: totals.rewarded,
+    rejectedReferrals: totals.rejected,
     balanceEuros: Number(profile?.referral_balance ?? 0),
   }
 }
+
+export type TrackReferralRejection =
+  | "invalid_code"
+  | "self_referral"
+  | "already_referred"
+  | "same_email"
+  | "same_stripe_customer"
+  | "db_error"
 
 /**
  * Registra un signup que llego con un codigo de referido.
  * Idempotente: si ya existe una fila para ese referido, no la duplica.
  *
- * Validaciones:
- *   - El codigo existe en la tabla profiles
- *   - El referrer no es el mismo usuario que el referido
- *   - El referido no ha sido referido antes
+ * Validaciones antifraude (todas obligatorias):
+ *   1) El codigo existe en profiles
+ *   2) referrer.id !== referred.id (no self-referral)
+ *   3) El referido no ha sido referido antes (constraint UNIQUE tambien)
+ *   4) referrer.email !== referred.email (mismo email)
+ *   5) referrer.stripe_customer_id !== referred.stripe_customer_id
+ *      (mismo customer Stripe - misma tarjeta)
+ *
+ * Si pasa todas, crea la fila con status='pending' y cachea el
+ * stripe_customer_id del referido (si existe) para futuras comprobaciones.
  */
 export async function trackReferralSignup(params: {
   referralCode: string
   referredUserId: string
 }): Promise<
   | { ok: true; referrerUserId: string }
-  | { ok: false; reason: "invalid_code" | "self_referral" | "already_referred" | "db_error" }
+  | { ok: false; reason: TrackReferralRejection }
 > {
   const admin = getSupabaseServiceRole()
   if (!admin) return { ok: false, reason: "db_error" }
@@ -148,17 +190,47 @@ export async function trackReferralSignup(params: {
   const code = (params.referralCode || "").trim().toUpperCase()
   if (!code) return { ok: false, reason: "invalid_code" }
 
-  // 1) Resolver el referrer a partir del codigo.
+  // 1) Resolver el referrer a partir del codigo (con email + customer_id).
   const { data: referrer } = await admin
     .from("profiles")
-    .select("id")
+    .select("id, email, stripe_customer_id")
     .eq("referral_code", code)
     .maybeSingle()
 
   if (!referrer?.id) return { ok: false, reason: "invalid_code" }
   if (referrer.id === params.referredUserId) return { ok: false, reason: "self_referral" }
 
-  // 2) Ya existe registro para este referido?
+  // 2) Datos del referido para antifraude.
+  const { data: referred } = await admin
+    .from("profiles")
+    .select("id, email, stripe_customer_id")
+    .eq("id", params.referredUserId)
+    .maybeSingle()
+
+  // 3) Antifraude: mismo email (case-insensitive).
+  if (
+    referrer.email &&
+    referred?.email &&
+    referrer.email.trim().toLowerCase() === referred.email.trim().toLowerCase()
+  ) {
+    console.warn("[v0] referral rejected: same_email", { referrer: referrer.id, referred: referred.id })
+    return { ok: false, reason: "same_email" }
+  }
+
+  // 4) Antifraude: mismo stripe_customer_id (mismo metodo de pago).
+  if (
+    referrer.stripe_customer_id &&
+    referred?.stripe_customer_id &&
+    referrer.stripe_customer_id === referred.stripe_customer_id
+  ) {
+    console.warn("[v0] referral rejected: same_stripe_customer", {
+      referrer: referrer.id,
+      referred: referred?.id,
+    })
+    return { ok: false, reason: "same_stripe_customer" }
+  }
+
+  // 5) Ya existe registro para este referido?
   const { data: existing } = await admin
     .from("referrals")
     .select("id")
@@ -166,12 +238,13 @@ export async function trackReferralSignup(params: {
     .maybeSingle()
   if (existing?.id) return { ok: false, reason: "already_referred" }
 
-  // 3) Insertar la fila pending.
+  // 6) Insertar la fila pending con cache del stripe_customer_id.
   const { error } = await admin.from("referrals").insert({
     referrer_user_id: referrer.id,
     referred_user_id: params.referredUserId,
     referral_code: code,
     status: "pending",
+    stripe_customer_id: referred?.stripe_customer_id ?? null,
   })
 
   if (error) {
