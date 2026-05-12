@@ -226,14 +226,16 @@ export default function Footer() {
       <div className="border-t border-white/10" />
 
       {/* Bloque medio: columnas + redes ---------------------------------- */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-10 md:gap-8">
+      {/* En movil: 2 cols (Compania | Atencion) + Contacto ancho completo.
+       * En desktop: 3 cols iguales. Igual que el patron de Cocoon. */}
+      <div className="container mx-auto px-4 py-10 md:py-12">
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-8 md:gap-8">
           {/* Columna: Compania */}
-          <div className="md:col-span-4">
-            <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
+          <div className="col-span-1 md:col-span-4">
+            <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-4">
               Compañía
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               {COMPANY_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
@@ -248,11 +250,11 @@ export default function Footer() {
           </div>
 
           {/* Columna: Atencion al cliente */}
-          <div className="md:col-span-4">
-            <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
+          <div className="col-span-1 md:col-span-4">
+            <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-4">
               Atención al Cliente
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               {CUSTOMER_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
@@ -266,8 +268,8 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Columna: Contacto + redes */}
-          <div className="md:col-span-4">
+          {/* Columna: Contacto + redes — ancho completo en movil */}
+          <div className="col-span-2 md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
               Contacto
             </h3>
