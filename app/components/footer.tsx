@@ -53,11 +53,11 @@ const SOCIAL_LINKS = [
   },
 ] as const
 
-// Copy del marquee final. Mensaje de autoridad con la promesa de marca.
+// Copy del marquee final: copyright largo exacto como en produccion.
+// Se construye dinamicamente para que el año siempre sea correcto.
+const CURRENT_YEAR = new Date().getFullYear()
 const MARQUEE_PHRASES = [
-  "Servicio premium de alquiler de bolsos de lujo auténticos y certificados",
-  "Todas nuestras piezas son verificadas por expertos para garantizar autenticidad",
-  "Marca y plataforma de servicio premium en España",
+  `© ${CURRENT_YEAR} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.`,
 ] as const
 
 // ---- Sub-componente: Newsletter signup -----------------------------------
@@ -192,8 +192,6 @@ function FooterMarquee() {
 // ---- Footer principal ----------------------------------------------------
 
 export default function Footer() {
-  const year = new Date().getFullYear()
-
   return (
     <footer>
       {/* ====== BLOQUE INDIGO: marca + newsletter + columnas ====== */}
@@ -348,22 +346,8 @@ export default function Footer() {
       </div>
       {/* ====== FIN BLOQUE INDIGO ====== */}
 
-      {/* Marquee de autoridad FUERA del indigo, sobre fondo claro.
-       * Esta es la combinacion "elegante" pedida: el bloque azul cierra
-       * arriba, y debajo queda el marquee + copyright sobre fondo blanco. */}
+      {/* Marquee con copyright largo — cierra la web fuera del bloque indigo */}
       <FooterMarquee />
-
-      {/* Copyright sobrio sobre fondo claro (estilo anterior). */}
-      <div className="bg-white">
-        <div className="container mx-auto px-4 py-5">
-          <p
-            className="text-xs text-indigo-dark/60 text-center"
-            suppressHydrationWarning
-          >
-            &copy; {year} Semzo Privé. Todos los derechos reservados.
-          </p>
-        </div>
-      </div>
     </footer>
   )
 }
