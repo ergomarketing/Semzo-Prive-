@@ -175,13 +175,15 @@ function SignupContent() {
 
         // Registrar uso del codigo de referido si hay uno pendiente.
         // Solo cuando NO requiere confirmacion: en ese caso el usuario ya
-        // tiene sesion activa y /api/referrals/track puede autenticarlo.
+        // tiene sesion activa y /api/referrals/apply puede autenticarlo.
         // Si requiere confirmacion, lo procesamos en /auth/welcome despues
         // de que el usuario confirme su email (TODO Fase 2).
         try {
           const pendingRef = localStorage.getItem("semzo_pending_referral")
           if (pendingRef) {
-            const trackRes = await fetch("/api/referrals/track", {
+            // Endpoint oficial: /api/referrals/apply. El antiguo
+            // /api/referrals/track sigue funcionando como alias deprecated.
+            const trackRes = await fetch("/api/referrals/apply", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ referralCode: pendingRef }),

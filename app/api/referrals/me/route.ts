@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createRouteHandlerClient } from "@/lib/supabase"
-import { getReferralStats } from "@/lib/referrals"
+import { getReferralList, getReferralStats } from "@/lib/referrals"
 
 /**
  * GET /api/referrals/me
  *
- * Devuelve el codigo de referido del usuario autenticado, su link de
- * invitacion y las estadisticas (total, pendientes, cualificados,
- * recompensados, saldo en euros).
+ * Devuelve para el usuario autenticado:
+ *   - Su codigo de referido (lo genera si no existe).
+ *   - Su link de invitacion.
+ *   - Contadores agregados por estado.
+ *   - Saldo en euros (referral_balance).
+ *   - Lista detallada de sus referidos (`referrals: ReferralRow[]`)
+ *     ordenada por fecha descendente.
  *
  * Si el usuario no tiene codigo aun, se le asigna uno automaticamente
  * (caso de cuentas creadas antes del backfill).
@@ -25,12 +29,18 @@ export async function GET() {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 
-    const stats = await getReferralStats(user.id)
+    // Cargamos stats y lista en paralelo: ambas llaman a Supabase pero
+    // a tablas distintas, asi reducimos la latencia total del endpoint.
+    const [stats, referrals] = await Promise.all([getReferralStats(user.id), getReferralList(user.id)])
+
     if (!stats) {
       return NextResponse.json({ error: "internal_error" }, { status: 500 })
     }
 
-    return NextResponse.json(stats)
+    return NextResponse.json({
+      ...stats,
+      referrals,
+    })
   } catch (err: any) {
     console.error("[v0] /api/referrals/me error:", err)
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
