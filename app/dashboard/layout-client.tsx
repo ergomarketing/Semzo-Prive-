@@ -16,7 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut } from "lucide-react"
+import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -67,6 +67,13 @@ export default function DashboardLayoutClient({
       title: "Mi Wishlist",
       icon: Heart,
       href: "/wishlist",
+    },
+    {
+      // Programa "Recomendar a una amiga": cada socia tiene su codigo
+      // unico y link de referido. La pagina consume /api/referrals/me.
+      title: "Recomendar a una Amiga",
+      icon: Gift,
+      href: "/dashboard/referidos",
     },
   ]
 
