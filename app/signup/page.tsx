@@ -38,6 +38,20 @@ function SignupContent() {
     const bag = searchParams.get("bag")
     if (plan) setSelectedPlan(plan)
     if (bag) setSelectedBag(bag)
+
+    // Capturar codigo de referido si viene en la URL (?ref=MARIA2024).
+    // Se guarda en localStorage para procesarlo tras el signup, incluso
+    // si el usuario tiene que confirmar el email primero. El backend
+    // recibe el codigo via POST a /api/referrals/track, sin modificar
+    // el flujo actual de auth/pago.
+    const refCode = searchParams.get("ref")
+    if (refCode && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("semzo_pending_referral", refCode.trim().toUpperCase())
+      } catch {
+        // localStorage puede fallar en modo privado; lo ignoramos.
+      }
+    }
   }, [searchParams])
 
   // Redirigir si el usuario ya está logueado — llevar al carrito con contexto
@@ -157,6 +171,30 @@ function SignupContent() {
           })
         } catch (syncError) {
           // non-blocking
+        }
+
+        // Registrar uso del codigo de referido si hay uno pendiente.
+        // Solo cuando NO requiere confirmacion: en ese caso el usuario ya
+        // tiene sesion activa y /api/referrals/track puede autenticarlo.
+        // Si requiere confirmacion, lo procesamos en /auth/welcome despues
+        // de que el usuario confirme su email (TODO Fase 2).
+        try {
+          const pendingRef = localStorage.getItem("semzo_pending_referral")
+          if (pendingRef) {
+            const trackRes = await fetch("/api/referrals/track", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ referralCode: pendingRef }),
+            })
+            // Limpiar el codigo guardado solo si se proceso correctamente
+            // o el codigo era invalido (no merece reintento). Si fue error
+            // de red (no ok y sin body) lo dejamos para reintentar.
+            if (trackRes.ok || trackRes.status === 400 || trackRes.status === 409) {
+              localStorage.removeItem("semzo_pending_referral")
+            }
+          }
+        } catch {
+          // non-blocking — el referido se puede registrar manualmente despues
         }
       }
 
