@@ -128,9 +128,9 @@ export function SubscriptionSummaryCard() {
           {/* ID de suscripción */}
           {data.friendly_id && (
             <div className="flex items-start gap-3">
-              <Hash className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <Hash className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                   ID de suscripción
                 </p>
                 <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ export function SubscriptionSummaryCard() {
                   </code>
                   <button
                     onClick={handleCopy}
-                    className="text-slate-400 hover:text-indigo-dark transition-colors"
+                    className="text-indigo-dark/60 hover:text-indigo-dark transition-colors"
                     aria-label="Copiar ID"
                   >
                     {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -152,15 +152,15 @@ export function SubscriptionSummaryCard() {
           {/* Plan actual */}
           {data.membership_type && (
             <div className="flex items-start gap-3">
-              <Crown className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <Crown className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                   Plan actual
                 </p>
                 <p className="text-sm font-semibold text-indigo-dark">
                   {getPlanName(data.membership_type)}
                   {data.billing_cycle && (
-                    <span className="ml-2 text-xs text-slate-500 font-normal">
+                    <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
                       · {getBillingLabel(data.billing_cycle)}
                     </span>
                   )}
@@ -172,9 +172,9 @@ export function SubscriptionSummaryCard() {
           {/* Socia desde */}
           {data.member_since && (
             <div className="flex items-start gap-3">
-              <Calendar className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                   Socia desde
                 </p>
                 <p className="text-sm font-semibold text-indigo-dark">
@@ -187,9 +187,9 @@ export function SubscriptionSummaryCard() {
           {/* Próximo cobro / fin de acceso */}
           {(data.next_charge_at || data.end_date) && (
             <div className="flex items-start gap-3">
-              <Calendar className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                   {data.stripe_status === "canceled" || data.end_date
                     ? "Acceso hasta"
                     : "Próximo cobro"}
@@ -204,16 +204,16 @@ export function SubscriptionSummaryCard() {
           {/* Método de pago */}
           {data.payment_method && (
             <div className="flex items-start gap-3 md:col-span-2">
-              <CreditCard className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <CreditCard className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                     Método de pago
                   </p>
                   <p className="text-sm font-semibold text-indigo-dark">
                     {formatBrand(data.payment_method.brand)} •••• {data.payment_method.last4}
                     {data.payment_method.exp_month > 0 && data.payment_method.exp_year > 0 && (
-                      <span className="ml-2 text-xs text-slate-500 font-normal">
+                      <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
                         Caduca {String(data.payment_method.exp_month).padStart(2, "0")}/
                         {String(data.payment_method.exp_year).slice(-2)}
                       </span>
@@ -235,13 +235,13 @@ export function SubscriptionSummaryCard() {
           {/* Si no tenemos método de pago pero hay membresía activa */}
           {!data.payment_method && data.membership_type && (
             <div className="flex items-start gap-3 md:col-span-2">
-              <CreditCard className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+              <CreditCard className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
                     Método de pago
                   </p>
-                  <p className="text-sm text-slate-500">No configurado</p>
+                  <p className="text-sm text-indigo-dark/60">No configurado</p>
                 </div>
                 <Button
                   variant="outline"
@@ -258,11 +258,11 @@ export function SubscriptionSummaryCard() {
 
         {/* Acciones de la suscripcion (Fase B sencilla: solo reportar incidencia) */}
         <div className="mt-5 pt-4 border-t border-rose-pastel/30 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 text-xs text-indigo-dark/70">
             {data.stripe_status && data.stripe_status !== "active" && data.stripe_status !== "trialing" && (
               <>
                 <span>Estado en Stripe:</span>
-                <Badge variant="outline" className="font-mono">
+                <Badge variant="outline" className="font-mono border-indigo-dark/30 text-indigo-dark">
                   {data.stripe_status}
                 </Badge>
               </>
@@ -271,7 +271,7 @@ export function SubscriptionSummaryCard() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-slate-600 hover:text-indigo-dark hover:bg-rose-nude/40"
+            className="text-indigo-dark hover:text-indigo-dark hover:bg-rose-nude/40"
             asChild
           >
             <a
