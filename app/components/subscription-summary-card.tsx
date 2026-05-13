@@ -96,13 +96,14 @@ export function SubscriptionSummaryCard() {
     }
   }
 
-  console.log("[v0] SubscriptionSummaryCard render", { isLoading, error, data })
+  console.log("[v0] SubscriptionSummaryCard v3 mount", { isLoading, hasError: !!error, hasData: !!data, data })
 
   if (isLoading) {
     return (
       <Card className="border-rose-pastel/40">
-        <CardContent className="flex items-center justify-center py-12">
+        <CardContent className="flex items-center gap-3 py-6">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          <span className="text-sm text-slate-500">Cargando resumen de tu suscripcion...</span>
         </CardContent>
       </Card>
     )
