@@ -96,43 +96,19 @@ export function SubscriptionSummaryCard() {
     }
   }
 
-  console.log("[v0] SubscriptionSummaryCard v3 mount", { isLoading, hasError: !!error, hasData: !!data, data })
-
   if (isLoading) {
     return (
       <Card className="border-rose-pastel/40">
         <CardContent className="flex items-center gap-3 py-6">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          <span className="text-sm text-slate-500">Cargando resumen de tu suscripcion...</span>
+          <span className="text-sm text-slate-500">Cargando resumen de tu suscripción...</span>
         </CardContent>
       </Card>
     )
   }
 
-  if (error) {
-    console.log("[v0] SubscriptionSummaryCard SWR error:", error)
-    return (
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="py-6 text-sm text-amber-900">
-          No se pudo cargar el resumen de tu suscripcion. Recarga la pagina para reintentar.
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!data) {
+  if (error || !data || data.error) {
     return null
-  }
-
-  if (data.error) {
-    console.log("[v0] SubscriptionSummaryCard API error:", data.error)
-    return (
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="py-6 text-sm text-amber-900">
-          {data.error}
-        </CardContent>
-      </Card>
-    )
   }
 
   // Si Stripe no esta disponible pero hay datos basicos, igual mostramos
@@ -236,10 +212,12 @@ export function SubscriptionSummaryCard() {
                   </p>
                   <p className="text-sm font-semibold text-indigo-dark">
                     {formatBrand(data.payment_method.brand)} •••• {data.payment_method.last4}
-                    <span className="ml-2 text-xs text-slate-500 font-normal">
-                      Caduca {String(data.payment_method.exp_month).padStart(2, "0")}/
-                      {String(data.payment_method.exp_year).slice(-2)}
-                    </span>
+                    {data.payment_method.exp_month > 0 && data.payment_method.exp_year > 0 && (
+                      <span className="ml-2 text-xs text-slate-500 font-normal">
+                        Caduca {String(data.payment_method.exp_month).padStart(2, "0")}/
+                        {String(data.payment_method.exp_year).slice(-2)}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <Button
