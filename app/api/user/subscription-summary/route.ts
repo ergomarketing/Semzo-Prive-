@@ -55,39 +55,41 @@ export async function GET() {
       .limit(1)
       .maybeSingle()
 
-    // 3. Query OPCIONAL para columnas Stripe extras. Si alguna columna no
-    //    existe en esta BD, la query falla y simplemente seguimos con los
-    //    datos basicos. No rompe la card.
+    // 3a. Query GARANTIZADA: Stripe IDs (columnas que siempre existen)
+    const { data: stripeIds } = await supabase
+      .from("user_memberships")
+      .select("stripe_subscription_id, stripe_customer_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // 3b. Query OPCIONAL: columnas extras que podrian no existir en BD.
+    //     Si falla por columna inexistente, NO rompe los Stripe IDs.
     let extras: {
-      stripe_subscription_id: string | null
-      stripe_customer_id: string | null
       current_period_end: string | null
       payment_method_brand: string | null
       payment_method_last4: string | null
       cancel_at_period_end: boolean | null
     } | null = null
-    try {
-      const { data: extrasData, error: extrasError } = await supabase
-        .from("user_memberships")
-        .select(
-          "stripe_subscription_id, stripe_customer_id, current_period_end, payment_method_brand, payment_method_last4, cancel_at_period_end",
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (!extrasError) {
-        extras = extrasData as typeof extras
-      }
-    } catch {
-      extras = null
+    const { data: extrasData, error: extrasError } = await supabase
+      .from("user_memberships")
+      .select(
+        "current_period_end, payment_method_brand, payment_method_last4, cancel_at_period_end",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (!extrasError && extrasData) {
+      extras = extrasData as typeof extras
     }
 
     // Stripe IDs: priorizar user_memberships, fallback a profiles
     const stripeSubId =
-      extras?.stripe_subscription_id || profile?.stripe_subscription_id || null
+      stripeIds?.stripe_subscription_id || profile?.stripe_subscription_id || null
     const stripeCustomerId =
-      extras?.stripe_customer_id || profile?.stripe_customer_id || null
+      stripeIds?.stripe_customer_id || profile?.stripe_customer_id || null
 
     // ID amigable (no depende de Stripe online)
     const friendlyId = formatSubscriptionId(stripeSubId)
