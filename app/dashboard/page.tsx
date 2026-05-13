@@ -341,8 +341,9 @@ export default function DashboardHome() {
       </div>
 
       {/* Resumen de suscripción (Fase A) - card aislada, solo lectura.
-          Falla en silencio si el endpoint o Stripe no responden. */}
-      {membership?.status === "active" && (
+          Se muestra para cualquier socia que tenga una membresía registrada.
+          El propio componente decide si mostrarse según los datos del endpoint. */}
+      {membership && membership.status !== "no_membership" && (
         <div className="mb-8">
           <SubscriptionSummaryCard />
         </div>

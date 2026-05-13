@@ -1,6 +1,6 @@
 "use client"
 
-// SSR cache invalidation: 2026-05-13T14:40 (canje credito referidos)
+// SSR cache invalidation: 2026-05-13T17:30 (fase A - subscription summary card)
 import type React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
