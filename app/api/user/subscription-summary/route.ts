@@ -45,23 +45,49 @@ export async function GET() {
       .eq("id", user.id)
       .single()
 
-    // 2. Leer membresía más reciente: aquí estan los Stripe IDs reales,
-    //    el plan, ciclo, fechas, current_period_end y metodo de pago cacheado.
+    // 2. Leer membresía más reciente - SOLO columnas garantizadas (la query
+    //    que ya funcionaba antes). NO TOCAR esto.
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select(
-        "membership_type, status, billing_cycle, start_date, end_date, current_period_end, created_at, stripe_subscription_id, stripe_customer_id, payment_method_brand, payment_method_last4, cancel_at_period_end",
-      )
+      .select("membership_type, status, billing_cycle, start_date, end_date, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    // Stripe IDs: priorizar user_memberships (mas fiable), fallback a profiles
+    // 3. Query OPCIONAL para columnas Stripe extras. Si alguna columna no
+    //    existe en esta BD, la query falla y simplemente seguimos con los
+    //    datos basicos. No rompe la card.
+    let extras: {
+      stripe_subscription_id: string | null
+      stripe_customer_id: string | null
+      current_period_end: string | null
+      payment_method_brand: string | null
+      payment_method_last4: string | null
+      cancel_at_period_end: boolean | null
+    } | null = null
+    try {
+      const { data: extrasData, error: extrasError } = await supabase
+        .from("user_memberships")
+        .select(
+          "stripe_subscription_id, stripe_customer_id, current_period_end, payment_method_brand, payment_method_last4, cancel_at_period_end",
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!extrasError) {
+        extras = extrasData as typeof extras
+      }
+    } catch {
+      extras = null
+    }
+
+    // Stripe IDs: priorizar user_memberships, fallback a profiles
     const stripeSubId =
-      membership?.stripe_subscription_id || profile?.stripe_subscription_id || null
+      extras?.stripe_subscription_id || profile?.stripe_subscription_id || null
     const stripeCustomerId =
-      membership?.stripe_customer_id || profile?.stripe_customer_id || null
+      extras?.stripe_customer_id || profile?.stripe_customer_id || null
 
     // ID amigable (no depende de Stripe online)
     const friendlyId = formatSubscriptionId(stripeSubId)
@@ -72,17 +98,17 @@ export async function GET() {
 
     // Metodo de pago desde cache de BD (fallback inmediato si Stripe no responde)
     const cachedPaymentMethod =
-      membership?.payment_method_brand && membership?.payment_method_last4
+      extras?.payment_method_brand && extras?.payment_method_last4
         ? {
-            brand: membership.payment_method_brand,
-            last4: membership.payment_method_last4,
+            brand: extras.payment_method_brand,
+            last4: extras.payment_method_last4,
             exp_month: 0,
             exp_year: 0,
           }
         : null
 
     // Proximo cobro desde BD (current_period_end cacheado)
-    const cachedNextCharge = membership?.current_period_end || null
+    const cachedNextCharge = extras?.current_period_end || null
 
     // Respuesta base (siempre disponible, aunque Stripe falle)
     const base = {
@@ -91,7 +117,7 @@ export async function GET() {
       membership_type: membership?.membership_type || null,
       billing_cycle: membership?.billing_cycle || null,
       end_date: membership?.end_date || null,
-      cancel_at_period_end: membership?.cancel_at_period_end || false,
+      cancel_at_period_end: extras?.cancel_at_period_end || false,
       membership_status: membership?.status || null,
       next_charge_at: cachedNextCharge as string | null,
       stripe_status: null as string | null,
