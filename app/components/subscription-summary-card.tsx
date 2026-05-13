@@ -94,6 +94,8 @@ export function SubscriptionSummaryCard() {
     }
   }
 
+  console.log("[v0] SubscriptionSummaryCard render", { isLoading, error, data })
+
   if (isLoading) {
     return (
       <Card className="border-rose-pastel/40">
@@ -104,14 +106,35 @@ export function SubscriptionSummaryCard() {
     )
   }
 
-  if (error || !data || data.error) {
-    return null // fallar silenciosamente, no romper el dashboard
+  if (error) {
+    console.log("[v0] SubscriptionSummaryCard SWR error:", error)
+    return (
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardContent className="py-6 text-sm text-amber-900">
+          No se pudo cargar el resumen de tu suscripcion. Recarga la pagina para reintentar.
+        </CardContent>
+      </Card>
+    )
   }
 
-  // Si no hay nada útil que mostrar, no renderizar
-  if (!data.friendly_id && !data.member_since && !data.membership_type) {
+  if (!data) {
     return null
   }
+
+  if (data.error) {
+    console.log("[v0] SubscriptionSummaryCard API error:", data.error)
+    return (
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardContent className="py-6 text-sm text-amber-900">
+          {data.error}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Si Stripe no esta disponible pero hay datos basicos, igual mostramos
+  const hasAnyData =
+    data.friendly_id || data.member_since || data.membership_type || data.next_charge_at
 
   return (
     <Card className="border-rose-pastel/40">

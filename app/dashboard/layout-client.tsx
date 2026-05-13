@@ -1,6 +1,6 @@
 "use client"
 
-// SSR cache invalidation: 2026-05-13T17:30 (fase A - subscription summary card)
+// SSR cache invalidation: 2026-05-13T19:15 (fase A v2 - logs diagnostico + resiliencia)
 import type React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
