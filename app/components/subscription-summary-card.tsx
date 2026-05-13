@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Copy, Check, CreditCard, Calendar, Hash, Crown, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { ChangePaymentMethodDialog } from "./change-payment-method-dialog"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -79,7 +80,8 @@ function formatBrand(brand: string): string {
 export function SubscriptionSummaryCard() {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
-  const { data, error, isLoading } = useSWR<Summary>("/api/user/subscription-summary", fetcher, {
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const { data, error, isLoading, mutate } = useSWR<Summary>("/api/user/subscription-summary", fetcher, {
     revalidateOnFocus: false,
   })
 
@@ -243,7 +245,7 @@ export function SubscriptionSummaryCard() {
                   variant="outline"
                   size="sm"
                   className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
-                  onClick={() => router.push("/dashboard/payment-method")}
+                  onClick={() => setShowPaymentDialog(true)}
                 >
                   Cambiar
                 </Button>
@@ -266,7 +268,7 @@ export function SubscriptionSummaryCard() {
                   variant="outline"
                   size="sm"
                   className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
-                  onClick={() => router.push("/dashboard/payment-method")}
+                  onClick={() => setShowPaymentDialog(true)}
                 >
                   Configurar
                 </Button>
@@ -287,6 +289,15 @@ export function SubscriptionSummaryCard() {
           </div>
         )}
       </CardContent>
+
+      <ChangePaymentMethodDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        currentBrand={data.payment_method?.brand ?? null}
+        currentLast4={data.payment_method?.last4 ?? null}
+        membershipType={data.membership_type ?? "signature"}
+        onSuccess={() => mutate()}
+      />
     </Card>
   )
 }
