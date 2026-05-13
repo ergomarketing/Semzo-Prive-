@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Check, CreditCard, Calendar, Hash, Crown, Loader2 } from "lucide-react"
+import { Copy, Check, CreditCard, Calendar, Hash, Crown, Loader2, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ChangePaymentMethodDialog } from "./change-payment-method-dialog"
 
@@ -256,17 +256,36 @@ export function SubscriptionSummaryCard() {
           )}
         </div>
 
-        {/* Estado en Stripe si no es active (informativo) */}
-        {data.stripe_status && data.stripe_status !== "active" && data.stripe_status !== "trialing" && (
-          <div className="mt-5 pt-4 border-t border-rose-pastel/30">
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <span>Estado en Stripe:</span>
-              <Badge variant="outline" className="font-mono">
-                {data.stripe_status}
-              </Badge>
-            </div>
+        {/* Acciones de la suscripcion (Fase B sencilla: solo reportar incidencia) */}
+        <div className="mt-5 pt-4 border-t border-rose-pastel/30 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            {data.stripe_status && data.stripe_status !== "active" && data.stripe_status !== "trialing" && (
+              <>
+                <span>Estado en Stripe:</span>
+                <Badge variant="outline" className="font-mono">
+                  {data.stripe_status}
+                </Badge>
+              </>
+            )}
           </div>
-        )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-slate-600 hover:text-indigo-dark hover:bg-rose-nude/40"
+            asChild
+          >
+            <a
+              href={`mailto:soporte@semzoprive.com?subject=${encodeURIComponent(
+                `Reportar incidencia - ${data.friendly_id ?? "Suscripcion"}`,
+              )}&body=${encodeURIComponent(
+                `Hola equipo Semzo,\n\nQuiero reportar una incidencia con mi bolso.\n\nID de suscripcion: ${data.friendly_id ?? "-"}\nPlan: ${getPlanName(data.membership_type)}\n\nDescripcion del problema:\n\n\nGracias.`,
+              )}`}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Reportar incidencia con bolso
+            </a>
+          </Button>
+        </div>
       </CardContent>
 
       <ChangePaymentMethodDialog

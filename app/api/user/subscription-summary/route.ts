@@ -17,7 +17,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import Stripe from "stripe"
-import { formatSubscriptionId } from "@/lib/format-subscription-id"
+import { formatSubscriptionId, formatMembershipId } from "@/lib/format-subscription-id"
 
 export const dynamic = "force-dynamic"
 
@@ -49,7 +49,7 @@ export async function GET() {
     //    que ya funcionaba antes). NO TOCAR esto.
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("membership_type, status, billing_cycle, start_date, end_date, created_at")
+      .select("id, membership_type, status, billing_cycle, start_date, end_date, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -91,8 +91,10 @@ export async function GET() {
     const stripeCustomerId =
       stripeIds?.stripe_customer_id || profile?.stripe_customer_id || null
 
-    // ID amigable (no depende de Stripe online)
-    const friendlyId = formatSubscriptionId(stripeSubId)
+    // ID amigable: si hay stripe_subscription_id usamos ese, si no, fallback
+    // al UUID de user_memberships.id (para socias canceladas, gift card, etc.)
+    const friendlyId =
+      formatSubscriptionId(stripeSubId) || formatMembershipId(membership?.id) || null
 
     // Fecha de alta = la más temprana entre membership.start_date / created_at / profile.created_at
     const memberSince =

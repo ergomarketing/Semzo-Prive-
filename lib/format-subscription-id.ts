@@ -37,6 +37,22 @@ export function formatSubscriptionId(stripeSubscriptionId: string | null | undef
 }
 
 /**
+ * Fallback: si la socia no tiene `stripe_subscription_id` (membresía
+ * cancelada, pagada con gift card, regalo, etc.), generamos el ID
+ * amigable desde el UUID interno de `user_memberships.id`.
+ *
+ * Mismo formato SP-XXXXXX para que soporte pueda buscar igual.
+ */
+export function formatMembershipId(membershipUuid: string | null | undefined): string | null {
+  if (!membershipUuid || typeof membershipUuid !== "string") {
+    return null
+  }
+  const clean = membershipUuid.replace(/-/g, "")
+  if (clean.length < 4) return null
+  return `SP-${clean.slice(-6).toUpperCase()}`
+}
+
+/**
  * Inverso: dado un ID amigable "SP-FGHIJK", devuelve el sufijo
  * para que el admin pueda buscar en BD con `LIKE '%FGHIJK'`.
  * Devuelve null si el formato no es válido.
