@@ -47,6 +47,8 @@ interface BagInventory {
   retail_price?: string
   cost_price?: string
   serial_number?: string
+  purchase_price?: string
+  authenticity_certificate_url?: string
   image_url?: string
   category?: string
   images: string[]
@@ -123,9 +125,11 @@ export default function InventorySystem() {
             lastMaintenance: bag.last_maintenance ? new Date(bag.last_maintenance) : undefined,
             description: bag.description,
             membership_type: bag.membership_type,
-            retail_price: bag.retail_price,
-            cost_price: bag.cost_price != null ? String(bag.cost_price) : undefined,
-            serial_number: bag.serial_number || undefined,
+          retail_price: bag.retail_price,
+          cost_price: bag.cost_price != null ? String(bag.cost_price) : undefined,
+          serial_number: bag.serial_number || undefined,
+          purchase_price: bag.purchase_price != null ? String(bag.purchase_price) : undefined,
+          authenticity_certificate_url: bag.authenticity_certificate_url || undefined,
             image_url: bag.image_url,
             category: bag.category,
             images: bag.images || [],
@@ -920,6 +924,8 @@ function BagForm({
     retail_price: bag?.retail_price || "",
     cost_price: bag?.cost_price || "",
     serial_number: bag?.serial_number || "",
+    purchase_price: bag?.purchase_price || "",
+    authenticity_certificate_url: bag?.authenticity_certificate_url || "",
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
     image_url: bag?.image_url || "",
@@ -1103,6 +1109,50 @@ function BagForm({
               placeholder="0.00"
               value={formData.cost_price}
               onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Modo Colecciona (rent-to-own). Solo aplica si purchase_price > 0 */}
+      <div className="rounded-lg border border-rose-pastel/40 bg-rose-nude/20 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-[#1a1a4b]">Modo Colecciona</h4>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide border-[#1a1a4b]/30 text-[#1a1a4b]">
+            Rent-to-own
+          </Badge>
+        </div>
+        <p className="mb-3 text-xs text-slate-600">
+          Si fijas un precio de venta, este bolso podrá ofrecerse en modo Colecciona. La socia acumulará crédito hasta
+          completarlo y podrá comprarlo. Déjalo vacío para que solo esté disponible en modo Descubre.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="purchase_price" className="text-[#1a1a4b]">
+              Precio de venta (€)
+            </Label>
+            <Input
+              id="purchase_price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Ej. 3900.00"
+              value={formData.purchase_price}
+              onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
+              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
+          <div>
+            <Label htmlFor="authenticity_certificate_url" className="text-[#1a1a4b]">
+              URL certificado autenticidad
+            </Label>
+            <Input
+              id="authenticity_certificate_url"
+              type="url"
+              placeholder="https://..."
+              value={formData.authenticity_certificate_url}
+              onChange={(e) => setFormData({ ...formData, authenticity_certificate_url: e.target.value })}
               className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
             />
           </div>
