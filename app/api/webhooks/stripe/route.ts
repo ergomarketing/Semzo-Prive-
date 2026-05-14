@@ -348,6 +348,98 @@ export async function POST(req: NextRequest) {
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
 
+        // ============================================================
+        // MODO COLECCIONA — Acumular credito hacia la compra del bolso
+        // ============================================================
+        // Se ejecuta SIEMPRE que haya pago exitoso (incluida 1a cuota).
+        // No bloquea ni interfiere con el flujo de renovacion de abajo.
+        try {
+          if (invoice.subscription && invoice.amount_paid && invoice.amount_paid > 0) {
+            const subId = invoice.subscription as string;
+
+            const { data: mem } = await supabase
+              .from("user_memberships")
+              .select("user_id")
+              .eq("stripe_subscription_id", subId)
+              .single();
+
+            if (mem?.user_id) {
+              // Buscar ownership_progress activo en modo collect (solo uno por user)
+              const { data: progress } = await supabase
+                .from("ownership_progress")
+                .select("id, accumulated, purchase_price, bag_id")
+                .eq("user_id", mem.user_id)
+                .eq("mode", "collect")
+                .eq("status", "active")
+                .order("started_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (progress?.id && progress.purchase_price != null) {
+                const paidEuros = invoice.amount_paid / 100;
+                const newAccumulated = Number(progress.accumulated || 0) + paidEuros;
+                const target = Number(progress.purchase_price);
+                const isCompleted = newAccumulated >= target;
+
+                await supabase
+                  .from("ownership_progress")
+                  .update({
+                    accumulated: isCompleted ? target : newAccumulated,
+                    status: isCompleted ? "completed" : "active",
+                    completed_at: isCompleted ? now : null,
+                    updated_at: now,
+                  })
+                  .eq("id", progress.id);
+
+                console.log("[v0] ownership_progress credit:", {
+                  user_id: mem.user_id,
+                  bag_id: progress.bag_id,
+                  added: paidEuros,
+                  total: isCompleted ? target : newAccumulated,
+                  completed: isCompleted,
+                });
+
+                // Si se completa, notificar a la socia
+                if (isCompleted) {
+                  const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("full_name, email")
+                    .eq("id", mem.user_id)
+                    .single();
+
+                  if (profile?.email) {
+                    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+                    const emailService = EmailServiceProduction.getInstance();
+                    await emailService.sendWithResend({
+                      to: profile.email,
+                      subject: "Tu bolso ya es tuyo — Semzo Privé",
+                      html: `
+                        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
+                          <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Felicidades, ${profile.full_name || ""}</h1>
+                          <p style="color: #444; line-height: 1.6;">Has completado el precio de tu bolso. Solo te queda un último paso simbólico para que sea oficialmente tuyo.</p>
+                          <div style="margin: 32px 0;">
+                            <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
+                              FINALIZAR LA COMPRA
+                            </a>
+                          </div>
+                          <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                          <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                        </div>
+                      `,
+                    }).catch(() => {});
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          // Nunca bloquear el webhook por la acumulación. Solo log.
+          console.error("[v0] ownership_progress accumulation error:", err);
+        }
+        // ============================================================
+        // FIN MODO COLECCIONA
+        // ============================================================
+
         if (
           invoice.billing_reason === "subscription_create" ||
           !invoice.subscription
