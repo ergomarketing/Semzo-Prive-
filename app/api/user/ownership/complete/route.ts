@@ -151,14 +151,6 @@ export async function POST(_req: NextRequest) {
       })
       .eq("id", progress.id)
 
-    // 6. Liberar depósito si existe
-    await supabaseAdmin
-      .from("bag_deposits")
-      .update({ status: "released", updated_at: now })
-      .eq("user_id", user.id)
-      .eq("bag_id", progress.bag_id)
-      .eq("status", "held")
-
     return NextResponse.json({
       success: true,
       paid_amount: amountCents / 100,

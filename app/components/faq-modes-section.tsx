@@ -47,10 +47,9 @@ const faqs: FAQ[] = [
           daños graves causados por mal uso.
         </p>
         <p>
-          <strong>Modo Colecciona:</strong> al reservar el bolso retenemos un depósito de garantía reembolsable. La
-          responsabilidad sobre el bolso es tuya mientras lo tienes en proceso de compra, igual que ocurre con
-          cualquier compra a plazos. El depósito se libera al completar la propiedad o al renunciar al bolso en buen
-          estado.
+          <strong>Modo Colecciona:</strong> la responsabilidad sobre el bolso es tuya mientras lo tienes en proceso
+          de compra, igual que ocurre con cualquier compra a plazos. Si decides abandonar la compra, pierdes el
+          crédito acumulado hasta ese momento — por eso solo recomendamos este modo si estás segura del bolso.
         </p>
       </div>
     ),
