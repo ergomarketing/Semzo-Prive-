@@ -12,6 +12,7 @@ import { mapDBStatusToUI, getStatusLabel, getStatusDescription } from "@/lib/mem
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
 import { MyBagCard } from "@/app/components/my-bag-card"
+import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { useState, useEffect } from "react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -355,6 +356,13 @@ export default function DashboardHome() {
       {membership && membership.status !== "no_membership" && (
         <div className="mb-8">
           <MyBagCard />
+        </div>
+      )}
+
+      {/* Mis bolsos adquiridos (modo Colecciona completado). Solo renderiza si hay alguno. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <OwnedBagsSection />
         </div>
       )}
 
