@@ -10,7 +10,6 @@ import TwoModesSection from "./components/two-modes-section"
 import HowItWorks from "./components/how-it-works"
 import TestimonialSection from "./components/testimonial-section"
 import MagazineSection from "./components/magazine-section"
-import FAQModesSection from "./components/faq-modes-section"
 import CTASection from "./components/cta-section"
 import SEOBlock from "./components/seo-block"
 import MarqueeBanner from "./components/marquee-banner"
@@ -56,7 +55,6 @@ export default function ClientHomePage() {
       <div id="magazine">
         <MagazineSection />
       </div>
-      <FAQModesSection />
       <SEOBlock />
       <CTASection />
     </main>
