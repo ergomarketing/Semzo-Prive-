@@ -189,19 +189,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-        {/* Structured Data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-        />
+        {/*
+         * Structured Data (JSON-LD) movido al final del <body> para evitar
+         * conflicto de hidratacion con el script de sandbox de v0 que se
+         * inyecta dinamicamente en <head> en el entorno de preview.
+         * Google indexa el JSON-LD igual este en head o body.
+         */}
 
         {/*
          * TikTok Pixel movido al head (antes estaba en body).
@@ -262,6 +255,20 @@ export default function RootLayout({
             <Toaster />
           </CartProvider>
         </AuthProvider>
+
+        {/* Structured Data al final del body (valido para Google y evita hydration mismatch con script de sandbox en head) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        />
       </body>
     </html>
   )

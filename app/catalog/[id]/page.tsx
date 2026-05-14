@@ -148,6 +148,8 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       availability: {
         status: data.status === "available" ? ("available" as const) : ("rented" as const),
       },
+      purchase_price: data.purchase_price != null ? Number(data.purchase_price) : null,
+      authenticity_certificate_url: data.authenticity_certificate_url || null,
       rating: data.rating || 4.8,
       reviews: data.reviews || 50,
       features: data.features || [

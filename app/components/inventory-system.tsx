@@ -47,6 +47,8 @@ interface BagInventory {
   retail_price?: string
   cost_price?: string
   serial_number?: string
+  purchase_price?: string
+  authenticity_certificate_url?: string
   image_url?: string
   category?: string
   images: string[]
@@ -123,9 +125,11 @@ export default function InventorySystem() {
             lastMaintenance: bag.last_maintenance ? new Date(bag.last_maintenance) : undefined,
             description: bag.description,
             membership_type: bag.membership_type,
-            retail_price: bag.retail_price,
-            cost_price: bag.cost_price != null ? String(bag.cost_price) : undefined,
-            serial_number: bag.serial_number || undefined,
+          retail_price: bag.retail_price,
+          cost_price: bag.cost_price != null ? String(bag.cost_price) : undefined,
+          serial_number: bag.serial_number || undefined,
+          purchase_price: bag.purchase_price != null ? String(bag.purchase_price) : undefined,
+          authenticity_certificate_url: bag.authenticity_certificate_url || undefined,
             image_url: bag.image_url,
             category: bag.category,
             images: bag.images || [],
@@ -920,11 +924,42 @@ function BagForm({
     retail_price: bag?.retail_price || "",
     cost_price: bag?.cost_price || "",
     serial_number: bag?.serial_number || "",
+    purchase_price: bag?.purchase_price || "",
+    authenticity_certificate_url: bag?.authenticity_certificate_url || "",
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
     image_url: bag?.image_url || "",
     images: bag?.images || ([] as string[]),
   })
+
+  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al subir certificado")
+      }
+
+      const { url } = await response.json()
+      setFormData((prev) => ({ ...prev, authenticity_certificate_url: url }))
+    } catch (error) {
+      console.error("Error uploading certificate:", error)
+      alert(error instanceof Error ? error.message : "Error al subir certificado")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -1104,6 +1139,85 @@ function BagForm({
               value={formData.cost_price}
               onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
               className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Modo Colecciona (rent-to-own). Solo aplica si purchase_price > 0 */}
+      <div className="rounded-lg border border-rose-pastel/40 bg-rose-nude/20 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-[#1a1a4b]">Modo Colecciona</h4>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide border-[#1a1a4b]/30 text-[#1a1a4b]">
+            Rent-to-own
+          </Badge>
+        </div>
+        <p className="mb-3 text-xs text-slate-600">
+          Si fijas un precio de venta, este bolso podrá ofrecerse en modo Colecciona. La socia acumulará crédito hasta
+          completarlo y podrá comprarlo. Déjalo vacío para que solo esté disponible en modo Descubre.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="purchase_price" className="text-[#1a1a4b]">
+              Precio de venta (€)
+            </Label>
+            <Input
+              id="purchase_price"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Ej. 3900.00"
+              value={formData.purchase_price}
+              onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
+              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+            />
+          </div>
+          <div>
+            <Label htmlFor="authenticity_certificate_url" className="text-[#1a1a4b]">
+              Certificado de autenticidad
+            </Label>
+            {formData.authenticity_certificate_url ? (
+              <div className="mt-1 flex items-center gap-3 rounded-md border border-slate-300 bg-white p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={formData.authenticity_certificate_url || "/placeholder.svg"}
+                  alt="Certificado de autenticidad"
+                  className="h-14 w-14 rounded object-cover border border-slate-200"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-600 truncate">Certificado subido</p>
+                  <a
+                    href={formData.authenticity_certificate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#1a1a4b] underline"
+                  >
+                    Ver imagen
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, authenticity_certificate_url: "" })}
+                  className="text-xs text-slate-500 hover:text-rose-600 px-2"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="authenticity_certificate_url"
+                className="mt-1 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:border-[#1a1a4b] hover:text-[#1a1a4b] transition-colors"
+              >
+                {uploading ? "Subiendo..." : "Subir imagen (JPG / PNG)"}
+              </label>
+            )}
+            <input
+              id="authenticity_certificate_url"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={handleCertificateUpload}
+              disabled={uploading}
+              className="hidden"
             />
           </div>
         </div>

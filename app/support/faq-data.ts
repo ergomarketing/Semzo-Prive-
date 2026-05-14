@@ -26,6 +26,44 @@ export interface FaqCategoryData {
 
 export const faqCategoriesData: FaqCategoryData[] = [
   {
+    title: "Modos Descubre y Colecciona",
+    iconName: "Package",
+    description: "Cómo funcionan los dos modos de disfrutar tu membresía: rotar bolsos o hacer uno tuyo",
+    articles: 6,
+    faqs: [
+      {
+        question: "¿Puedo cambiar de bolso cuando quiera?",
+        answer:
+          "Sí, en Modo Descubre puedes solicitar el cambio cuando quieras dentro de los límites de tu membresía. En Modo Colecciona el bolso es tuyo desde el día uno, así que se queda contigo hasta que decidas hacerlo definitivamente tuyo o renunciar a él.",
+      },
+      {
+        question: "¿Cuánto tarda un bolso en ser mío?",
+        answer:
+          "Cada bolso tiene un precio de compra fijado. Tu cuota mensual suma hacia ese precio hasta completarlo. También puedes adelantar la compra en cualquier momento pagando la diferencia pendiente desde tu panel de socia.",
+      },
+      {
+        question: "¿Qué pasa si cancelo la membresía estando en Modo Colecciona?",
+        answer:
+          "Conservas el acceso completo hasta el final del ciclo facturado. Si estabas en Modo Colecciona, el crédito acumulado se pierde al cancelar — por eso recomendamos hacerlo solo cuando estés segura de no continuar.",
+      },
+      {
+        question: "¿Hay seguro o cobertura del bolso?",
+        answer:
+          "Modo Descubre: incluido en tu cuota mensual. Cubre el desgaste por uso normal (pequeños arañazos, suciedad superficial, etc.). No cubre negligencia, pérdida, robo no denunciado ni daños graves causados por mal uso. Modo Colecciona: la responsabilidad sobre el bolso es tuya mientras lo tienes en proceso de compra, igual que ocurre con cualquier compra a plazos. Si decides abandonar la compra, pierdes el crédito acumulado hasta ese momento.",
+      },
+      {
+        question: "¿Puedo pasar de un modo al otro?",
+        answer:
+          "Sí. Si estás en Modo Descubre y te enamoras del bolso que llevas, puedes convertirlo en Modo Colecciona desde tu panel: el crédito empieza a acumular desde ese momento. Si estás en Modo Colecciona y prefieres cambiar de bolso, puedes renunciar y volver a Modo Descubre (pierdes el crédito acumulado en ese bolso).",
+      },
+      {
+        question: "¿El certificado de autenticidad es real?",
+        answer:
+          "Sí. Todos nuestros bolsos pasan por verificación profesional (Entrupy y partners equivalentes). Las socias en Modo Colecciona pueden ver y descargar el certificado desde su panel desde el primer día.",
+      },
+    ],
+  },
+  {
     title: "Membresías y Suscripciones",
     iconName: "Users",
     description: "Información sobre planes de membresía y suscripciones a bolsos de lujo",
@@ -144,7 +182,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Qué ocurre si el bolso se daña o mancha?",
         answer:
-          "Tu suscripción incluye un seguro básico de uso cotidiano. En caso de un accidente menor (ej. una mancha ligera o un roce), nuestro equipo se encarga de la limpieza profesional. En situaciones más graves: Se evalúa el daño. Si es reparable, nos encargamos del proceso. Si es irreparable, aplicamos una política justa basada en el valor del bolso y tu plan de suscripción. Queremos que disfrutes con libertad, no con miedo.",
+          "Depende del modo en el que tengas el bolso. En Modo Descubre tu cuota incluye cobertura por uso normal: pequeñas manchas, roces o arañazos los gestiona nuestro equipo (limpieza profesional o reparación). Para daños graves causados por negligencia se aplica una política justa basada en el valor del bolso. En Modo Colecciona la responsabilidad es tuya mientras lo tienes en proceso de compra, igual que en cualquier compra a plazos. Queremos que disfrutes con libertad, no con miedo.",
       },
       {
         question: "¿Cómo debo cuidar los bolsos de cuero durante mi uso?",

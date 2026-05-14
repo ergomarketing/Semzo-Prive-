@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
           retail_price: bag.retail_price,
           cost_price: bag.cost_price,
           serial_number: bag.serial_number,
+          purchase_price: bag.purchase_price,
+          authenticity_certificate_url: bag.authenticity_certificate_url,
           daily_price: bag.daily_price,
           monthly_price: bag.monthly_price,
           price: bag.price,
@@ -241,6 +243,12 @@ export async function POST(request: NextRequest) {
         retail_price: body.retail_price ? Number.parseFloat(body.retail_price) : null,
         cost_price: body.cost_price ? Number.parseFloat(body.cost_price) : null,
         serial_number: body.serial_number ? String(body.serial_number).trim() : null,
+        purchase_price:
+          body.purchase_price && body.purchase_price !== "" ? Number.parseFloat(body.purchase_price) : null,
+        authenticity_certificate_url:
+          body.authenticity_certificate_url && body.authenticity_certificate_url !== ""
+            ? String(body.authenticity_certificate_url).trim()
+            : null,
         condition: body.condition || "excellent",
         status: body.status || "available",
         image_url: body.image_url,

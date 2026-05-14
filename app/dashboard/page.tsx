@@ -10,6 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import useSWR from "swr"
 import { mapDBStatusToUI, getStatusLabel, getStatusDescription } from "@/lib/membership-state-mapper"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
+import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
+import { MyBagCard } from "@/app/components/my-bag-card"
+import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { useState, useEffect } from "react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -338,6 +341,30 @@ export default function DashboardHome() {
         <h2 className="text-4xl font-serif text-slate-900 mb-2">Bienvenida, {userName}</h2>
         <p className="text-lg text-slate-600">Accede a tu colección de bolsos de lujo</p>
       </div>
+
+      {/* Resumen de suscripción (Fase A) - card aislada, solo lectura.
+          Se muestra para cualquier socia que tenga una membresía registrada.
+          El propio componente decide si mostrarse según los datos del endpoint. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <SubscriptionSummaryCard />
+        </div>
+      )}
+
+      {/* Mi bolso actual: card con vista condicional Descubre / Colecciona.
+          El propio componente decide si renderizar según la reserva activa. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <MyBagCard />
+        </div>
+      )}
+
+      {/* Mis bolsos adquiridos (modo Colecciona completado). Solo renderiza si hay alguno. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <OwnedBagsSection />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card

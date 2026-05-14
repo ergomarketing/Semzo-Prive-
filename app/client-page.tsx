@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import HeroSection from "./components/hero-section"
 import CollectionSection from "./components/collection-section"
 import MembershipSection from "./components/membership-section"
+import TwoModesSection from "./components/two-modes-section"
 import HowItWorks from "./components/how-it-works"
 import TestimonialSection from "./components/testimonial-section"
 import MagazineSection from "./components/magazine-section"
@@ -44,6 +45,7 @@ export default function ClientHomePage() {
       <div id="membresias">
         <MembershipSection />
       </div>
+      <TwoModesSection />
       <div id="como-funciona">
         <HowItWorks />
       </div>

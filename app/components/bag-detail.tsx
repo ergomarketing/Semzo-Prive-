@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
 import { LoginModal } from "@/app/components/login-modal"
+import { ModeSelectorDialog } from "@/app/components/mode-selector-dialog"
 
 interface BagDetailProps {
   bag: {
@@ -48,6 +49,8 @@ interface BagDetailProps {
     reviews: number
     features: string[]
     careInstructions: string[]
+    purchase_price?: number | null
+    authenticity_certificate_url?: string | null
   }
   relatedBags?: {
     id: string
@@ -76,6 +79,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     isActive: boolean
   }>({ tier: null, isActive: false })
   const [isReserving, setIsReserving] = useState(false)
+  const [showModeSelector, setShowModeSelector] = useState(false)
+  const [modeConfirmed, setModeConfirmed] = useState<"discover" | "collect" | null>(null)
   const { user: authUser, loading: authLoading } = useAuth()
   const userId = authUser?.id || null
 
@@ -410,6 +415,30 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     }
   }
 
+  // Registra el modo elegido (discover/collect) en ownership_progress.
+  // No bloquea la reserva si falla: la socia ha aceptado, y reintentamos en background.
+  const registerOwnershipMode = async (mode: "discover" | "collect") => {
+    try {
+      await fetch("/api/user/ownership-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bag_id: bag.id, mode }),
+      })
+    } catch (err) {
+      console.error("[v0] Error registering ownership mode:", err)
+    }
+  }
+
+  // Handler invocado desde el modal: registra modo y continua la reserva normal.
+  const handleModeSelected = async (mode: "discover" | "collect") => {
+    await registerOwnershipMode(mode)
+    setModeConfirmed(mode)
+    // Disparar la reserva real tras cerrar el modal
+    setTimeout(() => {
+      handleQuickReserveCore()
+    }, 50)
+  }
+
   const handleQuickReserve = async () => {
     if (!authUser) {
       setPendingAction(() => handleQuickReserve)
@@ -426,6 +455,25 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       return
     }
 
+    // Si el bolso es elegible para Modo Colecciona y aun no se eligio modo,
+    // mostrar el selector. Si no tiene purchase_price, la reserva sigue
+    // siendo Modo Descubre por defecto (registrado silenciosamente).
+    const hasCollectOption = bag.purchase_price != null && Number(bag.purchase_price) > 0
+    if (hasCollectOption && !modeConfirmed) {
+      setShowModeSelector(true)
+      return
+    }
+
+    // Si no hay opcion Colecciona, registrar discover silenciosamente y seguir
+    if (!hasCollectOption && !modeConfirmed) {
+      registerOwnershipMode("discover")
+      setModeConfirmed("discover")
+    }
+
+    handleQuickReserveCore()
+  }
+
+  const handleQuickReserveCore = async () => {
     setIsReserving(true)
 
     try {
@@ -1067,6 +1115,17 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             </div>
           </div>
         )}
+
+        {/* Modal selector de modo (Descubre / Colecciona) */}
+        <ModeSelectorDialog
+          open={showModeSelector}
+          onOpenChange={setShowModeSelector}
+          bagName={bag.name}
+          bagBrand={bag.brand}
+          purchasePrice={bag.purchase_price ?? null}
+          monthlyPrice={Number.parseFloat(String(bag.price).replace(/[^\d.]/g, "")) || null}
+          onSelect={handleModeSelected}
+        />
 
         {/* Login Modal */}
         <LoginModal

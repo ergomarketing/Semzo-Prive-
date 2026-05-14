@@ -37,6 +37,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updateData.serial_number = trimmed ? trimmed : null
     }
 
+    // Modo Colecciona (rent-to-own)
+    if (body.purchase_price !== undefined) {
+      updateData.purchase_price =
+        body.purchase_price === "" || body.purchase_price === null
+          ? null
+          : Number.parseFloat(body.purchase_price)
+    }
+    if (body.authenticity_certificate_url !== undefined) {
+      const url =
+        typeof body.authenticity_certificate_url === "string"
+          ? body.authenticity_certificate_url.trim()
+          : body.authenticity_certificate_url
+      updateData.authenticity_certificate_url = url ? url : null
+    }
+
     if (body.image_url !== undefined && body.image_url !== "") {
       updateData.image_url = body.image_url
     }

@@ -54,7 +54,7 @@ export default function CTASection() {
               y recibe recomendaciones personalizadas.
             </p>
             <div className="pt-2">
-              <Link href="/contacto">
+              <Link href="/support">
                 <Button
                   className="rounded-none px-10 py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 hover:bg-[#1a1a4b] hover:text-white"
                   style={{
