@@ -58,6 +58,8 @@ export default function SupportPage() {
     priority: "medium",
   })
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Datos importados desde ./faq-data (compartidos con layout.tsx para
   // generar el JSON-LD FAQPage schema). Single source of truth.
@@ -65,6 +67,8 @@ export default function SupportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitError(null)
 
     try {
       const response = await fetch("/api/contact", {
@@ -85,11 +89,13 @@ export default function SupportPage() {
           priority: "medium",
         })
       } else {
-        const errorData = await response.json()
-        console.error("Error al enviar consulta:", errorData)
+        const errorData = await response.json().catch(() => ({}))
+        setSubmitError(errorData?.error || "No pudimos enviar tu mensaje. Inténtalo de nuevo.")
       }
     } catch (error) {
-      console.error("Error de conexión:", error)
+      setSubmitError("Error de conexión. Comprueba tu internet e inténtalo de nuevo.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -312,8 +318,17 @@ export default function SupportPage() {
                         required
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                      Enviar mensaje
+                    {submitError && (
+                      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        {submitError}
+                      </div>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-indigo-dark text-white hover:bg-indigo-dark/90 disabled:opacity-60"
+                    >
+                      {isSubmitting ? "Enviando..." : "Enviar mensaje"}
                     </Button>
                   </form>
                 </CardContent>
