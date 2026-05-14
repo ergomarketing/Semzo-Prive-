@@ -932,6 +932,35 @@ function BagForm({
     images: bag?.images || ([] as string[]),
   })
 
+  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al subir certificado")
+      }
+
+      const { url } = await response.json()
+      setFormData((prev) => ({ ...prev, authenticity_certificate_url: url }))
+    } catch (error) {
+      console.error("Error uploading certificate:", error)
+      alert(error instanceof Error ? error.message : "Error al subir certificado")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
@@ -1145,15 +1174,50 @@ function BagForm({
           </div>
           <div>
             <Label htmlFor="authenticity_certificate_url" className="text-[#1a1a4b]">
-              URL certificado autenticidad
+              Certificado de autenticidad
             </Label>
-            <Input
+            {formData.authenticity_certificate_url ? (
+              <div className="mt-1 flex items-center gap-3 rounded-md border border-slate-300 bg-white p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={formData.authenticity_certificate_url || "/placeholder.svg"}
+                  alt="Certificado de autenticidad"
+                  className="h-14 w-14 rounded object-cover border border-slate-200"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-600 truncate">Certificado subido</p>
+                  <a
+                    href={formData.authenticity_certificate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#1a1a4b] underline"
+                  >
+                    Ver imagen
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, authenticity_certificate_url: "" })}
+                  className="text-xs text-slate-500 hover:text-rose-600 px-2"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="authenticity_certificate_url"
+                className="mt-1 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:border-[#1a1a4b] hover:text-[#1a1a4b] transition-colors"
+              >
+                {uploading ? "Subiendo..." : "Subir imagen (JPG / PNG)"}
+              </label>
+            )}
+            <input
               id="authenticity_certificate_url"
-              type="url"
-              placeholder="https://..."
-              value={formData.authenticity_certificate_url}
-              onChange={(e) => setFormData({ ...formData, authenticity_certificate_url: e.target.value })}
-              className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={handleCertificateUpload}
+              disabled={uploading}
+              className="hidden"
             />
           </div>
         </div>
