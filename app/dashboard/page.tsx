@@ -11,6 +11,7 @@ import useSWR from "swr"
 import { mapDBStatusToUI, getStatusLabel, getStatusDescription } from "@/lib/membership-state-mapper"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
+import { MyBagCard } from "@/app/components/my-bag-card"
 import { useState, useEffect } from "react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -346,6 +347,14 @@ export default function DashboardHome() {
       {membership && membership.status !== "no_membership" && (
         <div className="mb-8">
           <SubscriptionSummaryCard />
+        </div>
+      )}
+
+      {/* Mi bolso actual: card con vista condicional Descubre / Colecciona.
+          El propio componente decide si renderizar según la reserva activa. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <MyBagCard />
         </div>
       )}
 
