@@ -517,23 +517,16 @@ export default function ProcesoClient() {
                 </details>
               ))}
             </div>
-          </div>
-        </section>
 
-        {/* CTA Section */}
-        <section className="py-10 md:py-12 bg-white">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-sm text-slate-600 max-w-2xl mx-auto font-light">
-              Descubre más sobre nuestras{" "}
-              <Link href="/#membresias" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
-                membresías disponibles
-              </Link>{" "}
-              o explora nuestra{" "}
-              <Link href="/catalog" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
-                colección completa
+            <div className="text-center mt-10 md:mt-12">
+              <Link
+                href="/support#faq"
+                className="inline-block uppercase tracking-[0.25em] text-xs font-semibold border-b-2 pb-1 hover:opacity-60 transition-opacity"
+                style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
+              >
+                Lea todas las preguntas frecuentes
               </Link>
-              .
-            </p>
+            </div>
           </div>
         </section>
       </main>
