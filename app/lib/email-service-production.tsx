@@ -514,7 +514,7 @@ export class EmailServiceProduction {
               </div>
               
               <div class="footer">
-                  <p>© 2025 Semzo Privé. Todos los derechos reservados.</p>
+                  <p>© 2024 Semzo Privé. Todos los derechos reservados.</p>
                   <p>Soporte: <a href="mailto:contacto@semzoprive.com" style="color: white; text-decoration: underline;">contacto@semzoprive.com</a></p>
               </div>
           </div>
@@ -1025,7 +1025,7 @@ export class EmailServiceProduction {
                   <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
               </div>
               <div class="footer">
-                  <p>© 2025 Semzo Privé - Luxury Bag Rental</p>
+                  <p>© 2024 Semzo Privé - Luxury Bag Rental</p>
               </div>
           </div>
       </body>

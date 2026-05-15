@@ -54,8 +54,8 @@ const SOCIAL_LINKS = [
 ] as const
 
 // Copy del marquee final: copyright largo exacto como en produccion.
-// Se construye dinamicamente para que el año siempre sea correcto.
-const CURRENT_YEAR = new Date().getFullYear()
+// Año fijo: 2024 es la fecha de creación de la web.
+const CURRENT_YEAR = 2024
 const MARQUEE_PHRASES = [
   `© ${CURRENT_YEAR} Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad.`,
 ] as const
