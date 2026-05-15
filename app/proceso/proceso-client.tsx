@@ -266,8 +266,8 @@ export default function ProcesoClient() {
           </div>
         </section>
 
-        {/* Marquee de Marcas — estilo editorial */}
-        <section className="py-16 md:py-20 bg-white overflow-hidden border-y border-slate-100">
+        {/* Marquee de Marcas — estilo editorial compacto */}
+        <section className="py-8 md:py-10 bg-white overflow-hidden border-y border-slate-100">
           <div className="marquee-track flex items-center" style={{ color: "#1a1a4b" }}>
             {[...Array(2)].map((_, loop) => (
               <div
@@ -290,10 +290,10 @@ export default function ProcesoClient() {
                   "SAINT LAURENT",
                 ].map((brand) => (
                   <span key={brand} className="flex items-center shrink-0">
-                    <span className="font-serif text-2xl md:text-4xl lg:text-5xl font-light tracking-tight px-8 md:px-12 whitespace-nowrap">
+                    <span className="font-serif text-base md:text-xl font-light tracking-wide px-6 md:px-8 whitespace-nowrap">
                       {brand}
                     </span>
-                    <span className="text-xl md:text-3xl font-light opacity-30">·</span>
+                    <span className="text-sm font-light opacity-30">·</span>
                   </span>
                 ))}
               </div>
@@ -307,7 +307,7 @@ export default function ProcesoClient() {
         </section>
 
         {/* Pases de Bolso — bloque editorial horizontal, pertenecen a Petite */}
-        <section className="py-24 md:py-32 bg-white">
+        <section className="py-16 md:py-20 bg-white">
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-12 gap-8 md:gap-12 max-w-6xl mx-auto items-center">
               {/* Imagen editorial */}
@@ -401,10 +401,10 @@ export default function ProcesoClient() {
         </section>
 
         {/* Beneficios — lista editorial centrada estilo cocoon */}
-        <section className="py-24 md:py-32" style={{ backgroundColor: "#faf8f5" }}>
+        <section className="py-16 md:py-20" style={{ backgroundColor: "#faf8f5" }}>
           <div className="container mx-auto px-4">
             <h2
-              className="text-center font-serif font-light leading-tight mb-16 md:mb-20 text-3xl md:text-5xl tracking-tight"
+              className="text-center font-serif font-light leading-tight mb-10 md:mb-14 text-3xl md:text-4xl tracking-tight"
               style={{ color: "#1a1a4b" }}
             >
               <span className="font-medium uppercase tracking-wide">Beneficios de</span>{" "}
@@ -432,7 +432,7 @@ export default function ProcesoClient() {
               ))}
             </ul>
 
-            <div className="text-center mt-16 md:mt-20">
+            <div className="text-center mt-10 md:mt-14">
               <a
                 href="#faqs"
                 className="inline-block uppercase tracking-[0.25em] text-xs font-medium border-b pb-1 hover:opacity-60 transition-opacity"
@@ -445,10 +445,10 @@ export default function ProcesoClient() {
         </section>
 
         {/* FAQs — hairline editorial estilo cocoon */}
-        <section id="faqs" className="py-24 md:py-32 bg-white">
+        <section id="faqs" className="py-16 md:py-20 bg-white">
           <div className="container mx-auto px-4">
             <h2
-              className="text-center font-serif font-light leading-tight mb-16 md:mb-20 text-3xl md:text-5xl tracking-tight"
+              className="text-center font-serif font-light leading-tight mb-10 md:mb-14 text-3xl md:text-4xl tracking-tight"
               style={{ color: "#1a1a4b" }}
             >
               <span className="font-medium">Preguntas</span>{" "}
@@ -467,7 +467,7 @@ export default function ProcesoClient() {
                 },
                 {
                   q: "¿Cuántos bolsos puedo disfrutar cada mes?",
-                  a: "Petite y L'Essentiel incluyen un bolso al mes. Signature permite un intercambio mensual con acceso a piezas premium. Privé ofrece la mayor flexibilidad con acceso a las casas más exclusivas. Si quieres una pieza adicional, puedes adquirir un Pase de Bolso semanal.",
+                  a: "Las membresías L'Essentiel, Signature y Privé incluyen un bolso al mes dentro de su colección correspondiente. La membresía Petite funciona de forma distinta: puedes adquirir Pases de Bolso semanales de cualquiera de las tres colecciones, hasta 4 bolsos al mes (uno por semana).",
                 },
                 {
                   q: "¿Cuánto tiempo puedo conservar mi bolso?",
