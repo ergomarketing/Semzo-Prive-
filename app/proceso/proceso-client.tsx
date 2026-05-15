@@ -431,16 +431,6 @@ export default function ProcesoClient() {
                 </li>
               ))}
             </ul>
-
-            <div className="text-center mt-8 md:mt-10">
-              <Link
-                href="/support#faq"
-                className="inline-block uppercase tracking-[0.25em] text-xs font-medium border-b pb-1 hover:opacity-60 transition-opacity"
-                style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
-              >
-                Leer preguntas frecuentes
-              </Link>
-            </div>
           </div>
         </section>
 
