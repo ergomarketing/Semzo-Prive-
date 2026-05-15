@@ -2,8 +2,9 @@ import type { Metadata } from "next"
 import CatalogSection from "../components/catalog-section"
 import { createClient } from "../lib/supabase/server"
 
-// ISR: Revalidate every 10 minutes (600 seconds) - reduces function invocations
-export const revalidate = 600
+// Render dinámico: el cliente Supabase usa cookies() y no se puede prerenderizar
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 const BAG_SELECT_COLS =
   "id, slug, name, brand, color, description, retail_price, image_url, images, category, condition, status, membership_type"

@@ -107,7 +107,7 @@ export default function InvitacionClient() {
       {/* Footer minimalista */}
       <footer className="border-t border-gray-200/60 bg-white/70 backdrop-blur-sm py-8">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>© 2026 Semzo Privé. Todos los derechos reservados.</p>
+          <p>© 2024 Semzo Privé. Todos los derechos reservados.</p>
         </div>
       </footer>
     </div>

@@ -124,7 +124,7 @@ export async function sendSepaPreExecutionEmail({
       Para consultas: <a href="mailto:soporte@semzoprive.com" style="color: #1a1a4b;">soporte@semzoprive.com</a>
     </p>
     <p style="margin: 10px 0 0 0;">
-      © ${new Date().getFullYear()} SEMZO PRIVÉ. Todos los derechos reservados.
+      © 2024 SEMZO PRIVÉ. Todos los derechos reservados.
     </p>
   </div>
 </body>

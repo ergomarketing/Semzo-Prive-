@@ -216,7 +216,7 @@ export default function InvitationClient() {
 
       <footer className="bg-white/80 backdrop-blur-sm py-6 mt-8">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>&copy; 2026 Semzo Priv&eacute;. All rights reserved.</p>
+          <p>&copy; 2024 Semzo Priv&eacute;. All rights reserved.</p>
         </div>
       </footer>
     </div>

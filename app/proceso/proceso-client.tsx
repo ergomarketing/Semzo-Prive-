@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import MembershipSection from "@/app/components/membership-section"
 
 export default function ProcesoClient() {
   return (
@@ -265,20 +266,257 @@ export default function ProcesoClient() {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-20 bg-white">
-          <div className="container mx-auto px-4 text-center">
-            <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto font-light">
-              Descubre más sobre nuestras{" "}
-              <Link href="/#membresias" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
-                membresías disponibles
-              </Link>{" "}
-              o explora nuestra{" "}
-              <Link href="/catalog" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
-                colección completa
+        {/* Marquee de Marcas — estilo editorial compacto */}
+        <section className="py-8 md:py-10 bg-white overflow-hidden border-y border-slate-100">
+          <div className="marquee-track flex items-center" style={{ color: "#1a1a4b" }}>
+            {[...Array(2)].map((_, loop) => (
+              <div
+                key={loop}
+                className="flex items-center shrink-0"
+                aria-hidden={loop === 1}
+              >
+                {[
+                  "BOTTEGA VENETA",
+                  "CELINE",
+                  "CHANEL",
+                  "CHRISTIAN DIOR",
+                  "FENDI",
+                  "GUCCI",
+                  "HERMÈS",
+                  "LOEWE",
+                  "LOUIS VUITTON",
+                  "MIU MIU",
+                  "PRADA",
+                  "SAINT LAURENT",
+                ].map((brand) => (
+                  <span key={brand} className="flex items-center shrink-0">
+                    <span className="font-serif text-base md:text-xl font-light tracking-wide px-6 md:px-8 whitespace-nowrap">
+                      {brand}
+                    </span>
+                    <span className="text-sm font-light opacity-30">·</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Planes — reutilizamos la sección de Membresías de la home */}
+        <section className="proceso-memberships">
+          <MembershipSection />
+        </section>
+
+        {/* Pases de Bolso — bloque editorial horizontal, pertenecen a Petite */}
+        <section className="py-16 md:py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="grid md:grid-cols-12 gap-8 md:gap-12 max-w-6xl mx-auto items-center">
+              {/* Imagen editorial */}
+              <div className="md:col-span-5">
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <Image
+                    src="/images/jacquemus-le-chiquito.jpg"
+                    alt="Pases de Bolso Semzo Privé"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <p
+                  className="text-xs uppercase tracking-[0.25em] mt-6 font-medium"
+                  style={{ color: "#1a1a4b" }}
+                >
+                  Exclusivo para Petite
+                </p>
+              </div>
+
+              {/* Contenido */}
+              <div className="md:col-span-7">
+                <h2
+                  className="font-serif font-light leading-tight mb-6 text-3xl md:text-5xl tracking-tight"
+                  style={{ color: "#1a1a4b" }}
+                >
+                  <em className="italic font-light">Pases</em>{" "}
+                  <span className="font-medium uppercase tracking-wide">de bolso</span>
+                </h2>
+
+                <p className="text-slate-600 font-light leading-relaxed mb-10 text-base md:text-lg">
+                  Los Pases de Bolso son un <strong className="font-medium" style={{ color: "#1a1a4b" }}>complemento exclusivo de la membresía Petite</strong>.
+                  Permiten acceder durante una semana a una pieza de nuestras colecciones superiores
+                  sin cambiar tu plan, perfectos para una ocasión especial.
+                </p>
+
+                <ul className="space-y-6">
+                  {[
+                    {
+                      name: "L'Essentiel",
+                      desc: "Una pieza de la colección L'Essentiel durante una semana",
+                      price: "52€",
+                    },
+                    {
+                      name: "Signature",
+                      desc: "Una pieza de la colección Signature durante una semana",
+                      price: "99€",
+                    },
+                    {
+                      name: "Privé",
+                      desc: "Una pieza exclusiva de la colección Privé durante una semana",
+                      price: "137€",
+                    },
+                  ].map((pass) => (
+                    <li
+                      key={pass.name}
+                      className="flex items-baseline justify-between gap-6 pb-6 border-b"
+                      style={{ borderColor: "rgba(26, 26, 75, 0.15)" }}
+                    >
+                      <div className="flex-1">
+                        <h3
+                          className="font-serif text-xl md:text-2xl font-light mb-1"
+                          style={{ color: "#1a1a4b" }}
+                        >
+                          Pase {pass.name}
+                        </h3>
+                        <p className="text-sm text-slate-600 font-light leading-relaxed">
+                          {pass.desc}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span
+                          className="font-serif text-2xl md:text-3xl font-light"
+                          style={{ color: "#1a1a4b" }}
+                        >
+                          {pass.price}
+                        </span>
+                        <span className="text-xs text-slate-500 font-light ml-1">/semana</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="text-xs text-slate-500 font-light mt-8 leading-relaxed">
+                  Los Pases se activan desde tu área privada de socia al reservar la pieza.
+                  Opción de extender disponible.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Beneficios — lista editorial centrada estilo cocoon */}
+        <section className="py-16 md:py-20" style={{ backgroundColor: "#faf8f5" }}>
+          <div className="container mx-auto px-4">
+            <h2
+              className="text-center font-serif font-light leading-tight mb-8 md:mb-10 text-2xl md:text-3xl tracking-tight"
+              style={{ color: "#1a1a4b" }}
+            >
+              <span className="font-medium uppercase tracking-wide">Beneficios de</span>{" "}
+              <em className="italic font-light">Membresía</em>
+            </h2>
+
+            <ul className="max-w-2xl mx-auto text-center space-y-2">
+              {[
+                "Bolsos de lujo cuando quieras, por una fracción de su precio",
+                "Conserva tu pieza durante todo el periodo de tu membresía",
+                "Seguro y cobertura por desgaste habitual ya incluidos",
+                "Solicita una segunda pieza con nuestros Pases de Bolso",
+                "Acceso prioritario a las nuevas incorporaciones de la colección",
+                "Atención dedicada por WhatsApp antes, durante y después del alquiler",
+                "Pausa o cancela cuando lo necesites, sin compromisos",
+                "Apoya la moda circular con cada alquiler que realizas",
+              ].map((perk) => (
+                <li
+                  key={perk}
+                  className="font-serif text-base font-light leading-snug"
+                  style={{ color: "#3a3a5e" }}
+                >
+                  {perk}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* FAQs — hairline editorial estilo cocoon */}
+        <section id="faqs" className="py-16 md:py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <h2
+              className="text-center font-serif font-light leading-tight mb-10 md:mb-14 text-3xl md:text-4xl tracking-tight"
+              style={{ color: "#1a1a4b" }}
+            >
+              <span className="font-medium">Preguntas</span>{" "}
+              <em className="italic font-light">frecuentes</em>
+            </h2>
+
+            <div className="max-w-3xl mx-auto">
+              {[
+                {
+                  q: "Acabo de inscribirme, ¿qué pasa después?",
+                  a: "Recibirás un email de bienvenida con los pasos para activar tu cuenta. Una vez verificada tu identidad, podrás elegir tu primer bolso de la colección disponible según tu membresía. Lo enviamos a tu domicilio en 24-48h dentro de la península.",
+                },
+                {
+                  q: "¿Plazo mínimo de membresía?",
+                  a: "Las membresías mensuales se renuevan cada mes y puedes cancelar en cualquier momento antes del siguiente cobro. La membresía trimestral tiene un compromiso inicial de 3 meses y posteriormente se renueva trimestralmente.",
+                },
+                {
+                  q: "¿Cuántos bolsos puedo disfrutar cada mes?",
+                  a: "Las membresías L'Essentiel, Signature y Privé incluyen un bolso al mes dentro de su colección correspondiente. La membresía Petite funciona de forma distinta: puedes adquirir Pases de Bolso semanales de cualquiera de las tres colecciones, hasta 4 bolsos al mes (uno por semana).",
+                },
+                {
+                  q: "¿Cuánto tiempo puedo conservar mi bolso?",
+                  a: "Durante todo tu periodo de membresía activa. Cuando quieras cambiarlo por otro, solicita el intercambio desde tu área privada y recogemos el actual al entregar el nuevo.",
+                },
+                {
+                  q: "¿Qué sucede si pierdo o daño un bolso?",
+                  a: "Todas las membresías incluyen cobertura para desgaste habitual. En caso de daño accidental grave o pérdida, contacta inmediatamente con nuestro equipo y te acompañaremos en el proceso de resolución, sin sorpresas ni letra pequeña.",
+                },
+                {
+                  q: "¿Los bolsos son 100% auténticos?",
+                  a: "Sí. Cada pieza es autenticada por expertos antes de incorporarse a la colección y revisada de nuevo entre alquileres. Trabajamos exclusivamente con piezas originales de las casas de lujo más reconocidas del mundo.",
+                },
+                {
+                  q: "¿Cómo cancelo mi membresía?",
+                  a: "Desde tu área privada de socia puedes cancelar en cualquier momento, sin penalizaciones. Mantendrás el acceso hasta el final del periodo ya pagado.",
+                },
+                {
+                  q: "¿Hacéis envíos fuera de España peninsular?",
+                  a: "Actualmente operamos en territorio peninsular español. Estamos trabajando para ampliar a Baleares, Canarias y resto de Europa próximamente. Suscríbete a nuestra lista privada para ser de las primeras en saberlo.",
+                },
+              ].map((faq, idx) => (
+                <details
+                  key={idx}
+                  className="group border-b first:border-t"
+                  style={{ borderColor: "rgba(26, 26, 75, 0.15)" }}
+                >
+                  <summary
+                    className="flex items-center justify-between py-4 md:py-5 cursor-pointer list-none"
+                    style={{ color: "#1a1a4b" }}
+                  >
+                    <span className="font-serif text-base md:text-lg font-light pr-6 leading-snug">
+                      {faq.q}
+                    </span>
+                    <span
+                      className="flex-shrink-0 text-xl font-light transition-transform duration-300 group-open:rotate-45"
+                      aria-hidden="true"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <div className="pb-5 pr-10 md:pr-12 -mt-1">
+                    <p className="text-slate-600 font-light leading-relaxed text-base">
+                      {faq.a}
+                    </p>
+                  </div>
+                </details>
+              ))}
+            </div>
+
+            <div className="text-center mt-10 md:mt-12">
+              <Link
+                href="/support#faq"
+                className="inline-block uppercase tracking-[0.25em] text-xs font-semibold border-b-2 pb-1 hover:opacity-60 transition-opacity"
+                style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
+              >
+                Lea todas las preguntas frecuentes
               </Link>
-              .
-            </p>
+            </div>
           </div>
         </section>
       </main>

@@ -227,7 +227,7 @@ export default function MembershipSection() {
                   <div className="bg-slate-50 rounded-xl p-5 mb-6">
                     <div className="flex items-baseline gap-1">
                       <span className="font-serif text-5xl font-light text-slate-900">19,99€</span>
-                      <span className="text-lg text-slate-500 font-light">/semana</span>
+                      <span className="text-lg text-slate-500 font-light">/mes</span>
                     </div>
                     <p className="text-sm text-slate-500 mt-2">
                       Añade un Pase de Bolso para acceder a nuestras colecciones de lujo

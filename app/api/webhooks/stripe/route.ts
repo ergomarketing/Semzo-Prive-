@@ -756,7 +756,7 @@ export async function POST(req: NextRequest) {
     <!-- Footer -->
     <div style="background-color: #1a1a4b; padding: 20px; text-align: center;">
       <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">
-        © 2025 Semzo Prive. Todos los derechos reservados.<br />
+        © 2024 Semzo Prive. Todos los derechos reservados.<br />
         <a href="mailto:contacto@semzoprive.com" style="color: rgba(255,255,255,0.7);">contacto@semzoprive.com</a>
       </p>
     </div>
