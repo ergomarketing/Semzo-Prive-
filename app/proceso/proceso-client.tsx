@@ -433,13 +433,13 @@ export default function ProcesoClient() {
             </ul>
 
             <div className="text-center mt-8 md:mt-10">
-              <a
-                href="#faqs"
+              <Link
+                href="/support#faq"
                 className="inline-block uppercase tracking-[0.25em] text-xs font-medium border-b pb-1 hover:opacity-60 transition-opacity"
                 style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
               >
                 Leer preguntas frecuentes
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -482,7 +482,7 @@ export default function ProcesoClient() {
                   a: "Sí. Cada pieza es autenticada por expertos antes de incorporarse a la colección y revisada de nuevo entre alquileres. Trabajamos exclusivamente con piezas originales de las casas de lujo más reconocidas del mundo.",
                 },
                 {
-                  q: "¿Cómo cancelo mi membres��a?",
+                  q: "¿Cómo cancelo mi membresía?",
                   a: "Desde tu área privada de socia puedes cancelar en cualquier momento, sin penalizaciones. Mantendrás el acceso hasta el final del periodo ya pagado.",
                 },
                 {
@@ -496,20 +496,20 @@ export default function ProcesoClient() {
                   style={{ borderColor: "rgba(26, 26, 75, 0.15)" }}
                 >
                   <summary
-                    className="flex items-center justify-between py-6 md:py-7 cursor-pointer list-none"
+                    className="flex items-center justify-between py-4 md:py-5 cursor-pointer list-none"
                     style={{ color: "#1a1a4b" }}
                   >
-                    <span className="font-serif text-lg md:text-xl font-light pr-6 leading-snug">
+                    <span className="font-serif text-base md:text-lg font-light pr-6 leading-snug">
                       {faq.q}
                     </span>
                     <span
-                      className="flex-shrink-0 text-2xl font-light transition-transform duration-300 group-open:rotate-45"
+                      className="flex-shrink-0 text-xl font-light transition-transform duration-300 group-open:rotate-45"
                       aria-hidden="true"
                     >
                       +
                     </span>
                   </summary>
-                  <div className="pb-7 pr-10 md:pr-12 -mt-2">
+                  <div className="pb-5 pr-10 md:pr-12 -mt-1">
                     <p className="text-slate-600 font-light leading-relaxed text-base">
                       {faq.a}
                     </p>
@@ -521,9 +521,9 @@ export default function ProcesoClient() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 bg-white">
+        <section className="py-10 md:py-12 bg-white">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto font-light">
+            <p className="text-sm text-slate-600 max-w-2xl mx-auto font-light">
               Descubre más sobre nuestras{" "}
               <Link href="/#membresias" className="underline hover:no-underline" style={{ color: "#1a1a4b" }}>
                 membresías disponibles
