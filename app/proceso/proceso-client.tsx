@@ -404,14 +404,14 @@ export default function ProcesoClient() {
         <section className="py-16 md:py-20" style={{ backgroundColor: "#faf8f5" }}>
           <div className="container mx-auto px-4">
             <h2
-              className="text-center font-serif font-light leading-tight mb-10 md:mb-14 text-3xl md:text-4xl tracking-tight"
+              className="text-center font-serif font-light leading-tight mb-8 md:mb-10 text-2xl md:text-3xl tracking-tight"
               style={{ color: "#1a1a4b" }}
             >
               <span className="font-medium uppercase tracking-wide">Beneficios de</span>{" "}
               <em className="italic font-light">Membresía</em>
             </h2>
 
-            <ul className="max-w-3xl mx-auto text-center space-y-7">
+            <ul className="max-w-2xl mx-auto text-center space-y-2">
               {[
                 "Bolsos de lujo cuando quieras, por una fracción de su precio",
                 "Conserva tu pieza durante todo el periodo de tu membresía",
@@ -424,7 +424,7 @@ export default function ProcesoClient() {
               ].map((perk) => (
                 <li
                   key={perk}
-                  className="font-serif text-lg md:text-xl font-light leading-relaxed"
+                  className="font-serif text-base font-light leading-snug"
                   style={{ color: "#3a3a5e" }}
                 >
                   {perk}
@@ -432,7 +432,7 @@ export default function ProcesoClient() {
               ))}
             </ul>
 
-            <div className="text-center mt-10 md:mt-14">
+            <div className="text-center mt-8 md:mt-10">
               <a
                 href="#faqs"
                 className="inline-block uppercase tracking-[0.25em] text-xs font-medium border-b pb-1 hover:opacity-60 transition-opacity"
@@ -482,7 +482,7 @@ export default function ProcesoClient() {
                   a: "Sí. Cada pieza es autenticada por expertos antes de incorporarse a la colección y revisada de nuevo entre alquileres. Trabajamos exclusivamente con piezas originales de las casas de lujo más reconocidas del mundo.",
                 },
                 {
-                  q: "¿Cómo cancelo mi membresía?",
+                  q: "¿Cómo cancelo mi membres��a?",
                   a: "Desde tu área privada de socia puedes cancelar en cualquier momento, sin penalizaciones. Mantendrás el acceso hasta el final del periodo ya pagado.",
                 },
                 {
