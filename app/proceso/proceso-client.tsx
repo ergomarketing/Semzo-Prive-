@@ -300,8 +300,218 @@ export default function ProcesoClient() {
           </div>
         </section>
 
-        {/* Beneficios — lista editorial centrada estilo cocoon */}
+        {/* Planes — tabla comparativa estilo editorial */}
+        <section className="py-24 md:py-32" style={{ backgroundColor: "#faf8f5" }}>
+          <div className="container mx-auto px-4">
+            <h2
+              className="text-center font-serif font-light leading-tight mb-4 text-3xl md:text-5xl tracking-tight"
+              style={{ color: "#1a1a4b" }}
+            >
+              <span className="font-medium uppercase tracking-wide">Planes para adaptarse a</span>{" "}
+              <em className="italic font-light">tu estilo de vida</em>
+            </h2>
+            <p className="text-center text-slate-600 font-light max-w-2xl mx-auto mb-16 md:mb-20 leading-relaxed">
+              Cuatro niveles de membresía. Mismo cuidado editorial, distinto acceso.
+              Elige el que mejor acompañe tu día a día.
+            </p>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 max-w-6xl mx-auto border border-slate-200">
+              {[
+                {
+                  name: "Petite",
+                  tagline: "Flexibilidad sin compromiso",
+                  price: "19,99€",
+                  period: "/mes",
+                  features: [
+                    "1 bolso por semana",
+                    "Renovación flexible",
+                    "Ampliable hasta 3 meses",
+                    "Envío gratuito",
+                    "Seguro incluido",
+                  ],
+                  popular: false,
+                },
+                {
+                  name: "L'Essentiel",
+                  tagline: "La introducción al lujo",
+                  price: "59€",
+                  period: "/mes",
+                  features: [
+                    "1 bolso al mes",
+                    "Acceso colección L'Essentiel",
+                    "Envío gratuito",
+                    "Seguro incluido",
+                    "Atención prioritaria",
+                  ],
+                  popular: false,
+                },
+                {
+                  name: "Signature",
+                  tagline: "La favorita de nuestras socias",
+                  price: "149€",
+                  period: "/mes",
+                  features: [
+                    "1 bolso al mes",
+                    "Acceso colección Signature",
+                    "Envío express gratuito",
+                    "Seguro premium",
+                    "Personal shopper dedicado",
+                  ],
+                  popular: true,
+                },
+                {
+                  name: "Privé",
+                  tagline: "Para verdaderas conocedoras",
+                  price: "279€",
+                  period: "/mes",
+                  features: [
+                    "1 bolso al mes",
+                    "Acceso colección Privé",
+                    "Envío express gratuito",
+                    "Seguro premium",
+                    "Acceso VIP a novedades",
+                    "Servicio de conserjería",
+                  ],
+                  popular: false,
+                },
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className="bg-white p-8 md:p-10 flex flex-col relative"
+                >
+                  {plan.popular && (
+                    <span
+                      className="absolute top-0 right-0 text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 font-medium"
+                      style={{ backgroundColor: "#1a1a4b", color: "#faf8f5" }}
+                    >
+                      Más elegida
+                    </span>
+                  )}
+                  <h3
+                    className="font-serif text-3xl font-light mb-2"
+                    style={{ color: "#1a1a4b" }}
+                  >
+                    {plan.name}
+                  </h3>
+                  <p className="text-xs uppercase tracking-widest text-slate-500 font-light mb-8">
+                    {plan.tagline}
+                  </p>
+
+                  <div className="mb-8 pb-8 border-b" style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}>
+                    <span className="font-serif text-4xl font-light" style={{ color: "#1a1a4b" }}>
+                      {plan.price}
+                    </span>
+                    <span className="text-slate-500 font-light text-sm ml-1">{plan.period}</span>
+                  </div>
+
+                  <ul className="space-y-3 flex-1 mb-8">
+                    {plan.features.map((f) => (
+                      <li
+                        key={f}
+                        className="text-sm font-light leading-relaxed flex items-start gap-3"
+                        style={{ color: "#3a3a5e" }}
+                      >
+                        <span
+                          className="block w-1 h-1 rounded-full mt-2 flex-shrink-0"
+                          style={{ backgroundColor: "#1a1a4b" }}
+                          aria-hidden="true"
+                        />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href="/#membresias"
+                    className="inline-block text-center uppercase tracking-[0.2em] text-xs font-medium py-3 border transition-colors hover:bg-[#1a1a4b] hover:text-white"
+                    style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
+                  >
+                    Elegir {plan.name}
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-center text-xs text-slate-500 font-light mt-10 max-w-xl mx-auto leading-relaxed">
+              Todos los planes incluyen pago mensual. Las membresías L&apos;Essentiel, Signature y Privé
+              ofrecen un 20% de descuento al elegir facturación trimestral.
+            </p>
+          </div>
+        </section>
+
+        {/* Pases de Bolso — complementos */}
         <section className="py-24 md:py-32 bg-white">
+          <div className="container mx-auto px-4">
+            <h2
+              className="text-center font-serif font-light leading-tight mb-4 text-3xl md:text-5xl tracking-tight"
+              style={{ color: "#1a1a4b" }}
+            >
+              <em className="italic font-light">Pases</em>{" "}
+              <span className="font-medium uppercase tracking-wide">de bolso</span>
+            </h2>
+            <p className="text-center text-slate-600 font-light max-w-2xl mx-auto mb-16 md:mb-20 leading-relaxed">
+              ¿Una ocasión especial? Suma una pieza extra a tu membresía por una semana,
+              sin alterar tu plan habitual. Reserva el pase que coincida con la colección que deseas.
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-px bg-slate-200 max-w-5xl mx-auto border border-slate-200">
+              {[
+                {
+                  name: "Pase L'Essentiel",
+                  desc: "Una pieza adicional de la colección L'Essentiel durante una semana, con opción de extender.",
+                  price: "52€",
+                  period: "/semana",
+                },
+                {
+                  name: "Pase Signature",
+                  desc: "Una pieza adicional de la colección Signature durante una semana, con opción de extender.",
+                  price: "99€",
+                  period: "/semana",
+                },
+                {
+                  name: "Pase Privé",
+                  desc: "Una pieza exclusiva de la colección Privé durante una semana, con opción de extender.",
+                  price: "137€",
+                  period: "/semana",
+                },
+              ].map((pass) => (
+                <div key={pass.name} className="bg-white p-8 md:p-10 flex flex-col">
+                  <h3
+                    className="font-serif text-2xl font-light mb-4"
+                    style={{ color: "#1a1a4b" }}
+                  >
+                    {pass.name}
+                  </h3>
+                  <p className="text-sm text-slate-600 font-light leading-relaxed mb-8 flex-1">
+                    {pass.desc}
+                  </p>
+                  <div
+                    className="pt-6 border-t"
+                    style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}
+                  >
+                    <span
+                      className="font-serif text-3xl font-light"
+                      style={{ color: "#1a1a4b" }}
+                    >
+                      {pass.price}
+                    </span>
+                    <span className="text-slate-500 font-light text-sm ml-1">
+                      {pass.period}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-center text-xs text-slate-500 font-light mt-10 max-w-xl mx-auto leading-relaxed">
+              Los Pases de Bolso son adquiribles desde tu área privada y se activan
+              al reservar la pieza correspondiente.
+            </p>
+          </div>
+        </section>
+
+        {/* Beneficios — lista editorial centrada estilo cocoon */}
+        <section className="py-24 md:py-32" style={{ backgroundColor: "#faf8f5" }}>
           <div className="container mx-auto px-4">
             <h2
               className="text-center font-serif font-light leading-tight mb-16 md:mb-20 text-3xl md:text-5xl tracking-tight"
@@ -345,11 +555,7 @@ export default function ProcesoClient() {
         </section>
 
         {/* FAQs — hairline editorial estilo cocoon */}
-        <section
-          id="faqs"
-          className="py-24 md:py-32"
-          style={{ backgroundColor: "#faf8f5" }}
-        >
+        <section id="faqs" className="py-24 md:py-32 bg-white">
           <div className="container mx-auto px-4">
             <h2
               className="text-center font-serif font-light leading-tight mb-16 md:mb-20 text-3xl md:text-5xl tracking-tight"
