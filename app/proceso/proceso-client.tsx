@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import MembershipSection from "@/app/components/membership-section"
 
 export default function ProcesoClient() {
   return (
@@ -300,213 +301,102 @@ export default function ProcesoClient() {
           </div>
         </section>
 
-        {/* Planes — tabla comparativa estilo editorial */}
-        <section className="py-24 md:py-32" style={{ backgroundColor: "#faf8f5" }}>
-          <div className="container mx-auto px-4">
-            <h2
-              className="text-center font-serif font-light leading-tight mb-4 text-3xl md:text-5xl tracking-tight"
-              style={{ color: "#1a1a4b" }}
-            >
-              <span className="font-medium uppercase tracking-wide">Planes para adaptarse a</span>{" "}
-              <em className="italic font-light">tu estilo de vida</em>
-            </h2>
-            <p className="text-center text-slate-600 font-light max-w-2xl mx-auto mb-16 md:mb-20 leading-relaxed">
-              Cuatro niveles de membresía. Mismo cuidado editorial, distinto acceso.
-              Elige el que mejor acompañe tu día a día.
-            </p>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 max-w-6xl mx-auto border border-slate-200">
-              {[
-                {
-                  name: "Petite",
-                  tagline: "Flexibilidad sin compromiso",
-                  price: "19,99€",
-                  period: "/mes",
-                  features: [
-                    "1 bolso por semana",
-                    "Renovación flexible",
-                    "Ampliable hasta 3 meses",
-                    "Envío gratuito",
-                    "Seguro incluido",
-                  ],
-                  popular: false,
-                },
-                {
-                  name: "L'Essentiel",
-                  tagline: "La introducción al lujo",
-                  price: "59€",
-                  period: "/mes",
-                  features: [
-                    "1 bolso al mes",
-                    "Acceso colección L'Essentiel",
-                    "Envío gratuito",
-                    "Seguro incluido",
-                    "Atención prioritaria",
-                  ],
-                  popular: false,
-                },
-                {
-                  name: "Signature",
-                  tagline: "La favorita de nuestras socias",
-                  price: "149€",
-                  period: "/mes",
-                  features: [
-                    "1 bolso al mes",
-                    "Acceso colección Signature",
-                    "Envío express gratuito",
-                    "Seguro premium",
-                    "Personal shopper dedicado",
-                  ],
-                  popular: true,
-                },
-                {
-                  name: "Privé",
-                  tagline: "Para verdaderas conocedoras",
-                  price: "279€",
-                  period: "/mes",
-                  features: [
-                    "1 bolso al mes",
-                    "Acceso colección Privé",
-                    "Envío express gratuito",
-                    "Seguro premium",
-                    "Acceso VIP a novedades",
-                    "Servicio de conserjería",
-                  ],
-                  popular: false,
-                },
-              ].map((plan) => (
-                <div
-                  key={plan.name}
-                  className="bg-white p-8 md:p-10 flex flex-col relative"
-                >
-                  {plan.popular && (
-                    <span
-                      className="absolute top-0 right-0 text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 font-medium"
-                      style={{ backgroundColor: "#1a1a4b", color: "#faf8f5" }}
-                    >
-                      Más elegida
-                    </span>
-                  )}
-                  <h3
-                    className="font-serif text-3xl font-light mb-2"
-                    style={{ color: "#1a1a4b" }}
-                  >
-                    {plan.name}
-                  </h3>
-                  <p className="text-xs uppercase tracking-widest text-slate-500 font-light mb-8">
-                    {plan.tagline}
-                  </p>
-
-                  <div className="mb-8 pb-8 border-b" style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}>
-                    <span className="font-serif text-4xl font-light" style={{ color: "#1a1a4b" }}>
-                      {plan.price}
-                    </span>
-                    <span className="text-slate-500 font-light text-sm ml-1">{plan.period}</span>
-                  </div>
-
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {plan.features.map((f) => (
-                      <li
-                        key={f}
-                        className="text-sm font-light leading-relaxed flex items-start gap-3"
-                        style={{ color: "#3a3a5e" }}
-                      >
-                        <span
-                          className="block w-1 h-1 rounded-full mt-2 flex-shrink-0"
-                          style={{ backgroundColor: "#1a1a4b" }}
-                          aria-hidden="true"
-                        />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    href="/#membresias"
-                    className="inline-block text-center uppercase tracking-[0.2em] text-xs font-medium py-3 border transition-colors hover:bg-[#1a1a4b] hover:text-white"
-                    style={{ color: "#1a1a4b", borderColor: "#1a1a4b" }}
-                  >
-                    Elegir {plan.name}
-                  </Link>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-center text-xs text-slate-500 font-light mt-10 max-w-xl mx-auto leading-relaxed">
-              Todos los planes incluyen pago mensual. Las membresías L&apos;Essentiel, Signature y Privé
-              ofrecen un 20% de descuento al elegir facturación trimestral.
-            </p>
-          </div>
+        {/* Planes — reutilizamos la sección de Membresías de la home */}
+        <section className="proceso-memberships">
+          <MembershipSection />
         </section>
 
-        {/* Pases de Bolso — complementos */}
+        {/* Pases de Bolso — bloque editorial horizontal, pertenecen a Petite */}
         <section className="py-24 md:py-32 bg-white">
           <div className="container mx-auto px-4">
-            <h2
-              className="text-center font-serif font-light leading-tight mb-4 text-3xl md:text-5xl tracking-tight"
-              style={{ color: "#1a1a4b" }}
-            >
-              <em className="italic font-light">Pases</em>{" "}
-              <span className="font-medium uppercase tracking-wide">de bolso</span>
-            </h2>
-            <p className="text-center text-slate-600 font-light max-w-2xl mx-auto mb-16 md:mb-20 leading-relaxed">
-              ¿Una ocasión especial? Suma una pieza extra a tu membresía por una semana,
-              sin alterar tu plan habitual. Reserva el pase que coincida con la colección que deseas.
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-px bg-slate-200 max-w-5xl mx-auto border border-slate-200">
-              {[
-                {
-                  name: "Pase L'Essentiel",
-                  desc: "Una pieza adicional de la colección L'Essentiel durante una semana, con opción de extender.",
-                  price: "52€",
-                  period: "/semana",
-                },
-                {
-                  name: "Pase Signature",
-                  desc: "Una pieza adicional de la colección Signature durante una semana, con opción de extender.",
-                  price: "99€",
-                  period: "/semana",
-                },
-                {
-                  name: "Pase Privé",
-                  desc: "Una pieza exclusiva de la colección Privé durante una semana, con opción de extender.",
-                  price: "137€",
-                  period: "/semana",
-                },
-              ].map((pass) => (
-                <div key={pass.name} className="bg-white p-8 md:p-10 flex flex-col">
-                  <h3
-                    className="font-serif text-2xl font-light mb-4"
-                    style={{ color: "#1a1a4b" }}
-                  >
-                    {pass.name}
-                  </h3>
-                  <p className="text-sm text-slate-600 font-light leading-relaxed mb-8 flex-1">
-                    {pass.desc}
-                  </p>
-                  <div
-                    className="pt-6 border-t"
-                    style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}
-                  >
-                    <span
-                      className="font-serif text-3xl font-light"
-                      style={{ color: "#1a1a4b" }}
-                    >
-                      {pass.price}
-                    </span>
-                    <span className="text-slate-500 font-light text-sm ml-1">
-                      {pass.period}
-                    </span>
-                  </div>
+            <div className="grid md:grid-cols-12 gap-8 md:gap-12 max-w-6xl mx-auto items-center">
+              {/* Imagen editorial */}
+              <div className="md:col-span-5">
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <Image
+                    src="/images/jacquemus-le-chiquito.jpg"
+                    alt="Pases de Bolso Semzo Privé"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-              ))}
-            </div>
+                <p
+                  className="text-xs uppercase tracking-[0.25em] mt-6 font-medium"
+                  style={{ color: "#1a1a4b" }}
+                >
+                  Exclusivo para Petite
+                </p>
+              </div>
 
-            <p className="text-center text-xs text-slate-500 font-light mt-10 max-w-xl mx-auto leading-relaxed">
-              Los Pases de Bolso son adquiribles desde tu área privada y se activan
-              al reservar la pieza correspondiente.
-            </p>
+              {/* Contenido */}
+              <div className="md:col-span-7">
+                <h2
+                  className="font-serif font-light leading-tight mb-6 text-3xl md:text-5xl tracking-tight"
+                  style={{ color: "#1a1a4b" }}
+                >
+                  <em className="italic font-light">Pases</em>{" "}
+                  <span className="font-medium uppercase tracking-wide">de bolso</span>
+                </h2>
+
+                <p className="text-slate-600 font-light leading-relaxed mb-10 text-base md:text-lg">
+                  Los Pases de Bolso son un <strong className="font-medium" style={{ color: "#1a1a4b" }}>complemento exclusivo de la membresía Petite</strong>.
+                  Permiten acceder durante una semana a una pieza de nuestras colecciones superiores
+                  sin cambiar tu plan, perfectos para una ocasión especial.
+                </p>
+
+                <ul className="space-y-6">
+                  {[
+                    {
+                      name: "L'Essentiel",
+                      desc: "Una pieza de la colección L'Essentiel durante una semana",
+                      price: "52€",
+                    },
+                    {
+                      name: "Signature",
+                      desc: "Una pieza de la colección Signature durante una semana",
+                      price: "99€",
+                    },
+                    {
+                      name: "Privé",
+                      desc: "Una pieza exclusiva de la colección Privé durante una semana",
+                      price: "137€",
+                    },
+                  ].map((pass) => (
+                    <li
+                      key={pass.name}
+                      className="flex items-baseline justify-between gap-6 pb-6 border-b"
+                      style={{ borderColor: "rgba(26, 26, 75, 0.15)" }}
+                    >
+                      <div className="flex-1">
+                        <h3
+                          className="font-serif text-xl md:text-2xl font-light mb-1"
+                          style={{ color: "#1a1a4b" }}
+                        >
+                          Pase {pass.name}
+                        </h3>
+                        <p className="text-sm text-slate-600 font-light leading-relaxed">
+                          {pass.desc}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span
+                          className="font-serif text-2xl md:text-3xl font-light"
+                          style={{ color: "#1a1a4b" }}
+                        >
+                          {pass.price}
+                        </span>
+                        <span className="text-xs text-slate-500 font-light ml-1">/semana</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="text-xs text-slate-500 font-light mt-8 leading-relaxed">
+                  Los Pases se activan desde tu área privada de socia al reservar la pieza.
+                  Opción de extender disponible.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
