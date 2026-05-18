@@ -31,9 +31,30 @@ export async function GET() {
     }
 
     // Fallback: si no hay shipping_phone usar phone del perfil
-    const normalized = (shippingData || []).map((u: any) => ({
+    const baseList = (shippingData || []).map((u: any) => ({
       ...u,
       shipping_phone: u.shipping_phone || u.phone || null,
+    }))
+
+    // Membresía real desde user_memberships (profiles.membership_type puede estar desactualizado)
+    const userIds = baseList.map((u: any) => u.id)
+    const { data: memberships } = await supabase
+      .from("user_memberships")
+      .select("user_id, membership_type, status")
+      .in("user_id", userIds.length ? userIds : ["__none__"])
+      .in("status", ["active", "cancelled_active", "limited_access", "past_due", "paused"])
+
+    const membershipByUser = new Map<string, string>()
+    for (const m of memberships || []) {
+      // Si hay varias, prioriza active
+      if (!membershipByUser.has(m.user_id) || m.status === "active") {
+        membershipByUser.set(m.user_id, m.membership_type)
+      }
+    }
+
+    const normalized = baseList.map((u: any) => ({
+      ...u,
+      membership_type: membershipByUser.get(u.id) || u.membership_type || null,
     }))
 
     const usersWithShipping = normalized.filter((user) => user.shipping_address)

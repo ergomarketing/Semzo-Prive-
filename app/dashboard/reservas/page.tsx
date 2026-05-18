@@ -193,15 +193,9 @@ export default function ReservasPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
-          <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
-        </div>
-        <Button onClick={handleManualRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
-        </Button>
+      <div className="mb-8">
+        <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
+        <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
       </div>
 
       {/* Estadísticas */}
