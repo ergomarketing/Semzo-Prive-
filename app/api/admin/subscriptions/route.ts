@@ -37,7 +37,7 @@ export async function GET() {
     const { data: memberships, error: membershipsError } = await supabaseAdmin
       .from("user_memberships")
       .select(
-        "id, user_id, membership_type, billing_cycle, status, can_make_reservations, cancel_at_period_end, current_period_end, start_date, end_date, stripe_subscription_id, stripe_customer_id, stripe_payment_method_id, payment_method_last4, payment_method_brand, created_at, updated_at",
+        "id, user_id, membership_type, billing_cycle, status, can_make_reservations, cancel_at_period_end, current_period_end, start_date, end_date, stripe_subscription_id, stripe_customer_id, stripe_payment_method_id, created_at, updated_at",
       )
       .neq("membership_type", "free")
       .order("created_at", { ascending: false })
@@ -123,8 +123,8 @@ export async function GET() {
             (stripeData?.cancel_at_period_end ?? m.cancel_at_period_end) || false,
           current_period_start: m.start_date,
           current_period_end: stripeData?.current_period_end || m.current_period_end || m.end_date,
-          payment_method_last4: m.payment_method_last4,
-          payment_method_brand: m.payment_method_brand,
+          payment_method_last4: null,
+          payment_method_brand: null,
           created_at: m.created_at,
           updated_at: m.updated_at,
           profiles: profilesMap.get(m.user_id) || null,

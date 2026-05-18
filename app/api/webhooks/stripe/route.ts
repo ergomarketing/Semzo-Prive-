@@ -163,7 +163,10 @@ export async function POST(req: NextRequest) {
 
             const price = amountCents / 100;
 
-            const { data: insertedPass, error: insertError } = await supabase
+            // INSERT del pase (la idempotencia ya se chequeo arriba con break)
+            let insertedPass: { id: string; used_for_reservation_id?: string | null } | null = null;
+
+            const { data: newPass, error: insertError } = await supabase
               .from("bag_passes")
               .insert({
                 user_id: userId,
@@ -186,10 +189,11 @@ export async function POST(req: NextRequest) {
                 code: insertError.code,
               });
             } else {
+              insertedPass = newPass;
               console.log("[v0] [bag_pass_webhook] bag_pass created OK", {
                 session_id: session.id,
                 user_id: userId,
-                pass_id: insertedPass?.id,
+                pass_id: newPass?.id,
                 pass_tier: dbTier,
                 price,
               });
@@ -214,9 +218,60 @@ export async function POST(req: NextRequest) {
                   total_price: price,
                   payment_method: "stripe",
                   stripe_session_id: session.id,
-                  bag_pass_id: insertedPass?.id,
+                  bag_pass_id: newPass?.id,
                 },
               });
+            }
+
+            // RESERVA AUTOMATICA: si la compra incluyo bagId, crear reserva
+            // vinculando el pase recien creado al bolso elegido.
+            const bagId = (session.metadata as any)?.bag_id;
+            if (bagId && insertedPass?.id && !insertedPass.used_for_reservation_id) {
+              try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + 7); // 1 pase = 1 semana
+
+                const { data: reservationId, error: rpcError } = await supabase.rpc(
+                  "create_reservation_atomic",
+                  {
+                    p_user_id: userId,
+                    p_bag_id: bagId,
+                    p_pass_id: insertedPass.id,
+                    p_start_date: startDate.toISOString(),
+                    p_end_date: endDate.toISOString(),
+                  }
+                );
+
+                if (rpcError) {
+                  // PASS_NOT_AVAILABLE = ya se uso (webhook reenviado) → idempotente, NO-OP
+                  if (rpcError.message?.includes("PASS_NOT_AVAILABLE")) {
+                    console.log("[v0] [bag_pass_webhook] reserva ya creada previamente (NO-OP)", {
+                      session_id: session.id,
+                      pass_id: insertedPass.id,
+                    });
+                  } else {
+                    console.error("[v0] [bag_pass_webhook] RPC reserva FAILED", {
+                      session_id: session.id,
+                      bag_id: bagId,
+                      pass_id: insertedPass.id,
+                      error: rpcError.message,
+                    });
+                  }
+                } else {
+                  console.log("[v0] [bag_pass_webhook] reserva auto creada OK", {
+                    session_id: session.id,
+                    reservation_id: reservationId,
+                    bag_id: bagId,
+                    pass_id: insertedPass.id,
+                  });
+                }
+              } catch (resvErr: any) {
+                console.error("[v0] [bag_pass_webhook] reserva auto exception (continua, webhook 200)", {
+                  session_id: session.id,
+                  error: resvErr?.message,
+                });
+              }
             }
           } else {
             console.error("[v0] [bag_pass_webhook] missing user_id in session metadata", {

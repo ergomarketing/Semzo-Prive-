@@ -90,7 +90,7 @@ export default function SubscriptionsPage() {
   }
 
   const getStatusBadge = (status: string, verified: string | null, match: boolean) => {
-    if (!match && verified) {
+    if (!match && verified && verified !== "direct_payment" && verified !== "error") {
       return (
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="flex items-center gap-1">
@@ -106,9 +106,16 @@ export default function SubscriptionsPage() {
 
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
       active: { variant: "default", label: "Activa" },
+      cancelled_active: { variant: "secondary", label: "Cancelada (vigente)" },
       trialing: { variant: "secondary", label: "Prueba" },
       past_due: { variant: "destructive", label: "Pago pendiente" },
+      paused: { variant: "outline", label: "Pausada" },
+      limited_access: { variant: "outline", label: "Acceso limitado" },
+      paid_pending_verification: { variant: "secondary", label: "Pago - verificacion" },
+      pending_verification: { variant: "outline", label: "Pendiente verificar" },
       canceled: { variant: "outline", label: "Cancelada" },
+      cancelled: { variant: "outline", label: "Cancelada" },
+      no_membership: { variant: "outline", label: "Sin membresia" },
       unpaid: { variant: "destructive", label: "Impago" },
     }
     const c = config[status] || { variant: "outline", label: status }
@@ -122,11 +129,20 @@ export default function SubscriptionsPage() {
       sub.stripe_subscription_id?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  // Categoria A - Miembro activo comercial (cuenta para "activas")
+  const CATEGORY_A_STATES = ["active", "cancelled_active", "past_due"]
+
   const stats = {
     total: subscriptions.length,
-    active: subscriptions.filter((s) => s.status === "active").length,
+    active: subscriptions.filter((s) => CATEGORY_A_STATES.includes(s.status)).length,
     pastDue: subscriptions.filter((s) => s.status === "past_due").length,
-    mismatched: subscriptions.filter((s) => !s.status_match && s.stripe_verified_status).length,
+    mismatched: subscriptions.filter(
+      (s) =>
+        !s.status_match &&
+        s.stripe_verified_status &&
+        s.stripe_verified_status !== "direct_payment" &&
+        s.stripe_verified_status !== "error",
+    ).length,
   }
 
   if (loading) {
@@ -279,7 +295,17 @@ export default function SubscriptionsPage() {
               </TableHeader>
               <TableBody>
                 {filteredSubscriptions.map((sub) => (
-                  <TableRow key={sub.id} className={!sub.status_match && sub.stripe_verified_status ? "bg-red-50" : ""}>
+                  <TableRow
+                    key={sub.id}
+                    className={
+                      !sub.status_match &&
+                      sub.stripe_verified_status &&
+                      sub.stripe_verified_status !== "direct_payment" &&
+                      sub.stripe_verified_status !== "error"
+                        ? "bg-red-50"
+                        : ""
+                    }
+                  >
                     <TableCell>
                       <div>
                         <div className="font-medium">{sub.profiles?.full_name || "Sin nombre"}</div>
@@ -289,7 +315,13 @@ export default function SubscriptionsPage() {
                     <TableCell className="capitalize font-medium">{sub.membership_type}</TableCell>
                     <TableCell>{getStatusBadge(sub.status, sub.stripe_verified_status, sub.status_match)}</TableCell>
                     <TableCell>
-                      {sub.stripe_verified_status === sub.status ? (
+                      {sub.stripe_verified_status === "direct_payment" ? (
+                        <Badge variant="outline" className="text-xs">
+                          Pago directo
+                        </Badge>
+                      ) : sub.stripe_verified_status === sub.status ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : sub.stripe_verified_status === "active" && sub.status === "cancelled_active" ? (
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       ) : sub.stripe_verified_status === "error" ? (
                         <XCircle className="h-5 w-5 text-gray-400" />
@@ -310,7 +342,9 @@ export default function SubscriptionsPage() {
                     </TableCell>
                     <TableCell>
                       <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {sub.stripe_subscription_id?.substring(0, 15)}...
+                        {sub.stripe_subscription_id
+                          ? `${sub.stripe_subscription_id.substring(0, 15)}...`
+                          : "—"}
                       </code>
                     </TableCell>
                   </TableRow>

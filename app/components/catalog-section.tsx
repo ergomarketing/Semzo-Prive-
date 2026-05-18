@@ -451,16 +451,17 @@ function BagCard({
         const tierPrices = { essentiel: 52, signature: 99, prive: 137 }
         const bagTier = bag.membership_type?.toLowerCase() || "essentiel"
 
-        const bagPassItem = {
-          id: `bag-pass-${bag.id}-${Date.now()}`,
-          name: `Pase Bolso ${tierNames[bagTier as keyof typeof tierNames]}`,
-          price: `${tierPrices[bagTier as keyof typeof tierPrices]}€`,
-          billingCycle: "weekly" as const,
-          description: `${bag.brand} ${bag.name}`,
-          image: bag.images?.[0] || "/placeholder.svg?height=200&width=200",
-          brand: bag.brand,
-          itemType: "bag-pass" as const,
-        }
+      const bagPassItem = {
+        id: `bag-pass-${bag.id}-${Date.now()}`,
+        name: `Pase Bolso ${tierNames[bagTier as keyof typeof tierNames]}`,
+        price: `${tierPrices[bagTier as keyof typeof tierPrices]}€`,
+        billingCycle: "weekly" as const,
+        description: `${bag.brand} ${bag.name}`,
+        image: bag.images?.[0] || "/placeholder.svg?height=200&width=200",
+        brand: bag.brand,
+        itemType: "bag-pass" as const,
+        bagId: bag.id,
+      }
 
         addItem(bagPassItem)
 
@@ -823,16 +824,17 @@ function BagCard({
             prive: 137,
           }
           const tier = upgradeRequiredTier
-          const bagPassItem = {
-            id: `bag-pass-${bag.id}-${Date.now()}`,
-            name: `Pase Bolso ${tierNames[tier] ?? tier}`,
-            price: `${tierPrices[tier] ?? 137}€`,
-            billingCycle: "weekly" as const,
-            description: `${bag.brand} ${bag.name}`,
-            image: bag.images?.[0] || bag.image_url || "/placeholder.svg?height=200&width=200",
-            brand: bag.brand,
-            itemType: "bag-pass" as const,
-          }
+                const bagPassItem = {
+                  id: `bag-pass-${bag.id}-${Date.now()}`,
+                  name: `Pase Bolso ${tierNames[tier] ?? tier}`,
+                  price: `${tierPrices[tier] ?? 137}€`,
+                  billingCycle: "weekly" as const,
+                  description: `${bag.brand} ${bag.name}`,
+                  image: bag.images?.[0] || bag.image_url || "/placeholder.svg?height=200&width=200",
+                  brand: bag.brand,
+                  itemType: "bag-pass" as const,
+                  bagId: bag.id,
+                }
           addItem(bagPassItem)
           toast({
             title: "Pase añadido al carrito",

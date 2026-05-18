@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { Package, Calendar, Users, DollarSign, Mail, TrendingUp, TrendingDown, ArrowRight, QrCode } from "lucide-react"
+import { Package, Calendar, Users, DollarSign, Mail, ArrowRight, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface DashboardStats {
@@ -63,8 +63,6 @@ export default function AdminDashboard() {
       subtitle: `${stats.rentedBags} rentados de ${stats.totalBags}`,
       icon: Package,
       href: "/admin/inventory",
-      trend: "+12%",
-      trendUp: true,
     },
     {
       title: "Reservas Activas",
@@ -72,26 +70,20 @@ export default function AdminDashboard() {
       subtitle: `${stats.totalReservations} totales`,
       icon: Calendar,
       href: "/admin/reservations",
-      trend: "+8%",
-      trendUp: true,
     },
     {
       title: "Miembros",
       value: stats.totalMembers,
-      subtitle: "Usuarios registrados",
+      subtitle: "Socias con membresia",
       icon: Users,
       href: "/admin/members",
-      trend: "+24%",
-      trendUp: true,
     },
     {
       title: "Ingresos del Mes",
-      value: `€${stats.monthlyRevenue.toFixed(0)}`,
-      subtitle: "Total facturado",
+      value: `€${stats.monthlyRevenue.toFixed(2)}`,
+      subtitle: "Cobros Stripe del mes en curso",
       icon: DollarSign,
       href: "/admin/payments",
-      trend: "+18%",
-      trendUp: true,
     },
   ]
 
@@ -125,15 +117,7 @@ export default function AdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-3xl font-bold text-foreground">{kpi.value}</div>
-                <div
-                  className={`flex items-center text-xs font-medium ${kpi.trendUp ? "text-green-600" : "text-red-600"}`}
-                >
-                  {kpi.trendUp ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-                  {kpi.trend}
-                </div>
-              </div>
+              <div className="text-3xl font-bold text-foreground">{kpi.value}</div>
               <p className="text-xs text-muted-foreground mt-2 mb-3">{kpi.subtitle}</p>
               <Link href={kpi.href}>
                 <Button variant="ghost" size="sm" className="w-full justify-between group/btn">

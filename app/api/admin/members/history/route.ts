@@ -12,26 +12,28 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "userId requerido" }, { status: 400 })
     }
 
-    const { data, error } = await supabase
-      .from("reservations")
-      .select(`
-        id,
-        created_at,
-        status,
-        start_date,
-        end_date,
-        bags(name, brand)
-      `)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+    const [reservationsRes, passesRes] = await Promise.all([
+      supabase
+        .from("reservations")
+        .select(`id, created_at, status, start_date, end_date, bags(name, brand)`)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("bag_passes")
+        .select("id, pass_tier, status, price, purchased_at, stripe_session_id")
+        .eq("user_id", userId)
+        .order("purchased_at", { ascending: false }),
+    ])
 
-    if (error) {
-      console.error("Error fetching history:", error)
-      return NextResponse.json({ reservations: [] })
+    if (reservationsRes.error) {
+      console.error("[v0] Error fetching history reservations:", reservationsRes.error)
+    }
+    if (passesRes.error) {
+      console.error("[v0] Error fetching history passes:", passesRes.error)
     }
 
     const reservations =
-      data?.map((r: any) => ({
+      reservationsRes.data?.map((r: any) => ({
         id: r.id,
         created_at: r.created_at,
         status: r.status,
@@ -41,9 +43,19 @@ export async function GET(request: Request) {
         bag_brand: r.bags?.brand || "",
       })) || []
 
-    return NextResponse.json({ reservations })
+    const passes =
+      passesRes.data?.map((p: any) => ({
+        id: p.id,
+        pass_tier: p.pass_tier,
+        status: p.status,
+        price: typeof p.price === "string" ? Number.parseFloat(p.price) : p.price,
+        purchased_at: p.purchased_at,
+        stripe_session_id: p.stripe_session_id,
+      })) || []
+
+    return NextResponse.json({ reservations, passes })
   } catch (error) {
-    console.error("Error in history API:", error)
-    return NextResponse.json({ reservations: [] })
+    console.error("[v0] Error in history API:", error)
+    return NextResponse.json({ reservations: [], passes: [] })
   }
 }

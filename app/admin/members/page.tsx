@@ -16,9 +16,13 @@ interface Member {
   email: string
   phone: string
   membership: string
+  membershipStatus: string
   joinDate: string
   status: string
   totalRentals: number
+  passesAvailable: number
+  passesUsed: number
+  passesExpired: number
   shippingAddress?: string
   shippingCity?: string
   shippingPostalCode?: string
@@ -34,6 +38,15 @@ interface Reservation {
   bag_brand: string
 }
 
+interface BagPass {
+  id: string
+  pass_tier: string
+  status: string
+  price: number
+  purchased_at: string
+  stripe_session_id: string | null
+}
+
 const colors = {
   primary: "#1a2c4e",
   accent: "#d4a5a5",
@@ -44,9 +57,10 @@ export default function MembersAdminPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState({ total: 0, signature: 0, prive: 0, essentiel: 0, free: 0, active: 0 })
+  const [stats, setStats] = useState({ total: 0, petite: 0, essentiel: 0, signature: 0, prive: 0, free: 0, active: 0 })
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [memberHistory, setMemberHistory] = useState<Reservation[]>([])
+  const [memberPasses, setMemberPasses] = useState<BagPass[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
   const [showEmailDialog, setShowEmailDialog] = useState(false)
@@ -89,9 +103,11 @@ export default function MembersAdminPage() {
       if (response.ok) {
         const data = await response.json()
         setMemberHistory(data.reservations || [])
+        setMemberPasses(data.passes || [])
       }
     } catch (err) {
       setMemberHistory([])
+      setMemberPasses([])
     } finally {
       setLoadingHistory(false)
     }
@@ -166,10 +182,10 @@ export default function MembersAdminPage() {
 
   const statCards = [
     { label: "Total", value: stats.total },
+    { label: "Petite", value: stats.petite },
+    { label: "L'Essentiel", value: stats.essentiel },
     { label: "Signature", value: stats.signature },
     { label: "Privé", value: stats.prive },
-    { label: "L'Essentiel", value: stats.essentiel },
-    { label: "Free", value: stats.free },
     { label: "Activos", value: stats.active },
   ]
 
@@ -260,7 +276,7 @@ export default function MembersAdminPage() {
                           Desde {new Date(member.joinDate).toLocaleDateString()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <Badge style={{ backgroundColor: colors.primary, color: "white" }}>
                           {member.membership?.toUpperCase() || "FREE"}
                         </Badge>
@@ -272,6 +288,12 @@ export default function MembersAdminPage() {
                         >
                           {member.status === "active" ? "Activo" : "Inactivo"}
                         </Badge>
+                        {member.passesAvailable > 0 && (
+                          <Badge variant="outline" style={{ borderColor: colors.primary, color: colors.primary }}>
+                            {member.passesAvailable} pase{member.passesAvailable > 1 ? "s" : ""} disponible
+                            {member.passesAvailable > 1 ? "s" : ""}
+                          </Badge>
+                        )}
                       </div>
                       {member.shippingAddress && (
                         <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: colors.bg }}>
@@ -345,37 +367,91 @@ export default function MembersAdminPage() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
             </div>
-          ) : memberHistory.length === 0 ? (
-            <p className="text-center py-8" style={{ color: "#888" }}>
-              No hay reservas
-            </p>
           ) : (
-            <div className="space-y-3">
-              {memberHistory.map((res) => (
-                <Card key={res.id} className="border-0" style={{ backgroundColor: colors.bg }}>
-                  <CardContent className="p-4 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold" style={{ color: colors.primary }}>
-                        {res.bag_name}
-                      </h4>
-                      <p className="text-sm" style={{ color: "#888" }}>
-                        {res.bag_brand}
-                      </p>
-                      <p className="text-xs" style={{ color: "#888" }}>
-                        {new Date(res.start_date).toLocaleDateString()} - {new Date(res.end_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge
-                      style={{
-                        backgroundColor: res.status === "completed" ? colors.primary : colors.accent,
-                        color: "white",
-                      }}
-                    >
-                      {res.status}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="space-y-6">
+              {/* Pases comprados (solo socias Petite) */}
+              {memberPasses.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3" style={{ color: colors.primary }}>
+                    Pases comprados ({memberPasses.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {memberPasses.map((p) => (
+                      <Card key={p.id} className="border-0" style={{ backgroundColor: colors.bg }}>
+                        <CardContent className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Badge style={{ backgroundColor: colors.primary, color: "white" }}>
+                                {p.pass_tier?.toUpperCase()}
+                              </Badge>
+                              <span className="text-sm font-medium" style={{ color: colors.primary }}>
+                                €{Number(p.price).toFixed(2)}
+                              </span>
+                            </div>
+                            <p className="text-xs mt-1" style={{ color: "#888" }}>
+                              {new Date(p.purchased_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <Badge
+                            style={{
+                              backgroundColor:
+                                p.status === "available"
+                                  ? colors.primary
+                                  : p.status === "used"
+                                    ? "#888"
+                                    : colors.accent,
+                              color: "white",
+                            }}
+                          >
+                            {p.status}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Reservas */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3" style={{ color: colors.primary }}>
+                  Reservas ({memberHistory.length})
+                </h3>
+                {memberHistory.length === 0 ? (
+                  <p className="text-center py-4 text-sm" style={{ color: "#888" }}>
+                    No hay reservas
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {memberHistory.map((res) => (
+                      <Card key={res.id} className="border-0" style={{ backgroundColor: colors.bg }}>
+                        <CardContent className="p-4 flex justify-between items-center">
+                          <div>
+                            <h4 className="font-semibold" style={{ color: colors.primary }}>
+                              {res.bag_name}
+                            </h4>
+                            <p className="text-sm" style={{ color: "#888" }}>
+                              {res.bag_brand}
+                            </p>
+                            <p className="text-xs" style={{ color: "#888" }}>
+                              {new Date(res.start_date).toLocaleDateString()} -{" "}
+                              {new Date(res.end_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge
+                            style={{
+                              backgroundColor: res.status === "completed" ? colors.primary : colors.accent,
+                              color: "white",
+                            }}
+                          >
+                            {res.status}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

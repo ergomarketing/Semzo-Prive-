@@ -71,6 +71,7 @@ function analyzeCartItems(items: any[]) {
           id: bagPassItem.id,
           name: bagPassItem.name,
           itemType: bagPassItem.itemType,
+          bagId: bagPassItem.bagId || null,
         }
       : null,
     membershipType,
@@ -1110,6 +1111,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                     if (cartBagPass) {
                       checkoutBody.amountCents = Math.round(finalAmount * 100)
                       checkoutBody.productName = cartBagPass.name || "Pase de Bolso"
+                      if ((cartBagPass as any).bagId) {
+                        checkoutBody.bagId = (cartBagPass as any).bagId
+                      }
                       if (appliedGiftCard) {
                         checkoutBody.gift_card_id = appliedGiftCard.id
                         checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
