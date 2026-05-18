@@ -77,6 +77,15 @@ export async function POST(req: NextRequest) {
         if (session.mode === "payment" && session.payment_status === "paid") {
           const giftCardId = session.metadata?.gift_card_id;
           const userId = session.metadata?.user_id;
+          const intentId = session.metadata?.intent_id;
+
+          console.log("[v0] [bag_pass_webhook] checkout.session.completed received", {
+            session_id: session.id,
+            user_id: userId,
+            intent_id: intentId,
+            amount_total: session.amount_total,
+            gift_card_id: giftCardId,
+          });
 
           // Consumir gift card si había una aplicada parcialmente
           // consume_gift_card_atomic v2: verifica saldo e idempotencia por session.id
@@ -97,6 +106,124 @@ export async function POST(req: NextRequest) {
               });
             }
           }
+
+          // CREACION DEL PASE EN bag_passes (lo que faltaba)
+          if (userId) {
+            // Idempotencia por session.id: si ya existe un pase comprado en esta sesión, no duplicar
+            const { data: existingPass } = await supabase
+              .from("bag_passes")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("stripe_session_id", session.id)
+              .maybeSingle();
+
+            if (existingPass) {
+              console.log("[v0] [bag_pass_webhook] duplicate detected, skipping insert", {
+                session_id: session.id,
+                existing_pass_id: existingPass.id,
+              });
+              break;
+            }
+
+            // Resolver pass_tier: fuente principal = membership_intents.membership_type
+            let passTierRaw: string | null = null;
+            if (intentId) {
+              const { data: intent } = await supabase
+                .from("membership_intents")
+                .select("membership_type")
+                .eq("id", intentId)
+                .maybeSingle();
+              if (intent?.membership_type) {
+                passTierRaw = intent.membership_type;
+                console.log("[v0] [bag_pass_webhook] tier from membership_intents", { intent_id: intentId, tier: passTierRaw });
+              }
+            }
+
+            // Fallback por amount_total
+            const amountCents = session.amount_total || 0;
+            if (!passTierRaw) {
+              if (amountCents === 5200) passTierRaw = "lessentiel";
+              else if (amountCents === 9900) passTierRaw = "signature";
+              else if (amountCents === 14900) passTierRaw = "prive";
+              console.log("[v0] [bag_pass_webhook] tier from amount fallback", { amount_cents: amountCents, tier: passTierRaw });
+            }
+
+            if (!passTierRaw) {
+              console.error("[v0] [bag_pass_webhook] could not resolve pass_tier, aborting insert", {
+                session_id: session.id,
+                amount_cents: amountCents,
+                intent_id: intentId,
+              });
+              break;
+            }
+
+            // Normalizar a valores aceptados por la columna pass_tier
+            const normalizedTier = passTierRaw.toLowerCase().replace(/^l'/, "").replace("'", "");
+            const dbTier = normalizedTier === "essentiel" ? "lessentiel" : normalizedTier;
+
+            const price = amountCents / 100;
+
+            const { data: insertedPass, error: insertError } = await supabase
+              .from("bag_passes")
+              .insert({
+                user_id: userId,
+                pass_tier: dbTier,
+                status: "purchased",
+                price,
+                purchased_at: now,
+                expires_at: null,
+                stripe_session_id: session.id,
+              })
+              .select("id")
+              .single();
+
+            if (insertError) {
+              console.error("[v0] [bag_pass_webhook] insert bag_passes FAILED", {
+                session_id: session.id,
+                user_id: userId,
+                pass_tier: dbTier,
+                error: insertError.message,
+                code: insertError.code,
+              });
+            } else {
+              console.log("[v0] [bag_pass_webhook] bag_pass created OK", {
+                session_id: session.id,
+                user_id: userId,
+                pass_id: insertedPass?.id,
+                pass_tier: dbTier,
+                price,
+              });
+
+              // Notificar admin (mismo patron que /api/bag-passes/purchase)
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name")
+                .eq("id", userId)
+                .maybeSingle();
+
+              await supabase.from("admin_notifications").insert({
+                type: "bag_pass_purchase",
+                priority: "normal",
+                title: `Compra de Pase - ${dbTier.toUpperCase()}`,
+                message: `${profile?.full_name || profile?.email || userId} compró 1 pase ${dbTier} (Stripe)`,
+                metadata: {
+                  user_id: userId,
+                  email: profile?.email,
+                  pass_tier: dbTier,
+                  quantity: 1,
+                  total_price: price,
+                  payment_method: "stripe",
+                  stripe_session_id: session.id,
+                  bag_pass_id: insertedPass?.id,
+                },
+              });
+            }
+          } else {
+            console.error("[v0] [bag_pass_webhook] missing user_id in session metadata", {
+              session_id: session.id,
+            });
+          }
+
           break;
         }
 
