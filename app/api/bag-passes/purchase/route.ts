@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       userId,
       passTier,
       bagPassTier, // alias
+      bagId,
       quantity = 1,
       paymentMethod,
       stripePaymentId,
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     // Usar passTier o bagPassTier
     const tier = passTier || bagPassTier
 
-    console.log("[v0] bag-passes/purchase received:", { userId, tier, quantity, paymentMethod, giftCardCode })
+    console.log("[v0] bag-passes/purchase received:", { userId, tier, bagId, quantity, paymentMethod, giftCardCode })
 
     // Validar tier
     const validTiers = ["essentiel", "lessentiel", "signature", "prive"]
@@ -206,20 +207,66 @@ export async function POST(request: Request) {
         quantity,
         total_price: totalPrice,
         payment_method: paymentMethod || (giftCardCode ? "gift_card" : "stripe"),
-        existing_membership: effectiveMembershipType, // Para referencia - NO cambiar
+        existing_membership: membership.membership_type, // Para referencia - NO cambiar
       },
     })
 
     console.log("[v0] Bag pass purchase successful")
 
-    // Respuesta simple y clara - sin redirects, sin re-evaluar membresía
     const firstPass = createdPasses?.[0]
+    let autoReservationId: string | null = null
+
+    // RESERVA AUTOMATICA: si la compra incluyó bagId, crear reserva ahora
+    // Reutiliza misma logica RPC atomico (idempotente, transaccional, locks)
+    if (bagId && firstPass?.id) {
+      try {
+        const startDate = new Date()
+        const endDate = new Date()
+        endDate.setDate(endDate.getDate() + 7) // 1 pase = 1 semana
+
+        const { data: reservationId, error: rpcError } = await supabase.rpc(
+          "create_reservation_atomic",
+          {
+            p_user_id: finalUserId,
+            p_bag_id: bagId,
+            p_pass_id: firstPass.id,
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString(),
+          }
+        )
+
+        if (rpcError) {
+          if (rpcError.message?.includes("PASS_NOT_AVAILABLE")) {
+            console.log("[v0] [purchase] reserva ya creada previamente (NO-OP)")
+          } else {
+            console.error("[v0] [purchase] RPC reserva FAILED", {
+              bag_id: bagId,
+              pass_id: firstPass.id,
+              error: rpcError.message,
+            })
+          }
+        } else {
+          autoReservationId = reservationId
+          console.log("[v0] [purchase] reserva auto creada OK", {
+            reservation_id: reservationId,
+            bag_id: bagId,
+            pass_id: firstPass.id,
+          })
+        }
+      } catch (resvErr: any) {
+        console.error("[v0] [purchase] reserva auto exception (continua)", {
+          error: resvErr?.message,
+        })
+      }
+    }
+
     return NextResponse.json({
       success: true,
       bag_pass_id: firstPass?.id || null,
       pass_tier: dbTier,
-      status: "available",
-      readyForReservation: true,
+      status: autoReservationId ? "used" : "available",
+      reservation_id: autoReservationId,
+      readyForReservation: !autoReservationId,
     })
   } catch (error) {
     console.error("Error purchasing passes:", error)

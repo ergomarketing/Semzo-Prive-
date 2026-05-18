@@ -9,6 +9,7 @@ interface BagPassPurchaseModalProps {
   open: boolean
   onClose: () => void
   requiredTier: "lessentiel" | "signature" | "prive"
+  bagId?: string
   onPurchaseComplete?: () => void
 }
 
@@ -34,6 +35,7 @@ export default function BagPassPurchaseModal({
   open,
   onClose,
   requiredTier,
+  bagId,
   onPurchaseComplete,
 }: BagPassPurchaseModalProps) {
   const [isPurchasing, setIsPurchasing] = useState(false)
@@ -49,6 +51,7 @@ export default function BagPassPurchaseModal({
         body: JSON.stringify({
           passTier: requiredTier,
           quantity: 1,
+          bagId: bagId || null,
         }),
       })
 

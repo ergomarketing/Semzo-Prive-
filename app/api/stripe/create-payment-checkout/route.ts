@@ -22,7 +22,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { amountCents, productName, intentId } = body
+    const { amountCents, productName, intentId, bagId } = body
     // Acepta gift_card_id (snake_case desde CartClient) o giftCardId (legacy camelCase)
     const giftCardId: string | undefined = body.gift_card_id || body.giftCardId
 
@@ -93,8 +93,20 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      metadata: { intent_id: intentId, user_id: userId, ...(giftCardId ? { gift_card_id: giftCardId } : {}) },
-      payment_intent_data: { metadata: { intent_id: intentId, user_id: userId, ...(giftCardId ? { gift_card_id: giftCardId } : {}) } },
+      metadata: {
+        intent_id: intentId,
+        user_id: userId,
+        ...(giftCardId ? { gift_card_id: giftCardId } : {}),
+        ...(bagId ? { bag_id: bagId, type: "bag_pass" } : {}),
+      },
+      payment_intent_data: {
+        metadata: {
+          intent_id: intentId,
+          user_id: userId,
+          ...(giftCardId ? { gift_card_id: giftCardId } : {}),
+          ...(bagId ? { bag_id: bagId, type: "bag_pass" } : {}),
+        },
+      },
       success_url: `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart?canceled=true`,
       billing_address_collection: "auto",
