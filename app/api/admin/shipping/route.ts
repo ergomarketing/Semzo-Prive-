@@ -11,12 +11,15 @@ export async function GET() {
         id,
         email,
         full_name,
+        phone,
         membership_type,
         shipping_address,
         shipping_city,
         shipping_postal_code,
         shipping_phone,
         shipping_country,
+        document_type,
+        document_number,
         created_at,
         updated_at
       `)
@@ -27,8 +30,14 @@ export async function GET() {
       return NextResponse.json({ error: "Error al obtener información de envío" }, { status: 500 })
     }
 
-    const usersWithShipping = shippingData?.filter((user) => user.shipping_address) || []
-    const usersWithoutShipping = shippingData?.filter((user) => !user.shipping_address) || []
+    // Fallback: si no hay shipping_phone usar phone del perfil
+    const normalized = (shippingData || []).map((u: any) => ({
+      ...u,
+      shipping_phone: u.shipping_phone || u.phone || null,
+    }))
+
+    const usersWithShipping = normalized.filter((user) => user.shipping_address)
+    const usersWithoutShipping = normalized.filter((user) => !user.shipping_address)
 
     const stats = {
       total: shippingData?.length || 0,
@@ -44,7 +53,7 @@ export async function GET() {
 
     return NextResponse.json({
       shipping_addresses: usersWithShipping,
-      all_users: shippingData,
+      all_users: normalized,
       stats,
       total: usersWithShipping.length,
     })

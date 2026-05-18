@@ -6,6 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { MapPin, Loader2, Save } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import { useToast } from "@/hooks/use-toast"
@@ -15,6 +22,8 @@ interface ShippingInfo {
   shipping_city: string
   shipping_postal_code: string
   shipping_phone: string
+  document_type: string
+  document_number: string
 }
 
 export default function EnvioPage() {
@@ -27,6 +36,8 @@ export default function EnvioPage() {
     shipping_city: "",
     shipping_postal_code: "",
     shipping_phone: "",
+    document_type: "dni",
+    document_number: "",
   })
 
   useEffect(() => {
@@ -44,6 +55,8 @@ export default function EnvioPage() {
             shipping_city: data.shipping_city || "",
             shipping_postal_code: data.shipping_postal_code || "",
             shipping_phone: data.phone || "",
+            document_type: data.document_type || "dni",
+            document_number: data.document_number || "",
           })
         }
       } catch (error) {
@@ -68,6 +81,8 @@ export default function EnvioPage() {
           shipping_city: shippingInfo.shipping_city,
           shipping_postal_code: shippingInfo.shipping_postal_code,
           phone: shippingInfo.shipping_phone,
+          document_type: shippingInfo.document_type,
+          document_number: shippingInfo.document_number,
         })
         .eq("id", user.id)
 
@@ -160,6 +175,44 @@ export default function EnvioPage() {
               className="border-slate-300"
             />
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2 sm:col-span-1">
+              <Label htmlFor="document_type">Tipo de Documento</Label>
+              <Select
+                value={shippingInfo.document_type}
+                onValueChange={(value) => setShippingInfo({ ...shippingInfo, document_type: value })}
+              >
+                <SelectTrigger id="document_type" className="border-slate-300">
+                  <SelectValue placeholder="Selecciona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dni">DNI</SelectItem>
+                  <SelectItem value="nif">NIF</SelectItem>
+                  <SelectItem value="nie">NIE</SelectItem>
+                  <SelectItem value="cif">CIF</SelectItem>
+                  <SelectItem value="passport">Pasaporte</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="document_number">Número de Documento</Label>
+              <Input
+                id="document_number"
+                placeholder="12345678A"
+                value={shippingInfo.document_number}
+                onChange={(e) =>
+                  setShippingInfo({ ...shippingInfo, document_number: e.target.value.toUpperCase() })
+                }
+                className="border-slate-300"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">
+            Necesario para gestionar el envío con la mensajería.
+          </p>
 
           <Button
             onClick={handleSave}

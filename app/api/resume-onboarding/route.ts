@@ -106,6 +106,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // GUARD: si la membresía ya está active, no hay nada que reanudar.
+    // Sin este guard, intents antiguos huérfanos (ej. essentiel sin pago dejado
+    // por un click antiguo) provocan un bucle resume_checkout aunque el usuario
+    // tenga una suscripción real activa (ej. petite).
+    if (existingMembership && existingMembership.status === "active") {
+      console.log("[resume-onboarding] membership already active, skip flow", {
+        membership_type: existingMembership.membership_type,
+      })
+      return NextResponse.json({
+        action: "active" as ResumeAction,
+        membership_status: "active",
+        membership_type: existingMembership.membership_type,
+      })
+    }
+
     // Leer estado de identidad de identity_verifications (FUENTE DE VERDAD)
     const { data: latestIdentity } = await supabase
       .from("identity_verifications")
@@ -302,6 +317,8 @@ export async function POST(request: NextRequest) {
         "id, user_id, membership_type, billing_cycle, status, stripe_payment_intent_id, stripe_checkout_session_id, stripe_subscription_id, stripe_verification_session_id",
       )
       .eq("user_id", user.id)
+      .not("status", "eq", "expired")
+      .not("status", "eq", "canceled")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
