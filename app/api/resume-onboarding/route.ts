@@ -317,7 +317,8 @@ export async function POST(request: NextRequest) {
         "id, user_id, membership_type, billing_cycle, status, stripe_payment_intent_id, stripe_checkout_session_id, stripe_subscription_id, stripe_verification_session_id",
       )
       .eq("user_id", user.id)
-      .not("status", "in", "(expired,canceled)")
+      .not("status", "eq", "expired")
+      .not("status", "eq", "canceled")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
