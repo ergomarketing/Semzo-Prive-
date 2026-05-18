@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
               .insert({
                 user_id: userId,
                 pass_tier: dbTier,
-                status: "purchased",
+                status: "available",
                 price,
                 purchased_at: now,
                 expires_at: null,
