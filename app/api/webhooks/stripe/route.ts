@@ -163,77 +163,63 @@ export async function POST(req: NextRequest) {
 
             const price = amountCents / 100;
 
-            // IDEMPOTENCIA: si Stripe reenvia el webhook, no crear pase duplicado
-            const { data: existingPass } = await supabase
+            // INSERT del pase (la idempotencia ya se chequeo arriba con break)
+            let insertedPass: { id: string; used_for_reservation_id?: string | null } | null = null;
+
+            const { data: newPass, error: insertError } = await supabase
               .from("bag_passes")
-              .select("id, used_for_reservation_id")
-              .eq("stripe_session_id", session.id)
-              .maybeSingle();
+              .insert({
+                user_id: userId,
+                pass_tier: dbTier,
+                status: "available",
+                price,
+                purchased_at: now,
+                expires_at: null,
+                stripe_session_id: session.id,
+              })
+              .select("id")
+              .single();
 
-            let insertedPass: { id: string; used_for_reservation_id?: string | null } | null =
-              existingPass || null;
-
-            if (!existingPass) {
-              const { data: newPass, error: insertError } = await supabase
-                .from("bag_passes")
-                .insert({
-                  user_id: userId,
-                  pass_tier: dbTier,
-                  status: "available",
-                  price,
-                  purchased_at: now,
-                  expires_at: null,
-                  stripe_session_id: session.id,
-                })
-                .select("id")
-                .single();
-
-              if (insertError) {
-                console.error("[v0] [bag_pass_webhook] insert bag_passes FAILED", {
-                  session_id: session.id,
-                  user_id: userId,
-                  pass_tier: dbTier,
-                  error: insertError.message,
-                  code: insertError.code,
-                });
-              } else {
-                insertedPass = newPass;
-                console.log("[v0] [bag_pass_webhook] bag_pass created OK", {
-                  session_id: session.id,
-                  user_id: userId,
-                  pass_id: newPass?.id,
-                  pass_tier: dbTier,
-                  price,
-                });
-
-                // Notificar admin (mismo patron que /api/bag-passes/purchase)
-                const { data: profile } = await supabase
-                  .from("profiles")
-                  .select("email, full_name")
-                  .eq("id", userId)
-                  .maybeSingle();
-
-                await supabase.from("admin_notifications").insert({
-                  type: "bag_pass_purchase",
-                  priority: "normal",
-                  title: `Compra de Pase - ${dbTier.toUpperCase()}`,
-                  message: `${profile?.full_name || profile?.email || userId} compró 1 pase ${dbTier} (Stripe)`,
-                  metadata: {
-                    user_id: userId,
-                    email: profile?.email,
-                    pass_tier: dbTier,
-                    quantity: 1,
-                    total_price: price,
-                    payment_method: "stripe",
-                    stripe_session_id: session.id,
-                    bag_pass_id: newPass?.id,
-                  },
-                });
-              }
-            } else {
-              console.log("[v0] [bag_pass_webhook] pase ya existia, skip insert (idempotencia)", {
+            if (insertError) {
+              console.error("[v0] [bag_pass_webhook] insert bag_passes FAILED", {
                 session_id: session.id,
-                pass_id: existingPass.id,
+                user_id: userId,
+                pass_tier: dbTier,
+                error: insertError.message,
+                code: insertError.code,
+              });
+            } else {
+              insertedPass = newPass;
+              console.log("[v0] [bag_pass_webhook] bag_pass created OK", {
+                session_id: session.id,
+                user_id: userId,
+                pass_id: newPass?.id,
+                pass_tier: dbTier,
+                price,
+              });
+
+              // Notificar admin (mismo patron que /api/bag-passes/purchase)
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name")
+                .eq("id", userId)
+                .maybeSingle();
+
+              await supabase.from("admin_notifications").insert({
+                type: "bag_pass_purchase",
+                priority: "normal",
+                title: `Compra de Pase - ${dbTier.toUpperCase()}`,
+                message: `${profile?.full_name || profile?.email || userId} compró 1 pase ${dbTier} (Stripe)`,
+                metadata: {
+                  user_id: userId,
+                  email: profile?.email,
+                  pass_tier: dbTier,
+                  quantity: 1,
+                  total_price: price,
+                  payment_method: "stripe",
+                  stripe_session_id: session.id,
+                  bag_pass_id: newPass?.id,
+                },
               });
             }
 
