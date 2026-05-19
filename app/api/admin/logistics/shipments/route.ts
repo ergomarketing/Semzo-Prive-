@@ -1,37 +1,65 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
-import { CorreosAPI, CORREOS_PRODUCTS } from "@/lib/correos-api"
+import { CorreosAPI, CORREOS_PRODUCTS, type CorreosParty } from "@/lib/correos-api"
+import { sanitizeRecipient, type RecipientInput } from "@/lib/correos-sanitize"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-// Direccion fija del remitente Semzo Prive.
-// Es la misma en TODOS los envios:
-//   - Envios de IDA: remitente = Semzo, destinatario = cliente (autocompletado)
-//   - Etiquetas de RETORNO: remitente = cliente, destinatario = Semzo
-const SENDER_INFO = {
+// Default sender info (Semzo Prive). Fallback si logistics_settings.sender_info no esta configurado.
+const DEFAULT_SENDER_INFO = {
   name: "Semzo Prive",
-  address: "Calle Tales de Mileto 1, Urb. Banana Beach, Bloque C3, Piso 2 FW",
-  city: "Marbella",
+  documentType: "NIF" as const,
+  documentNumber: "",
+  viaType: "CL",
+  viaName: "TALES DE MILETO",
+  number: "1",
+  portal: "",
+  floor: "2",
+  door: "FW",
   postalCode: "29603",
+  city: "MARBELLA",
+  province: "MALAGA",
   country: "ES",
-  phone: "+34624239394",
+  phone: "624239394",
   email: "info@semzoprive.com",
+}
+
+function buildSenderParty(senderInfo: any): CorreosParty {
+  const s = senderInfo || DEFAULT_SENDER_INFO
+  return {
+    firstName: s.name || s.firstName || "Semzo Prive",
+    lastName1: s.lastName1 || "",
+    lastName2: s.lastName2 || "",
+    documentType: s.documentType || "NIF",
+    documentNumber: s.documentNumber || "",
+    viaType: s.viaType || "CL",
+    viaName: s.viaName || "",
+    number: s.number || "",
+    portal: s.portal || "",
+    floor: s.floor || "",
+    door: s.door || "",
+    postalCode: s.postalCode || "",
+    city: s.city || "",
+    province: s.province || "",
+    country: s.country || "ES",
+    phone: s.phone || "",
+    email: s.email || "",
+  }
 }
 
 function getMembershipDuration(planId: string): number {
   const durations: Record<string, number> = {
-    petite: 7, // 7 días para pase semanal
-    signature: 30, // 30 días
-    "signature-quarterly": 90, // 90 días (trimestral)
-    infinite: 30, // 30 días por ciclo
-    "infinite-quarterly": 90, // 90 días
+    petite: 7,
+    signature: 30,
+    "signature-quarterly": 90,
+    infinite: 30,
+    "infinite-quarterly": 90,
   }
   return durations[planId] || 30
 }
 
 async function activateMembershipOnDelivery(reservationId: string) {
   try {
-    // Obtener la reserva con info del usuario
     const { data: reservation, error: resError } = await supabase
       .from("reservations")
       .select("user_id, bags(name, brand)")
@@ -43,7 +71,6 @@ async function activateMembershipOnDelivery(reservationId: string) {
       return
     }
 
-    // Obtener datos de contacto del perfil (email, nombre para notificacion)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("email, full_name")
@@ -55,7 +82,6 @@ async function activateMembershipOnDelivery(reservationId: string) {
       return
     }
 
-    // Obtener membresía desde user_memberships (FUENTE DE VERDAD)
     const { data: activeMembership } = await supabase
       .from("user_memberships")
       .select("id, membership_type, status")
@@ -65,18 +91,13 @@ async function activateMembershipOnDelivery(reservationId: string) {
       .limit(1)
       .maybeSingle()
 
-    if (activeMembership?.status === "active") {
-      console.log("[Logistics] Membresia ya activa, actualizando fecha de inicio por nueva entrega")
-    }
-
     const planId = activeMembership?.membership_type || "signature"
     const durationDays = getMembershipDuration(planId)
     const now = new Date()
     const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000)
 
-    // Activar user_memberships (FUENTE DE VERDAD para membresía)
     if (activeMembership) {
-      const { error: updateError } = await supabase
+      await supabase
         .from("user_memberships")
         .update({
           status: "active",
@@ -85,14 +106,8 @@ async function activateMembershipOnDelivery(reservationId: string) {
           updated_at: now.toISOString(),
         })
         .eq("id", activeMembership.id)
-
-      if (updateError) {
-        console.error("[Logistics] Error activating membership:", updateError)
-        return
-      }
     }
 
-    // Actualizar la reserva como activa
     await supabase
       .from("reservations")
       .update({
@@ -103,28 +118,22 @@ async function activateMembershipOnDelivery(reservationId: string) {
       })
       .eq("id", reservationId)
 
-    console.log(
-      `[Logistics] ✅ Membresía activada para usuario ${reservation.user_id}. Válida hasta: ${endDate.toISOString()}`,
-    )
-
-    // Enviar email de confirmación
     try {
       await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: profile.email,
-          subject: "¡Tu bolso ha sido entregado! Tu membresía está activa",
+          subject: "Tu bolso ha sido entregado. Tu membresia esta activa",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #1a1a4b;">¡Disfruta tu bolso!</h2>
+              <h2 style="color: #1a1a4b;">Disfruta tu bolso</h2>
               <p>Hola ${profile.full_name || ""},</p>
-              <p>Tu bolso ha sido entregado exitosamente. A partir de ahora, tu membresía está activa.</p>
+              <p>Tu bolso ha sido entregado. A partir de ahora, tu membresia esta activa.</p>
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Inicio de membresía:</strong> ${now.toLocaleDateString("es-ES")}</p>
-                <p><strong>Válida hasta:</strong> ${endDate.toLocaleDateString("es-ES")}</p>
+                <p><strong>Inicio:</strong> ${now.toLocaleDateString("es-ES")}</p>
+                <p><strong>Valida hasta:</strong> ${endDate.toLocaleDateString("es-ES")}</p>
               </div>
-              <p>¡Disfruta de tu experiencia Semzo Privé!</p>
             </div>
           `,
         }),
@@ -138,8 +147,92 @@ async function activateMembershipOnDelivery(reservationId: string) {
 }
 
 /**
+ * Construye el destinatario para Correos a partir del perfil estructurado de la reserva.
+ * Si el body trae datos del destinatario explicitos, los usa preferentemente.
+ */
+async function resolveRecipient(
+  reservationId: string | undefined,
+  bodyRecipient: Partial<RecipientInput>,
+): Promise<{ recipient: RecipientInput | null; error: string | null }> {
+  // Si el cliente ya envia los campos estructurados (admin manual), usar tal cual
+  const hasStructured =
+    bodyRecipient.firstName && bodyRecipient.viaName && bodyRecipient.postalCode && bodyRecipient.city
+
+  if (hasStructured) {
+    return { recipient: bodyRecipient as RecipientInput, error: null }
+  }
+
+  if (!reservationId) {
+    return { recipient: null, error: "Sin reservation_id ni datos estructurados de destinatario" }
+  }
+
+  // Obtener user_id de la reserva
+  const { data: reservation, error: resError } = await supabase
+    .from("reservations")
+    .select("user_id")
+    .eq("id", reservationId)
+    .single()
+
+  if (resError || !reservation) {
+    return { recipient: null, error: "Reserva no encontrada" }
+  }
+
+  // Obtener datos estructurados del perfil
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select(
+      `
+      email, full_name,
+      shipping_first_name, shipping_last_name_1, shipping_last_name_2,
+      shipping_document_type, shipping_document_number,
+      shipping_via_type, shipping_via_name, shipping_number,
+      shipping_portal, shipping_floor, shipping_door,
+      shipping_postal_code, shipping_city, shipping_province,
+      shipping_country, shipping_phone, phone
+    `,
+    )
+    .eq("id", reservation.user_id)
+    .single()
+
+  if (profileError || !profile) {
+    return { recipient: null, error: "Perfil del destinatario no encontrado" }
+  }
+
+  // Validar que la socia haya completado los datos estructurados
+  if (!profile.shipping_first_name || !profile.shipping_via_name || !profile.shipping_door) {
+    return {
+      recipient: null,
+      error:
+        "La socia no ha completado los datos estructurados de envio. Pidele que actualice su direccion en el panel de socia.",
+    }
+  }
+
+  return {
+    recipient: {
+      firstName: profile.shipping_first_name,
+      lastName1: profile.shipping_last_name_1 || "",
+      lastName2: profile.shipping_last_name_2 || "",
+      documentType: (profile.shipping_document_type as any) || "DNI",
+      documentNumber: profile.shipping_document_number || "",
+      viaType: profile.shipping_via_type || "CL",
+      viaName: profile.shipping_via_name,
+      number: profile.shipping_number || "",
+      portal: profile.shipping_portal || "",
+      floor: profile.shipping_floor || "",
+      door: profile.shipping_door,
+      postalCode: profile.shipping_postal_code || "",
+      city: profile.shipping_city || "",
+      province: profile.shipping_province || "",
+      country: profile.shipping_country || "ES",
+      phone: profile.shipping_phone || profile.phone || "",
+      email: profile.email || "",
+    },
+    error: null,
+  }
+}
+
+/**
  * GET /api/admin/logistics/shipments
- * Obtener lista de envíos con filtros opcionales
  */
 export async function GET(request: NextRequest) {
   try {
@@ -157,6 +250,7 @@ export async function GET(request: NextRequest) {
       status,
       carrier,
       tracking_number,
+      return_tracking_number,
       estimated_delivery,
       actual_delivery,
       cost,
@@ -179,15 +273,9 @@ export async function GET(request: NextRequest) {
       { count: "exact" },
     )
 
-    // Aplicar filtros
-    if (status) {
-      query = query.eq("status", status)
-    }
-    if (carrier) {
-      query = query.eq("carrier", carrier)
-    }
+    if (status) query = query.eq("status", status)
+    if (carrier) query = query.eq("carrier", carrier)
 
-    // Aplicar paginación
     query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1)
 
     const { data, error, count } = await query
@@ -199,12 +287,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data,
-      pagination: {
-        page,
-        limit,
-        total: count,
-        pages: Math.ceil((count || 0) / limit),
-      },
+      pagination: { page, limit, total: count, pages: Math.ceil((count || 0) / limit) },
     })
   } catch (error) {
     console.error("[Logistics API] Unexpected error:", error)
@@ -214,52 +297,57 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/logistics/shipments
- * Crear un nuevo envío - con integración de Correos
+ * Crear envio integrado con Correos (ida + retorno prepagado).
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      reservation_id, 
+    const {
+      reservation_id,
       carrier = "Correos",
       tracking_number,
-      estimated_delivery, 
-      cost, 
+      estimated_delivery,
+      cost,
       notes,
-      // Datos del destinatario para Correos
-      recipient_name,
-      recipient_address,
-      recipient_city,
-      recipient_postal_code,
-      recipient_country = "ES",
-      recipient_phone,
-      recipient_email,
-      weight = 2000, // Default 2kg
+      observations,
+      weight = 2000,
       service_type = "PAQ_PREMIUM",
-      use_correos_api = true
+      use_correos_api = true,
+      // Destinatario estructurado opcional (override del perfil)
+      recipient,
     } = body
 
-    // Si se usa Correos API, validar dirección
-    if (use_correos_api && carrier === "Correos") {
-      if (!recipient_name || !recipient_address || !recipient_city || !recipient_postal_code) {
-        return NextResponse.json({ error: "Dirección del destinatario incompleta" }, { status: 400 })
-      }
-    }
-
     let correosTrackingNumber = tracking_number
-    let correosResponse = null
-    let returnTrackingNumber = null
-    let returnCorreosResponse = null
+    let correosResponse: any = null
+    let returnTrackingNumber: string | null = null
+    let returnCorreosResponse: any = null
     let correosError: string | null = null
     let correosConfigured = false
     let correosEnabled = false
+    let resolvedRecipient: RecipientInput | null = null
 
-    // Intentar crear envío en Correos si está habilitado
     if (use_correos_api && carrier === "Correos") {
-      // Obtener credenciales de Correos
+      // 1. Resolver destinatario (desde perfil estructurado o body)
+      const { recipient: rec, error: recError } = await resolveRecipient(reservation_id, recipient || {})
+      if (recError || !rec) {
+        return NextResponse.json({ error: recError || "Destinatario no resuelto" }, { status: 400 })
+      }
+      resolvedRecipient = rec
+
+      // 2. Sanitizar destinatario contra reglas Correos
+      const sanitized = sanitizeRecipient(rec)
+      if (!sanitized.valid) {
+        return NextResponse.json(
+          { error: "Datos del destinatario invalidos", details: sanitized.errors },
+          { status: 400 },
+        )
+      }
+      const recipientParty: CorreosParty = sanitized.data
+
+      // 3. Cargar credenciales y datos del remitente
       const { data: correosSettings } = await supabase
         .from("logistics_settings")
-        .select("api_credentials, is_enabled")
+        .select("api_credentials, sender_info, is_enabled")
         .eq("carrier_name", "Correos")
         .single()
 
@@ -271,34 +359,25 @@ export async function POST(request: NextRequest) {
       } else if (!correosEnabled) {
         correosError = "La integracion de Correos esta deshabilitada (is_enabled = false)"
       } else {
-        const { clientId, clientSecret } = correosSettings!.api_credentials as {
-          clientId: string
-          clientSecret: string
-        }
+        const credentials = correosSettings!.api_credentials as { clientId: string; clientSecret: string }
+        const senderParty = buildSenderParty(correosSettings!.sender_info)
 
-        const correosClient = new CorreosAPI({ clientId, clientSecret })
-        const productCode = service_type === "PAQ_PREMIUM" 
-          ? CORREOS_PRODUCTS.PAQ_PREMIUM 
-          : CORREOS_PRODUCTS.PAQ_ESTANDAR
+        const correosClient = new CorreosAPI({
+          clientId: credentials.clientId,
+          clientSecret: credentials.clientSecret,
+          codEtiquetador: (correosSettings!.sender_info as any)?.codEtiquetador,
+        })
+        const productCode = service_type === "PAQ_PREMIUM" ? CORREOS_PRODUCTS.PAQ_PREMIUM : CORREOS_PRODUCTS.PAQ_ESTANDAR
 
-        // 1. Crear envío de IDA (Semzo -> Cliente)
+        // Envio de IDA: Semzo -> Cliente
         try {
           correosResponse = await correosClient.createShipment({
-            senderName: SENDER_INFO.name,
-            senderAddress: SENDER_INFO.address,
-            senderCity: SENDER_INFO.city,
-            senderPostalCode: SENDER_INFO.postalCode,
-            senderCountry: SENDER_INFO.country,
-            recipientName: recipient_name,
-            recipientAddress: recipient_address,
-            recipientCity: recipient_city,
-            recipientPostalCode: recipient_postal_code,
-            recipientCountry: recipient_country,
-            recipientPhone: recipient_phone,
-            recipientEmail: recipient_email,
+            sender: senderParty,
+            recipient: recipientParty,
             weight,
             productCode,
-            reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`
+            reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`,
+            observations,
           })
           correosTrackingNumber = correosResponse.codEnvio
         } catch (err: any) {
@@ -307,26 +386,15 @@ export async function POST(request: NextRequest) {
           correosError = `Correos rechazo el envio de IDA: ${msg}`
         }
 
-        // 2. Crear envío de RETORNO (Cliente -> Semzo) - etiqueta prepagada
+        // Envio de RETORNO: Cliente -> Semzo (etiqueta prepagada)
         try {
           returnCorreosResponse = await correosClient.createShipment({
-            // Remitente = Cliente (quien devuelve)
-            senderName: recipient_name,
-            senderAddress: recipient_address,
-            senderCity: recipient_city,
-            senderPostalCode: recipient_postal_code,
-            senderCountry: recipient_country,
-            // Destinatario = Semzo Prive
-            recipientName: SENDER_INFO.name,
-            recipientAddress: SENDER_INFO.address,
-            recipientCity: SENDER_INFO.city,
-            recipientPostalCode: SENDER_INFO.postalCode,
-            recipientCountry: SENDER_INFO.country,
-            recipientPhone: SENDER_INFO.phone,
-            recipientEmail: SENDER_INFO.email,
+            sender: recipientParty,
+            recipient: senderParty,
             weight,
             productCode,
-            reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`
+            reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`,
+            observations: "Devolucion bolso",
           })
           returnTrackingNumber = returnCorreosResponse.codEnvio
         } catch (err: any) {
@@ -337,7 +405,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Crear el envío en base de datos (con datos de ida y retorno)
+    // Persistir envio en BD
     const { data, error } = await supabase
       .from("shipments")
       .insert({
@@ -345,21 +413,25 @@ export async function POST(request: NextRequest) {
         status: correosTrackingNumber ? "label_created" : "pending",
         carrier,
         tracking_number: correosTrackingNumber || null,
-        return_tracking_number: returnTrackingNumber || null, // Tracking de retorno
+        return_tracking_number: returnTrackingNumber || null,
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,
-        recipient_name,
-        recipient_address,
-        recipient_city,
-        recipient_postal_code,
-        recipient_country,
-        recipient_phone,
-        recipient_email,
+        recipient_name: resolvedRecipient
+          ? `${resolvedRecipient.firstName} ${resolvedRecipient.lastName1 || ""} ${resolvedRecipient.lastName2 || ""}`.trim()
+          : null,
+        recipient_address: resolvedRecipient
+          ? `${resolvedRecipient.viaType} ${resolvedRecipient.viaName} ${resolvedRecipient.number || ""}`.trim()
+          : null,
+        recipient_city: resolvedRecipient?.city || null,
+        recipient_postal_code: resolvedRecipient?.postalCode || null,
+        recipient_country: resolvedRecipient?.country || "ES",
+        recipient_phone: resolvedRecipient?.phone || null,
+        recipient_email: resolvedRecipient?.email || null,
         weight,
-        service_type: service_type === "PAQ_PREMIUM" ? "Paq Premium" : "Paq Estándar",
+        service_type: service_type === "PAQ_PREMIUM" ? "Paq Premium" : "Paq Estandar",
         correos_response: correosResponse,
-        return_correos_response: returnCorreosResponse // Respuesta de Correos para retorno
+        return_correos_response: returnCorreosResponse,
       })
       .select()
       .single()
@@ -369,7 +441,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Registrar en auditoría
     await supabase.from("logistics_audit_log").insert({
       action: "create_shipment",
       entity_type: "shipment",
@@ -377,26 +448,24 @@ export async function POST(request: NextRequest) {
       new_values: data,
     })
 
-    // Enviar notificación por email si hay tracking
-    if (correosTrackingNumber && recipient_email) {
+    if (correosTrackingNumber && resolvedRecipient?.email) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/admin/send-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            to: recipient_email,
+            to: resolvedRecipient.email,
             subject: "Tu pedido ha sido enviado - Semzo Prive",
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a1a4b;">Tu pedido está en camino</h2>
-                <p>Hola ${recipient_name},</p>
+                <h2 style="color: #1a1a4b;">Tu pedido esta en camino</h2>
+                <p>Hola ${resolvedRecipient.firstName},</p>
                 <p>Tu pedido de Semzo Prive ha sido enviado.</p>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p><strong>Transportista:</strong> Correos</p>
-                  <p><strong>Número de seguimiento:</strong> ${correosTrackingNumber}</p>
-                  <p><strong>Seguir envío:</strong> <a href="https://www.correos.es/es/es/herramientas/localizador/envios/${correosTrackingNumber}">Ver en Correos</a></p>
+                  <p><strong>Numero de seguimiento:</strong> ${correosTrackingNumber}</p>
+                  <p><strong>Seguir envio:</strong> <a href="https://www.correos.es/es/es/herramientas/localizador/envios/${correosTrackingNumber}">Ver en Correos</a></p>
                 </div>
-                <p>Recibirás tu pedido en 1-2 días laborables.</p>
               </div>
             `,
           }),
@@ -406,15 +475,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      ...data,
-      correos_success: !!correosTrackingNumber,
-      correos_configured: correosConfigured,
-      correos_enabled: correosEnabled,
-      correos_error: correosError, // motivo si Correos rechazo el envio
-      return_label_created: !!returnTrackingNumber,
-      return_tracking_number: returnTrackingNumber
-    }, { status: 201 })
+    return NextResponse.json(
+      {
+        ...data,
+        correos_success: !!correosTrackingNumber,
+        correos_configured: correosConfigured,
+        correos_enabled: correosEnabled,
+        correos_error: correosError,
+        return_label_created: !!returnTrackingNumber,
+        return_tracking_number: returnTrackingNumber,
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error("[Logistics API] Unexpected error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -423,44 +495,29 @@ export async function POST(request: NextRequest) {
 
 /**
  * PATCH /api/admin/logistics/shipments
- * Actualizar un envío
  */
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
     const { id, status, carrier, tracking_number, estimated_delivery, cost, notes } = body
 
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 })
-    }
+    if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
-    // Obtener el envío actual para auditoría
     const { data: oldData } = await supabase.from("shipments").select("*, reservation_id").eq("id", id).single()
 
-    // Actualizar el envío
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    }
-
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (status !== undefined) updateData.status = status
     if (carrier !== undefined) updateData.carrier = carrier
     if (tracking_number !== undefined) updateData.tracking_number = tracking_number
     if (estimated_delivery !== undefined) updateData.estimated_delivery = estimated_delivery
     if (cost !== undefined) updateData.cost = cost
     if (notes !== undefined) updateData.notes = notes
-
-    if (status === "delivered") {
-      updateData.actual_delivery = new Date().toISOString()
-    }
+    if (status === "delivered") updateData.actual_delivery = new Date().toISOString()
 
     const { data, error } = await supabase.from("shipments").update(updateData).eq("id", id).select().single()
 
-    if (error) {
-      console.error("[Logistics API] Error updating shipment:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Registrar en auditoría
     await supabase.from("logistics_audit_log").insert({
       action: "update_shipment",
       entity_type: "shipment",
@@ -469,7 +526,6 @@ export async function PATCH(request: NextRequest) {
       new_values: data,
     })
 
-    // Si el estado cambió, crear un evento
     if (status && oldData?.status !== status) {
       await supabase.from("shipment_events").insert({
         shipment_id: id,
@@ -491,18 +547,13 @@ export async function PATCH(request: NextRequest) {
 
 /**
  * DELETE /api/admin/logistics/shipments
- * Cancelar un envío
  */
 export async function DELETE(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get("id")
+    if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 })
-    }
-
-    // Actualizar estado a cancelado en lugar de eliminar
     const { data, error } = await supabase
       .from("shipments")
       .update({ status: "cancelled" })
@@ -510,12 +561,8 @@ export async function DELETE(request: NextRequest) {
       .select()
       .single()
 
-    if (error) {
-      console.error("[Logistics API] Error cancelling shipment:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Registrar en auditoría
     await supabase.from("logistics_audit_log").insert({
       action: "cancel_shipment",
       entity_type: "shipment",
