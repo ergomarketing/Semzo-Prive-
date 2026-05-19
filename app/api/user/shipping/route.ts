@@ -1,6 +1,25 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 
+const SHIPPING_FIELDS = [
+  "shipping_first_name",
+  "shipping_last_name_1",
+  "shipping_last_name_2",
+  "shipping_document_type",
+  "shipping_document_number",
+  "shipping_via_type",
+  "shipping_via_name",
+  "shipping_number",
+  "shipping_portal",
+  "shipping_floor",
+  "shipping_door",
+  "shipping_postal_code",
+  "shipping_city",
+  "shipping_province",
+  "shipping_country",
+  "shipping_phone",
+] as const
+
 // GET - Obtener información de envío del usuario
 export async function GET(request: NextRequest) {
   try {
@@ -21,9 +40,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    const selectFields = [...SHIPPING_FIELDS, "shipping_address", "phone"].join(", ")
+
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("shipping_address, shipping_city, shipping_postal_code, shipping_phone, shipping_country")
+      .select(selectFields)
       .eq("id", user.id)
       .maybeSingle()
 
@@ -39,7 +60,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - Actualizar información de envío del usuario
+// PUT - Actualizar información de envío del usuario (campos estructurados Correos)
 export async function PUT(request: NextRequest) {
   try {
     const authHeader = request.headers.get("Authorization")
@@ -60,29 +81,50 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { shipping_address, shipping_city, shipping_postal_code, shipping_phone, shipping_country } = body
 
-    // Validar campos requeridos
-    if (!shipping_address || !shipping_city || !shipping_postal_code || !shipping_phone) {
+    // Construir update solo con los campos enviados (whitelist)
+    const update: Record<string, any> = {}
+    for (const key of SHIPPING_FIELDS) {
+      if (body[key] !== undefined) {
+        update[key] = body[key] === "" ? null : body[key]
+      }
+    }
+
+    // Validación campos OBLIGATORIOS Correos
+    const required = [
+      "shipping_first_name",
+      "shipping_last_name_1",
+      "shipping_document_type",
+      "shipping_document_number",
+      "shipping_via_type",
+      "shipping_via_name",
+      "shipping_door",
+      "shipping_postal_code",
+      "shipping_city",
+      "shipping_province",
+      "shipping_phone",
+    ]
+    const missing = required.filter((k) => !update[k] || String(update[k]).trim() === "")
+    if (missing.length > 0) {
       return NextResponse.json(
         {
-          error: "Todos los campos son requeridos: dirección, ciudad, código postal y teléfono",
+          error: "Faltan campos obligatorios",
+          missing,
         },
         { status: 400 },
       )
     }
 
+    if (update.shipping_country == null) update.shipping_country = "España"
+
+    // Asegurar perfil
     const { data: profileCheck } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle()
-
     if (!profileCheck) {
-      // Crear perfil usando Service Role Key para bypass de RLS
-      const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      })
-
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } },
+      )
       const { error: insertError } = await supabaseAdmin.from("profiles").insert({
         id: user.id,
         email: user.email,
@@ -90,25 +132,17 @@ export async function PUT(request: NextRequest) {
         last_name: user.user_metadata?.last_name || "",
         phone: user.user_metadata?.phone || "",
       })
-
       if (insertError) {
         console.error("Error creating profile:", insertError)
         return NextResponse.json({ error: "Error al crear el perfil del usuario" }, { status: 500 })
       }
     }
 
-    // Actualizar la dirección
     const { data, error } = await supabase
       .from("profiles")
-      .update({
-        shipping_address,
-        shipping_city,
-        shipping_postal_code,
-        shipping_phone,
-        shipping_country: shipping_country || "España",
-      })
+      .update(update)
       .eq("id", user.id)
-      .select()
+      .select(SHIPPING_FIELDS.join(", "))
       .maybeSingle()
 
     if (error) {
@@ -116,19 +150,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Error al actualizar información de envío" }, { status: 500 })
     }
 
-    if (!data) {
-      return NextResponse.json({ error: "No se encontró el perfil del usuario" }, { status: 404 })
-    }
-
     return NextResponse.json({
       message: "Información de envío actualizada correctamente",
-      shipping: {
-        shipping_address: data.shipping_address,
-        shipping_city: data.shipping_city,
-        shipping_postal_code: data.shipping_postal_code,
-        shipping_phone: data.shipping_phone,
-        shipping_country: data.shipping_country,
-      },
+      shipping: data,
     })
   } catch (error) {
     console.error("Error in PUT /api/user/shipping:", error)
