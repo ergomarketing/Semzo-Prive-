@@ -9,6 +9,7 @@
 interface CorreosCredentials {
   clientId: string
   clientSecret: string
+  codEtiquetador?: string
 }
 
 interface CorreosAuthResponse {

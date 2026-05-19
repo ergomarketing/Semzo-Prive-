@@ -219,6 +219,7 @@ export interface RawRecipient {
   postalCode: string
   city: string
   province: string
+  country?: string
   phone: string
   email?: string | null
 }
@@ -238,13 +239,18 @@ export interface SanitizedRecipient {
   postalCode: string
   city: string
   province: string
+  country: string
   phone: string
   email: string
 }
 
+// Alias retrocompatible: el endpoint usa el nombre RecipientInput
+export type RecipientInput = RawRecipient
+
 export interface SanitizationResult {
   data: SanitizedRecipient
   errors: string[]
+  valid: boolean
 }
 
 export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
@@ -303,9 +309,11 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
       postalCode,
       city,
       province,
+      country: "ES",
       phone,
       email,
     },
     errors,
+    valid: errors.length === 0,
   }
 }
