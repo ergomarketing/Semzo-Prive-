@@ -32,31 +32,38 @@ export async function DELETE(
       return NextResponse.json({ error: "ID de envio requerido" }, { status: 400 })
     }
 
-    // Soft-delete: marcamos cancelled para preservar historial y auditoria
-    const { data, error: updateError } = await supabase
+    // Leer envio antes de borrar (para auditoria)
+    const { data: existing } = await supabase
       .from("shipments")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .select("*")
       .eq("id", id)
-      .select()
       .single()
 
-    if (updateError) {
-      console.error("[admin/shipments DELETE] error:", updateError)
+    // Hard delete: eliminamos el registro fisicamente
+    const { error: deleteError } = await supabase
+      .from("shipments")
+      .delete()
+      .eq("id", id)
+
+    if (deleteError) {
+      console.error("[admin/shipments DELETE] error:", deleteError)
       return NextResponse.json(
-        { error: updateError.message || "Error al cancelar envio" },
+        { error: deleteError.message || "Error al eliminar envio" },
         { status: 500 },
       )
     }
 
     // Registrar en auditoria
-    await supabase.from("logistics_audit_log").insert({
-      action: "cancel_shipment",
-      entity_type: "shipment",
-      entity_id: id,
-      new_values: data,
-    })
+    if (existing) {
+      await supabase.from("logistics_audit_log").insert({
+        action: "delete_shipment",
+        entity_type: "shipment",
+        entity_id: id,
+        new_values: existing,
+      })
+    }
 
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error("[admin/shipments DELETE] exception:", err)
     return NextResponse.json(
