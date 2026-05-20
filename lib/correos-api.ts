@@ -106,19 +106,29 @@ class CorreosAPI {
       return this.accessToken
     }
 
-    const response = await fetch(this.authUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: this.credentials.clientId,
-        client_secret: this.credentials.clientSecret,
-      }),
-    })
+    console.log("[v0][correos] auth POST ->", this.authUrl)
+
+    let response: Response
+    try {
+      response = await fetch(this.authUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: this.credentials.clientId,
+          client_secret: this.credentials.clientSecret,
+        }),
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+      console.error("[v0][correos] auth fetch threw:", msg)
+      throw new Error(`Correos auth network error (${this.authUrl}): ${msg}`)
+    }
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(`Correos authentication failed: ${error}`)
+      console.error("[v0][correos] auth response not ok", response.status, error)
+      throw new Error(`Correos authentication failed (${response.status}): ${error}`)
     }
 
     const data: CorreosAuthResponse = await response.json()
