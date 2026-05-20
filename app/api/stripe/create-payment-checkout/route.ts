@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         .from("reservations")
         .select("id, status")
         .eq("user_id", userId)
-        .in("status", ["active", "in_progress", "pending", "shipped", "delivered"])
+        .eq("status", "active")
 
       if (resError) {
         console.error("[v0][create-payment-checkout] error reservations:", resError)
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "Ya tienes un bolso en curso. Devuelvelo antes de reservar otro pase.",
+              "Tienes un bolso en curso. Para reservar uno nuevo, primero completa la devolucion del bolso actual desde tu dashboard.",
             code: "ACTIVE_RESERVATION",
           },
           { status: 409 }
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "Ya tienes un pase comprado sin usar. Usalo antes de comprar otro.",
+              "Ya tienes un Pase Bolso Prive disponible. Reservalo con un bolso antes de comprar otro pase.",
             code: "AVAILABLE_PASS",
           },
           { status: 409 }
