@@ -440,6 +440,32 @@ function BagCard({
       return
     }
 
+    // BLOQUEO: si la socia ya tiene un bolso en curso, no puede reservar otro.
+    // Aplica a todas las membresias (Petite, L'Essentiel, Signature, Prive).
+    if (supabase) {
+      const { data: ongoing } = await supabase
+        .from("reservations")
+        .select("id, bags(name, brand)")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (ongoing) {
+        const bagInfo = (ongoing as any).bags
+        const bagLabel = bagInfo
+          ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
+          : "tu bolso actual"
+        toast({
+          title: "Ya tienes un bolso en curso",
+          description: `Envía a Semzo Privé el ${bagLabel} antes de reservar otro. Cuando recibamos la devolución podrás elegir tu siguiente bolso.`,
+          duration: 7000,
+        })
+        return
+      }
+    }
+
     const needsPass = await checkIfNeedsPass()
 
     if (needsPass) {
