@@ -252,6 +252,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // BLOQUEO UNIVERSAL: 1 bolso a la vez
+    // Aplica a TODAS las membresias (petite, essentiel, signature, prive).
+    // Si la socia ya tiene una reserva en curso, no puede reservar otro bolso
+    // hasta que devuelva el actual (cuando la reserva pase a 'completed').
+    const { data: ongoingReservation } = await supabase
+      .from("reservations")
+      .select("id, bag_id, end_date, bags(name, brand)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (ongoingReservation) {
+      const bagInfo = (ongoingReservation as any).bags
+      const bagLabel = bagInfo
+        ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
+        : "tu bolso actual"
+      return NextResponse.json(
+        {
+          error: `Tienes una reserva en curso con ${bagLabel}. Para reservar un nuevo bolso, primero envia el actual a Semzo Privé. En cuanto recibamos la devolución podrás elegir tu siguiente bolso.`,
+          code: "ACTIVE_RESERVATION_IN_PROGRESS",
+          activeReservationId: ongoingReservation.id,
+        },
+        { status: 409 },
+      )
+    }
+
     // LIMITE DE RESERVAS POR CICLO DE FACTURACION
     // Regla de negocio: el cupo se consume al RESERVAR, no al recibir.
     // Cancelar una reserva NO devuelve el cupo del ciclo.
