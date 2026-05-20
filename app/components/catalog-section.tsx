@@ -539,6 +539,19 @@ function BagCard({
           return
         }
 
+        // Bolso ya en posesion: toast informativo (no destructivo)
+        if (data.code === "ACTIVE_RESERVATION_IN_PROGRESS") {
+          setIsReserving(false)
+          toast({
+            title: "Ya tienes un bolso en curso",
+            description:
+              data.error ||
+              "Para reservar uno nuevo, primero envía a Semzo Privé el bolso que tienes actualmente. En cuanto lo recibamos podrás elegir el siguiente.",
+            duration: 7000,
+          })
+          return
+        }
+
         const fullMsg = data.details
           ? `${data.error || "Error al crear la reserva"} (${data.details})`
           : data.error || "Error al crear la reserva"
