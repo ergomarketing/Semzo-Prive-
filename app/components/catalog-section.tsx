@@ -902,7 +902,7 @@ function BagCard({
             >
               Entendido
             </Button>
-            <Button onClick={() => router.push("/dashboard/socia")}>
+            <Button onClick={() => router.push("/dashboard")}>
               Ir a mi dashboard
             </Button>
           </div>
