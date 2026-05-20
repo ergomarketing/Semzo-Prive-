@@ -47,6 +47,59 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id
 
+    // ========================================================================
+    // VALIDACION: 1 bolso a la vez para socias Petite
+    // Bloquea la compra de un nuevo Pase Bolso Prive si la socia ya tiene:
+    //  - Una reserva en curso (bolso en posesion / pendiente de devolucion), o
+    //  - Un pase comprado pendiente de uso (status = available)
+    // Solo aplica cuando el checkout es de tipo bag_pass (presencia de bagId).
+    // ========================================================================
+    if (bagId) {
+      // 1) Reservas activas del usuario
+      const { data: activeReservations, error: resError } = await supabase
+        .from("reservations")
+        .select("id, status")
+        .eq("user_id", userId)
+        .in("status", ["active", "in_progress", "pending", "shipped", "delivered"])
+
+      if (resError) {
+        console.error("[v0][create-payment-checkout] error reservations:", resError)
+      }
+
+      if (activeReservations && activeReservations.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Ya tienes un bolso en curso. Devuelvelo antes de reservar otro pase.",
+            code: "ACTIVE_RESERVATION",
+          },
+          { status: 409 }
+        )
+      }
+
+      // 2) Pases comprados sin usar
+      const { data: pendingPasses, error: passError } = await supabase
+        .from("bag_passes")
+        .select("id, status")
+        .eq("user_id", userId)
+        .eq("status", "available")
+
+      if (passError) {
+        console.error("[v0][create-payment-checkout] error bag_passes:", passError)
+      }
+
+      if (pendingPasses && pendingPasses.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Ya tienes un pase comprado sin usar. Usalo antes de comprar otro.",
+            code: "AVAILABLE_PASS",
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     // Obtener o crear customer de Stripe
     const { data: profile } = await supabase
       .from("profiles")
