@@ -358,6 +358,10 @@ function BagCard({
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [upgradeRequiredTier, setUpgradeRequiredTier] = useState<string>("prive")
+  const [activeBagDialog, setActiveBagDialog] = useState<{ open: boolean; bagLabel: string }>({
+    open: false,
+    bagLabel: "",
+  })
 
   const { toast } = useToast()
   const { addItem } = useCart()
@@ -457,11 +461,7 @@ function BagCard({
         const bagLabel = bagInfo
           ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
           : "tu bolso actual"
-        toast({
-          title: "Ya tienes un bolso en curso",
-          description: `Envía a Semzo Privé el ${bagLabel} antes de reservar otro. Cuando recibamos la devolución podrás elegir tu siguiente bolso.`,
-          duration: 7000,
-        })
+        setActiveBagDialog({ open: true, bagLabel })
         return
       }
     }
@@ -565,16 +565,10 @@ function BagCard({
           return
         }
 
-        // Bolso ya en posesion: toast informativo (no destructivo)
+        // Bolso ya en posesion: modal centrado
         if (data.code === "ACTIVE_RESERVATION_IN_PROGRESS") {
           setIsReserving(false)
-          toast({
-            title: "Ya tienes un bolso en curso",
-            description:
-              data.error ||
-              "Para reservar uno nuevo, primero envía a Semzo Privé el bolso que tienes actualmente. En cuanto lo recibamos podrás elegir el siguiente.",
-            duration: 7000,
-          })
+          setActiveBagDialog({ open: true, bagLabel: "tu bolso actual" })
           return
         }
 
@@ -883,6 +877,37 @@ function BagCard({
           setTimeout(() => router.push("/cart"), 400)
         }}
       />
+
+      {/* Dialog: bolso ya en posesion (todas las membresias) */}
+      <Dialog
+        open={activeBagDialog.open}
+        onOpenChange={(open) => setActiveBagDialog((s) => ({ ...s, open }))}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">
+              Ya tienes un bolso en curso
+            </DialogTitle>
+            <DialogDescription className="pt-2 leading-relaxed text-foreground/80">
+              Para reservar un nuevo bolso, primero envía a Semzo Privé el{" "}
+              <span className="font-medium text-foreground">{activeBagDialog.bagLabel}</span>{" "}
+              que tienes actualmente. En cuanto recibamos la devolución podrás
+              elegir tu siguiente bolso.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setActiveBagDialog({ open: false, bagLabel: "" })}
+            >
+              Entendido
+            </Button>
+            <Button onClick={() => router.push("/dashboard/socia")}>
+              Ir a mi dashboard
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
