@@ -100,18 +100,18 @@ export default function LandingMembresia() {
         </Link>
       </header>
 
-      {/* HERO - editorial fullscreen, compacto en altura (75vh en mobile, 85vh desktop) */}
-      <section className="relative flex min-h-[75svh] w-full items-end overflow-hidden md:min-h-[85svh]">
+      {/* HERO - editorial fullscreen, compacto en altura */}
+      <section className="relative flex min-h-[65svh] w-full items-end overflow-hidden bg-neutral-900 md:min-h-[75svh]">
         <Image
           src="/images/hermes-prive.jpeg"
           alt="Editorial Semzo Prive - bolso Hermes burgundy"
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_30%]"
+          className="object-contain object-bottom md:object-cover md:object-[55%_25%]"
         />
-        {/* Overlay sutil para legibilidad */}
-        <div className="absolute inset-0 bg-gradient-to-t from-indigo-dark/70 via-indigo-dark/20 to-transparent" />
+        {/* Overlay neutro sutil para legibilidad */}
+        <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-14 md:px-10 md:pb-20">
           <div className="max-w-2xl text-white">
@@ -195,13 +195,17 @@ export default function LandingMembresia() {
                   m.highlight ? "border-indigo-dark shadow-lg" : "border-indigo-dark/15"
                 }`}
               >
-                <div className="relative aspect-[4/5] overflow-hidden bg-rose-nude">
+                <div className="relative aspect-[3/4] overflow-hidden bg-rose-nude">
                   <Image
                     src={m.image || "/placeholder.svg"}
                     alt={`Membresia ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover object-center transition duration-700 group-hover:scale-105"
+                    className={`transition duration-700 group-hover:scale-105 ${
+                      m.id === "signature"
+                        ? "object-cover object-[50%_60%]"
+                        : "object-cover object-center"
+                    }`}
                   />
                   {m.highlight ? (
                     <span className="absolute right-3 top-3 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
@@ -247,7 +251,7 @@ export default function LandingMembresia() {
           <div className="mb-10 grid gap-6 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
-                <p className="font-serif text-base italic leading-relaxed text-rose-pastel md:text-lg">
+                <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
                   &ldquo;{t.quote}&rdquo;
                 </p>
                 <footer className="mt-3 text-[10px] tracking-[0.3em] text-white/70">— {t.author}</footer>
