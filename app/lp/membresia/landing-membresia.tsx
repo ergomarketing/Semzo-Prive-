@@ -37,7 +37,7 @@ const memberships = [
     price: "129€",
     period: "/mes",
     tagline: "Marcas premium",
-    image: "/images/membership-signature.jpg",
+    image: "/images/lp/membership-signature-fendi.jpeg",
     href: "/signup?plan=signature&utm_source=google&utm_medium=cpc&utm_campaign=lp_membresia",
     highlight: true,
   },
