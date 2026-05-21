@@ -1,6 +1,10 @@
 import type { Metadata } from "next"
 import LandingMembresia from "./landing-membresia"
 
+// Forzar render dinamico para evitar HTML cacheado tras edits.
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 // SEO: landing exclusiva para Google Ads, no debe aparecer en organico.
 export const metadata: Metadata = {
   title: "Membresia Semzo Prive | Bolsos iconicos sin comprarlos",
