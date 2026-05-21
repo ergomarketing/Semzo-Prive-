@@ -103,12 +103,12 @@ export default function LandingMembresia() {
       {/* HERO - editorial fullscreen, compacto en altura (75vh en mobile, 85vh desktop) */}
       <section className="relative flex min-h-[75svh] w-full items-end overflow-hidden md:min-h-[85svh]">
         <Image
-          src="/images/prada-hero-street.jpeg"
-          alt="Editorial Semzo Prive - bolsos de lujo en alquiler"
+          src="/images/hermes-prive.jpeg"
+          alt="Editorial Semzo Prive - bolso Hermes burgundy"
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover object-center"
         />
         {/* Overlay sutil para legibilidad */}
         <div className="absolute inset-0 bg-gradient-to-t from-indigo-dark/70 via-indigo-dark/20 to-transparent" />
@@ -201,7 +201,7 @@ export default function LandingMembresia() {
                     alt={`Membresia ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition duration-700 group-hover:scale-105"
+                    className="object-cover object-center transition duration-700 group-hover:scale-105"
                   />
                   {m.highlight ? (
                     <span className="absolute right-3 top-3 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
