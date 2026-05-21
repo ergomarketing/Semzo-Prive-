@@ -278,7 +278,7 @@ export default function LandingMembresia() {
       {/* Footer minimo */}
       <footer className="border-t border-indigo-dark/10 bg-rose-nude px-6 py-5 md:px-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-indigo-dark/60 md:flex-row">
-          <p>© {new Date().getFullYear()} Semzo Prive. Todos los derechos reservados.</p>
+          <p>© 2026 Semzo Prive. Todos los derechos reservados.</p>
           <div className="flex items-center gap-5">
             <Link href="/legal/privacy" className="hover:text-indigo-dark">
               Privacidad
