@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect } from "react"
-import { ArrowRight, ShieldCheck, Truck, Repeat, Sparkles } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 /**
  * Landing exclusiva para Google Ads.
@@ -53,12 +53,7 @@ const memberships = [
   },
 ]
 
-const trustItems = [
-  { icon: ShieldCheck, label: "100% autenticos" },
-  { icon: Repeat, label: "Cambio flexible" },
-  { icon: Truck, label: "Envio gratuito" },
-  { icon: Sparkles, label: "Opcion de adquisicion" },
-]
+const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opcion de adquisicion"]
 
 const steps = [
   { n: "1", title: "Elige tu plan", text: "4 niveles, sin permanencia." },
@@ -144,34 +139,36 @@ export default function LandingMembresia() {
         </div>
       </section>
 
-      {/* TRUST BAR */}
+      {/* TRUST BAR - tipografica, sin iconos */}
       <section className="border-y border-indigo-dark/10 bg-white">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-5 px-6 py-6 md:grid-cols-4 md:px-10">
-          {trustItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-3">
-              <item.icon className="h-5 w-5 text-indigo-dark" strokeWidth={1.4} />
-              <span className="text-sm tracking-wide text-indigo-dark/80">{item.label}</span>
-            </div>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-5 text-center md:px-10">
+          {trustItems.map((label, i) => (
+            <span key={label} className="flex items-center gap-x-8 text-[11px] tracking-[0.25em] text-indigo-dark/70">
+              {label.toUpperCase()}
+              {i < trustItems.length - 1 ? <span className="hidden text-indigo-dark/30 md:inline">·</span> : null}
+            </span>
           ))}
         </div>
       </section>
 
-      {/* COMO FUNCIONA - compacto, 3 pasos */}
-      <section className="bg-white py-12 md:py-16">
-        <div className="mx-auto max-w-6xl px-6 md:px-10">
-          <div className="mb-8 text-center md:mb-10">
-            <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">COMO FUNCIONA</p>
-            <h2 className="text-balance font-serif text-3xl leading-tight md:text-4xl">
+      {/* COMO FUNCIONA - ultra compacto */}
+      <section className="bg-white pb-10 pt-12 md:pb-14 md:pt-16">
+        <div className="mx-auto max-w-5xl px-6 md:px-10">
+          <div className="mb-8 text-center">
+            <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
+            <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
               Tres pasos hasta tu <span className="italic">primer bolso</span>.
             </h2>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3 md:gap-10">
+          <div className="grid gap-6 md:grid-cols-3 md:gap-10">
             {steps.map((step) => (
-              <div key={step.n} className="text-center">
-                <p className="mb-2 font-serif text-6xl text-indigo-dark md:text-7xl">{step.n}</p>
-                <h3 className="mb-1 font-serif text-lg md:text-xl">{step.title}</h3>
-                <p className="text-sm text-indigo-dark/70">{step.text}</p>
+              <div key={step.n} className="flex items-baseline gap-4 md:block md:text-center">
+                <p className="font-serif text-4xl leading-none text-indigo-dark/40 md:mb-3 md:text-5xl">0{step.n}</p>
+                <div>
+                  <h3 className="font-serif text-base md:text-lg">{step.title}</h3>
+                  <p className="text-xs text-indigo-dark/65 md:text-sm">{step.text}</p>
+                </div>
               </div>
             ))}
           </div>
