@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import LandingClientWrapper from "./landing-client-wrapper"
+import LandingMembresia from "./landing-membresia"
 
 // Forzar render dinamico para evitar HTML cacheado tras edits.
 export const dynamic = "force-dynamic"
@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <LandingClientWrapper />
+  return <LandingMembresia />
 }
