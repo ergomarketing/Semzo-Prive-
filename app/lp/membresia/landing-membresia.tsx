@@ -122,44 +122,48 @@ export default function LandingMembresia() {
         </Link>
       </header>
 
-      {/* HERO - producto protagonista, fondo claro estilo editorial luxury */}
-      <section className="relative flex min-h-[100svh] w-full flex-col items-center justify-center overflow-hidden bg-rose-nude px-6 pt-24 md:px-10">
-        {/* Imagen central del bolso heroe */}
-        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-          <p className="mb-4 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">
-            MEMBRESIA DE BOLSOS DE LUJO
-          </p>
+      {/* HERO - editorial street style en grid 2 columnas, contenido (no fullscreen) */}
+      <section className="relative bg-rose-nude pt-24 md:pt-28">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-6 pb-16 md:grid-cols-12 md:gap-12 md:px-10 md:pb-20">
+          {/* Texto */}
+          <div className="md:col-span-6 lg:col-span-5">
+            <p className="mb-5 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">
+              MEMBRESIA DE BOLSOS DE LUJO
+            </p>
 
-          <h1 className="mb-6 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
-            Bolsos iconicos.
-            <br />
-            <span className="italic text-indigo-dark/70">Sin comprarlos.</span>
-          </h1>
+            <h1 className="mb-6 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
+              Bolsos iconicos.
+              <br />
+              <span className="italic text-indigo-dark/70">Sin comprarlos.</span>
+            </h1>
 
-          <p className="mb-10 max-w-xl text-pretty text-base leading-relaxed text-indigo-dark/75 md:text-lg">
-            Membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.
-          </p>
+            <p className="mb-8 max-w-md text-pretty text-base leading-relaxed text-indigo-dark/75 md:text-lg">
+              Membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.
+            </p>
 
-          {/* Bolso producto centrado, flotando */}
-          <div className="relative mb-10 h-[280px] w-full max-w-md md:h-[420px] md:max-w-lg">
-            <Image
-              src="/images/chanel-classic-flap-front.jpeg"
-              alt="Chanel Classic Flap disponible en Semzo Prive"
-              fill
-              priority
-              sizes="(max-width: 768px) 90vw, 500px"
-              className="object-contain drop-shadow-2xl"
-            />
+            <a
+              href="#membresias"
+              onClick={() => trackEvent("cta_hero_click")}
+              className="group inline-flex items-center gap-2 bg-indigo-dark px-10 py-4 text-xs tracking-[0.3em] text-white transition hover:bg-indigo-dark/85"
+            >
+              ACCEDER A LAS MEMBRESIAS
+              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+            </a>
           </div>
 
-          <a
-            href="#membresias"
-            onClick={() => trackEvent("cta_hero_click")}
-            className="group inline-flex items-center gap-2 bg-indigo-dark px-10 py-4 text-xs tracking-[0.3em] text-white transition hover:bg-indigo-dark/85"
-          >
-            ACCEDER A LAS MEMBRESIAS
-            <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-          </a>
+          {/* Imagen editorial contenida (no fullscreen) */}
+          <div className="md:col-span-6 lg:col-span-7">
+            <div className="relative aspect-[4/5] w-full overflow-hidden md:aspect-[4/5] lg:aspect-[5/6]">
+              <Image
+                src="/images/prada-hero-street.jpeg"
+                alt="Editorial Semzo Prive - bolsos de lujo en alquiler"
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 55vw"
+                className="object-cover"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
