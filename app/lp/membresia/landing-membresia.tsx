@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { ArrowRight } from "lucide-react"
 
 /**
- * Landing exclusiva para Google Ads.
+ * Landing exclusiva para Google Ads (/lp/membresia).
  * Estructura compacta: hero editorial fullscreen, trust, proceso, membresias, CTA final.
  */
 
