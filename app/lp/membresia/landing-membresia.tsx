@@ -108,7 +108,7 @@ export default function LandingMembresia() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-cover object-[50%_30%]"
         />
         {/* Overlay sutil para legibilidad */}
         <div className="absolute inset-0 bg-gradient-to-t from-indigo-dark/70 via-indigo-dark/20 to-transparent" />
