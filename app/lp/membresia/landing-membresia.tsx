@@ -108,10 +108,10 @@ export default function LandingMembresia() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_30%]"
+          className="object-cover object-[50%_50%]"
         />
-        {/* Overlay sutil para legibilidad */}
-        <div className="absolute inset-0 bg-gradient-to-t from-indigo-dark/70 via-indigo-dark/20 to-transparent" />
+        {/* Overlay neutro plano para legibilidad */}
+        <div className="absolute inset-0 bg-black/35" />
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-14 md:px-10 md:pb-20">
           <div className="max-w-2xl text-white">
@@ -201,7 +201,9 @@ export default function LandingMembresia() {
                     alt={`Membresia ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover object-center transition duration-700 group-hover:scale-105"
+                    className={`object-cover transition duration-700 group-hover:scale-105 ${
+                      m.id === "signature" ? "object-[65%_50%]" : "object-center"
+                    }`}
                   />
                   {m.highlight ? (
                     <span className="absolute right-3 top-3 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
@@ -247,7 +249,7 @@ export default function LandingMembresia() {
           <div className="mb-10 grid gap-6 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
-                <p className="font-serif text-base italic leading-relaxed text-rose-pastel md:text-lg">
+                <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
                   &ldquo;{t.quote}&rdquo;
                 </p>
                 <footer className="mt-3 text-[10px] tracking-[0.3em] text-white/70">— {t.author}</footer>
