@@ -1,23 +1,45 @@
 User-agent: *
 Allow: /
 
-# Áreas privadas (requieren login)
+# Areas privadas (requieren login)
 Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /my-account/
+Disallow: /account/
 Disallow: /auth/
 Disallow: /api/
 
 # Flujos transaccionales (sin contenido SEO)
+Disallow: /signup
+Disallow: /signup?
 Disallow: /cart
 Disallow: /checkout
+Disallow: /checkout/
+Disallow: /post-checkout
 Disallow: /wishlist
 Disallow: /thank-you
 Disallow: /reservations
+Disallow: /verify-identity
+Disallow: /verification-complete
+Disallow: /onboarding
+Disallow: /onboarding-complete
 
-# Técnicos
+# Soporte (formularios y FAQs internos sin valor SEO)
+Disallow: /support/
+
+# URLs con parametros dinamicos (evitar duplicados)
+Disallow: /*?bag=
+Disallow: /*?plan=
+Disallow: /*?redirect=
+Disallow: /*?session=
+Disallow: /*?token=
+
+# Tecnicos
 Disallow: /_next/
 Disallow: /test-*
+Disallow: /test-auth-flow
+Disallow: /test-config
+Disallow: /test-registro
 
 # Sitemap
 Sitemap: https://semzoprive.com/sitemap.xml
