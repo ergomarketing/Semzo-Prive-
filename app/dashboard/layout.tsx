@@ -1,7 +1,13 @@
 import type React from "react"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/app/lib/supabase/server"
 import DashboardLayoutClient from "./layout-client"
+
+// SEO: dashboard es zona privada, no debe indexarse.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+}
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
