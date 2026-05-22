@@ -202,7 +202,7 @@ export default function LandingMembresia() {
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className={`object-cover transition duration-700 group-hover:scale-105 ${
-                      m.id === "signature" ? "object-[65%_50%]" : "object-center"
+                      m.id === "signature" ? "object-[55%_35%]" : "object-center"
                     }`}
                   />
                   {m.highlight ? (
