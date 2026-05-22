@@ -132,7 +132,7 @@ export default function MembershipSection() {
   }
 
   return (
-    <section id="membresias" className="bg-gradient-to-b from-white via-rose-nude/40 to-rose-nude py-14 md:py-20">
+    <section className="bg-gradient-to-b from-white via-rose-nude/40 to-rose-nude py-14 md:py-20">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         {/* Header */}
         <div className="mb-8 text-center md:mb-12">
