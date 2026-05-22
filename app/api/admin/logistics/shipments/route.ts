@@ -344,29 +344,28 @@ export async function POST(request: NextRequest) {
       }
       const recipientParty: CorreosParty = sanitized.data
 
-      // 3. Cargar credenciales y datos del remitente
+      // 3. Cargar datos del remitente y verificar que la integracion esta activa.
+      //    Las credenciales OAuth y datos de cliente Correos los gestiona el
+      //    proxy en VPS (variables de entorno CORREOS_PROXY_URL / CORREOS_PROXY_API_KEY).
       const { data: correosSettings } = await supabase
         .from("logistics_settings")
-        .select("api_credentials, sender_info, is_enabled")
+        .select("sender_info, is_enabled")
         .eq("carrier_name", "Correos")
         .single()
 
-      correosConfigured = !!correosSettings?.api_credentials
+      const proxyConfigured = !!process.env.CORREOS_PROXY_URL && !!process.env.CORREOS_PROXY_API_KEY
+      correosConfigured = proxyConfigured
       correosEnabled = !!correosSettings?.is_enabled
 
-      if (!correosConfigured) {
-        correosError = "No hay credenciales de Correos guardadas en logistics_settings"
+      if (!proxyConfigured) {
+        correosError =
+          "Proxy Correos no configurado: faltan CORREOS_PROXY_URL o CORREOS_PROXY_API_KEY"
       } else if (!correosEnabled) {
         correosError = "La integracion de Correos esta deshabilitada (is_enabled = false)"
       } else {
-        const credentials = correosSettings!.api_credentials as { clientId: string; clientSecret: string }
-        const senderParty = buildSenderParty(correosSettings!.sender_info)
+        const senderParty = buildSenderParty(correosSettings?.sender_info)
 
-        const correosClient = new CorreosAPI({
-          clientId: credentials.clientId,
-          clientSecret: credentials.clientSecret,
-          codEtiquetador: (correosSettings!.sender_info as any)?.codEtiquetador,
-        })
+        const correosClient = new CorreosAPI()
         const productCode = service_type === "PAQ_PREMIUM" ? CORREOS_PRODUCTS.PAQ_PREMIUM : CORREOS_PRODUCTS.PAQ_ESTANDAR
 
         // Envio de IDA: Semzo -> Cliente

@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   const fetchProfile = async (userId: string) => {
+    if (!supabase) return
     try {
       const { data } = await supabase
         .from("profiles")
@@ -46,6 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
+
+    if (!supabase) {
+      console.warn("[Auth] Supabase client no disponible (env vars faltantes). Saltando init.")
+      setLoading(false)
+      return
+    }
 
     const loadSession = async () => {
       try {
@@ -89,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
+    if (!supabase) return
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)

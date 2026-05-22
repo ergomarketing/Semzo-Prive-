@@ -1,50 +1,33 @@
 /**
- * Correos API Integration
- * API Documentation: https://www.correos.es/ss/Satellite/site/pagina-apis/sidioma=es_ES
+ * Correos API Integration via Semzo Proxy
+ *
+ * Toda la comunicacion con Correos pasa por el proxy desplegado en VPS Nominalia
+ * (correos.semzoprive.com), que es el unico que tiene la IP autorizada por Correos.
+ *
+ * Variables de entorno requeridas:
+ *   CORREOS_PROXY_URL       (ej: https://correos.semzoprive.com)
+ *   CORREOS_PROXY_API_KEY   (la PROXY_API_KEY definida en el .env del VPS)
  *
  * IMPORTANTE: cualquier dato que llegue aqui debe haber pasado por sanitizeRecipient()
- * en lib/correos-sanitize.ts. Esta capa SOLO construye el XML, NO valida ni normaliza.
+ * en lib/correos-sanitize.ts. Esta capa SOLO orquesta llamadas al proxy.
  */
 
-interface CorreosCredentials {
-  clientId: string
-  clientSecret: string
-  codEtiquetador?: string
-}
-
-interface CorreosAuthResponse {
-  access_token: string
-  token_type: string
-  expires_in: number
-}
-
-/**
- * Datos del remitente (almacen Semzo). Se obtienen de logistics_settings o de
- * variables hardcodeadas como fallback. Estructurado igual que el destinatario.
- */
 export interface CorreosParty {
-  // Identificacion
   firstName: string
   lastName1: string
   lastName2?: string
   documentType?: "DNI" | "NIE" | "PASAPORTE" | "CIF"
   documentNumber?: string
-
-  // Direccion estructurada
-  viaType: string // codigo Correos 2 letras (CL, AV, PZ, ...)
+  viaType: string
   viaName: string
   number?: string
   portal?: string
   floor?: string
   door?: string
-
-  // Localizacion
   postalCode: string
   city: string
   province: string
-  country: string // ES por defecto
-
-  // Contacto
+  country: string
   phone?: string
   email?: string
 }
@@ -56,18 +39,19 @@ interface CorreosShipmentRequest {
   length?: number // cm
   width?: number // cm
   height?: number // cm
-  productCode: string // ej: "S0132" Paq Estandar
-  reference?: string // referencia cliente, normalmente el ID de reserva
-  observations?: string // texto opcional impreso en la etiqueta
+  productCode: string
+  reference?: string
+  observations?: string
 }
 
 interface CorreosShipmentResponse {
   codEnvio: string
   codEtiquetador: string
-  fechaRespuesta: string
-  resultado: string
+  fechaRespuesta?: string
+  resultado?: string
   idEnvio?: string
   datosResultado?: string
+  raw?: any
 }
 
 interface CorreosTrackingResponse {
@@ -81,120 +65,164 @@ interface CorreosTrackingResponse {
   estadoEnvio: string
 }
 
-// Codigos de producto Correos
+// Codigos de producto Correos (API moderna)
 export const CORREOS_PRODUCTS = {
-  PAQ_PREMIUM: "S0148", // Paq Premium (1-2 dias)
-  PAQ_ESTANDAR: "S0132", // Paq Estandar (3-5 dias)
-  PAQ_LIGERO: "S0235", // Paq Ligero
-  CORREOS_EXPRESS: "P", // Correos Express
+  PAQ_PREMIUM: "S0148",
+  PAQ_ESTANDAR: "S0132",
+  PAQ_LIGERO: "S0235",
+  CORREOS_EXPRESS: "P",
+}
+
+function getProxyConfig() {
+  const url = process.env.CORREOS_PROXY_URL
+  const key = process.env.CORREOS_PROXY_API_KEY
+  if (!url || !key) {
+    throw new Error(
+      "Correos proxy no configurado: faltan CORREOS_PROXY_URL o CORREOS_PROXY_API_KEY",
+    )
+  }
+  return { url: url.replace(/\/$/, ""), key }
+}
+
+async function proxyFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const { url, key } = getProxyConfig()
+  const headers = new Headers(init.headers)
+  headers.set("x-api-key", key)
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+  return fetch(`${url}${path}`, { ...init, headers })
+}
+
+/**
+ * Mapea CorreosShipmentRequest al payload JSON que entiende el endpoint
+ * preregister v1 de la API moderna de Correos. El proxy ya inyecta
+ * contractNumber, clientNumber y labellerCode desde su .env.
+ */
+function buildPreregisterPayload(s: CorreosShipmentRequest) {
+  const partyJSON = (p: CorreosParty) => ({
+    name: p.firstName,
+    surname: p.lastName1,
+    secondSurname: p.lastName2 || undefined,
+    fullName: [p.firstName, p.lastName1, p.lastName2].filter(Boolean).join(" "),
+    identificationType: p.documentType || undefined,
+    identification: p.documentNumber || undefined,
+    address: {
+      streetType: p.viaType,
+      streetName: p.viaName,
+      streetNumber: p.number || undefined,
+      stairs: p.portal || undefined,
+      floor: p.floor || undefined,
+      door: p.door || undefined,
+    },
+    postalCode: p.postalCode,
+    city: p.city,
+    state: p.province,
+    countryCode: p.country || "ES",
+    phone: p.phone || undefined,
+    email: p.email || undefined,
+  })
+
+  return {
+    senderInfo: partyJSON(s.sender),
+    receiverInfo: partyJSON(s.recipient),
+    shipmentInfo: {
+      productCode: s.productCode,
+      clientReference: s.reference || "",
+      packagesNumber: 1,
+      weight: s.weight,
+      dimensions:
+        s.length && s.width && s.height
+          ? { length: s.length, width: s.width, height: s.height }
+          : undefined,
+      observations: s.observations || undefined,
+      labelType: 2,
+    },
+  }
 }
 
 class CorreosAPI {
-  private baseUrl = "https://preregistroenvios.correos.es/preregistroenvios"
-  private authUrl = "https://api.correos.es/oauth2/token"
-  private trackingUrl = "https://localizador.correos.es"
-  private accessToken: string | null = null
-  private tokenExpiry = 0
-
-  constructor(
-    private credentials: CorreosCredentials,
-    private codEtiquetador: string = "SEMZOPRIVE",
-  ) {}
-
-  private async authenticate(): Promise<string> {
-    if (this.accessToken && Date.now() < this.tokenExpiry) {
-      return this.accessToken
-    }
-
-    console.log("[v0][correos] auth POST ->", this.authUrl)
-
-    let response: Response
-    try {
-      response = await fetch(this.authUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: this.credentials.clientId,
-          client_secret: this.credentials.clientSecret,
-        }),
-      })
-    } catch (e) {
-      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-      console.error("[v0][correos] auth fetch threw:", msg)
-      throw new Error(`Correos auth network error (${this.authUrl}): ${msg}`)
-    }
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error("[v0][correos] auth response not ok", response.status, error)
-      throw new Error(`Correos authentication failed (${response.status}): ${error}`)
-    }
-
-    const data: CorreosAuthResponse = await response.json()
-    this.accessToken = data.access_token
-    this.tokenExpiry = Date.now() + (data.expires_in - 60) * 1000
-    return this.accessToken
-  }
+  // El constructor mantiene la firma anterior por compatibilidad con los
+  // callers existentes, pero las credenciales ya NO se usan aqui: el proxy
+  // gestiona el OAuth con sus propias credenciales.
+  constructor(_credentials?: { clientId?: string; clientSecret?: string; codEtiquetador?: string }) {}
 
   async testConnection(): Promise<{ success: boolean; message: string }> {
     try {
-      await this.authenticate()
-      return { success: true, message: "Conexion exitosa con Correos API" }
-    } catch (error) {
+      const res = await proxyFetch("/api/correos/auth-test", { method: "GET" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        return {
+          success: false,
+          message: `Proxy respondio ${res.status}: ${JSON.stringify(data)}`,
+        }
+      }
+      return { success: true, message: "Conexion OK con Correos via proxy" }
+    } catch (e) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Error de conexion",
+        message: e instanceof Error ? e.message : "Error de conexion con el proxy",
       }
     }
   }
 
   async createShipment(shipment: CorreosShipmentRequest): Promise<CorreosShipmentResponse> {
-    const token = await this.authenticate()
-    const xmlBody = this.buildShipmentXML(shipment)
-
-    const response = await fetch(`${this.baseUrl}/preregistro`, {
+    const payload = buildPreregisterPayload(shipment)
+    const res = await proxyFetch("/api/correos/preregister", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/xml",
-        Authorization: `Bearer ${token}`,
-      },
-      body: xmlBody,
+      body: JSON.stringify(payload),
     })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Failed to create shipment: ${error}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(
+        `Correos preregister fallo (${res.status}): ${JSON.stringify(data)}`,
+      )
     }
-
-    return this.parseShipmentResponse(await response.text())
+    // Normalizar respuesta. La API moderna devuelve estructura distinta a la antigua;
+    // intentamos detectar el codigo de envio en los nombres mas comunes.
+    const codEnvio =
+      data.shippingCode ||
+      data.codEnvio ||
+      data.shipmentCode ||
+      data.code ||
+      data?.preregistros?.[0]?.codEnvio ||
+      data?.preregistros?.[0]?.shippingCode ||
+      ""
+    return {
+      codEnvio,
+      codEtiquetador: data.labellerCode || data.codEtiquetador || "",
+      fechaRespuesta: data.responseDate || data.fechaRespuesta,
+      resultado: data.result || data.resultado,
+      idEnvio: data.shipmentId || data.idEnvio,
+      datosResultado: data.resultData || data.datosResultado,
+      raw: data,
+    }
   }
 
   async getLabel(shipmentId: string): Promise<Buffer> {
-    const token = await this.authenticate()
-    const response = await fetch(`${this.baseUrl}/etiqueta/${shipmentId}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/pdf" },
+    const res = await proxyFetch("/api/correos/label", {
+      method: "POST",
+      body: JSON.stringify({ shippingCodes: [shipmentId], labelFormat: "PDF" }),
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to get label: ${response.statusText}`)
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "")
+      throw new Error(`Correos label fallo (${res.status}): ${errText}`)
     }
-
-    return Buffer.from(await response.arrayBuffer())
+    const data = await res.json().catch(() => null)
+    // El endpoint moderno devuelve el PDF en base64 dentro del JSON.
+    const b64: string | undefined =
+      data?.label || data?.labels?.[0]?.label || data?.labels?.[0]?.content || data?.content
+    if (!b64) {
+      throw new Error("Correos label: no se encontro el PDF en la respuesta del proxy")
+    }
+    return Buffer.from(b64, "base64")
   }
 
-  async trackShipment(trackingNumber: string): Promise<CorreosTrackingResponse> {
-    const response = await fetch(
-      `${this.trackingUrl}/canonico/eventos_envio_paq/${trackingNumber}`,
-      { method: "GET", headers: { Accept: "application/json" } },
+  async trackShipment(_trackingNumber: string): Promise<CorreosTrackingResponse> {
+    // El proxy aun no expone tracking. Cuando lo anadamos, llamara aqui.
+    throw new Error(
+      "Tracking via proxy aun no implementado. Anadir endpoint /api/correos/track al proxy.",
     )
-
-    if (!response.ok) {
-      throw new Error(`Failed to track shipment: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   async calculateRates(
@@ -224,117 +252,11 @@ class CorreosAPI {
     const additionalCost = Math.max(0, weightKg - 1) * 1.5
     return Math.round((basePrice + additionalCost) * 100) / 100
   }
-
-  /**
-   * Construye XML segun especificacion Correos PreRegistroEnvios.
-   * Direccion estructurada con TipoVia, NombreVia, NumeroVia, Escalera, Planta, Puerta.
-   */
-  private buildShipmentXML(s: CorreosShipmentRequest): string {
-    const fullName = (p: CorreosParty) =>
-      [p.firstName, p.lastName1, p.lastName2].filter(Boolean).join(" ")
-
-    const partyXML = (p: CorreosParty, role: "Remitente" | "Destinatario") => {
-      const docXML =
-        p.documentType && p.documentNumber
-          ? `
-    <TipoDocumento>${this.escapeXML(p.documentType)}</TipoDocumento>
-    <NumeroDocumento>${this.escapeXML(p.documentNumber)}</NumeroDocumento>`
-          : ""
-
-      return `
-  <${role}>
-    <Nombre>${this.escapeXML(p.firstName)}</Nombre>
-    <Apellido1>${this.escapeXML(p.lastName1)}</Apellido1>${
-      p.lastName2 ? `\n    <Apellido2>${this.escapeXML(p.lastName2)}</Apellido2>` : ""
-    }
-    <NombreCompleto>${this.escapeXML(fullName(p))}</NombreCompleto>${docXML}
-    <Direccion>
-      <TipoVia>${this.escapeXML(p.viaType)}</TipoVia>
-      <NombreVia>${this.escapeXML(p.viaName)}</NombreVia>${
-        p.number ? `\n      <NumeroVia>${this.escapeXML(p.number)}</NumeroVia>` : ""
-      }${p.portal ? `\n      <Portal>${this.escapeXML(p.portal)}</Portal>` : ""}${
-        p.floor ? `\n      <Planta>${this.escapeXML(p.floor)}</Planta>` : ""
-      }${p.door ? `\n      <Puerta>${this.escapeXML(p.door)}</Puerta>` : ""}
-    </Direccion>
-    <CodPostal>${p.postalCode}</CodPostal>
-    <Localidad>${this.escapeXML(p.city)}</Localidad>
-    <Provincia>${this.escapeXML(p.province)}</Provincia>
-    <Pais>${this.escapeXML(p.country || "ES")}</Pais>${
-      p.phone ? `\n    <Telefono>${this.escapeXML(p.phone)}</Telefono>` : ""
-    }${p.email ? `\n    <Email>${this.escapeXML(p.email)}</Email>` : ""}
-  </${role}>`
-    }
-
-    const dimensions =
-      s.length && s.width && s.height
-        ? `
-    <Medidas>
-      <Alto>${s.height}</Alto>
-      <Largo>${s.length}</Largo>
-      <Ancho>${s.width}</Ancho>
-    </Medidas>`
-        : ""
-
-    const observations = s.observations
-      ? `\n    <Observaciones>${this.escapeXML(s.observations)}</Observaciones>`
-      : ""
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<PreregistroEnvio xmlns="http://www.correos.es/preregistroenvios">
-  <CodEtiquetador>${this.escapeXML(this.codEtiquetador)}</CodEtiquetador>
-  <Care>000000</Care>
-  <TotalBultos>1</TotalBultos>
-  <ModDevEtiqueta>2</ModDevEtiqueta>${partyXML(s.sender, "Remitente")}${partyXML(s.recipient, "Destinatario")}
-  <Envio>
-    <CodProducto>${s.productCode}</CodProducto>
-    <ReferenciaCliente>${this.escapeXML(s.reference || "")}</ReferenciaCliente>
-    <Pesos>
-      <Peso>
-        <TipoPeso>R</TipoPeso>
-        <Valor>${s.weight}</Valor>
-      </Peso>
-    </Pesos>${dimensions}${observations}
-  </Envio>
-</PreregistroEnvio>`
-  }
-
-  private escapeXML(str: string): string {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;")
-  }
-
-  private parseShipmentResponse(xml: string): CorreosShipmentResponse {
-    const getTagContent = (tag: string) => {
-      const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`))
-      return match ? match[1] : ""
-    }
-
-    return {
-      codEnvio: getTagContent("CodEnvio"),
-      codEtiquetador: getTagContent("CodEtiquetador"),
-      fechaRespuesta: getTagContent("FechaRespuesta"),
-      resultado: getTagContent("Resultado"),
-      idEnvio: getTagContent("IdEnvio"),
-      datosResultado: getTagContent("DatosResultado"),
-    }
-  }
 }
 
 export async function getCorreosClient(): Promise<CorreosAPI | null> {
-  const response = await fetch("/api/admin/logistics/correos/credentials")
-  if (!response.ok) return null
-
-  const data = await response.json()
-  if (!data.clientId || !data.clientSecret) return null
-
-  return new CorreosAPI(
-    { clientId: data.clientId, clientSecret: data.clientSecret },
-    data.codEtiquetador || "SEMZOPRIVE",
-  )
+  // Ya no hace falta cargar credenciales remotas: el proxy las gestiona.
+  return new CorreosAPI()
 }
 
 export { CorreosAPI }

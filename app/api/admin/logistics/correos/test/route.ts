@@ -1,30 +1,24 @@
 import { NextResponse } from "next/server"
 import { CorreosAPI } from "@/lib/correos-api"
 
-// POST - Probar conexión con Correos API
-export async function POST(request: Request) {
+/**
+ * POST /api/admin/logistics/correos/test
+ * Prueba la conexion con Correos a traves del proxy en VPS.
+ * Ya no requiere body con credenciales: el proxy las gestiona.
+ */
+export async function POST() {
   try {
-    const { clientId, clientSecret } = await request.json()
-
-    if (!clientId || !clientSecret) {
-      return NextResponse.json(
-        { error: "Client ID y Client Secret son requeridos" },
-        { status: 400 }
-      )
-    }
-
-    const correos = new CorreosAPI({ clientId, clientSecret })
+    const correos = new CorreosAPI()
     const result = await correos.testConnection()
-
     return NextResponse.json(result)
   } catch (error) {
     console.error("Error testing Correos connection:", error)
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : "Error al probar conexión",
+        message: error instanceof Error ? error.message : "Error al probar conexion",
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
