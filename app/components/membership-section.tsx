@@ -136,10 +136,17 @@ export default function MembershipSection() {
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         {/* Header */}
         <div className="mb-8 text-center md:mb-12">
-          <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">CUATRO NIVELES</p>
-          <h2 className="text-balance font-serif text-3xl leading-tight text-indigo-dark md:text-5xl">
-            Elige tu <span className="italic">membresia</span>.
+          <h2 className="text-balance font-serif text-4xl leading-tight text-indigo-dark md:text-6xl">
+            Nuestras Membresías
           </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-indigo-dark/70 md:text-base">
+            Elige el plan perfecto para tu estilo de vida y presupuesto. Todas nuestras membresías incluyen envío y
+            devolución gratuitos, seguro y acceso a nuestra colección exclusiva de bolsos de lujo.
+          </p>
+          <p className="mb-2 mt-8 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">CUATRO NIVELES</p>
+          <h3 className="text-balance font-serif text-3xl leading-tight text-indigo-dark md:text-5xl">
+            Elige tu <span className="italic">membresia</span>.
+          </h3>
         </div>
 
         {/* Toggle Mensual / Trimestral */}
