@@ -37,7 +37,7 @@ const memberships = [
     price: "129€",
     period: "/mes",
     tagline: "Marcas premium",
-    image: "/images/lp/membership-signature-fendi.jpeg",
+    image: "/images/chanel-signature.jpeg",
     href: "/signup?plan=signature&utm_source=google&utm_medium=cpc&utm_campaign=lp_membresia",
     highlight: true,
   },
@@ -201,9 +201,7 @@ export default function LandingMembresia() {
                     alt={`Membresia ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className={`object-cover transition duration-700 group-hover:scale-105 ${
-                      m.id === "signature" ? "object-[70%_40%]" : "object-center"
-                    }`}
+                    className="object-cover object-center transition duration-700 group-hover:scale-105"
                   />
                   {m.highlight ? (
                     <span className="absolute right-3 top-3 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
