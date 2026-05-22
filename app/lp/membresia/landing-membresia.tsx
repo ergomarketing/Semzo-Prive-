@@ -17,7 +17,7 @@ const memberships = [
     price: "19,99€",
     period: "/mes",
     tagline: "Pases sueltos",
-    image: "/images/membership-petite.jpg",
+    image: "/images/membership-petite.svg",
     href: "/signup?plan=petite&utm_source=google&utm_medium=cpc&utm_campaign=lp_membresia",
     highlight: false,
   },
