@@ -3,14 +3,12 @@
 -- Idempotente: se puede ejecutar varias veces sin romper nada.
 -- =====================================================
 
--- 0. Asegurar que reservations tenga la columna bag_pass_id (la usa la app
---    pero no estaba en ningun script SQL del repo).
+-- 0. Asegurar que reservations tenga la columna bag_pass_id
 ALTER TABLE reservations
   ADD COLUMN IF NOT EXISTS bag_pass_id UUID REFERENCES bag_passes(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_reservations_bag_pass_id
-  ON reservations(bag_pass_id)
-  WHERE bag_pass_id IS NOT NULL;
+  ON reservations(bag_pass_id);
 
 -- 1. Columnas en reservations para el ciclo de vida del pase
 ALTER TABLE reservations
@@ -20,22 +18,18 @@ ALTER TABLE reservations
   ADD COLUMN IF NOT EXISTS overdue_1d_sent_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS overdue_admin_notified_at TIMESTAMPTZ;
 
--- Indice para el cron (busqueda rapida de pases por vencer / vencidos)
+-- Indice para el cron
 CREATE INDEX IF NOT EXISTS idx_reservations_pass_expires_at
-  ON reservations(pass_expires_at)
-  WHERE pass_expires_at IS NOT NULL;
+  ON reservations(pass_expires_at);
 
--- 2. Funcion: cuando un envio pasa a 'delivered', calcular pass_expires_at
---    para reservas asociadas a un pase Petite.
+-- 2. Funcion trigger: al pasar a 'delivered', calcular vencimiento
 CREATE OR REPLACE FUNCTION set_petite_pass_expiry_on_delivery()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $func$
 DECLARE
   v_pass_id UUID;
 BEGIN
-  -- Solo nos interesa la transicion a 'delivered'
   IF NEW.status = 'delivered' AND (OLD.status IS NULL OR OLD.status <> 'delivered') THEN
     IF NEW.reservation_id IS NOT NULL THEN
-      -- Verificar si la reserva esta asociada a un pase Petite
       SELECT bag_pass_id INTO v_pass_id
       FROM reservations
       WHERE id = NEW.reservation_id;
@@ -52,10 +46,9 @@ BEGIN
       END IF;
     END IF;
   END IF;
-
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$func$ LANGUAGE plpgsql;
 
 -- 3. Trigger en shipments
 DROP TRIGGER IF EXISTS trg_petite_pass_expiry ON shipments;
@@ -64,7 +57,7 @@ CREATE TRIGGER trg_petite_pass_expiry
   FOR EACH ROW
   EXECUTE FUNCTION set_petite_pass_expiry_on_delivery();
 
--- 4. Vista util: pases activos con su estado de vencimiento
+-- 4. Vista util: estado de vencimiento de pases Petite
 CREATE OR REPLACE VIEW petite_pass_status AS
 SELECT
   r.id AS reservation_id,
@@ -79,12 +72,10 @@ SELECT
   CASE
     WHEN r.pass_expires_at IS NULL THEN 'pending_delivery'
     WHEN r.pass_expires_at > NOW() THEN 'active'
-    WHEN r.pass_expires_at <= NOW() AND r.pass_expires_at > NOW() - INTERVAL '1 day' THEN 'just_expired'
+    WHEN r.pass_expires_at > NOW() - INTERVAL '1 day' THEN 'just_expired'
     ELSE 'overdue'
   END AS expiry_state,
   EXTRACT(DAY FROM (r.pass_expires_at - NOW()))::INTEGER AS days_until_expiry
 FROM reservations r
 WHERE r.bag_pass_id IS NOT NULL
   AND r.status IN ('confirmed', 'active');
-
-COMMENT ON VIEW petite_pass_status IS 'Estado de vencimiento de pases Petite activos';
