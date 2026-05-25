@@ -1,7 +1,16 @@
 -- =====================================================
 -- SISTEMA DE VENCIMIENTO DE PASES PETITE
--- Anade columnas para trackear entrega + vencimiento real
+-- Idempotente: se puede ejecutar varias veces sin romper nada.
 -- =====================================================
+
+-- 0. Asegurar que reservations tenga la columna bag_pass_id (la usa la app
+--    pero no estaba en ningun script SQL del repo).
+ALTER TABLE reservations
+  ADD COLUMN IF NOT EXISTS bag_pass_id UUID REFERENCES bag_passes(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reservations_bag_pass_id
+  ON reservations(bag_pass_id)
+  WHERE bag_pass_id IS NOT NULL;
 
 -- 1. Columnas en reservations para el ciclo de vida del pase
 ALTER TABLE reservations
@@ -14,36 +23,32 @@ ALTER TABLE reservations
 -- Indice para el cron (busqueda rapida de pases por vencer / vencidos)
 CREATE INDEX IF NOT EXISTS idx_reservations_pass_expires_at
   ON reservations(pass_expires_at)
-  WHERE pass_expires_at IS NOT NULL AND status IN ('active', 'confirmed');
+  WHERE pass_expires_at IS NOT NULL;
 
 -- 2. Funcion: cuando un envio pasa a 'delivered', calcular pass_expires_at
 --    para reservas asociadas a un pase Petite.
 CREATE OR REPLACE FUNCTION set_petite_pass_expiry_on_delivery()
 RETURNS TRIGGER AS $$
 DECLARE
-  v_reservation_id UUID;
   v_pass_id UUID;
 BEGIN
   -- Solo nos interesa la transicion a 'delivered'
   IF NEW.status = 'delivered' AND (OLD.status IS NULL OR OLD.status <> 'delivered') THEN
-    v_reservation_id := NEW.reservation_id;
-
-    IF v_reservation_id IS NOT NULL THEN
+    IF NEW.reservation_id IS NOT NULL THEN
       -- Verificar si la reserva esta asociada a un pase Petite
       SELECT bag_pass_id INTO v_pass_id
       FROM reservations
-      WHERE id = v_reservation_id;
+      WHERE id = NEW.reservation_id;
 
       IF v_pass_id IS NOT NULL THEN
-        -- Setear delivered_at + pass_expires_at (7 dias desde ahora)
         UPDATE reservations
         SET
           delivered_at = NOW(),
           pass_expires_at = NOW() + INTERVAL '7 days',
           end_date = NOW() + INTERVAL '7 days',
           updated_at = NOW()
-        WHERE id = v_reservation_id
-          AND delivered_at IS NULL; -- idempotencia: solo primera entrega
+        WHERE id = NEW.reservation_id
+          AND delivered_at IS NULL;
       END IF;
     END IF;
   END IF;
