@@ -21,8 +21,8 @@ WHERE bag_pass_id IS NOT NULL
 -- 3. Si la reserva tiene shipment delivered, poblar delivered_at y recalcular pass_expires_at correcto
 UPDATE reservations r
 SET 
-  delivered_at = COALESCE(r.delivered_at, s.delivered_at, s.updated_at),
-  pass_expires_at = COALESCE(s.delivered_at, s.updated_at) + INTERVAL '7 days'
+  delivered_at = COALESCE(r.delivered_at, s.updated_at),
+  pass_expires_at = s.updated_at + INTERVAL '7 days'
 FROM shipments s
 WHERE s.reservation_id = r.id
   AND s.status = 'delivered'
