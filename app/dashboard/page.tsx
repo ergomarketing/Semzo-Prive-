@@ -13,6 +13,7 @@ import { IdentityVerificationModal } from "@/app/components/identity-verificatio
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
 import { MyBagCard } from "@/app/components/my-bag-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
+import { PetitePassBanner } from "@/app/components/petite-pass-banner"
 import { useState, useEffect } from "react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -217,6 +218,9 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* Banner Petite: pase por vencer o vencido (solo se muestra si aplica) */}
+      <PetitePassBanner />
+
       {/* Banner de verificacion de identidad: aparece para cualquier usuario no verificado */}
       {shouldShowModal && membership?.status !== "cancelled" && (
         <>
