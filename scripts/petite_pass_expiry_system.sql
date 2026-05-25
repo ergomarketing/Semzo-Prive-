@@ -53,7 +53,7 @@ $func$ LANGUAGE plpgsql;
 -- 3. Trigger en shipments
 DROP TRIGGER IF EXISTS trg_petite_pass_expiry ON shipments;
 CREATE TRIGGER trg_petite_pass_expiry
-  AFTER UPDATE OF status ON shipments
+  AFTER UPDATE ON shipments
   FOR EACH ROW
   EXECUTE FUNCTION set_petite_pass_expiry_on_delivery();
 
