@@ -23,8 +23,9 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Semzo Privé <noreply@semzoprive.com>",
+        from: "Semzo Privé <mailbox@semzoprive.com>",
         to: [to],
+        reply_to: "soporte@semzoprive.com",
         subject: subject,
         html: html,
         text: text,

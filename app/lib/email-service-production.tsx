@@ -71,8 +71,9 @@ export class EmailServiceProduction {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Semzo Privé <noreply@semzoprive.com>",
+            from: "Semzo Privé <mailbox@semzoprive.com>",
             to: [data.to],
+            reply_to: "soporte@semzoprive.com",
             subject: data.subject,
             html: data.html,
             text: data.text || data.subject,
