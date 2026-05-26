@@ -41,8 +41,9 @@ export async function GET() {
     `)
     .eq("user_id", user.id)
     .not("bag_pass_id", "is", null)
-    .in("status", ["confirmed", "active"])
-    .order("created_at", { ascending: false })
+    .not("pass_expires_at", "is", null)
+    .neq("status", "cancelled")
+    .order("pass_expires_at", { ascending: false })
     .limit(1)
     .maybeSingle()
 
