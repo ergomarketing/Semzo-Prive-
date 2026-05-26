@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import CatalogSection from "../components/catalog-section"
+import CatalogGate from "../components/catalog-gate"
 import { createClient } from "../lib/supabase/server"
 
 // Render dinámico: el cliente Supabase usa cookies() y no se puede prerenderizar
@@ -87,6 +88,18 @@ export const metadata: Metadata = {
 export default async function CatalogPage() {
   const initialBags = await fetchInitialBags()
 
+  // Check si la usuaria esta logueada (socias siempre ven el catalogo)
+  let isLoggedIn = false
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    isLoggedIn = !!user
+  } catch {
+    isLoggedIn = false
+  }
+
   // Schema CollectionPage + ItemList para el listado.
   // Google lo usa para:
   //  1) Entender que la pagina lista productos (mejor categorizacion).
@@ -167,6 +180,7 @@ export default async function CatalogPage() {
         </div>
       </div>
       <CatalogSection initialBags={initialBags} />
+      <CatalogGate isLoggedIn={isLoggedIn} />
     </main>
   )
 }
