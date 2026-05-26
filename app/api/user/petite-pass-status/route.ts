@@ -16,11 +16,19 @@ export async function GET() {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    return NextResponse.json({ has_active_pass: false }, { status: 401 })
+    return NextResponse.json({ has_active_pass: false, debug: "no_user" }, { status: 401 })
   }
 
-  // Reserva activa con pase Petite
-  const { data: reservation } = await supabase
+  console.log("[v0] petite-pass-status user.id:", user.id)
+
+  // Reserva activa con pase Petite (usar service role para evitar RLS)
+  const { createClient: createServiceClient } = await import("@supabase/supabase-js")
+  const supabaseAdmin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+
+  const { data: reservation, error: queryError } = await supabaseAdmin
     .from("reservations")
     .select(`
       id,
@@ -38,8 +46,10 @@ export async function GET() {
     .limit(1)
     .maybeSingle()
 
+  console.log("[v0] petite-pass-status query:", { reservation, queryError, userId: user.id })
+
   if (!reservation) {
-    return NextResponse.json({ has_active_pass: false })
+    return NextResponse.json({ has_active_pass: false, debug: "no_reservation", user_id: user.id })
   }
 
   const now = new Date()
