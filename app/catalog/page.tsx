@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import CatalogSection from "../components/catalog-section"
+import CatalogGate from "../components/catalog-gate"
 import { createClient } from "../lib/supabase/server"
 
 // Render dinámico: el cliente Supabase usa cookies() y no se puede prerenderizar
@@ -87,6 +89,23 @@ export const metadata: Metadata = {
 export default async function CatalogPage() {
   const initialBags = await fetchInitialBags()
 
+  // Check si la usuaria esta logueada (socias siempre ven el catalogo)
+  let isLoggedIn = false
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    isLoggedIn = !!user
+  } catch {
+    isLoggedIn = false
+  }
+
+  // Lectura SSR de cookie de desbloqueo para que el gate aparezca instantaneo
+  const cookieStore = await cookies()
+  const hasUnlockCookie = cookieStore.has("catalog_unlocked")
+  const showGate = !isLoggedIn && !hasUnlockCookie
+
   // Schema CollectionPage + ItemList para el listado.
   // Google lo usa para:
   //  1) Entender que la pagina lista productos (mejor categorizacion).
@@ -167,6 +186,7 @@ export default async function CatalogPage() {
         </div>
       </div>
       <CatalogSection initialBags={initialBags} />
+      <CatalogGate showGate={showGate} />
     </main>
   )
 }
