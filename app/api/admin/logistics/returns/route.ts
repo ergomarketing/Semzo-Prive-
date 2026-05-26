@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -197,6 +198,50 @@ export async function PATCH(request: NextRequest) {
           event_type: `return_${status}`,
           description: `Return status updated to ${status}`,
         })
+      }
+
+      // EMAIL: enviar "devolucion recibida" cuando el status pasa a received/completed
+      if (status === "received" || status === "completed") {
+        try {
+          // Obtener datos del cliente y bolso a traves de shipment -> reservation
+          const { data: returnData } = await supabase
+            .from("returns")
+            .select(`
+              shipment_id,
+              shipments!returns_shipment_id_fkey (
+                reservation_id,
+                reservations!shipments_reservation_id_fkey (
+                  profiles!reservations_user_id_fkey ( email, full_name, first_name, last_name ),
+                  bags!reservations_bag_id_fkey ( name, brand )
+                )
+              )
+            `)
+            .eq("id", id)
+            .single()
+
+          const reservation = (returnData as any)?.shipments?.reservations
+          const profile = reservation?.profiles
+          const bag = reservation?.bags
+
+          if (profile?.email) {
+            const userName =
+              profile.full_name ||
+              `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+              "Cliente"
+            const bagName = bag ? `${bag.brand} ${bag.name}`.trim() : "tu bolso"
+
+            const emailService = EmailServiceProduction.getInstance()
+            await emailService
+              .sendReturnReceivedEmail({
+                userEmail: profile.email,
+                userName,
+                bagName,
+              })
+              .catch((err) => console.error("[Logistics API] Error enviando email return received:", err))
+          }
+        } catch (emailErr) {
+          console.error("[Logistics API] Error en bloque email return received:", emailErr)
+        }
       }
     }
 

@@ -703,24 +703,36 @@ export async function POST(req: NextRequest) {
         if (renewProfile?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
           const amount = invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : "—";
+          const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || "";
+          const invoiceNumber = invoice.number || "";
           const emailService = EmailServiceProduction.getInstance();
           await emailService.sendWithResend({
             to: renewProfile.email,
-            subject: "Renovación confirmada — Semzo Privé",
+            subject: `Tu factura de Semzo Privé${invoiceNumber ? ` · ${invoiceNumber}` : ""}`,
             html: `
               <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
                 <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Renovación confirmada</h1>
-                <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente.</p>
+                <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente y se ha emitido una nueva factura.</p>
                 <div style="background: #f8f6f2; padding: 20px; border-radius: 4px; margin: 24px 0;">
-                  <p style="margin: 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
+                  <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
+                  ${invoiceNumber ? `<p style="margin: 0; color: #1a1a4b;"><strong>N&uacute;mero de factura:</strong> ${invoiceNumber}</p>` : ""}
                 </div>
+                ${
+                  invoiceUrl
+                    ? `<div style="margin: 32px 0;">
+                        <a href="${invoiceUrl}" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px; margin-right: 8px;">
+                          DESCARGAR FACTURA
+                        </a>
+                      </div>`
+                    : ""
+                }
                 <div style="margin: 32px 0;">
-                  <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                    VER MI CUENTA
+                  <a href="${siteUrl}/dashboard" style="color: #1a1a4b; font-size: 14px; letter-spacing: 1px;">
+                    VER MI CUENTA &rarr;
                   </a>
                 </div>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
+                <p style="color: #999; font-size: 12px;">Semzo Priv&eacute; &middot; <a href="mailto:soporte@semzoprive.com" style="color: #999;">soporte@semzoprive.com</a></p>
               </div>
             `,
           }).catch(() => {});
@@ -802,6 +814,73 @@ export async function POST(req: NextRequest) {
           cancel_at_period_end: stripeCancelAtPeriodEnd,
           local_status_kept: !internalStatus ? membership.status : null,
         });
+
+        // ============================================================
+        // EMAIL DE CANCELACION
+        // Disparar SOLO si:
+        // - El evento es customer.subscription.deleted (cancelacion efectiva), O
+        // - cancel_at_period_end paso de false a true (cancelacion programada)
+        // Evitamos envios duplicados consultando user_memberships.cancel_at_period_end previo.
+        // ============================================================
+        try {
+          const isHardCancel = event.type === "customer.subscription.deleted";
+          const isScheduledCancel =
+            event.type === "customer.subscription.updated" && stripeCancelAtPeriodEnd === true;
+
+          if (isHardCancel || isScheduledCancel) {
+            // Verificar idempotencia: solo enviar si no se ha enviado ya para esta cancelacion
+            const { data: memData } = await supabase
+              .from("user_memberships")
+              .select("membership_type, cancellation_email_sent_at")
+              .eq("stripe_subscription_id", subscription.id)
+              .single();
+
+            if (memData && !memData.cancellation_email_sent_at) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name, first_name, last_name")
+                .eq("id", membership.user_id)
+                .single();
+
+              if (profile?.email) {
+                const userName =
+                  profile.full_name ||
+                  `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+                  "Cliente";
+
+                const endDate = stripeCurrentPeriodEnd
+                  ? new Date(stripeCurrentPeriodEnd).toLocaleDateString("es-ES", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "fin del periodo actual";
+
+                const emailService = EmailServiceProduction.getInstance();
+                await emailService
+                  .sendMembershipCancelledEmail({
+                    userName,
+                    userEmail: profile.email,
+                    membershipType: memData.membership_type || "membresia",
+                    endDate,
+                  })
+                  .catch((err) =>
+                    console.error("[v0] Error enviando email cancelacion:", err),
+                  );
+
+                // Marcar enviado para idempotencia
+                await supabase
+                  .from("user_memberships")
+                  .update({ cancellation_email_sent_at: now })
+                  .eq("stripe_subscription_id", subscription.id);
+
+                console.log("[v0] Email de cancelacion enviado a:", profile.email);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[v0] Error en bloque email cancelacion:", err);
+        }
         break;
       }
 

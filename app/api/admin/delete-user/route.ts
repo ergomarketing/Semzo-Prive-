@@ -1,8 +1,103 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import Stripe from "stripe"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
+
+/**
+ * Cancela todas las suscripciones activas del cliente en Stripe.
+ * Devuelve resumen de lo cancelado para auditoria.
+ */
+async function cancelStripeSubscriptionsForUser(supabaseAdmin: any, targetUserId: string) {
+  const result: {
+    customerId: string | null
+    subscriptionsFound: number
+    subscriptionsCancelled: string[]
+    errors: string[]
+  } = {
+    customerId: null,
+    subscriptionsFound: 0,
+    subscriptionsCancelled: [],
+    errors: [],
+  }
+
+  try {
+    // 1. Buscar stripe_customer_id en user_memberships (fuente de verdad)
+    const { data: memberships } = await supabaseAdmin
+      .from("user_memberships")
+      .select("stripe_customer_id, stripe_subscription_id")
+      .eq("user_id", targetUserId)
+
+    let customerId: string | null = null
+    const subscriptionIds = new Set<string>()
+
+    if (memberships && memberships.length > 0) {
+      for (const m of memberships) {
+        if (m.stripe_customer_id && !customerId) customerId = m.stripe_customer_id
+        if (m.stripe_subscription_id) subscriptionIds.add(m.stripe_subscription_id)
+      }
+    }
+
+    // 2. Fallback: buscar customer_id en profiles
+    if (!customerId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", targetUserId)
+        .maybeSingle()
+      if (profile?.stripe_customer_id) customerId = profile.stripe_customer_id
+    }
+
+    result.customerId = customerId
+
+    // 3. Si tenemos customer, listar TODAS sus suscripciones en Stripe
+    if (customerId) {
+      const allSubs = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 100,
+      })
+      for (const s of allSubs.data) {
+        if (s.status !== "canceled" && s.status !== "incomplete_expired") {
+          subscriptionIds.add(s.id)
+        }
+      }
+    }
+
+    result.subscriptionsFound = subscriptionIds.size
+
+    // 4. Cancelar cada suscripcion inmediatamente
+    for (const subId of subscriptionIds) {
+      try {
+        await stripe.subscriptions.cancel(subId, {
+          invoice_now: false,
+          prorate: false,
+        })
+        result.subscriptionsCancelled.push(subId)
+        console.log(`[DELETE-USER] Stripe subscription cancelada: ${subId}`)
+      } catch (err: any) {
+        // Si ya estaba cancelada, no es error
+        if (err?.code === "resource_missing" || err?.message?.includes("canceled")) {
+          console.log(`[DELETE-USER] Suscripcion ${subId} ya estaba cancelada`)
+          result.subscriptionsCancelled.push(subId)
+        } else {
+          console.error(`[DELETE-USER] Error cancelando ${subId}:`, err.message)
+          result.errors.push(`${subId}: ${err.message}`)
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error("[DELETE-USER] Error general en cancelacion Stripe:", err)
+    result.errors.push(err.message)
+  }
+
+  return result
+}
 
 /**
  * API para eliminar usuarios de forma segura
@@ -58,6 +153,22 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[DELETE-USER] Usuario identificado:", userInfo)
+
+    // PASO 0 (CRITICO): Cancelar suscripciones en Stripe ANTES de borrar nada en BD
+    // Si fallan estas cancelaciones, abortamos para evitar cobros huerfanos.
+    console.log("[DELETE-USER] Cancelando suscripciones de Stripe...")
+    const stripeCleanup = await cancelStripeSubscriptionsForUser(supabaseAdmin, targetUserId)
+    console.log("[DELETE-USER] Resultado Stripe:", stripeCleanup)
+
+    if (stripeCleanup.errors.length > 0 && stripeCleanup.subscriptionsCancelled.length < stripeCleanup.subscriptionsFound) {
+      return NextResponse.json(
+        {
+          error: "No se pudieron cancelar todas las suscripciones de Stripe. Cancelacion abortada para evitar cobros huerfanos.",
+          stripeCleanup,
+        },
+        { status: 500 },
+      )
+    }
 
     // ORDEN DE ELIMINACIÓN: de más dependiente a menos dependiente
     const deletionOrder = [
@@ -158,6 +269,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Usuario eliminado exitosamente",
       userInfo,
+      stripeCleanup,
       deletionResults,
     })
   } catch (error: any) {

@@ -8,9 +8,9 @@ export const ADMIN_CONFIG = {
 // Configuración de email
 export const EMAIL_CONFIG = {
   provider: "resend",
-  fromEmail: process.env.EMAIL_FROM || "noreply@semzoprive.com",
+  fromEmail: process.env.EMAIL_FROM || "mailbox@semzoprive.com",
   fromName: "Semzo Privé",
-  replyTo: process.env.EMAIL_REPLY_TO || "hola@semzoprive.com",
+  replyTo: process.env.EMAIL_REPLY_TO || "soporte@semzoprive.com",
   providers: {
     resend: {
       baseUrl: "https://api.resend.com",
