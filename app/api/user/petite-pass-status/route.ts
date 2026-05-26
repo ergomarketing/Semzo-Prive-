@@ -6,6 +6,11 @@ export const dynamic = "force-dynamic"
 /**
  * Devuelve el estado del pase Petite activo de la socia logueada.
  * Lo usa el dashboard para mostrar el banner de vencimiento.
+ *
+ * NOTA: hoy depende de pass_expires_at en reservations, que se rellena
+ * cuando admin marca el shipment como 'delivered'. Mientras el sistema
+ * de envios no este conectado a flujo real, el banner solo aparece
+ * para reservas con datos completos (pass_expires_at NOT NULL).
  */
 export async function GET() {
   const supabase = await createClient()
@@ -16,19 +21,17 @@ export async function GET() {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    return NextResponse.json({ has_active_pass: false, debug: "no_user" }, { status: 401 })
+    return NextResponse.json({ has_active_pass: false }, { status: 401 })
   }
 
-  console.log("[v0] petite-pass-status user.id:", user.id)
-
-  // Reserva activa con pase Petite (usar service role para evitar RLS)
+  // Service role para evitar RLS en consulta interna del dashboard
   const { createClient: createServiceClient } = await import("@supabase/supabase-js")
   const supabaseAdmin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const { data: reservation, error: queryError } = await supabaseAdmin
+  const { data: reservation } = await supabaseAdmin
     .from("reservations")
     .select(`
       id,
@@ -47,10 +50,8 @@ export async function GET() {
     .limit(1)
     .maybeSingle()
 
-  console.log("[v0] petite-pass-status query:", { reservation, queryError, userId: user.id })
-
   if (!reservation) {
-    return NextResponse.json({ has_active_pass: false, debug: "no_reservation", user_id: user.id })
+    return NextResponse.json({ has_active_pass: false })
   }
 
   const now = new Date()
