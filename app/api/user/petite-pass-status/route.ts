@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSupabaseServer } from "@/lib/supabase-server"
+import { createClient } from "@/utils/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -8,17 +8,15 @@ export const dynamic = "force-dynamic"
  * Lo usa el dashboard para mostrar el banner de vencimiento.
  */
 export async function GET() {
-  const supabase = await getSupabaseServer()
-  if (!supabase) {
-    return NextResponse.json({ error: "No supabase" }, { status: 500 })
-  }
+  const supabase = await createClient()
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (authError || !user) {
+    return NextResponse.json({ has_active_pass: false }, { status: 401 })
   }
 
   // Reserva activa con pase Petite

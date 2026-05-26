@@ -6,7 +6,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    const data = r.json()
+    data.then((d: any) => console.log("[v0] petite-pass-status response:", d))
+    return data
+  })
 
 interface PetitePassStatus {
   has_active_pass: boolean
