@@ -131,11 +131,6 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
   }
 
   const handleTestConnection = async () => {
-    if (!clientId || !clientSecret) {
-      setTestResult({ success: false, message: "Ingresa Client ID y Client Secret" })
-      return
-    }
-
     setTesting(true)
     setTestResult(null)
 
@@ -143,7 +138,6 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
       const res = await fetch("/api/admin/logistics/correos/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, clientSecret }),
       })
       const data = await res.json()
       setTestResult(data)
