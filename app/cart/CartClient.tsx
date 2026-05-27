@@ -46,10 +46,14 @@ function analyzeCartItems(items: any[]) {
   let bagPassTier = null
   if (bagPassItem) {
     const itemId = (bagPassItem.id || "").toLowerCase()
-    if (itemId.includes("essential") || itemId.includes("essentiel")) {
-      bagPassTier = "Essentiel"
-    } else if (itemId.includes("premium")) {
-      bagPassTier = "Premium"
+    const itemName = (bagPassItem.name || "").toLowerCase()
+    const haystack = `${itemId} ${itemName}`
+    if (haystack.includes("essential") || haystack.includes("essentiel")) {
+      bagPassTier = "essentiel"
+    } else if (haystack.includes("signature")) {
+      bagPassTier = "signature"
+    } else if (haystack.includes("prive") || haystack.includes("privé") || haystack.includes("premium")) {
+      bagPassTier = "prive"
     }
   }
 
