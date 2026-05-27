@@ -1010,6 +1010,45 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       // No bloquear pago si localStorage falla (webviews restrictivos)
                     }
 
+                    // PASE SUELTO + GIFT CARD 100% — pase suelto no es recurrente
+                    // y no requiere tarjeta de garantia. Llamamos directo al
+                    // endpoint de bag-passes que ya soporta giftCardCode.
+                    if (
+                      finalAmount === 0 &&
+                      appliedGiftCard &&
+                      cartAnalysis?.isBagPassOnly &&
+                      cartAnalysis?.bagPassItem
+                    ) {
+                      try {
+                        const res = await fetch("/api/bag-passes/purchase", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            userId: user.id,
+                            passTier: cartAnalysis.bagPassTier,
+                            bagId: cartAnalysis.bagPassItem.bagId || null,
+                            quantity: 1,
+                            giftCardCode: appliedGiftCard.code,
+                            paymentMethod: "gift_card",
+                          }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) {
+                          toast.error(data.error || "Error procesando la compra del pase")
+                          setCheckoutLoading(false)
+                          return
+                        }
+                        toast.success("Pase activado correctamente")
+                        clearCart()
+                        router.push("/dashboard")
+                        return
+                      } catch (err: any) {
+                        toast.error("Error inesperado: " + (err?.message || "desconocido"))
+                        setCheckoutLoading(false)
+                        return
+                      }
+                    }
+
                     // GIFT CARD 100% — no pasa por Stripe pero exigimos
                     // tarjeta de garantia. Redirigimos a /guarantee-card,
                     // que tras verificar tarjeta llama a purchase-with-gift-card.
