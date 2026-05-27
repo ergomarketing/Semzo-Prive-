@@ -151,8 +151,16 @@ export async function POST(request: Request) {
         .single()
 
       if (giftCard) {
-        const previousAmount = giftCard.amount
-        const newAmount = Math.max(0, previousAmount - totalPrice)
+        // gift_cards.amount esta en CENTAVOS. totalPrice esta en EUROS.
+        // Convertir todo a cents para evitar mismatch de unidades.
+        const previousAmountCents = giftCard.amount
+        const totalPriceCents = Math.round(totalPrice * 100)
+
+        if (previousAmountCents < totalPriceCents) {
+          return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+        }
+
+        const newAmountCents = Math.max(0, previousAmountCents - totalPriceCents)
 
         // PASO 1: Intentar INSERT en gift_card_transactions (IDEMPOTENCIA REAL)
         // Si ya existe (gift_card_id, reference_id), el constraint único falla y sabemos que ya se procesó
@@ -161,9 +169,9 @@ export async function POST(request: Request) {
           user_id: finalUserId,
           reference_type: "bag_pass",
           reference_id: passId,
-          amount: totalPrice,
-          balance_before: previousAmount,
-          balance_after: newAmount,
+          amount: totalPriceCents,
+          balance_before: previousAmountCents,
+          balance_after: newAmountCents,
         })
 
         if (txError) {
@@ -176,20 +184,26 @@ export async function POST(request: Request) {
           }
         } else {
           // PASO 2: Solo si el INSERT fue exitoso, actualizar el saldo
-          const { error: updateError } = await supabase
+          // .gte garantiza que no se descuente si otra transaccion ya bajo el saldo
+          const { data: updatedRows, error: updateError } = await supabase
             .from("gift_cards")
-            .update({ amount: newAmount, updated_at: new Date().toISOString() })
+            .update({
+              amount: newAmountCents,
+              status: newAmountCents <= 0 ? "used" : "partial",
+              updated_at: new Date().toISOString(),
+            })
             .eq("id", giftCard.id)
-            .gte("amount", totalPrice)
+            .gte("amount", totalPriceCents)
+            .select("id")
 
-          if (updateError) {
+          if (updateError || !updatedRows || updatedRows.length === 0) {
             console.error("[v0] Error updating gift card balance:", updateError)
             // Revertir la transacción si no se pudo actualizar el saldo
             await supabase.from("gift_card_transactions").delete().eq("reference_id", passId)
             return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
           }
 
-          console.log("[v0] Gift card transaction recorded:", passId, previousAmount, "->", newAmount)
+          console.log("[v0] Gift card transaction recorded:", passId, previousAmountCents, "->", newAmountCents)
         }
       }
     }

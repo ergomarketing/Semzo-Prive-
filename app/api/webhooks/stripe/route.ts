@@ -92,14 +92,13 @@ export async function POST(req: NextRequest) {
           if (giftCardId && userId) {
             const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
             const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
-            const originalPriceEuros = originalPriceCents / 100;
-            const amountChargedEuros = (session.amount_total || 0) / 100;
-            const giftCardConsumedEuros = parseFloat((originalPriceEuros - amountChargedEuros).toFixed(2));
+            const amountChargedCents = session.amount_total || 0;
+            const giftCardConsumedCents = originalPriceCents - amountChargedCents;
 
-            if (giftCardConsumedEuros > 0) {
+            if (giftCardConsumedCents > 0) {
               await supabase.rpc("consume_gift_card_atomic", {
                 p_gift_card_id: giftCardId,
-                p_amount: giftCardConsumedEuros,
+                p_amount: giftCardConsumedCents,  // EN CENTAVOS
                 p_user_id: userId,
                 p_reference_id: session.id,       // cs_xxx — idempotencia
                 p_reference_type: "bag_pass",
@@ -395,12 +394,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (resolvedGiftCardId && activeIntent?.gift_card_applied_cents > 0) {
-          const giftCardConsumedEuros = parseFloat(
-            (activeIntent.gift_card_applied_cents / 100).toFixed(2)
-          );
+          const giftCardConsumedCents = activeIntent.gift_card_applied_cents;
           const { error: consumeError } = await supabase.rpc("consume_gift_card_atomic", {
             p_gift_card_id: resolvedGiftCardId,
-            p_amount: giftCardConsumedEuros,
+            p_amount: giftCardConsumedCents,  // EN CENTAVOS
             p_user_id: userId,
             p_reference_id: session.id,
             p_reference_type: "membership",
