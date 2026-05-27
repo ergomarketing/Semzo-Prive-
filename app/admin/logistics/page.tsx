@@ -218,15 +218,40 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setClientSecret("")
-                setIsConfigured(false)
-              }}
-            >
-              Actualizar credenciales
-            </Button>
+
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg flex gap-2 ${
+                  testResult.success
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-red-50 border border-red-200"
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                )}
+                <p className={testResult.success ? "text-green-800" : "text-red-800"}>
+                  {testResult.message}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
+                {testing ? "Probando..." : "Probar conexión"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setClientSecret("")
+                  setIsConfigured(false)
+                }}
+              >
+                Actualizar credenciales
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
