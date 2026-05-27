@@ -6,12 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
-const fetcher = (url: string) =>
-  fetch(url).then((r) => {
-    const data = r.json()
-    data.then((d: any) => console.log("[v0] petite-pass-status response:", d))
-    return data
-  })
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 interface PetitePassStatus {
   has_active_pass: boolean
@@ -81,7 +76,7 @@ export function PetitePassBanner() {
           <Button
             size="sm"
             className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
-            onClick={() => router.push("/membresia/petite/comprar-pase")}
+            onClick={() => router.push("/catalog")}
           >
             Comprar pase
           </Button>
