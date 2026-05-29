@@ -102,6 +102,47 @@ export async function POST(request: Request) {
       )
     }
 
+    // ========================================================================
+    // VALIDACION: 1 bolso a la vez para socias Petite (igual que flujo Stripe)
+    // Bloquea comprar un nuevo pase si la socia ya tiene:
+    //  - Una reserva en curso (status = active), o
+    //  - Un pase comprado pendiente de uso (status = available)
+    // Aplica SIEMPRE: tanto con gift card como con dinero.
+    // ========================================================================
+    const { data: activeReservations } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("user_id", finalUserId)
+      .eq("status", "active")
+
+    if (activeReservations && activeReservations.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Tienes un bolso en curso. Para reservar uno nuevo, primero completa la devolución del bolso actual desde tu dashboard.",
+          code: "ACTIVE_RESERVATION",
+        },
+        { status: 409 }
+      )
+    }
+
+    const { data: pendingPasses } = await supabase
+      .from("bag_passes")
+      .select("id")
+      .eq("user_id", finalUserId)
+      .eq("status", "available")
+
+    if (pendingPasses && pendingPasses.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Ya tienes un Pase Bolso disponible. Resérvalo con un bolso antes de comprar otro pase.",
+          code: "AVAILABLE_PASS",
+        },
+        { status: 409 }
+      )
+    }
+
     // Crear los pases - pass_tier debe ser 'lessentiel', 'signature', o 'prive'
     const dbTier = normalizedTier === "essentiel" ? "lessentiel" : normalizedTier
     const passes = []
