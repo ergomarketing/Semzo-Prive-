@@ -142,6 +142,7 @@ height: s.height,
 observations: s.observations || undefined,
 labelType: 2,
 },
+},
 }
 }
 class CorreosAPI {
