@@ -143,9 +143,7 @@ observations: s.observations || undefined,
 labelType: 2,
 },
 },
-}
 
-  
 class CorreosAPI {
   // El constructor mantiene la firma anterior por compatibilidad con los
   // callers existentes, pero las credenciales ya NO se usan aqui: el proxy
