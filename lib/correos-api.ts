@@ -148,7 +148,7 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
   
 
 
-class CorreosAPI {
+export class CorreosAPI {
   // El constructor mantiene la firma anterior por compatibilidad con los
   // callers existentes, pero las credenciales ya NO se usan aqui: el proxy
   // gestiona el OAuth con sus propias credenciales.
