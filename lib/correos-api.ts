@@ -104,7 +104,9 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
     name: p.firstName,
     surname: p.lastName1,
     secondSurname: p.lastName2 || undefined,
-    fullName: [p.firstName, p.lastName1, p.lastName2].filter(Boolean).join(" "),
+    fullName: [p.firstName, p.lastName1, p.lastName2]
+      .filter(Boolean)
+      .join(" "),
     identificationType: p.documentType || undefined,
     identification: p.documentNumber || undefined,
     address: {
@@ -123,22 +125,26 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
     email: p.email || undefined,
   })
 
-  return {
-    senderInfo: partyJSON(s.sender),
-    receiverInfo: partyJSON(s.recipient),
-    shipmentInfo: {
-      productCode: s.productCode,
-      clientReference: s.reference || "",
-      packagesNumber: 1,
-      weight: s.weight,
-      dimensions:
-        s.length && s.width && s.height
-          ? { length: s.length, width: s.width, height: s.height }
-          : undefined,
-      observations: s.observations || undefined,
-      labelType: 2,
-    },
-  }
+ return {
+  senderInfo: partyJSON(s.sender),
+  receiverInfo: partyJSON(s.recipient),
+  shipmentInfo: {
+    productCode: s.productCode,
+    clientReference: s.reference || "",
+    packagesNumber: 1,
+    weight: s.weight,
+    dimensions:
+      s.length && s.width && s.height
+        ? {
+            length: s.length,
+            width: s.width,
+            height: s.height,
+          }
+        : undefined,
+    observations: s.observations || undefined,
+    labelType: 2,
+  },
+}
 }
 
 class CorreosAPI {
@@ -258,6 +264,5 @@ export async function getCorreosClient(): Promise<CorreosAPI | null> {
   // Ya no hace falta cargar credenciales remotas: el proxy las gestiona.
   return new CorreosAPI()
 }
-
 export { CorreosAPI }
 export type { CorreosShipmentRequest, CorreosShipmentResponse, CorreosTrackingResponse }

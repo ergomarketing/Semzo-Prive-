@@ -61,10 +61,14 @@ export async function POST() {
       })
 
       // Actualizar en user_memberships (FUENTE DE VERDAD)
+      // Marcamos cancellation_email_sent_at aqui para que el webhook
+      // (subscription.updated con cancel_at_period_end) NO reenvie el email:
+      // esta ruta ya envia el email de cancelacion mas abajo. Evita duplicado.
       await supabase
         .from("user_memberships")
         .update({
           status: "cancelled",
+          cancellation_email_sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", membership.id)

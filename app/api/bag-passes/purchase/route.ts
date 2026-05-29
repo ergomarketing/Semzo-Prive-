@@ -272,6 +272,21 @@ export async function POST(request: Request) {
 
     console.log("[v0] Bag pass purchase successful")
 
+    // Email de confirmacion (socia + admin) via Resend. No bloquea la compra si falla.
+    try {
+      const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
+      await EmailServiceProduction.getInstance().sendBagPassPurchaseEmail({
+        userEmail: profile.email,
+        userName: profile.full_name || profile.email,
+        passTier: dbTier,
+        quantity,
+        totalPrice,
+        paymentMethod: paymentMethod || (giftCardCode ? "gift_card" : "stripe"),
+      })
+    } catch (emailErr) {
+      console.error("[v0] Error enviando email de compra de pase (no fatal):", emailErr)
+    }
+
     const firstPass = createdPasses?.[0]
     let autoReservationId: string | null = null
 

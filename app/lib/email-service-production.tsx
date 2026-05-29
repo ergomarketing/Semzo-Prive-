@@ -1688,6 +1688,89 @@ export class EmailServiceProduction {
     const adminSent = await this.sendWithResend(adminEmailData)
     return userSent && adminSent
   }
+
+  async sendBagPassPurchaseEmail(data: {
+    userEmail: string
+    userName: string
+    passTier: string
+    quantity: number
+    totalPrice: number
+    paymentMethod: string
+  }): Promise<boolean> {
+    const tierLabel =
+      data.passTier === "lessentiel" || data.passTier === "essentiel"
+        ? "L'Essentiel"
+        : data.passTier.charAt(0).toUpperCase() + data.passTier.slice(1)
+    const paymentLabel = data.paymentMethod === "gift_card" ? "Gift Card" : "Tarjeta"
+
+    const userEmailData: EmailData = {
+      to: data.userEmail,
+      subject: `Tu Pase Bolso ${tierLabel} está listo - Semzo Privé`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a4b; color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; background: #f8f9fa; }
+            .detail-box { background: #fff; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #1a1a4b; }
+            .button { display: inline-block; background: #1a1a4b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>¡Tu Pase Bolso está listo!</h1>
+            </div>
+            <div class="content">
+              <p>Hola ${data.userName},</p>
+              <p>Tu compra se ha procesado correctamente. Ya puedes reservar tu bolso.</p>
+
+              <div class="detail-box">
+                <p><strong>Pase:</strong> ${tierLabel}</p>
+                <p><strong>Cantidad:</strong> ${data.quantity}</p>
+                <p><strong>Total:</strong> €${data.totalPrice.toFixed(2)}</p>
+                <p><strong>Método de pago:</strong> ${paymentLabel}</p>
+              </div>
+
+              <p style="text-align: center;">
+                <a href="https://semzoprive.com/catalogo" class="button">Reservar mi bolso</a>
+              </p>
+
+              <p>Recuerda: cada pase te permite disfrutar de un bolso durante 1 semana.</p>
+            </div>
+            <div class="footer">
+              <p>Semzo Privé - Tu club de bolsos de lujo</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const adminEmailData: EmailData = {
+      to: this.adminEmail,
+      subject: `Compra de Pase Bolso: ${data.userName} (${tierLabel})`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: #1a1a4b;">Nueva compra de Pase Bolso</h2>
+          <p><strong>Socia:</strong> ${data.userName} (${data.userEmail})</p>
+          <p><strong>Pase:</strong> ${tierLabel}</p>
+          <p><strong>Cantidad:</strong> ${data.quantity}</p>
+          <p><strong>Total:</strong> €${data.totalPrice.toFixed(2)}</p>
+          <p><strong>Método de pago:</strong> ${paymentLabel}</p>
+        </div>
+      `,
+    }
+
+    const userSent = await this.sendWithResend(userEmailData)
+    const adminSent = await this.sendWithResend(adminEmailData)
+    return userSent && adminSent
+  }
 }
 
 export function useEmailServiceProduction() {

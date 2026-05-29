@@ -17,7 +17,7 @@ interface GiftCard {
   expires_at: string | null
   created_at: string
   transactions: Array<{
-    amount: number
+    amount_used: number
     created_at: string
     order_reference: string
   }>
@@ -173,7 +173,7 @@ export default function UserGiftCardsPage() {
                           <span className="text-muted-foreground">
                             {new Date(tx.created_at).toLocaleDateString("es-ES")} - {tx.order_reference}
                           </span>
-                          <span className="font-medium">-{(tx.amount / 100).toFixed(2)}€</span>
+                          <span className="font-medium">-{(tx.amount_used / 100).toFixed(2)}€</span>
                         </div>
                       ))}
                     </div>
