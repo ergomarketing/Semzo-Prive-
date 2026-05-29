@@ -122,25 +122,30 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
     phone: p.phone || undefined,
     email: p.email || undefined,
   })
-
-  return {
-    senderInfo: partyJSON(s.sender),
-    receiverInfo: partyJSON(s.recipient),
-    shipmentInfo: {
-      productCode: s.productCode,
-      clientReference: s.reference || "",
-      packagesNumber: 1,
-      weight: s.weight,
-      dimensions:
-        s.length && s.width && s.height
-          ? { length: s.length, width: s.width, height: s.height }
-          : undefined,
-      observations: s.observations || undefined,
-      labelType: 2,
-    },
-  }
+return {
+shippingRequest: {
+senderInfo: partyJSON(s.sender),
+receiverInfo: partyJSON(s.recipient),
+shipmentInfo: {
+productCode: s.productCode,
+clientReference: s.reference || "",
+packagesNumber: 1,
+weight: s.weight,
+dimensions:
+s.length && s.width && s.height
+? {
+length: s.length,
+width: s.width,
+height: s.height,
+}
+: undefined,
+observations: s.observations || undefined,
+labelType: 2,
+},
+},
 }
 
+  
 class CorreosAPI {
   // El constructor mantiene la firma anterior por compatibilidad con los
   // callers existentes, pero las credenciales ya NO se usan aqui: el proxy
