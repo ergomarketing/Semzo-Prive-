@@ -126,7 +126,6 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
   })
 
   return {
-    shippingRequest: {
       senderInfo: partyJSON(s.sender),
       receiverInfo: partyJSON(s.recipient),
       shipmentInfo: {
@@ -147,7 +146,7 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
       },
     },
   }
-}
+
 
 class CorreosAPI {
   // El constructor mantiene la firma anterior por compatibilidad con los
