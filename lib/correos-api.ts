@@ -145,7 +145,7 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
         labelType: 2,
       },
     },
-  }
+  
 
 
 class CorreosAPI {
