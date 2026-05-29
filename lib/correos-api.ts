@@ -259,7 +259,7 @@ class CorreosAPI {
     return Math.round((basePrice + additionalCost) * 100) / 100
   }
 }
-}
+
 export async function getCorreosClient(): Promise<CorreosAPI | null> {
   // Ya no hace falta cargar credenciales remotas: el proxy las gestiona.
   return new CorreosAPI()
