@@ -265,6 +265,6 @@ export async function getCorreosClient(): Promise<CorreosAPI | null> {
   // Ya no hace falta cargar credenciales remotas: el proxy las gestiona.
   return new CorreosAPI()
 }
-
+}
 export { CorreosAPI }
 export type { CorreosShipmentRequest, CorreosShipmentResponse, CorreosTrackingResponse }
