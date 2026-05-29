@@ -102,6 +102,47 @@ export async function POST(request: Request) {
       )
     }
 
+    // ========================================================================
+    // VALIDACION: 1 bolso a la vez para socias Petite (igual que flujo Stripe)
+    // Bloquea comprar un nuevo pase si la socia ya tiene:
+    //  - Una reserva en curso (status = active), o
+    //  - Un pase comprado pendiente de uso (status = available)
+    // Aplica SIEMPRE: tanto con gift card como con dinero.
+    // ========================================================================
+    const { data: activeReservations } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("user_id", finalUserId)
+      .eq("status", "active")
+
+    if (activeReservations && activeReservations.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Tienes un bolso en curso. Para reservar uno nuevo, primero completa la devolución del bolso actual desde tu dashboard.",
+          code: "ACTIVE_RESERVATION",
+        },
+        { status: 409 }
+      )
+    }
+
+    const { data: pendingPasses } = await supabase
+      .from("bag_passes")
+      .select("id")
+      .eq("user_id", finalUserId)
+      .eq("status", "available")
+
+    if (pendingPasses && pendingPasses.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Ya tienes un Pase Bolso disponible. Resérvalo con un bolso antes de comprar otro pase.",
+          code: "AVAILABLE_PASS",
+        },
+        { status: 409 }
+      )
+    }
+
     // Crear los pases - pass_tier debe ser 'lessentiel', 'signature', o 'prive'
     const dbTier = normalizedTier === "essentiel" ? "lessentiel" : normalizedTier
     const passes = []
@@ -140,56 +181,46 @@ export async function POST(request: Request) {
       console.log("[v0] Pase registrado en admin_notifications")
     }
 
-    // Si se usó gift card, usar flujo idempotente con tabla de transacciones
+    // Si se usó gift card, descontar saldo (idempotente via reference_id = passId)
     if (giftCardCode && createdPasses?.[0]?.id) {
       const passId = createdPasses[0].id
+      const normalizedCode = String(giftCardCode).toUpperCase().trim()
 
       const { data: giftCard } = await supabase
         .from("gift_cards")
-        .select("id, amount")
-        .eq("code", giftCardCode)
+        .select("id, amount, used_by")
+        .eq("code", normalizedCode)
         .single()
 
       if (giftCard) {
-        // gift_cards.amount esta en CENTAVOS. totalPrice esta en EUROS.
-        // Convertir todo a cents para evitar mismatch de unidades.
-        const previousAmountCents = giftCard.amount
-        const totalPriceCents = Math.round(totalPrice * 100)
+        // IDEMPOTENCIA: si ya existe una transaccion para este pase, no volver a descontar
+        const { data: existingTx } = await supabase
+          .from("gift_card_transactions")
+          .select("id")
+          .eq("reference_id", passId)
+          .maybeSingle()
 
-        if (previousAmountCents < totalPriceCents) {
-          return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
-        }
-
-        const newAmountCents = Math.max(0, previousAmountCents - totalPriceCents)
-
-        // PASO 1: Intentar INSERT en gift_card_transactions (IDEMPOTENCIA REAL)
-        // Si ya existe (gift_card_id, reference_id), el constraint único falla y sabemos que ya se procesó
-        const { error: txError } = await supabase.from("gift_card_transactions").insert({
-          gift_card_id: giftCard.id,
-          user_id: finalUserId,
-          reference_type: "bag_pass",
-          reference_id: passId,
-          amount: totalPriceCents,
-          balance_before: previousAmountCents,
-          balance_after: newAmountCents,
-        })
-
-        if (txError) {
-          // Si el error es por constraint único, la transacción ya fue procesada
-          if (txError.code === "23505") {
-            console.log("[v0] Transaction already processed (idempotent), skipping balance update")
-          } else {
-            console.error("[v0] Error inserting transaction:", txError)
-            // Continuar sin fallar - el pase ya fue creado
-          }
+        if (existingTx) {
+          console.log("[v0] Gift card ya descontada para este pase (idempotente), skip")
         } else {
-          // PASO 2: Solo si el INSERT fue exitoso, actualizar el saldo
-          // .gte garantiza que no se descuente si otra transaccion ya bajo el saldo
+          // gift_cards.amount esta en CENTAVOS. totalPrice esta en EUROS.
+          const previousAmountCents = giftCard.amount
+          const totalPriceCents = Math.round(totalPrice * 100)
+
+          if (previousAmountCents < totalPriceCents) {
+            return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
+          }
+
+          const newAmountCents = Math.max(0, previousAmountCents - totalPriceCents)
+
+          // PASO 1: Descontar saldo con guardia .gte para evitar doble descuento concurrente
           const { data: updatedRows, error: updateError } = await supabase
             .from("gift_cards")
             .update({
               amount: newAmountCents,
-              status: newAmountCents <= 0 ? "used" : "partial",
+              status: newAmountCents <= 0 ? "used" : "active",
+              used_by: giftCard.used_by || finalUserId,
+              used_at: newAmountCents <= 0 ? new Date().toISOString() : null,
               updated_at: new Date().toISOString(),
             })
             .eq("id", giftCard.id)
@@ -197,14 +228,28 @@ export async function POST(request: Request) {
             .select("id")
 
           if (updateError || !updatedRows || updatedRows.length === 0) {
-            console.error("[v0] Error updating gift card balance:", updateError)
-            // Revertir la transacción si no se pudo actualizar el saldo
-            await supabase.from("gift_card_transactions").delete().eq("reference_id", passId)
+            console.error("[v0] Error al descontar gift card:", updateError)
             return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
           }
 
-          console.log("[v0] Gift card transaction recorded:", passId, previousAmountCents, "->", newAmountCents)
+          // PASO 2: Registrar transaccion (columnas reales: amount_used, order_reference, reference_id)
+          const { error: txError } = await supabase.from("gift_card_transactions").insert({
+            gift_card_id: giftCard.id,
+            user_id: finalUserId,
+            amount_used: totalPriceCents,
+            order_reference: `bag_pass_${passId}`,
+            reference_id: passId,
+          })
+
+          if (txError) {
+            // El saldo ya se descontó; solo registramos el fallo del log de transacción
+            console.error("[v0] Error registrando transaccion gift card (saldo ya descontado):", txError)
+          }
+
+          console.log("[v0] Gift card descontada:", previousAmountCents, "->", newAmountCents, "cents")
         }
+      } else {
+        console.error("[v0] Gift card no encontrada para codigo:", normalizedCode)
       }
     }
 
