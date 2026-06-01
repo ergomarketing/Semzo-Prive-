@@ -3,6 +3,7 @@ import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { logAudit } from "@/lib/fraud-gate"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { adminNotifications } from "@/lib/admin-notifications"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -185,6 +186,14 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
               </div>
             `,
           }).catch(() => {})
+
+          // AVISO ADMIN: identidad verificada
+          await adminNotifications
+            .notifyIdentityVerified({
+              userName: userProfile.full_name || userProfile.email,
+              userEmail: userProfile.email,
+            })
+            .catch(() => {})
         }
 
         // Log audit

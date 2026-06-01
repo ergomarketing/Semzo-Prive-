@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { EmailServiceProduction } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
+import { adminNotifications } from "@/lib/admin-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -735,6 +736,19 @@ export async function POST(req: NextRequest) {
           }).catch(() => {});
         }
 
+        // AVISO ADMIN: renovación cobrada
+        if (renewProfile?.email) {
+          await adminNotifications
+            .notifyMembershipRenewed({
+              userName: renewProfile.full_name || renewProfile.email,
+              userEmail: renewProfile.email,
+              membershipType: membership.membership_type || "—",
+              amount: invoice.amount_paid ? invoice.amount_paid / 100 : 0,
+              invoiceNumber: invoice.number || undefined,
+            })
+            .catch(() => {});
+        }
+
         console.log("✅ Membership RENEWED:", membership.user_id);
         break;
       }
@@ -1180,7 +1194,7 @@ export async function POST(req: NextRequest) {
         // Buscar membresia y usuario por stripe_customer_id
         const { data: failedMembership } = await supabase
           .from("user_memberships")
-          .select("user_id, failed_payment_count")
+          .select("user_id, failed_payment_count, membership_type")
           .eq("stripe_customer_id", customerId)
           .single();
 
@@ -1216,6 +1230,17 @@ export async function POST(req: NextRequest) {
             amount: amountDue,
             reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
           });
+
+          // AVISO ADMIN: pago fallido
+          await adminNotifications
+            .notifyPaymentFailed({
+              userName: customerName,
+              userEmail: profile.email,
+              membershipType: failedMembership.membership_type || "—",
+              amount: invoice.amount_due ? invoice.amount_due / 100 : 0,
+              attemptCount: failedCount,
+            })
+            .catch(() => {});
 
           console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}`);
           }

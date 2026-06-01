@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI } from "@/lib/correos-api"
 import { createClient } from "@supabase/supabase-js"
+import { adminNotifications } from "@/lib/admin-notifications"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,6 +34,13 @@ export async function GET(request: NextRequest) {
       }
       const newStatus = statusMap[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
 
+      // Estado previo para detectar transicion (evita avisos admin duplicados al re-trackear)
+      const { data: prevShipment } = await supabase
+        .from("shipments")
+        .select("status")
+        .eq("tracking_number", trackingNumber)
+        .maybeSingle()
+
       await supabase
         .from("shipments")
         .update({
@@ -41,6 +49,42 @@ export async function GET(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("tracking_number", trackingNumber)
+
+      // AVISO ADMIN: solo en la PRIMERA transicion a "delivered"
+      if (newStatus === "delivered" && prevShipment?.status !== "delivered") {
+        try {
+          const { data: shipmentData } = await supabase
+            .from("shipments")
+            .select(`
+              tracking_number,
+              reservations!shipments_reservation_id_fkey (
+                profiles!reservations_user_id_fkey ( email, full_name ),
+                bags!reservations_bag_id_fkey ( name, brand )
+              )
+            `)
+            .eq("tracking_number", trackingNumber)
+            .maybeSingle()
+
+          const reservation = (shipmentData as any)?.reservations
+          const profile = reservation?.profiles
+          const bag = reservation?.bags
+
+          if (profile?.email) {
+            await adminNotifications
+              .notifyShipmentStatus({
+                userName: profile.full_name || profile.email,
+                userEmail: profile.email,
+                bagName: bag?.name || "—",
+                bagBrand: bag?.brand || "",
+                status: "delivered",
+                trackingNumber,
+              })
+              .catch(() => {})
+          }
+        } catch (notifyErr) {
+          console.error("[Logistics API] Error aviso admin entrega:", notifyErr)
+        }
+      }
     }
 
     return NextResponse.json({

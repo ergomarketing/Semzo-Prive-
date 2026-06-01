@@ -316,6 +316,155 @@ class AdminNotifications {
       },
     )
   }
+
+  async notifyMembershipRenewed(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    amount: number
+    invoiceNumber?: string
+  }) {
+    return this.sendAdminEmail(
+      `Renovación de Membresía: ${data.userName}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #10b981;">🔁 Renovación Mensual Cobrada</h2>
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+          <p><strong>Socia:</strong> ${data.userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+          <p><strong>Membresía:</strong> <span style="text-transform: uppercase;">${data.membershipType}</span></p>
+          <p><strong>Importe:</strong> €${data.amount.toFixed(2)}</p>
+          ${data.invoiceNumber ? `<p><strong>Factura:</strong> ${data.invoiceNumber}</p>` : ""}
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+      </div>
+      `,
+      "membership_renewed",
+      { userEmail: data.userEmail, membershipType: data.membershipType, amount: data.amount },
+    )
+  }
+
+  async notifyPaymentFailed(data: {
+    userName: string
+    userEmail: string
+    membershipType: string
+    amount: number
+    attemptCount?: number
+  }) {
+    return this.sendAdminEmail(
+      `⚠️ Pago Fallido: ${data.userName}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #dc2626;">⚠️ Pago Fallido</h2>
+        <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+          <p><strong>Socia:</strong> ${data.userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+          <p><strong>Membresía:</strong> <span style="text-transform: uppercase;">${data.membershipType}</span></p>
+          <p><strong>Importe:</strong> €${data.amount.toFixed(2)}</p>
+          ${data.attemptCount ? `<p><strong>Intento nº:</strong> ${data.attemptCount}</p>` : ""}
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+        <p style="color:#666;font-size:14px;">Stripe reintentará el cobro automáticamente. Revisa si requiere acción manual.</p>
+      </div>
+      `,
+      "payment_failed",
+      { userEmail: data.userEmail, membershipType: data.membershipType, amount: data.amount },
+    )
+  }
+
+  async notifyIdentityVerified(data: {
+    userName: string
+    userEmail: string
+  }) {
+    return this.sendAdminEmail(
+      `Identidad Verificada: ${data.userName}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #10b981;">✅ Identidad Verificada</h2>
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+          <p><strong>Socia:</strong> ${data.userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+        <p style="color:#666;font-size:14px;">La socia ya tiene acceso desbloqueado.</p>
+      </div>
+      `,
+      "identity_verified",
+      { userEmail: data.userEmail },
+    )
+  }
+
+  async notifyReturnStatus(data: {
+    userName: string
+    userEmail: string
+    bagName: string
+    bagBrand: string
+    status: "initiated" | "received" | "completed"
+    reservationId?: string
+  }) {
+    const statusLabels: Record<string, string> = {
+      initiated: "Devolución Iniciada",
+      received: "Devolución Recibida",
+      completed: "Devolución Completada",
+    }
+    const statusColors: Record<string, string> = {
+      initiated: "#f59e0b",
+      received: "#3b82f6",
+      completed: "#10b981",
+    }
+    return this.sendAdminEmail(
+      `${statusLabels[data.status]}: ${data.bagBrand} ${data.bagName}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: ${statusColors[data.status]};">📦 ${statusLabels[data.status]}</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColors[data.status]};">
+          <p><strong>Socia:</strong> ${data.userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
+          ${data.reservationId ? `<p><strong>ID Reserva:</strong> ${data.reservationId}</p>` : ""}
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+      </div>
+      `,
+      "return_status",
+      { userEmail: data.userEmail, status: data.status, reservationId: data.reservationId },
+    )
+  }
+
+  async notifyShipmentStatus(data: {
+    userName: string
+    userEmail: string
+    bagName: string
+    bagBrand: string
+    status: "created" | "delivered"
+    trackingNumber?: string
+  }) {
+    const statusLabels: Record<string, string> = {
+      created: "Envío Creado",
+      delivered: "Envío Entregado",
+    }
+    const statusColors: Record<string, string> = {
+      created: "#3b82f6",
+      delivered: "#10b981",
+    }
+    return this.sendAdminEmail(
+      `${statusLabels[data.status]}: ${data.bagBrand} ${data.bagName}`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: ${statusColors[data.status]};">🚚 ${statusLabels[data.status]}</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColors[data.status]};">
+          <p><strong>Socia:</strong> ${data.userName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
+          ${data.trackingNumber ? `<p><strong>Tracking:</strong> ${data.trackingNumber}</p>` : ""}
+          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+      </div>
+      `,
+      "shipment_status",
+      { userEmail: data.userEmail, status: data.status, trackingNumber: data.trackingNumber },
+    )
+  }
 }
 
 export const adminNotifications = new AdminNotifications()
