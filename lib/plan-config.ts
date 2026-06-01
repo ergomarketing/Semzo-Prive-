@@ -16,8 +16,8 @@ export const MEMBERSHIP_PLANS = {
     stripe_interval: "month",
   },
   signature: {
-    price_monthly: 129,
-    price_quarterly: 310,
+    price_monthly: 149,
+    price_quarterly: 357,
     label: "Signature",
     stripe_interval: "month",
   },

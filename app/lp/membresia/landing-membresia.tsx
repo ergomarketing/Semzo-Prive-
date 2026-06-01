@@ -34,7 +34,7 @@ const memberships = [
   {
     id: "signature",
     name: "Signature",
-    price: "129€",
+    price: "149€",
     period: "/mes",
     tagline: "Marcas premium",
     image: "/images/membership-signature.svg",
