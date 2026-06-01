@@ -24,6 +24,15 @@ const nextConfig = {
 
   async redirects() {
     return [
+      // Página de upgrade antigua → nueva sección de membresías en home.
+      // Source exacto (sin comodín) para NO afectar las landings SEO
+      // /membership/upgrade/petite, /essentiel, /signature, /prive.
+      {
+        source: '/membership/upgrade',
+        destination: '/#membresias',
+        permanent: true,
+      },
+
       // www → non-www
       {
         source: '/:path*',
