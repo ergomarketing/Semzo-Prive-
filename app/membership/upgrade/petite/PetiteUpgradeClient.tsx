@@ -8,11 +8,11 @@ import { Loader2 } from "lucide-react"
 
 const PLAN = {
   membershipType: "petite",
-  billingCycle: "weekly",
+  billingCycle: "monthly",
   price: 19.99,
   label: "Favoritos del día a día. Sin compromiso.",
-  priceSuffix: "/semana",
-  features: ["1 bolso por semana", "Envío gratuito", "Seguro incluido", "Sin compromiso"],
+  priceSuffix: "/mes",
+  features: ["Hasta 4 pases por mes (1 por semana)", "Envío gratuito", "Seguro incluido", "Sin compromiso"],
 }
 
 export default function PetiteUpgradeClient() {

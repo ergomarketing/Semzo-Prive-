@@ -522,7 +522,7 @@ export default function MembresiaPage() {
 
                 {!isActive && membership.status !== "paused" && (
                   <Button
-                    onClick={() => router.push("/membership/upgrade")}
+                    onClick={() => router.push("/#membresias")}
                     className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                   >
                     <Crown className="h-4 w-4 mr-2" />

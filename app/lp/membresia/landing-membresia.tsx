@@ -101,14 +101,14 @@ export default function LandingMembresia() {
       </header>
 
       {/* HERO - editorial fullscreen, compacto en altura (75vh en mobile, 85vh desktop) */}
-      <section className="relative flex min-h-[75svh] w-full items-end overflow-hidden md:min-h-[85svh]">
+      <section className="relative flex min-h-[75svh] w-full items-end overflow-hidden bg-indigo-dark md:min-h-[85svh]">
         <Image
           src="/images/hermes-prive.jpeg"
           alt="Editorial Semzo Prive - bolso Hermes burgundy"
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_50%]"
+          className="object-cover object-[50%_15%]"
         />
         {/* Overlay neutro plano para legibilidad */}
         <div className="absolute inset-0 bg-black/35" />

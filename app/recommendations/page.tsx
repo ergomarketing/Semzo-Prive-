@@ -74,7 +74,7 @@ export default function RecommendationsPage() {
                 Upgrade a membresía Privé para acceder a recomendaciones personalizadas y contenido exclusivo.
               </p>
               <Button
-                onClick={() => router.push("/membership/upgrade")}
+                onClick={() => router.push("/#membresias")}
                 className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600"
               >
                 <Crown className="w-4 h-4 mr-2" />
