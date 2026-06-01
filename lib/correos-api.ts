@@ -126,23 +126,25 @@ function buildPreregisterPayload(s: CorreosShipmentRequest) {
   })
 
  return {
-  senderInfo: partyJSON(s.sender),
-  receiverInfo: partyJSON(s.recipient),
-  shipmentInfo: {
-    productCode: s.productCode,
-    clientReference: s.reference || "",
-    packagesNumber: 1,
-    weight: s.weight,
-    dimensions:
-      s.length && s.width && s.height
-        ? {
-            length: s.length,
-            width: s.width,
-            height: s.height,
-          }
-        : undefined,
-    observations: s.observations || undefined,
-    labelType: 2,
+  shippingRequests: {
+    senderInfo: partyJSON(s.sender),
+    receiverInfo: partyJSON(s.recipient),
+    shipmentInfo: {
+      productCode: s.productCode,
+      clientReference: s.reference || "",
+      packagesNumber: 1,
+      weight: s.weight,
+      dimensions:
+        s.length && s.width && s.height
+          ? {
+              length: s.length,
+              width: s.width,
+              height: s.height,
+            }
+          : undefined,
+      observations: s.observations || undefined,
+      labelType: 2,
+    },
   },
 }
 }
