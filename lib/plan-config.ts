@@ -22,8 +22,8 @@ export const MEMBERSHIP_PLANS = {
     stripe_interval: "month",
   },
   prive: {
-    price_monthly: 189,
-    price_quarterly: 453,
+    price_monthly: 279,
+    price_quarterly: 669,
     label: "Privé",
     stripe_interval: "month",
   },

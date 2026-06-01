@@ -9,7 +9,7 @@ const MEMBERSHIP_PRICES_CENTS: Record<string, number> = {
   petite: 1999,
   essentiel: 5900,
   signature: 14900,
-  prive: 29999,
+  prive: 27900,
 }
 
 export async function GET() {

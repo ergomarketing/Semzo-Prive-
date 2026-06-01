@@ -178,7 +178,7 @@ export default function VisualInventoryDashboard() {
         lastMaintenance: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         nextMaintenanceDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
         value: 8500,
-        monthlyPrice: 189,
+        monthlyPrice: 279,
         utilizationRate: 95,
         revenue: 2268,
         membership: "prive",
