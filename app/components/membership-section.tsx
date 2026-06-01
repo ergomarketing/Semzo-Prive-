@@ -32,7 +32,7 @@ const memberships = [
     features: [
       "Hasta 4 pases por mes (1 por semana)",
       "Compra pases solo cuando los necesites",
-      "Acceso a colección Essentiel, Signature y Privé",
+      "Pase Essentiel: 52€ · Pase Signature: 99€ · Pase Privé: 137€",
       "Envío gratuito en 24-48h",
       "Seguro incluido en cada préstamo",
       "Sin permanencia",
