@@ -8,8 +8,8 @@ const CATEGORY_A_STATES = ["active", "cancelled_active", "past_due"]
 const MEMBERSHIP_PRICES_CENTS: Record<string, number> = {
   petite: 1999,
   essentiel: 5900,
-  signature: 12999,
-  prive: 29999,
+  signature: 14900,
+  prive: 27900,
 }
 
 export async function GET() {

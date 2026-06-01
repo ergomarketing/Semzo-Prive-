@@ -11,7 +11,7 @@ const plans = [
     name: "L'Essentiel",
     id: "essentiel",
     priceMonthly: "59€",
-    priceQuarterly: "159€",
+    priceQuarterly: "142€",
     quarterlyDiscount: "15%",
     description: "Perfecto para comenzar tu experiencia de lujo",
     image: "/images/louis-vuitton-lessentiel.jpeg",
