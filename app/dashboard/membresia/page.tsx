@@ -120,7 +120,7 @@ export default function MembresiaPage() {
 
   const membershipInfo: Record<string, { name: string; price: string; period: string }> = {
     petite: { name: "Petite", price: "19,99", period: "mes" },
-    essentiel: { name: "L'Essentiel", price: isQuarterly ? "159" : "59", period: isQuarterly ? "trimestre" : "mes" },
+    essentiel: { name: "L'Essentiel", price: isQuarterly ? "142" : "59", period: isQuarterly ? "trimestre" : "mes" },
     signature: { name: "Signature", price: isQuarterly ? "357" : "149", period: isQuarterly ? "trimestre" : "mes" },
     prive: { name: "Privé", price: isQuarterly ? "669" : "279", period: isQuarterly ? "trimestre" : "mes" },
     free: { name: "Free", price: "0", period: "mes" },
