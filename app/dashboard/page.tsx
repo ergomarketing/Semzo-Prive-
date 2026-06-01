@@ -505,7 +505,7 @@ export default function DashboardHome() {
             </Button>
             {membership?.type !== "prive" && (
               <Button
-                onClick={() => router.push("/membership/upgrade")}
+                onClick={() => router.push("/#membresias")}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
               >
                 <Crown className="h-4 w-4 mr-2" />
