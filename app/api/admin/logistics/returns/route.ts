@@ -200,7 +200,7 @@ export async function PATCH(request: NextRequest) {
         })
       }
 
-      // EMAIL: enviar "devolucion recibida" cuando el status pasa a received/completed
+      // CIERRE DEL CICLO + EMAIL cuando la devolucion fisica pasa a received/completed.
       if (status === "received" || status === "completed") {
         try {
           // Obtener datos del cliente y bolso a traves de shipment -> reservation
@@ -211,6 +211,9 @@ export async function PATCH(request: NextRequest) {
               shipments!returns_shipment_id_fkey (
                 reservation_id,
                 reservations!shipments_reservation_id_fkey (
+                  id,
+                  bag_id,
+                  status,
                   profiles!reservations_user_id_fkey ( email, full_name, first_name, last_name ),
                   bags!reservations_bag_id_fkey ( name, brand )
                 )
@@ -222,6 +225,27 @@ export async function PATCH(request: NextRequest) {
           const reservation = (returnData as any)?.shipments?.reservations
           const profile = reservation?.profiles
           const bag = reservation?.bags
+
+          // Cerrar la reserva ligada y liberar el bolso (solo si no es admin rent).
+          // Esta es la UNICA transicion valida a 'completed': devolucion fisica confirmada.
+          if (reservation?.id && ["active", "overdue", "confirmed"].includes(reservation.status)) {
+            await supabase
+              .from("reservations")
+              .update({ status: "completed", updated_at: new Date().toISOString() })
+              .eq("id", reservation.id)
+
+            if (reservation.bag_id) {
+              await supabase.from("bags").update({ status: "available" }).eq("id", reservation.bag_id)
+            }
+
+            await supabase.from("logistics_audit_log").insert({
+              action: "reservation_completed_on_return",
+              entity_type: "reservation",
+              entity_id: reservation.id,
+              old_values: { status: reservation.status },
+              new_values: { status: "completed", trigger: `return_${status}` },
+            })
+          }
 
           if (profile?.email) {
             const userName =

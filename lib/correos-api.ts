@@ -32,6 +32,15 @@ export interface CorreosParty {
   email?: string
 }
 
+/**
+ * Tipo de envio segun el contrato PTRES de Correos:
+ *  - "outbound"   : ida (Semzo -> cliente)
+ *  - "return"     : devolucion independiente (cliente -> Semzo)
+ *  - "round_trip" : ida que ademas prepara la etiqueta de retorno
+ *                   (activa prepareReturnShippingIndicator = "Y" en el paquete)
+ */
+type CorreosShipmentMode = "outbound" | "return" | "round_trip"
+
 interface CorreosShipmentRequest {
   sender: CorreosParty
   recipient: CorreosParty
@@ -42,6 +51,118 @@ interface CorreosShipmentRequest {
   productCode: string
   reference?: string
   observations?: string
+  /** Por defecto "outbound". Define el comportamiento de retorno PTRES. */
+  mode?: CorreosShipmentMode
+  /** Metodo de entrega Correos (ej "DOUAOF" domicilio). Por defecto "DOUAOF". */
+  deliveryMethod?: string
+}
+
+/* ===========================================================================
+ * Modelo PTRES PRE oficial de Correos
+ * Estructura del endpoint /admissions/preregister/api/v1/delivery
+ * Referencia: coleccion oficial "PRUEBAS PTRES PRE".
+ * =========================================================================== */
+
+/** Remitente / destinatario en formato PTRES (sender / addressee). */
+interface PtresParty {
+  // --- Identidad (remitente o destinatario) ---
+  name: string
+  lastName1?: string
+  lastName2?: string
+  doiType?: string // tipo documento Correos (1 = NIF/DNI por defecto)
+  doiNumber?: string
+  company?: string
+  contactPerson?: string
+  // --- Direccion (remitente o destinatario) ---
+  addressType?: string // tipo de via Correos (ej "CL", "AV")
+  address: string
+  number?: string
+  portal?: string
+  block?: string
+  staircase?: string
+  floor?: string
+  door?: string
+  addressComplement?: string
+  locality: string
+  province: string
+  cp: string
+  zip?: string
+  country: string
+  // --- Contacto (remitente o destinatario) ---
+  contactPhone?: string
+  email?: string
+  smsNumber?: string
+  language?: string
+  chosenOffice?: string
+  homepaqCode?: string
+}
+
+/** Contenido aduanero / datos del paquete PTRES. */
+interface PtresPackageContents {
+  shipmentType: string
+  phoneNumber?: string
+  importerEmail?: string
+  instructionsDoNotDeliver?: string
+  customsData?: unknown[]
+}
+
+/** Paquete individual PTRES. */
+interface PtresPackage {
+  packageId: string // contenido / descripcion del paquete
+  packageWeightGrams: string
+  packageHeight: string
+  packageWidth: string
+  packageLength: string
+  cubicMeters?: string
+  clientReference?: string // referencia cliente
+  clientReference2?: string
+  clientReference3?: string
+  observations?: string
+  packingIndicator?: string
+  /** "Y" para preparar la etiqueta de retorno (ida y vuelta). */
+  prepareReturnShippingIndicator?: string
+  packageContents: PtresPackageContents
+}
+
+/** Envio PTRES: combina datos de contrato, paquetes, remitente y destinatario. */
+interface PtresShipment {
+  // --- Datos de contrato Correos ---
+  // Credenciales de contrato: OPCIONALES en la app.
+  // Las inyecta el proxy de Correos (VPS) desde su .env antes del envio final.
+  // La app NUNCA las lee de variables de entorno de Vercel.
+  contractNumber?: string
+  clientNumber?: string
+  labellerCode?: string
+  // --- Datos del envio ---
+  admissionProvince?: string
+  packagesNumber: string
+  product: string
+  admissionMethod?: number
+  deliveryMethod: string
+  manifestCode?: string
+  totalWeight: string
+  totalLength?: string
+  totalWidth?: string
+  totalHigh?: string
+  totalCubicMeters?: string
+  shipmentReference1?: string
+  shipmentReference2?: string
+  shipmentReference3?: string
+  shipmentNotes?: string
+  dateExpiry?: string
+  modificationType?: string
+  // --- Paquete(s) ---
+  packages: PtresPackage[]
+  // --- Destinatario ---
+  addressee: PtresParty
+  // --- Remitente ---
+  sender: PtresParty
+}
+
+/** Payload raiz PTRES enviado al endpoint preregister. */
+interface PtresPreregisterPayload {
+  errorCodeLanguage: string
+  shipments: PtresShipment[]
 }
 
 interface CorreosShipmentResponse {
@@ -95,58 +216,115 @@ async function proxyFetch(path: string, init: RequestInit = {}): Promise<Respons
 }
 
 /**
- * Mapea CorreosShipmentRequest al payload JSON que entiende el endpoint
- * preregister v1 de la API moderna de Correos. El proxy ya inyecta
- * contractNumber, clientNumber y labellerCode desde su .env.
+ * Mapea el tipo de documento interno al codigo doiType de Correos.
+ * Por defecto "1" (NIF/DNI), que es el usado en los ejemplos oficiales PTRES.
  */
-function buildPreregisterPayload(s: CorreosShipmentRequest) {
-  const partyJSON = (p: CorreosParty) => ({
-    name: p.firstName,
-    surname: p.lastName1,
-    secondSurname: p.lastName2 || undefined,
-    fullName: [p.firstName, p.lastName1, p.lastName2]
-      .filter(Boolean)
-      .join(" "),
-    identificationType: p.documentType || undefined,
-    identification: p.documentNumber || undefined,
-    address: {
-      streetType: p.viaType,
-      streetName: p.viaName,
-      streetNumber: p.number || undefined,
-      stairs: p.portal || undefined,
-      floor: p.floor || undefined,
-      door: p.door || undefined,
-    },
-    postalCode: p.postalCode,
-    city: p.city,
-    state: p.province,
-    countryCode: p.country || "ES",
-    phone: p.phone || undefined,
-    email: p.email || undefined,
-  })
-
- return {
-  shippingRequests: {
-    senderInfo: partyJSON(s.sender),
-    receiverInfo: partyJSON(s.recipient),
-    shipmentInfo: {
-      productCode: s.productCode,
-      clientReference: s.reference || "",
-      packagesNumber: 1,
-      weight: s.weight,
-      dimensions:
-        s.length && s.width && s.height
-          ? {
-              length: s.length,
-              width: s.width,
-              height: s.height,
-            }
-          : undefined,
-      observations: s.observations || undefined,
-      labelType: 2,
-    },
-  },
+function mapDoiType(documentType?: CorreosParty["documentType"]): string {
+  switch (documentType) {
+    case "CIF":
+      return "2"
+    case "NIE":
+      return "3"
+    case "PASAPORTE":
+      return "4"
+    case "DNI":
+    default:
+      return "1"
+  }
 }
+
+/**
+ * Convierte una CorreosParty interna en el objeto PTRES (sender / addressee).
+ * Conserva nombre, apellidos, documento, direccion completa, telefono y email.
+ */
+function toPtresParty(p: CorreosParty): PtresParty {
+  return {
+    // Identidad
+    name: p.firstName,
+    lastName1: p.lastName1 || undefined,
+    lastName2: p.lastName2 || undefined,
+    doiType: p.documentNumber ? mapDoiType(p.documentType) : undefined,
+    doiNumber: p.documentNumber || undefined,
+    // Direccion
+    addressType: p.viaType || undefined,
+    address: p.viaName,
+    number: p.number || undefined,
+    portal: p.portal || undefined,
+    floor: p.floor || undefined,
+    door: p.door || undefined,
+    locality: p.city,
+    province: p.province,
+    cp: p.postalCode,
+    country: p.country || "ESP",
+    // Contacto
+    contactPhone: p.phone || undefined,
+    email: p.email || undefined,
+    language: "spa",
+  }
+}
+
+/**
+ * Construye UN objeto shipment en formato PTRES oficial de Correos.
+ * Implementacion nueva (no reutiliza el modelo shippingRequests anterior).
+ *
+ * Soporta:
+ *  - ida ("outbound")
+ *  - devolucion ("return")
+ *  - ida y vuelta ("round_trip") -> prepareReturnShippingIndicator = "Y"
+ */
+function buildPtresShipmentPayload(s: CorreosShipmentRequest): PtresShipment {
+  const mode: CorreosShipmentMode = s.mode || "outbound"
+  const weightGrams = String(s.weight)
+
+  const pkg: PtresPackage = {
+    // Datos del paquete
+    packageId: s.observations || s.reference || "Paquete",
+    packageWeightGrams: weightGrams,
+    packageHeight: s.height != null ? String(s.height) : "",
+    packageWidth: s.width != null ? String(s.width) : "",
+    packageLength: s.length != null ? String(s.length) : "",
+    clientReference: s.reference || "", // referencia cliente
+    observations: s.observations || "",
+    packingIndicator: "",
+    packageContents: {
+      shipmentType: "2",
+      phoneNumber: s.recipient.phone || undefined,
+      importerEmail: s.recipient.email || undefined,
+    },
+  }
+
+  // Ida y vuelta: preparar etiqueta de retorno segun PTRES oficial.
+  if (mode === "round_trip") {
+    pkg.prepareReturnShippingIndicator = "Y"
+  }
+
+  return {
+    // NOTA: contractNumber / clientNumber / labellerCode se omiten a proposito.
+    // El proxy de Correos (VPS) los inyecta desde su .env antes del envio final.
+    // Datos del envio
+    packagesNumber: "1",
+    product: s.productCode,
+    deliveryMethod: s.deliveryMethod || "DOUAOF",
+    totalWeight: weightGrams,
+    modificationType: "1",
+    // Paquete
+    packages: [pkg],
+    // Destinatario
+    addressee: toPtresParty(s.recipient),
+    // Remitente
+    sender: toPtresParty(s.sender),
+  }
+}
+
+/**
+ * Envuelve uno o varios shipments en el payload raiz PTRES que espera el
+ * endpoint preregister v1 de Correos.
+ */
+function buildPreregisterPayload(s: CorreosShipmentRequest): PtresPreregisterPayload {
+  return {
+    errorCodeLanguage: "spa",
+    shipments: [buildPtresShipmentPayload(s)],
+  }
 }
 
 class CorreosAPI {
@@ -266,5 +444,14 @@ export async function getCorreosClient(): Promise<CorreosAPI | null> {
   // Ya no hace falta cargar credenciales remotas: el proxy las gestiona.
   return new CorreosAPI()
 }
-export { CorreosAPI }
-export type { CorreosShipmentRequest, CorreosShipmentResponse, CorreosTrackingResponse }
+export { CorreosAPI, buildPtresShipmentPayload, buildPreregisterPayload }
+export type {
+  CorreosShipmentRequest,
+  CorreosShipmentResponse,
+  CorreosTrackingResponse,
+  CorreosShipmentMode,
+  PtresParty,
+  PtresPackage,
+  PtresShipment,
+  PtresPreregisterPayload,
+}

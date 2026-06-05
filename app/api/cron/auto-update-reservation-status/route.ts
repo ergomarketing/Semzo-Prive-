@@ -41,32 +41,34 @@ export async function GET() {
       }
     }
 
-    const { data: toComplete } = await supabase
+    // IMPORTANTE: al vencer end_date la reserva pasa a 'overdue', NO a 'completed'.
+    // El bolso NO se libera aqui. La reserva solo se cierra (completed) y el bolso
+    // se libera cuando logistica registra la devolucion fisica (returns.status
+    // received/completed). Asi se respeta la regla "no reservar hasta devolver".
+    const { data: toOverdue } = await supabase
       .from("reservations")
       .select("*")
       .eq("status", "active")
       .or("is_admin_rent.is.null,is_admin_rent.eq.false")
       .lt("end_date", now.toISOString())
 
-    if (toComplete && toComplete.length > 0) {
+    if (toOverdue && toOverdue.length > 0) {
       await supabase
         .from("reservations")
-        .update({ status: "completed", updated_at: now.toISOString() })
+        .update({ status: "overdue", updated_at: now.toISOString() })
         .in(
           "id",
-          toComplete.map((r) => r.id),
+          toOverdue.map((r) => r.id),
         )
 
-      for (const reservation of toComplete) {
-        await supabase.from("bags").update({ status: "available" }).eq("id", reservation.bag_id)
-
+      for (const reservation of toOverdue) {
         await supabase.from("audit_log").insert({
           user_id: "system",
-          action: "reservation_auto_completed",
+          action: "reservation_auto_overdue",
           entity_type: "reservation",
           entity_id: reservation.id,
           old_data: { status: "active" },
-          new_data: { status: "completed" },
+          new_data: { status: "overdue" },
           created_at: now.toISOString(),
         })
       }
@@ -75,7 +77,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       activated: toActivate?.length || 0,
-      completed: toComplete?.length || 0,
+      overdue: toOverdue?.length || 0,
     })
   } catch (error) {
     console.error("Error auto-updating reservations:", error)

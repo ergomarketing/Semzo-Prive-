@@ -35,6 +35,27 @@ export default function ClientHomePage() {
     }
   }, [searchParams, router])
 
+  // Scroll al ancla (#membresias, #coleccion, etc.) tras montar el contenido.
+  // El scroll nativo del navegador falla porque las imagenes del hero cargan
+  // despues y desplazan el layout, dejando al usuario arriba.
+  useEffect(() => {
+    const hash = window.location.hash?.replace("#", "")
+    if (!hash) return
+
+    const scrollToHash = () => {
+      const element = document.getElementById(hash)
+      if (element) {
+        const headerOffset = 80
+        const offsetPosition = element.getBoundingClientRect().top + window.scrollY - headerOffset
+        window.scrollTo({ top: offsetPosition, behavior: "smooth" })
+      }
+    }
+
+    // Reintentos para esperar a que las imagenes carguen y el layout se estabilice.
+    const timers = [300, 700, 1200].map((delay) => setTimeout(scrollToHash, delay))
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
   return (
     <main className="min-h-screen">
       <HeroSection />
