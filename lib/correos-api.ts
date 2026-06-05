@@ -50,11 +50,17 @@ interface CorreosShipmentRequest {
   height?: number // cm
   productCode: string
   reference?: string
+  reference2?: string
+  reference3?: string
   observations?: string
   /** Por defecto "outbound". Define el comportamiento de retorno PTRES. */
   mode?: CorreosShipmentMode
   /** Metodo de entrega Correos (ej "DOUAOF" domicilio). Por defecto "DOUAOF". */
   deliveryMethod?: string
+  /** Provincia de admision (codigo Correos). Por defecto la del remitente. */
+  admissionProvince?: string
+  /** Metodo de admision Correos. Por defecto 1. */
+  admissionMethod?: number
 }
 
 /* ===========================================================================
@@ -97,11 +103,9 @@ interface PtresParty {
   homepaqCode?: string
 }
 
-/** Contenido aduanero / datos del paquete PTRES. */
+/** Contenido aduanero / datos del paquete PTRES (campos oficiales). */
 interface PtresPackageContents {
   shipmentType: string
-  phoneNumber?: string
-  importerEmail?: string
   instructionsDoNotDeliver?: string
   customsData?: unknown[]
 }
@@ -238,28 +242,39 @@ function mapDoiType(documentType?: CorreosParty["documentType"]): string {
  * Conserva nombre, apellidos, documento, direccion completa, telefono y email.
  */
 function toPtresParty(p: CorreosParty): PtresParty {
+  // Orden y campos identicos al ejemplo oficial PTRES (sender / addressee).
+  // Los campos sin dato se envian como "" para igualar la estructura oficial.
   return {
     // Identidad
     name: p.firstName,
-    lastName1: p.lastName1 || undefined,
-    lastName2: p.lastName2 || undefined,
-    doiType: p.documentNumber ? mapDoiType(p.documentType) : undefined,
-    doiNumber: p.documentNumber || undefined,
+    lastName1: p.lastName1 || "",
+    lastName2: p.lastName2 || "",
+    doiType: p.documentNumber ? mapDoiType(p.documentType) : "1",
+    doiNumber: p.documentNumber || "",
+    company: "",
+    contactPerson: "",
     // Direccion
-    addressType: p.viaType || undefined,
+    addressType: p.viaType || "",
     address: p.viaName,
-    number: p.number || undefined,
-    portal: p.portal || undefined,
-    floor: p.floor || undefined,
-    door: p.door || undefined,
+    number: p.number || "",
+    portal: p.portal || "",
+    block: "",
+    staircase: "",
+    floor: p.floor || "",
+    door: p.door || "",
+    addressComplement: "",
     locality: p.city,
     province: p.province,
     cp: p.postalCode,
+    zip: "",
     country: p.country || "ESP",
     // Contacto
-    contactPhone: p.phone || undefined,
-    email: p.email || undefined,
+    contactPhone: p.phone || "",
+    email: p.email || "",
+    smsNumber: "",
     language: "spa",
+    chosenOffice: "",
+    homepaqCode: "",
   }
 }
 
@@ -276,36 +291,48 @@ function buildPtresShipmentPayload(s: CorreosShipmentRequest): PtresShipment {
   const mode: CorreosShipmentMode = s.mode || "outbound"
   const weightGrams = String(s.weight)
 
+  // Paquete en orden y con campos identicos al ejemplo oficial PTRES.
   const pkg: PtresPackage = {
-    // Datos del paquete
     packageId: s.observations || s.reference || "Paquete",
     packageWeightGrams: weightGrams,
     packageHeight: s.height != null ? String(s.height) : "",
     packageWidth: s.width != null ? String(s.width) : "",
     packageLength: s.length != null ? String(s.length) : "",
-    clientReference: s.reference || "", // referencia cliente
+    cubicMeters: "",
+    clientReference: s.reference || "",
+    clientReference2: s.reference2 || "",
+    clientReference3: s.reference3 || "",
     observations: s.observations || "",
     packingIndicator: "",
+    // Ida y vuelta: "Y" prepara la etiqueta de retorno (premium domicilio).
+    prepareReturnShippingIndicator: mode === "round_trip" ? "Y" : "",
     packageContents: {
       shipmentType: "2",
-      phoneNumber: s.recipient.phone || undefined,
-      importerEmail: s.recipient.email || undefined,
+      instructionsDoNotDeliver: "",
+      customsData: [],
     },
-  }
-
-  // Ida y vuelta: preparar etiqueta de retorno segun PTRES oficial.
-  if (mode === "round_trip") {
-    pkg.prepareReturnShippingIndicator = "Y"
   }
 
   return {
     // NOTA: contractNumber / clientNumber / labellerCode se omiten a proposito.
     // El proxy de Correos (VPS) los inyecta desde su .env antes del envio final.
-    // Datos del envio
+    // Datos del envio (orden identico al ejemplo oficial).
+    admissionProvince: s.admissionProvince || s.sender.province || "",
     packagesNumber: "1",
     product: s.productCode,
+    admissionMethod: s.admissionMethod ?? 1,
     deliveryMethod: s.deliveryMethod || "DOUAOF",
+    manifestCode: "",
     totalWeight: weightGrams,
+    totalLength: "",
+    totalWidth: "",
+    totalHigh: "",
+    totalCubicMeters: "",
+    shipmentReference1: s.reference || "",
+    shipmentReference2: s.reference2 || "",
+    shipmentReference3: s.reference3 || "",
+    shipmentNotes: "",
+    dateExpiry: "",
     modificationType: "1",
     // Paquete
     packages: [pkg],
@@ -321,10 +348,16 @@ function buildPtresShipmentPayload(s: CorreosShipmentRequest): PtresShipment {
  * endpoint preregister v1 de Correos.
  */
 function buildPreregisterPayload(s: CorreosShipmentRequest): PtresPreregisterPayload {
-  return {
+  const payload: PtresPreregisterPayload = {
     errorCodeLanguage: "spa",
     shipments: [buildPtresShipmentPayload(s)],
   }
+
+  // Log del JSON final para comparar visualmente con la coleccion oficial de Correos.
+  // (contractNumber/clientNumber/labellerCode los inyecta el proxy, por eso no aparecen aqui)
+  console.log("[v0] PTRES payload final ->\n" + JSON.stringify(payload, null, 2))
+
+  return payload
 }
 
 class CorreosAPI {
