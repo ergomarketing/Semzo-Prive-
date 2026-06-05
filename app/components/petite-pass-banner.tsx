@@ -1,10 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import useSWR from "swr"
 import { AlertTriangle, Clock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { ReturnBagDialog } from "./return-bag-dialog"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -24,7 +26,8 @@ interface PetitePassStatus {
  */
 export function PetitePassBanner() {
   const router = useRouter()
-  const { data } = useSWR<PetitePassStatus>("/api/user/petite-pass-status", fetcher, {
+  const [returnOpen, setReturnOpen] = useState(false)
+  const { data, mutate } = useSWR<PetitePassStatus>("/api/user/petite-pass-status", fetcher, {
     refreshInterval: 5 * 60 * 1000, // refresca cada 5 min
   })
 
@@ -35,6 +38,7 @@ export function PetitePassBanner() {
   const bagName = data.bag_name || "tu bolso"
 
   return (
+    <>
     <Alert
       className={`mb-6 ${
         isExpired
@@ -69,7 +73,7 @@ export function PetitePassBanner() {
             variant="outline"
             size="sm"
             className="bg-transparent border-indigo-dark/30 text-indigo-dark hover:bg-rose-pastel/40"
-            onClick={() => router.push("/dashboard/reservas")}
+            onClick={() => setReturnOpen(true)}
           >
             Devolver
           </Button>
@@ -83,5 +87,7 @@ export function PetitePassBanner() {
         </div>
       </AlertDescription>
     </Alert>
+    <ReturnBagDialog open={returnOpen} onOpenChange={setReturnOpen} onDone={() => mutate()} />
+    </>
   )
 }
