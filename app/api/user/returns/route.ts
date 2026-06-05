@@ -191,6 +191,13 @@ export async function POST(request: NextRequest) {
 
     await admin.from("shipments").update(shipmentUpdate).eq("id", shipmentId)
 
+    // Aviso a logistica (no bloqueante: si falla el email, la devolucion ya quedo creada).
+    try {
+      await notifyLogistics({ user, reservation, method, notes, returnId: ret.id })
+    } catch (e) {
+      console.error("[v0] Fallo aviso devolucion a logistica:", e)
+    }
+
     return NextResponse.json({
       success: true,
       returnId: ret.id,
@@ -202,4 +209,50 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 })
   }
+}
+
+/** Envia un email a logistica avisando de la solicitud de devolucion. */
+async function notifyLogistics(args: {
+  user: { id: string; email?: string | null }
+  reservation: any
+  method: "pickup" | "dropoff"
+  notes: string
+  returnId: string
+}) {
+  const apiKey = process.env.EMAIL_API_KEY
+  if (!apiKey) return
+
+  const to = process.env.LOGISTICS_EMAIL || "mailbox@semzoprive.com"
+  const bag = args.reservation?.bags
+  const bagLabel = bag ? `${bag.brand} ${bag.name}` : "Bolso"
+  const methodLabel = args.method === "pickup" ? "Recogida a domicilio" : "Entrega en punto de mensajeria"
+
+  const subject = `Nueva devolucion solicitada · ${bagLabel}`
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#1a1a2e;line-height:1.6">
+      <h2 style="margin:0 0 12px">Nueva solicitud de devolucion</h2>
+      <p><strong>Bolso:</strong> ${bagLabel}</p>
+      <p><strong>Socia:</strong> ${args.user.email || args.user.id}</p>
+      <p><strong>Metodo:</strong> ${methodLabel}</p>
+      <p><strong>Detalle:</strong> ${args.notes}</p>
+      <p><strong>Reserva:</strong> ${args.reservation.id}</p>
+      <p style="color:#6b7280;font-size:13px;margin-top:16px">
+        La reserva permanece en estado <strong>overdue</strong> hasta que registreis la recepcion
+        del bolso en Logistica &gt; Devoluciones. Al marcarla como recibida se cerrara la reserva
+        y se liberara el bolso automaticamente.
+      </p>
+    </div>`
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Semzo Privé <mailbox@semzoprive.com>",
+      to: [to],
+      reply_to: args.user.email || "soporte@semzoprive.com",
+      subject,
+      html,
+      tags: [{ name: "category", value: "return_request" }],
+    }),
+  })
 }
