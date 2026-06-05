@@ -254,13 +254,15 @@ export async function POST(request: NextRequest) {
 
     // BLOQUEO UNIVERSAL: 1 bolso a la vez
     // Aplica a TODAS las membresias (petite, essentiel, signature, prive).
-    // Si la socia ya tiene una reserva en curso, no puede reservar otro bolso
-    // hasta que devuelva el actual (cuando la reserva pase a 'completed').
+    // Si la socia ya tiene una reserva en curso (pending/confirmed/active/overdue),
+    // no puede reservar otro bolso hasta que devuelva el actual. La reserva solo
+    // pasa a 'completed' cuando logistica confirma la devolucion fisica.
+    // 'overdue' = bolso vencido pero todavia en poder de la socia.
     const { data: ongoingReservation } = await supabase
       .from("reservations")
-      .select("id, bag_id, end_date, bags(name, brand)")
+      .select("id, bag_id, end_date, status, bags(name, brand)")
       .eq("user_id", userId)
-      .eq("status", "active")
+      .in("status", ["pending", "confirmed", "active", "overdue"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

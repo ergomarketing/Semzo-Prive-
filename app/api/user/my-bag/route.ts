@@ -27,7 +27,8 @@ export async function GET() {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    // 1. Reserva activa mas reciente (active | confirmed)
+    // 1. Reserva en curso mas reciente (active | confirmed | overdue)
+    // 'overdue' = pase vencido pero el bolso sigue en posesion de la socia.
     const { data: reservation, error: resError } = await supabase
       .from("reservations")
       .select(`
@@ -46,7 +47,7 @@ export async function GET() {
         )
       `)
       .eq("user_id", user.id)
-      .in("status", ["active", "confirmed"])
+      .in("status", ["active", "confirmed", "overdue"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

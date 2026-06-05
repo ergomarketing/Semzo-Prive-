@@ -42,7 +42,9 @@ export async function GET() {
     .eq("user_id", user.id)
     .not("bag_pass_id", "is", null)
     .not("pass_expires_at", "is", null)
-    .neq("status", "cancelled")
+    // Solo reservas en curso. Excluye cancelled y completed para que el banner
+    // desaparezca una vez logistica confirma la devolucion fisica (completed).
+    .in("status", ["pending", "confirmed", "active", "overdue"])
     .order("pass_expires_at", { ascending: false })
     .limit(1)
     .maybeSingle()
