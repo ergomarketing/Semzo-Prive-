@@ -127,9 +127,12 @@ interface PtresPackage {
 /** Envio PTRES: combina datos de contrato, paquetes, remitente y destinatario. */
 interface PtresShipment {
   // --- Datos de contrato Correos ---
-  contractNumber: string
-  clientNumber: string
-  labellerCode: string
+  // Credenciales de contrato: OPCIONALES en la app.
+  // Las inyecta el proxy de Correos (VPS) desde su .env antes del envio final.
+  // La app NUNCA las lee de variables de entorno de Vercel.
+  contractNumber?: string
+  clientNumber?: string
+  labellerCode?: string
   // --- Datos del envio ---
   admissionProvince?: string
   packagesNumber: string
@@ -261,18 +264,6 @@ function toPtresParty(p: CorreosParty): PtresParty {
 }
 
 /**
- * Lee los datos de contrato Correos desde el entorno. El proxy puede
- * sobreescribirlos, pero PTRES exige que viajen dentro de cada shipment.
- */
-function getContractData() {
-  return {
-    contractNumber: process.env.CORREOS_CONTRACT_NUMBER || "",
-    clientNumber: process.env.CORREOS_CLIENT_NUMBER || "",
-    labellerCode: process.env.CORREOS_LABELLER_CODE || "",
-  }
-}
-
-/**
  * Construye UN objeto shipment en formato PTRES oficial de Correos.
  * Implementacion nueva (no reutiliza el modelo shippingRequests anterior).
  *
@@ -283,7 +274,6 @@ function getContractData() {
  */
 function buildPtresShipmentPayload(s: CorreosShipmentRequest): PtresShipment {
   const mode: CorreosShipmentMode = s.mode || "outbound"
-  const { contractNumber, clientNumber, labellerCode } = getContractData()
   const weightGrams = String(s.weight)
 
   const pkg: PtresPackage = {
@@ -309,10 +299,8 @@ function buildPtresShipmentPayload(s: CorreosShipmentRequest): PtresShipment {
   }
 
   return {
-    // Datos de contrato Correos
-    contractNumber,
-    clientNumber,
-    labellerCode,
+    // NOTA: contractNumber / clientNumber / labellerCode se omiten a proposito.
+    // El proxy de Correos (VPS) los inyecta desde su .env antes del envio final.
     // Datos del envio
     packagesNumber: "1",
     product: s.productCode,
