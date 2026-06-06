@@ -12,7 +12,7 @@ const plans = [
     id: "essentiel",
     priceMonthly: "59€",
     priceQuarterly: "142€",
-    quarterlyDiscount: "15%",
+    quarterlyDiscount: "20%",
     description: "Perfecto para comenzar tu experiencia de lujo",
     image: "/images/louis-vuitton-lessentiel.jpeg",
     imageAlt: "Louis Vuitton - Elegancia urbana para la membresía L'Essentiel",
@@ -122,7 +122,7 @@ export default function PricingSection() {
                     : "bg-transparent text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                Trimestral <span className="text-xs font-bold text-rose-500">-15%</span>
+                Trimestral <span className="text-xs font-bold text-rose-500">-20%</span>
               </button>
             </div>
           </div>
