@@ -161,21 +161,24 @@ function NewsletterForm() {
 // prefers-reduced-motion.
 
 function FooterMarquee() {
-  // Repetimos 6 veces para garantizar continuidad del scroll sin "saltos".
-  const phrases = Array.from({ length: 6 }).flatMap(() => MARQUEE_PHRASES)
+  // El texto del copyright aparece UNA sola vez en el DOM accesible.
+  // Las 5 copias adicionales necesarias para el scroll continuo se marcan
+  // con aria-hidden para que lectores de pantalla y SEO solo vean una instancia.
+  const phrase = MARQUEE_PHRASES[0]
   return (
-    // Marquee FUERA del bloque indigo, sobre fondo claro (como en produccion).
-    // Texto en indigo-dark/40 para legibilidad real sobre blanco manteniendo
-    // un look suave. Antes usaba text-rose-nude que es casi blanco (#fff0f3)
-    // y resultaba invisible.
     <div
       className="overflow-hidden bg-[#f5f4f2] py-4 border-t border-slate-200"
-      aria-label="Copyright Semzo Privé"
     >
       <div className="marquee-track">
-        {phrases.map((phrase, i) => (
+        {/* Primera instancia: visible para accesibilidad y SEO */}
+        <span className="text-xs text-slate-500 font-light px-12 whitespace-nowrap">
+          {phrase}
+        </span>
+        {/* Copias decorativas para el efecto scroll — ocultas a lectores de pantalla */}
+        {Array.from({ length: 5 }).map((_, i) => (
           <span
             key={i}
+            aria-hidden="true"
             className="text-xs text-slate-500 font-light px-12 whitespace-nowrap"
           >
             {phrase}
