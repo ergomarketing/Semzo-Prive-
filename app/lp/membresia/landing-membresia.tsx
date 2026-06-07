@@ -275,21 +275,18 @@ export default function LandingMembresia() {
         </div>
       </section>
 
-      {/* Footer minimo */}
+      {/* Footer minimo: solo enlaces legales, sin copyright (el footer global ya lo incluye) */}
       <footer className="border-t border-indigo-dark/10 bg-rose-nude px-6 py-5 md:px-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-indigo-dark/60 md:flex-row">
-          <p>© 2026 Semzo Prive. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-5">
-            <Link href="/legal/privacy" className="hover:text-indigo-dark">
-              Privacidad
-            </Link>
-            <Link href="/legal/terms" className="hover:text-indigo-dark">
-              Terminos
-            </Link>
-            <Link href="/support" className="hover:text-indigo-dark">
-              Contacto
-            </Link>
-          </div>
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-5 text-xs text-indigo-dark/60">
+          <Link href="/legal/privacy" className="hover:text-indigo-dark">
+            Privacidad
+          </Link>
+          <Link href="/legal/terms" className="hover:text-indigo-dark">
+            Términos
+          </Link>
+          <Link href="/support" className="hover:text-indigo-dark">
+            Contacto
+          </Link>
         </div>
       </footer>
     </main>
