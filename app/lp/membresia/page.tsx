@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Accede a bolsos de lujo autenticos con membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.",
   robots: { index: true, follow: true },
   alternates: {
-    canonical: "https://www.semzoprive.com/lp/membresia",
+    canonical: "https://semzoprive.com/lp/membresia",
   },
 }
 
