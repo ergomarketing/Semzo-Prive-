@@ -14,36 +14,43 @@ export async function POST(request: NextRequest) {
     }
 
     let coupon: Stripe.Coupon | null = null
+    // Si el codigo corresponde a un Promotion Code, guardamos su ID.
+    // Aplicarlo como promotion_code (no como coupon) hace que Stripe imponga
+    // sus restricciones nativas (p.ej. first_time_transaction = solo 1a vez).
+    let promotionCodeId: string | null = null
 
+    // 1. PRIORIDAD: buscar Promotion Code activo con ese codigo exacto.
+    //    Asi respetamos restricciones como first_time_transaction (PRIVE50).
     try {
-      coupon = await stripe.coupons.retrieve(couponCode)
+      const promoCodes = await stripe.promotionCodes.list({
+        code: couponCode,
+        active: true,
+        limit: 1,
+      })
+      if (promoCodes.data.length > 0) {
+        promotionCodeId = promoCodes.data[0].id
+        coupon = promoCodes.data[0].coupon as Stripe.Coupon
+      }
     } catch {
-      // No encontrado con ID exacto, continuar buscando
+      // Continuar con la busqueda por coupon
     }
 
+    // 2. Fallback: coupon por ID exacto (cupones sin restricciones)
+    if (!coupon) {
+      try {
+        coupon = await stripe.coupons.retrieve(couponCode)
+      } catch {
+        // No encontrado con ID exacto, continuar buscando
+      }
+    }
+
+    // 3. Fallback: coupon por id/name (busqueda amplia)
     if (!coupon) {
       const coupons = await stripe.coupons.list({ limit: 100 })
       coupon =
         coupons.data.find(
           (c) => c.id.toLowerCase() === couponCode.toLowerCase() || c.name?.toLowerCase() === couponCode.toLowerCase(),
         ) || null
-    }
-
-    if (!coupon) {
-      try {
-        const promoCodes = await stripe.promotionCodes.list({
-          active: true,
-          limit: 100,
-        })
-
-        const promoCode = promoCodes.data.find((p) => p.code.toLowerCase() === couponCode.toLowerCase())
-
-        if (promoCode) {
-          coupon = promoCode.coupon as Stripe.Coupon
-        }
-      } catch {
-        // Error buscando promotion codes
-      }
     }
 
     if (!coupon) {
@@ -74,6 +81,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       valid: true,
       code: coupon.id,
+      // Si vino de un Promotion Code, el checkout debe aplicarlo como
+      // promotion_code para que Stripe imponga sus restricciones nativas.
+      promotionCodeId,
       name:
         coupon.name ||
         `Descuento ${coupon.percent_off ? `${coupon.percent_off}%` : `${(coupon.amount_off || 0) / 100}€`}`,

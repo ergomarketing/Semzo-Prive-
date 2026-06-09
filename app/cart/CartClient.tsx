@@ -451,6 +451,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       if (data.valid) {
         setAppliedCoupon({
           code: data.code, // ID de Stripe (no el codigo ingresado)
+          promotionCodeId: data.promotionCodeId || null, // Promotion Code (impone restricciones nativas)
           displayCode: couponCode.trim().toUpperCase(), // Para mostrar en UI
           discount: data.percentOff || data.amountOff || 0,
           type: data.percentOff ? "percent" : "fixed",

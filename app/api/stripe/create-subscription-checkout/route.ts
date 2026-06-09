@@ -224,6 +224,11 @@ export async function POST(request: NextRequest) {
     // coupon.code es el coupon.id de Stripe devuelto por validate-coupon
     let couponId: string | null = coupon?.code || null
 
+    // Si el descuento vino de un Promotion Code (p.ej. PRIVE50), aplicarlo
+    // como promotion_code en vez de coupon: asi Stripe IMPONE sus restricciones
+    // nativas (first_time_transaction => solo 1a suscripcion, 1 vez por clienta).
+    const promotionCodeId: string | null = coupon?.promotionCodeId || null
+
     // GIFT CARD parcial en membresia: crear un coupon one-time en Stripe
     // con amount_off = min(gift_card_balance, plan_price). El coupon se aplica
     // como discount en la Checkout Session y Stripe cobra la diferencia.
@@ -280,9 +285,24 @@ export async function POST(request: NextRequest) {
       priceId,
       amountCents,
       couponId,
+      promotionCodeId,
       baseUrl,
       stripeCustomerId,
     })
+
+    // Discount unico para la sesion. PRIORIDAD:
+    // 1) promotion_code (impone restricciones nativas como first_time_transaction)
+    // 2) coupon (cupones directos y gift cards one-time)
+    // 3) allow_promotion_codes (que la clienta lo escriba en Stripe Checkout)
+    // Nota: la gift card sobrescribe couponId con su coupon one-time; en ese caso
+    // se prioriza el coupon de la gift card sobre el promotion_code.
+    const giftCardApplied = Boolean(gift_card_id && giftCardAmountEuros && giftCardAmountEuros > 0)
+    const discountConfig: Pick<Stripe.Checkout.SessionCreateParams, "discounts" | "allow_promotion_codes"> =
+      promotionCodeId && !giftCardApplied
+        ? { discounts: [{ promotion_code: promotionCodeId }] }
+        : couponId
+          ? { discounts: [{ coupon: couponId }] }
+          : { allow_promotion_codes: true }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = isSubscription
       ? {
@@ -301,10 +321,8 @@ export async function POST(request: NextRequest) {
           },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          // Discounts a nivel de sesion para ambos modos
-          ...(couponId
-            ? { discounts: [{ coupon: couponId }] }
-            : { allow_promotion_codes: true }),
+          // Discount unico (promotion_code | coupon | allow_promotion_codes)
+          ...discountConfig,
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }
@@ -332,9 +350,8 @@ export async function POST(request: NextRequest) {
           payment_intent_data: { metadata: commonMetadata },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          ...(couponId
-            ? { discounts: [{ coupon: couponId }] }
-            : { allow_promotion_codes: true }),
+          // Discount unico (promotion_code | coupon | allow_promotion_codes)
+          ...discountConfig,
           billing_address_collection: "auto",
           customer_update: { address: "auto", name: "auto" },
         }

@@ -2,8 +2,10 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect } from "react"
-import { ArrowRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ArrowRight, Check, Copy } from "lucide-react"
+
+const CODIGO_DESCUENTO = "PRIVE50"
 
 /**
  * Landing exclusiva para Google Ads (/lp/membresia).
@@ -80,9 +82,18 @@ function trackEvent(name: string, params: Record<string, unknown> = {}) {
 }
 
 export default function LandingMembresia() {
+  const [copied, setCopied] = useState(false)
+
   useEffect(() => {
     trackEvent("view_landing_lp_membresia")
   }, [])
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(CODIGO_DESCUENTO)
+    setCopied(true)
+    trackEvent("copy_discount_code", { code: CODIGO_DESCUENTO })
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <main className="min-h-screen bg-rose-nude font-serif text-indigo-dark">
@@ -183,6 +194,32 @@ export default function LandingMembresia() {
             <h2 className="text-balance font-serif text-3xl leading-tight md:text-5xl">
               Elige tu <span className="italic">membresia</span>.
             </h2>
+          </div>
+
+          {/* Banner codigo descuento 50% primera suscripcion */}
+          <div className="mx-auto mb-10 max-w-2xl border border-indigo-dark/20 bg-white p-6 text-center md:mb-12 md:p-8">
+            <p className="mb-3 text-[10px] tracking-[0.4em] text-indigo-dark/60 md:text-xs">
+              OFERTA DE BIENVENIDA
+            </p>
+            <p className="mb-4 font-serif text-2xl leading-tight md:text-3xl">
+              <span className="italic">50% de descuento</span> en tu primera mensualidad
+            </p>
+            <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
+              <span className="flex-1 border border-dashed border-indigo-dark/40 bg-rose-nude px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">
+                {CODIGO_DESCUENTO}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                aria-label="Copiar codigo de descuento"
+                className="flex h-12 w-12 items-center justify-center border border-indigo-dark/30 transition hover:bg-indigo-dark hover:text-white"
+              >
+                {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+              </button>
+            </div>
+            <p className="mt-4 text-xs text-indigo-dark/60">
+              Introduce el código durante el proceso de pago. Válido solo para nuevas socias.
+            </p>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
