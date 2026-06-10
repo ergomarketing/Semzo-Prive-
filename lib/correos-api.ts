@@ -397,9 +397,21 @@ class CorreosAPI {
         `Correos preregister fallo (${res.status}): ${JSON.stringify(data)}`,
       )
     }
-    // Normalizar respuesta. La API moderna devuelve estructura distinta a la antigua;
-    // intentamos detectar el codigo de envio en los nombres mas comunes.
+    // Normalizar respuesta. El endpoint REST v1 de Correos devuelve el tracking
+    // dentro de shipments[]. Exploramos todas las rutas conocidas en orden de
+    // prioridad (v1 REST primero, luego legado, luego raiz).
+    const firstShipment = data?.shipments?.[0]
+    const firstPackage = firstShipment?.packages?.[0]
     const codEnvio =
+      // REST v1: nivel paquete
+      firstPackage?.shippingCode ||
+      firstPackage?.codEnvio ||
+      firstPackage?.shipmentCode ||
+      // REST v1: nivel shipment
+      firstShipment?.shippingCode ||
+      firstShipment?.codEnvio ||
+      firstShipment?.shipmentCode ||
+      // Raiz (legado / respuestas planas)
       data.shippingCode ||
       data.codEnvio ||
       data.shipmentCode ||
@@ -407,6 +419,17 @@ class CorreosAPI {
       data?.preregistros?.[0]?.codEnvio ||
       data?.preregistros?.[0]?.shippingCode ||
       ""
+
+    // Log para depuracion: estructura completa de la respuesta del proxy.
+    console.log("[v0] Correos preregister raw response:", JSON.stringify(data, null, 2))
+    console.log("[v0] codEnvio resuelto:", codEnvio || "(vacio — revisar estructura de respuesta)")
+
+    if (!codEnvio) {
+      throw new Error(
+        `Correos devolvio HTTP 200 pero sin codigo de envio. Respuesta: ${JSON.stringify(data)}`
+      )
+    }
+
     return {
       codEnvio,
       codEtiquetador: data.labellerCode || data.codEtiquetador || "",
