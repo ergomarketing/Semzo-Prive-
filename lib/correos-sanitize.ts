@@ -285,8 +285,27 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
   const city = normalizeText(raw.city, CORREOS_MAX_LENGTHS.city)
   if (!city) errors.push("Localidad obligatoria")
 
-  const province = normalizeText(raw.province, CORREOS_MAX_LENGTHS.province)
-  if (!province) errors.push("Provincia obligatoria")
+  // Correos REST v1 requiere codigo de 2 digitos, no nombre libre.
+  // Si viene texto (ej "MALAGA"), intentamos resolver el codigo; si no se conoce
+  // usamos el texto para no bloquear y que Correos devuelva el error descriptivo.
+  const provinceRaw = normalizeText(raw.province, CORREOS_MAX_LENGTHS.province)
+  if (!provinceRaw) errors.push("Provincia obligatoria")
+  const PROVINCE_CODES: Record<string, string> = {
+    ALAVA:"01",ALBACETE:"02",ALICANTE:"03",ALMERIA:"04",AVILA:"05",BADAJOZ:"06",
+    "ILLES BALEARS":"07",BALEARES:"07",BARCELONA:"08",BURGOS:"09",CACERES:"10",
+    CADIZ:"11",CASTELLON:"12","CIUDAD REAL":"13",CORDOBA:"14","A CORUÑA":"15",
+    CORUÑA:"15",CUENCA:"16",GIRONA:"17",GRANADA:"18",GUADALAJARA:"19",
+    GUIPUZCOA:"20",HUELVA:"21",HUESCA:"22",JAEN:"23",LEON:"24",LLEIDA:"25",
+    RIOJA:"26",LUGO:"27",MADRID:"28",MALAGA:"29",MURCIA:"30",NAVARRA:"31",
+    OURENSE:"32",ASTURIAS:"33",PALENCIA:"34","LAS PALMAS":"35",PONTEVEDRA:"36",
+    SALAMANCA:"37","SANTA CRUZ DE TENERIFE":"38",TENERIFE:"38",CANTABRIA:"39",
+    SEGOVIA:"40",SEVILLA:"41",SORIA:"42",TARRAGONA:"43",TERUEL:"44",TOLEDO:"45",
+    VALENCIA:"46",VALLADOLID:"47",VIZCAYA:"48",ZAMORA:"49",ZARAGOZA:"50",
+    CEUTA:"51",MELILLA:"52",
+  }
+  const province = /^\d{1,2}$/.test(provinceRaw.trim())
+    ? provinceRaw.trim().padStart(2, "0")
+    : PROVINCE_CODES[provinceRaw.trim()] || provinceRaw
 
   const phone = normalizePhone(raw.phone)
   if (!phone) errors.push("Telefono no valido (9 digitos espanoles)")
@@ -309,7 +328,7 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
       postalCode,
       city,
       province,
-      country: "ES",
+      country: "ESP",
       phone,
       email,
     },
