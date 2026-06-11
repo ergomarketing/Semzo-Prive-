@@ -190,11 +190,15 @@ interface CorreosTrackingResponse {
   estadoEnvio: string
 }
 
-// Codigos de producto Correos (API moderna)
+// Codigos de producto Correos (entorno pre / tabla oficial SITCE)
+// IDA (Semzo -> socia) y RETORNO (socia -> Semzo, modalidad DOURUA).
 export const CORREOS_PRODUCTS = {
-  PAQ_PREMIUM: "S0148",
-  PAQ_ESTANDAR: "S0132",
-  PAQ_LIGERO: "S0235",
+  // Envios de IDA a domicilio
+  PAQ_ESTANDAR: "S0132", // Paq Estandar Domicilio (PAFXB / DOUAOF)
+  PAQ_PREMIUM: "S0235", // Paq Premium Domicilio (PADXA / DOUAOF)
+  // Envios de RETORNO (devolucion a domicilio)
+  PAQ_RETORNO: "S0148", // Paq Retorno (PAAZE / DOURUA) - emparejado con Estandar
+  PAQ_RETORNO_PREMIUM: "S0135", // Paq Retorno Premium (PAAZV / DOURUA) - emparejado con Premium
   CORREOS_EXPRESS: "P",
 }
 

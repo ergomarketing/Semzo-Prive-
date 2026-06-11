@@ -394,7 +394,12 @@ export async function POST(request: NextRequest) {
         const senderParty = buildSenderParty(correosSettings?.sender_info)
 
         const correosClient = new CorreosAPI()
-        const productCode = service_type === "PAQ_PREMIUM" ? CORREOS_PRODUCTS.PAQ_PREMIUM : CORREOS_PRODUCTS.PAQ_ESTANDAR
+        const isPremium = service_type === "PAQ_PREMIUM"
+        // Producto de IDA (Semzo -> socia) y su producto de RETORNO emparejado
+        const productCode = isPremium ? CORREOS_PRODUCTS.PAQ_PREMIUM : CORREOS_PRODUCTS.PAQ_ESTANDAR
+        const returnProductCode = isPremium
+          ? CORREOS_PRODUCTS.PAQ_RETORNO_PREMIUM
+          : CORREOS_PRODUCTS.PAQ_RETORNO
 
         // Envio de IDA: Semzo -> Cliente
         try {
@@ -419,7 +424,7 @@ export async function POST(request: NextRequest) {
             sender: recipientParty,
             recipient: senderParty,
             weight,
-            productCode,
+            productCode: returnProductCode,
             reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`,
             observations: "Devolucion bolso",
           })
