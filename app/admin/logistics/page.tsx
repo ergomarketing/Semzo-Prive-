@@ -923,8 +923,8 @@ export default function LogisticsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PAQ_PREMIUM">Paq Premium (1-2 días)</SelectItem>
-                    <SelectItem value="PAQ_ESTANDAR">Paq Estándar (3-5 días)</SelectItem>
+                          <SelectItem value="PAQ_PREMIUM">Paq Premium (ida + retorno, 1-2 días)</SelectItem>
+                          <SelectItem value="PAQ_ESTANDAR">Paq Estándar (ida + retorno, 3-5 días)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
