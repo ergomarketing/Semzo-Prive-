@@ -444,7 +444,10 @@ export async function POST(request: NextRequest) {
       .from("shipments")
       .insert({
         reservation_id: reservation_id || null,
-        status: correosTrackingNumber ? "label_created" : "pending",
+        // El constraint shipments_status_check solo permite: pending, picked_up,
+        // in_transit, out_for_delivery, delivered, failed_delivery, returned, cancelled.
+        // El tracking se guarda en tracking_number; el estado se mantiene en "pending".
+        status: "pending",
         carrier,
         tracking_number: correosTrackingNumber || null,
         return_tracking_number: returnTrackingNumber || null,
