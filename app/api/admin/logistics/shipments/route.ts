@@ -425,6 +425,8 @@ export async function POST(request: NextRequest) {
             recipient: senderParty,
             weight,
             productCode: returnProductCode,
+            admissionMethod: 3,
+            deliveryMethod: "DOURUA",
             reference: reservation_id ? `RET-${reservation_id}` : `RET-${Date.now()}`,
             observations: "Devolucion bolso",
           })
