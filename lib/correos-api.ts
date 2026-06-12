@@ -190,15 +190,16 @@ interface CorreosTrackingResponse {
   estadoEnvio: string
 }
 
-// Codigos de producto Correos (entorno pre / tabla oficial SITCE)
-// IDA (Semzo -> socia) y RETORNO (socia -> Semzo, modalidad DOURUA).
+// Codigos de PRODUCTO Correos (NO codigos SAP). El campo "product" del API
+// preregister espera el Codigo Producto (ej PAFXB), no el SAP (ej S0132).
+// Valores confirmados con la coleccion Postman oficial PTRES PRE.
 export const CORREOS_PRODUCTS = {
-  // Envios de IDA a domicilio
-  PAQ_ESTANDAR: "S0132", // Paq Estandar Domicilio (PAFXB / DOUAOF)
-  PAQ_PREMIUM: "S0235", // Paq Premium Domicilio (PADXA / DOUAOF)
-  // Envios de RETORNO (devolucion a domicilio)
-  PAQ_RETORNO: "S0148", // Paq Retorno (PAAZE / DOURUA) - emparejado con Estandar
-  PAQ_RETORNO_PREMIUM: "S0135", // Paq Retorno Premium (PAAZV / DOURUA) - emparejado con Premium
+  // Envios de IDA a domicilio (admissionMethod 1 / deliveryMethod DOUAOF)
+  PAQ_ESTANDAR: "PAFXB", // Paq Estandar Domicilio (SAP S0132)
+  PAQ_PREMIUM: "PADXA", // Paq Premium Domicilio (SAP S0235)
+  // Envios de RETORNO / devolucion (admissionMethod 3 / deliveryMethod DOURUA)
+  PAQ_RETORNO: "PAAZE", // Paq Retorno (SAP S0148) - emparejado con Estandar
+  PAQ_RETORNO_PREMIUM: "PAAZV", // Paq Retorno Premium (SAP S0135) - emparejado con Premium
   CORREOS_EXPRESS: "P",
 }
 
