@@ -119,7 +119,7 @@ export default function LandingMembresia() {
           fill
           priority
           sizes="100vw"
-          className="origin-[50%_25%] scale-100 object-cover object-[50%_25%] md:scale-[1.35] lg:scale-[1.6]"
+          className="object-cover object-[50%_15%]"
         />
         {/* Overlay neutro plano para legibilidad */}
         <div className="absolute inset-0 bg-black/35" />
