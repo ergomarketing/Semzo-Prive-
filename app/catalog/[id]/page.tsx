@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { permanentRedirect } from "next/navigation"
 import BagDetail from "../../components/bag-detail"
 import { createClient } from "@supabase/supabase-js"
 import Link from "next/link"
@@ -118,10 +118,11 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
   const { id } = await params
   const data = await fetchBagByIdOrSlug(id)
 
-  // Si llego un UUID en la URL pero el bolso tiene slug, hacemos redirect 301 al slug.
-  // Esto consolida autoridad SEO en una sola URL canonica y respeta backlinks viejos.
+  // Si llego un UUID en la URL pero el bolso tiene slug, hacemos redirect 308 (permanente) al slug.
+  // permanentRedirect emite 308 (no 307 temporal como redirect): Google transfiere autoridad
+  // al slug y deja de indexar el UUID. Consolida SEO en una sola URL canonica.
   if (data && isUuid(id) && data.slug && data.slug !== id) {
-    redirect(`/catalog/${data.slug}`)
+    permanentRedirect(`/catalog/${data.slug}`)
   }
 
   let bag = null
