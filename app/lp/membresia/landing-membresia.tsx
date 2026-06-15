@@ -111,38 +111,22 @@ export default function LandingMembresia() {
         </Link>
       </header>
 
-      {/* HERO - imagen vertical completa (modelo + bolso) en mobile y desktop.
-          El contenedor mantiene proporcion retrato para que object-cover muestre
-          la composicion completa igual en ambos tamanos. */}
-      <section className="relative w-full overflow-hidden bg-indigo-dark">
-        {/* Fondo desenfocado de la misma imagen para rellenar los laterales en desktop */}
+      {/* HERO - imagen a ancho completo (object-cover), sin desenfoque.
+          El punto focal 50% 35% mantiene visible modelo + bolso al recortar en pantallas anchas. */}
+      <section className="relative flex min-h-[78svh] w-full items-end overflow-hidden bg-indigo-dark md:min-h-[calc(100svh-72px)]">
         <Image
           src="/images/hermes-prive.jpeg"
-          alt=""
-          aria-hidden="true"
+          alt="Editorial Semzo Prive - bolso Hermes burgundy"
           fill
+          priority
           sizes="100vw"
-          className="hidden scale-110 object-cover object-center blur-2xl md:block"
+          className="object-cover object-[50%_35%]"
         />
-        <div className="absolute inset-0 hidden bg-indigo-dark/55 md:block" />
+        {/* Overlay neutro plano para legibilidad */}
+        <div className="absolute inset-0 bg-black/35" />
 
-        {/* Contenedor de la imagen con proporcion retrato (igual que mobile).
-            En desktop la altura se limita al viewport y el ancho deriva del aspect-ratio,
-            asi se ve la composicion completa (modelo + bolso) sin salir de pantalla. */}
-        <div className="relative z-10 mx-auto aspect-[3/4] w-full max-w-[640px] sm:aspect-[4/5] md:aspect-[3/4] md:h-[calc(100svh-72px)] md:w-auto">
-          <Image
-            src="/images/hermes-prive.jpeg"
-            alt="Editorial Semzo Prive - bolso Hermes burgundy"
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 1024px"
-            className="object-cover object-[50%_15%]"
-          />
-          {/* Overlay neutro plano para legibilidad */}
-          <div className="absolute inset-0 bg-black/35" />
-
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-14 md:px-12 md:pb-16">
-            <div className="mx-auto max-w-xl text-white md:mx-0">
+        <div className="relative z-10 w-full px-6 pb-14 md:px-12 md:pb-16">
+          <div className="mx-auto max-w-xl text-white md:mx-0">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 MEMBRESIA DE BOLSOS DE LUJO
               </p>
