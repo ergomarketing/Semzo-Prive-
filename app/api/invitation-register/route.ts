@@ -46,6 +46,17 @@ export async function POST(request: Request) {
       )
     }
 
+    // Meter en el embudo de leads
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      // Detectar idioma por el header Accept-Language o dejar invitation_es por defecto
+      const lang = request.headers.get("accept-language") || ""
+      const source = lang.startsWith("en") ? "invitation_en" : "invitation_es"
+      await enrollLead({ email: email.toLowerCase().trim(), name: nombre.trim(), phone: whatsapp?.trim(), source })
+    } catch (e) {
+      console.error("[v0] enrollLead error (invitation):", e)
+    }
+
     return NextResponse.json({ 
       success: true,
       message: "Registro exitoso",

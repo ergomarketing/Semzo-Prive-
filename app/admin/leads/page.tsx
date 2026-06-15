@@ -21,6 +21,24 @@ interface Stats {
   openRates: OpenRates
 }
 
+interface SourceStat {
+  source: string
+  label: string
+  total: number
+  converted: number
+  unsubscribed: number
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  google_ads:    "Google Ads",
+  organic_web:   "Web orgánica",
+  social:        "Redes sociales",
+  invitation_es: "Invitación ES",
+  invitation_en: "Invitación EN",
+  referral:      "Referidas",
+  manual:        "Manual",
+}
+
 interface SequenceRow {
   email_number: number
   status: string
@@ -72,7 +90,7 @@ function StatCard({ label, value, sub }: { label: string; value: number | string
 }
 
 export default function AdminLeadsPage() {
-  const [data, setData] = useState<{ stats: Stats; leads: Lead[]; page: number; hasMore: boolean } | null>(null)
+  const [data, setData] = useState<{ stats: Stats; leads: Lead[]; bySource: SourceStat[]; page: number; hasMore: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -151,6 +169,28 @@ export default function AdminLeadsPage() {
           </>
         )}
 
+        {/* Leads por fuente */}
+        {data?.bySource && data.bySource.length > 0 && (
+          <div className="mb-6 rounded-lg border bg-white p-5">
+            <p className="mb-4 text-xs uppercase tracking-widest text-gray-500">Leads por canal</p>
+            <div className="space-y-2">
+              {data.bySource.map((s) => (
+                <div key={s.source} className="flex items-center gap-3">
+                  <span className="w-32 truncate text-xs text-gray-700">{s.label}</span>
+                  <div className="flex-1 overflow-hidden rounded-full bg-gray-100 h-2">
+                    <div
+                      className="h-2 rounded-full bg-[#1a1a4b] transition-all"
+                      style={{ width: `${data.stats.totalLeads ? Math.round((s.total / data.stats.totalLeads) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <span className="w-8 text-right text-xs font-medium text-[#1a1a4b]">{s.total}</span>
+                  <span className="w-16 text-right text-xs text-green-600">{s.converted} conv.</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Filtros + tabla */}
         <div className="rounded-lg border bg-white">
           <div className="flex items-center justify-between border-b px-5 py-4">
@@ -193,7 +233,7 @@ export default function AdminLeadsPage() {
                         <p className="font-medium text-[#1a1a4b]">{lead.name || "—"}</p>
                         <p className="text-xs text-gray-500">{lead.email}</p>
                       </td>
-                      <td className="px-5 py-3 text-xs text-gray-600">{lead.source}</td>
+                      <td className="px-5 py-3 text-xs text-gray-600">{SOURCE_LABELS[lead.source] || lead.source}</td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-600"}`}>
                           {STATUS_LABELS[lead.status] || lead.status}

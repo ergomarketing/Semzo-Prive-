@@ -62,6 +62,27 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Métricas por fuente
+  const SOURCE_LABELS: Record<string, string> = {
+    google_ads:    "Google Ads",
+    organic_web:   "Web orgánica",
+    social:        "Redes sociales",
+    invitation_es: "Invitación ES",
+    invitation_en: "Invitación EN",
+    referral:      "Referidas",
+    manual:        "Manual",
+  }
+
+  const { data: allLeads } = await supabase.from("leads").select("source, status")
+  const bySource: Record<string, { label: string; total: number; converted: number; unsubscribed: number }> = {}
+  for (const lead of allLeads || []) {
+    const src = lead.source || "manual"
+    if (!bySource[src]) bySource[src] = { label: SOURCE_LABELS[src] || src, total: 0, converted: 0, unsubscribed: 0 }
+    bySource[src].total++
+    if (lead.status === "subscribed") bySource[src].converted++
+    if (lead.status === "unsubscribed") bySource[src].unsubscribed++
+  }
+
   return NextResponse.json({
     stats: {
       totalLeads,
@@ -72,6 +93,9 @@ export async function GET(req: NextRequest) {
       sentWeek: sentWeek?.length || 0,
       openRates,
     },
+    bySource: Object.entries(bySource)
+      .map(([key, val]) => ({ source: key, ...val }))
+      .sort((a, b) => b.total - a.total),
     leads,
     page,
     hasMore: (leads?.length || 0) === limit,

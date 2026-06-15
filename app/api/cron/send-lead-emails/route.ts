@@ -122,6 +122,30 @@ export async function GET(req: NextRequest) {
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", row.id)
 
+      // Si es el Email 5 (último), migrar automáticamente a newsletter
+      if (row.email_number === 5) {
+        await supabase
+          .from("leads")
+          .update({ status: "subscribed", subscribed_at: new Date().toISOString() })
+          .eq("id", lead.id)
+          .eq("status", "lead") // solo si no se dio de baja durante la secuencia
+
+        // Insertar también en newsletter_subscriptions para unificar la base
+        await supabase
+          .from("newsletter_subscriptions")
+          .upsert(
+            {
+              email: lead.email,
+              name: lead.name || null,
+              phone: lead.phone || null,
+              status: "active",
+              subscribed_at: new Date().toISOString(),
+              preferences: { newArrivals: true, exclusiveOffers: true, styleGuides: true, events: false, membershipUpdates: true },
+            },
+            { onConflict: "email", ignoreDuplicates: false }
+          )
+      }
+
       sent++
     } catch (err) {
       await supabase

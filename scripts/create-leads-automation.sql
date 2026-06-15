@@ -9,7 +9,8 @@ create table if not exists leads (
   email text unique not null,
   name text,
   phone text,
-  source text default 'google_ads', -- 'google_ads' | 'organic' | 'referral' | 'manual'
+  source text default 'google_ads', -- 'google_ads' | 'organic_web' | 'social' | 'invitation_es' | 'invitation_en' | 'referral' | 'manual'
+  referral_code text,
   utm_campaign text,
   utm_medium text,
   utm_content text,
