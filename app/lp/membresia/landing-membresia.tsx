@@ -149,7 +149,6 @@ export default function LandingMembresia() {
                 ACCEDER A LAS MEMBRESIAS
                 <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
               </a>
-            </div>
           </div>
         </div>
       </section>
