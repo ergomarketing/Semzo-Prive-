@@ -113,20 +113,25 @@ export default function LandingMembresia() {
 
       {/* HERO - imagen a ancho completo (object-cover), sin desenfoque.
           El punto focal 50% 35% mantiene visible modelo + bolso al recortar en pantallas anchas. */}
-      <section className="relative flex min-h-[78svh] w-full items-end overflow-hidden bg-indigo-dark md:min-h-[calc(100svh-72px)]">
-        <Image
-          src="/images/hermes-prive.jpeg"
-          alt="Editorial Semzo Prive - bolso Hermes burgundy"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[50%_35%]"
-        />
-        {/* Overlay neutro plano para legibilidad */}
-        <div className="absolute inset-0 bg-black/35" />
+      {/* HERO: la imagen original es 1199x1473px (retrato).
+          Se muestra con su aspect-ratio nativo — sin recortar, sin desenfoque.
+          En mobile ocupa el 100% del ancho. En desktop se limita a 700px centrado
+          para que quepa en pantalla completa mostrando modelo+bolso+jeans. */}
+      <section className="w-full bg-indigo-dark">
+        <div className="relative mx-auto w-full" style={{aspectRatio: "1199/1473"}}>
+          <Image
+            src="/images/hermes-prive.jpeg"
+            alt="Editorial Semzo Prive - bolso Hermes burgundy"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 700px"
+            className="object-cover object-top md:object-contain md:object-top"
+          />
+          {/* Overlay para legibilidad del texto */}
+          <div className="absolute inset-0 bg-black/35" />
 
-        <div className="relative z-10 w-full px-6 pb-14 md:px-12 md:pb-16">
-          <div className="mx-auto max-w-xl text-white md:mx-0">
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
+            <div className="text-white">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 MEMBRESIA DE BOLSOS DE LUJO
               </p>
@@ -149,6 +154,7 @@ export default function LandingMembresia() {
                 ACCEDER A LAS MEMBRESIAS
                 <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
               </a>
+            </div>
           </div>
         </div>
       </section>
