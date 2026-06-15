@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
-import { Email1Bienvenida } from "@/emails/leads/email-1-bienvenida"
-import { Email2Storytelling } from "@/emails/leads/email-2-storytelling"
-import { Email3PropuestaValor } from "@/emails/leads/email-3-propuesta-valor"
-import { Email4Escasez } from "@/emails/leads/email-4-escasez"
-import { Email5Cierre } from "@/emails/leads/email-5-cierre"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,34 +8,14 @@ const supabase = createClient(
 )
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const EMAIL_SUBJECTS: Record<number, string> = {
-  1: "Bienvenida a algo diferente, {{name}}",
-  2: "No todo el mundo sabe lo que tiene delante",
-  3: "¿Qué incluye realmente una suscripción SEMZO?",
-  4: "Prendas como estas no esperan",
-  5: "Una última cosa, {{name}}",
-}
-
-type EmailProps = {
-  name: string
-  trackingPixelUrl: string
-  ctaUrl: string
-  unsubscribeUrl: string
-}
-
-function getEmailComponent(emailNumber: number, props: EmailProps) {
-  switch (emailNumber) {
-    case 1: return Email1Bienvenida(props)
-    case 2: return Email2Storytelling(props)
-    case 3: return Email3PropuestaValor(props)
-    case 4: return Email4Escasez(props)
-    case 5: return Email5Cierre(props)
-    default: return null
-  }
+function renderTemplate(template: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce(
+    (str, [key, value]) => str.replaceAll(`{{${key}}}`, value),
+    template
+  )
 }
 
 export async function GET(req: NextRequest) {
-  // Verificar CRON_SECRET para proteger el endpoint
   const authHeader = req.headers.get("authorization")
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
@@ -48,23 +23,34 @@ export async function GET(req: NextRequest) {
 
   const now = new Date().toISOString()
 
-  // Obtener emails pendientes cuya scheduled_for ya pasó
+  // Emails pendientes cuya scheduled_for ya pasó
   const { data: pendingEmails, error } = await supabase
     .from("email_sequence_log")
     .select("*, leads(*)")
     .eq("status", "pending")
     .lte("scheduled_for", now)
     .order("scheduled_for", { ascending: true })
-    .limit(50) // procesar máximo 50 por ejecución
+    .limit(50)
 
   if (error) {
-    console.error("[cron/send-lead-emails] Error obteniendo pendientes:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   if (!pendingEmails || pendingEmails.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, message: "Nada pendiente" })
   }
+
+  // Cargar todos los templates activos de Supabase
+  const { data: templates, error: tplError } = await supabase
+    .from("email_templates")
+    .select("id, subject, body_html")
+    .eq("active", true)
+
+  if (tplError || !templates) {
+    return NextResponse.json({ error: "Error cargando templates" }, { status: 500 })
+  }
+
+  const templateMap = Object.fromEntries(templates.map((t) => [t.id, t]))
 
   let sent = 0
   let skipped = 0
@@ -75,42 +61,60 @@ export async function GET(req: NextRequest) {
 
     // Saltar si el lead convirtió o se dio de baja
     if (!lead || lead.status === "subscribed" || lead.status === "unsubscribed") {
-      await supabase
-        .from("email_sequence_log")
-        .update({ status: "skipped" })
-        .eq("id", row.id)
+      await supabase.from("email_sequence_log").update({ status: "skipped" }).eq("id", row.id)
       skipped++
       continue
     }
 
-    const subject = EMAIL_SUBJECTS[row.email_number]?.replace("{{name}}", lead.name || "") || "SEMZO Privé"
-    const trackingPixelUrl = `${process.env.APP_URL}/api/track/open?lid=${lead.id}&eid=${row.id}`
-    const ctaBaseUrl = `${process.env.APP_URL}/api/track/click?lid=${lead.id}&eid=${row.id}&url=`
-    const unsubscribeUrl = `${process.env.APP_URL}/api/webhooks/unsubscribe?lid=${lead.id}`
+    const template = templateMap[row.email_number]
+    if (!template) {
+      skipped++
+      continue
+    }
 
-    const ctaDestination = row.email_number <= 2
-      ? `${process.env.APP_URL}/catalog`
-      : `${process.env.APP_URL}/membresias`
+    const appUrl = process.env.APP_URL || "https://semzoprive.com"
+    const ctaDestination = row.email_number <= 2 ? `${appUrl}/catalog` : `${appUrl}/membresias`
 
-    const emailProps: EmailProps = {
+    const vars = {
       name: lead.name || "",
-      trackingPixelUrl,
-      ctaUrl: ctaBaseUrl + encodeURIComponent(ctaDestination),
-      unsubscribeUrl,
+      cta_url: `${appUrl}/api/track/click?lid=${lead.id}&eid=${row.id}&url=${encodeURIComponent(ctaDestination)}`,
+      unsubscribe_url: `${appUrl}/api/webhooks/unsubscribe?lid=${lead.id}`,
+      tracking_pixel: `<img src="${appUrl}/api/track/open?lid=${lead.id}&eid=${row.id}" width="1" height="1" style="display:none" />`,
     }
 
-    const component = getEmailComponent(row.email_number, emailProps)
-    if (!component) {
-      skipped++
-      continue
-    }
+    const subject = renderTemplate(template.subject, vars)
+    const bodyHtml = renderTemplate(template.body_html, vars)
+
+    // Envolver en el layout base
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9f6f1;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f6f1;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;max-width:600px;width:100%;">
+        <tr><td style="background:#1a1f3a;padding:24px 40px;text-align:center;">
+          <span style="color:#c9a96e;font-family:Georgia,serif;font-size:18px;letter-spacing:4px;">SEMZO PRIVÉ</span>
+        </td></tr>
+        <tr><td style="padding:40px;color:#1a1f3a;font-size:16px;line-height:1.7;">
+          ${bodyHtml}
+          ${vars.tracking_pixel}
+        </td></tr>
+        <tr><td style="background:#f9f6f1;padding:24px 40px;text-align:center;font-size:12px;color:#999;">
+          © SEMZO Privé · <a href="${vars.unsubscribe_url}" style="color:#999;">Darse de baja</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
 
     try {
       await resend.emails.send({
         from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",
         to: [lead.email],
         subject,
-        react: component,
+        html,
       })
 
       await supabase
@@ -120,7 +124,6 @@ export async function GET(req: NextRequest) {
 
       sent++
     } catch (err) {
-      console.error(`[cron/send-lead-emails] Error email ${row.email_number} a ${lead.email}:`, err)
       await supabase
         .from("email_sequence_log")
         .update({ status: "failed", error_message: String(err) })
