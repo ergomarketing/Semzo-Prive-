@@ -26,6 +26,7 @@ import {
   FileText,
   Bell,
   ChevronDown,
+  UserPlus,
 } from "lucide-react"
 
 interface NavItem {
@@ -115,6 +116,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       title: "Contenido & Comunicación",
       items: [
         { label: "Blog", href: "/admin/blog", icon: <FileText className="h-4 w-4" /> },
+        { label: "Leads", href: "/admin/leads", icon: <UserPlus className="h-4 w-4" /> },
+        { label: "Plantillas Email", href: "/admin/leads/templates", icon: <Mail className="h-4 w-4" /> },
         { label: "Newsletter", href: "/admin/newsletter", icon: <Mail className="h-4 w-4" /> },
         { label: "Email Logs", href: "/admin/email-logs", icon: <Mail className="h-4 w-4" /> },
         { label: "Chat", href: "/admin/chat", icon: <MessageSquare className="h-4 w-4" /> },
