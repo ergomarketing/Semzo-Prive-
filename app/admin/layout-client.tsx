@@ -42,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(["general", "content", "operations"])
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(["general", "operations", "members", "content", "system"])
 
   useEffect(() => {
     if (pathname === "/admin/login") {
