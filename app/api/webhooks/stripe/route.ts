@@ -89,21 +89,26 @@ export async function POST(req: NextRequest) {
           });
 
           // Consumir gift card si había una aplicada parcialmente
-          // consume_gift_card_atomic v2: verifica saldo e idempotencia por session.id
-          if (giftCardId && userId) {
-            const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            const originalPriceCents = lineItems.data[0]?.price?.unit_amount || 0;
-            const amountChargedCents = session.amount_total || 0;
-            const giftCardConsumedCents = originalPriceCents - amountChargedCents;
+          // Fuente de verdad: membership_intents.gift_card_applied_cents
+          // (no usar listLineItems — el unit_amount es el precio ya descontado, no el original)
+          if (giftCardId && userId && intentId) {
+            const { data: intent } = await supabase
+              .from("membership_intents")
+              .select("gift_card_applied_cents")
+              .eq("id", intentId)
+              .maybeSingle();
+
+            const giftCardConsumedCents = intent?.gift_card_applied_cents || 0;
 
             if (giftCardConsumedCents > 0) {
-              await supabase.rpc("consume_gift_card_atomic", {
+              const { data: rpcResult } = await supabase.rpc("consume_gift_card_atomic", {
                 p_gift_card_id: giftCardId,
                 p_amount: giftCardConsumedCents,  // EN CENTAVOS
                 p_user_id: userId,
                 p_reference_id: session.id,       // cs_xxx — idempotencia
                 p_reference_type: "bag_pass",
               });
+              console.log("[v0] [bag_pass_webhook] gift card consumed:", { giftCardConsumedCents, rpcResult });
             }
           }
 
