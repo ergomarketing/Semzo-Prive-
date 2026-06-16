@@ -243,6 +243,17 @@ export default function RootLayout({
           `}
         </Script>
 
+        {/* Google Ads — Conversión: Envío de formulario clientes potenciales */}
+        <Script id="google-ads-conversion" strategy="afterInteractive">
+          {`
+            gtag('event', 'conversion', {
+              'send_to': 'AW-17660150279/_FLwCMPl4K4bEIeEguVB',
+              'value': 1.0,
+              'currency': 'EUR'
+            });
+          `}
+        </Script>
+
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
