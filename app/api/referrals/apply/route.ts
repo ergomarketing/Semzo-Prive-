@@ -58,6 +58,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, reason: result.reason }, { status: httpStatus })
     }
 
+    // Meter al referido en el embudo de leads
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      await enrollLead({
+        email: user.email!,
+        name: user.user_metadata?.full_name || user.user_metadata?.name || "",
+        source: "referral",
+        referral_code: referralCode,
+      })
+    } catch (e) {
+      console.error("[v0] enrollLead error (referral):", e)
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error("[v0] /api/referrals/apply error:", err)

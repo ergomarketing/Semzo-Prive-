@@ -79,9 +79,20 @@ export async function POST(request: NextRequest) {
         userEmail: email.toLowerCase().trim(),
         membershipPlan: "Free",
       })
-      console.log("[v0] Admin notified of new free user registration")
     } catch (notifError) {
       console.error("[v0] Error sending new user notification:", notifError)
+    }
+
+    // Meter en el embudo de leads (secuencia de 5 emails)
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      await enrollLead({
+        email: email.toLowerCase().trim(),
+        name: `${firstName} ${lastName}`.trim(),
+        source: "organic_web",
+      })
+    } catch (e) {
+      console.error("[v0] enrollLead error (register-free):", e)
     }
 
     // NO enviar emails manuales - Supabase lo hace automáticamente

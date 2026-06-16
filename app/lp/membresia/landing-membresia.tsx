@@ -111,41 +111,50 @@ export default function LandingMembresia() {
         </Link>
       </header>
 
-      {/* HERO - editorial fullscreen, compacto en altura (75vh en mobile, 85vh desktop) */}
-      <section className="relative flex min-h-[75svh] w-full items-end overflow-hidden bg-indigo-dark md:min-h-[85svh]">
-        <Image
-          src="/images/hermes-prive.jpeg"
-          alt="Editorial Semzo Prive - bolso Hermes burgundy"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[50%_15%]"
-        />
-        {/* Overlay neutro plano para legibilidad */}
-        <div className="absolute inset-0 bg-black/35" />
+      {/* HERO - imagen a ancho completo (object-cover), sin desenfoque.
+          El punto focal 50% 35% mantiene visible modelo + bolso al recortar en pantallas anchas. */}
+      {/* HERO: la imagen original es 1199x1473px (retrato).
+          Se muestra con su aspect-ratio nativo — sin recortar, sin desenfoque.
+          En mobile ocupa el 100% del ancho. En desktop se limita a 700px centrado
+          para que quepa en pantalla completa mostrando modelo+bolso+jeans. */}
+      <section className="w-full bg-indigo-dark">
+        <div className="relative mx-auto w-full" style={{aspectRatio: "1199/1473"}}>
+          <Image
+            src="/images/hermes-prive.jpeg"
+            alt="Editorial Semzo Prive - bolso Hermes burgundy"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 700px"
+            className="object-cover object-top md:object-contain md:object-top"
+          />
+          {/* Overlay para legibilidad del texto */}
+          <div className="absolute inset-0 bg-black/35" />
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-14 md:px-10 md:pb-20">
-          <div className="max-w-2xl text-white">
-            <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">MEMBRESIA DE BOLSOS DE LUJO</p>
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
+            <div className="text-white">
+              <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
+                MEMBRESIA DE BOLSOS DE LUJO
+              </p>
 
-            <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
-              Bolsos iconicos.
-              <br />
-              <span className="italic text-rose-pastel">Sin comprarlos.</span>
-            </h1>
+              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
+                Bolsos iconicos.
+                <br />
+                <span className="italic text-rose-pastel">Sin comprarlos.</span>
+              </h1>
 
-            <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-              Membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.
-            </p>
+              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
+                Membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.
+              </p>
 
-            <a
-              href="#membresias"
-              onClick={() => trackEvent("cta_hero_click")}
-              className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
-            >
-              ACCEDER A LAS MEMBRESIAS
-              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-            </a>
+              <a
+                href="#membresias"
+                onClick={() => trackEvent("cta_hero_click")}
+                className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
+              >
+                ACCEDER A LAS MEMBRESIAS
+                <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+              </a>
+            </div>
           </div>
         </div>
       </section>

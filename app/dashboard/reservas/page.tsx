@@ -128,9 +128,10 @@ export default function ReservasPage() {
       confirmed: { label: "Confirmada", className: "bg-blue-100 text-blue-800 border-blue-200" },
       completed: { label: "Completada", className: "bg-slate-100 text-slate-800 border-slate-200" },
       cancelled: { label: "Cancelada", className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
+      overdue: { label: "Devolución pendiente", className: "bg-red-100 text-red-800 border-red-200" },
     }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, className: "bg-slate-100 text-slate-800 border-slate-200" }
 
     return (
       <Badge variant="secondary" className={config.className}>

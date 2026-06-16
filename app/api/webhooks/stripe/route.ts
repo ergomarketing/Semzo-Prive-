@@ -336,10 +336,9 @@ export async function POST(req: NextRequest) {
 
         // Crear/actualizar user_memberships (FUENTE DE VERDAD para estado de membresia)
         const startDate = new Date(subscription.current_period_start * 1000);
-        const endDate =
-          billingCycle === "weekly"
-            ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-            : new Date(subscription.current_period_end * 1000);
+        // Siempre usar current_period_end real de Stripe. Petite es mensual en Stripe
+        // aunque maneje pases semanales internamente.
+        const endDate = new Date(subscription.current_period_end * 1000);
 
         // REGLA DE ORO: Identity → SEPA → Active.
         // NO marcar "active" aqui aunque Stripe diga subscription.status="active".

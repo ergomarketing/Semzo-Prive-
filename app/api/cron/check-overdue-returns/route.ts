@@ -36,15 +36,10 @@ export async function GET(request: NextRequest) {
 
     console.log("[SEPA CRON] Iniciando verificación de devoluciones vencidas...")
 
-    // Fecha límite: hace 8 días
-    const eightDaysAgo = new Date()
-    eightDaysAgo.setDate(eightDaysAgo.getDate() - 8)
-    eightDaysAgo.setHours(0, 0, 0, 0)
+    // Buscar reservas vencidas desde ayer o antes (end_date <= ahora)
+    // que no hayan recibido aviso todavía
+    const now = new Date()
 
-    // Buscar reservas:
-    // - status = 'active' o 'overdue' (no devueltas)
-    // - return_date <= hace 8 días
-    // - sepa_pre_notice_sent_at = null (no se ha enviado aviso aún)
     const { data: overdueReservations, error: reservationsError } = await supabaseAdmin
       .from("reservations")
       .select(
@@ -52,7 +47,7 @@ export async function GET(request: NextRequest) {
         id,
         user_id,
         bag_id,
-        return_date,
+        end_date,
         total_price,
         status,
         sepa_pre_notice_sent_at,
@@ -60,8 +55,8 @@ export async function GET(request: NextRequest) {
         bags!inner(id, name, brand)
       `,
       )
-      .in("status", ["active", "overdue"])
-      .lte("return_date", eightDaysAgo.toISOString())
+      .in("status", ["overdue"])
+      .lte("end_date", now.toISOString())
       .is("sepa_pre_notice_sent_at", null)
 
     if (reservationsError) {
@@ -101,8 +96,8 @@ export async function GET(request: NextRequest) {
         const customerName =
           profile.full_name || `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Cliente"
         const bagName = `${bag.brand} ${bag.name}`.trim()
-        const returnDate = new Date(reservation.return_date)
-        const returnDateFormatted = returnDate.toLocaleDateString("es-ES", {
+        const endDate = new Date(reservation.end_date)
+        const endDateFormatted = endDate.toLocaleDateString("es-ES", {
           day: "numeric",
           month: "long",
           year: "numeric",
@@ -115,7 +110,7 @@ export async function GET(request: NextRequest) {
           to: profile.email,
           customerName,
           bagName,
-          rentalEndDate: returnDateFormatted,
+          rentalEndDate: endDateFormatted,
           amountDue: reservation.total_price || 500, // Usar precio de reserva o valor default
           reservationId: reservation.id,
         })

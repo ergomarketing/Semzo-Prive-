@@ -89,6 +89,14 @@ export async function POST(request: Request) {
       // No bloquear el flujo si falla el email
     }
 
+    // Meter en el embudo de leads (secuencia de 5 emails)
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      await enrollLead({ email, name: name || "", source: "organic_web" })
+    } catch (e) {
+      console.error("[v0] enrollLead error (newsletter):", e)
+    }
+
     return NextResponse.json({
       success: true,
       message: "Suscripción exitosa",
