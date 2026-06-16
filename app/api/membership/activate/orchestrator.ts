@@ -122,10 +122,9 @@ export async function syncMembershipFromStripe(
     (membershipType === "petite" ? "weekly" : "monthly")
 
   const startDate = new Date(subscription.current_period_start * 1000)
-  const endDate =
-    billingCycle === "weekly"
-      ? new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-      : new Date(subscription.current_period_end * 1000)
+  // Siempre usar el current_period_end real de Stripe, independientemente del billing_cycle.
+  // Petite es mensual en Stripe aunque internamente manejemos pases semanales.
+  const endDate = new Date(subscription.current_period_end * 1000)
 
   // Si Stripe reporta activa/trialing, abrimos can_make_reservations.
   // Para otros estados, lo dejamos en false (default seguro).
