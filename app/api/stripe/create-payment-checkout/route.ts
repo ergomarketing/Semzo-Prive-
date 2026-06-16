@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
     const { amountCents, productName, intentId, bagId } = body
     // Acepta gift_card_id (snake_case desde CartClient) o giftCardId (legacy camelCase)
     const giftCardId: string | undefined = body.gift_card_id || body.giftCardId
+    // giftCardAmountEuros: cuánto cubre la gift card (en euros, del CartClient)
+    const giftCardAmountEuros: number | undefined = body.giftCardAmountEuros
 
     if (!amountCents || !productName || !intentId) {
       return NextResponse.json(
@@ -128,6 +130,19 @@ export async function POST(req: NextRequest) {
         : vercelEnv === "preview" && process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
           : "http://localhost:3000")
+
+    // Persistir cuánto cubre la gift card en membership_intents ANTES de Stripe
+    // El webhook lo leerá de aquí como fuente de verdad para consumirla
+    if (giftCardId && giftCardAmountEuros && intentId) {
+      const originalAmountCents = amountCents + Math.round(giftCardAmountEuros * 100)
+      const giftCardAppliedCents = originalAmountCents - amountCents
+      if (giftCardAppliedCents > 0) {
+        await supabase
+          .from("membership_intents")
+          .update({ gift_card_applied_cents: giftCardAppliedCents })
+          .eq("id", intentId)
+      }
+    }
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",

@@ -182,7 +182,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {sidebarOpen ? (
               <div className="flex items-center gap-3">
                 <Image
-                  src="/images/logo-20semzo-20prive.png"
+                  src="/images/logo-semzo-prive.png"
                   alt="Semzo Privé"
                   width={40}
                   height={50}
@@ -195,7 +195,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             ) : (
               <Image
-                src="/images/logo-20semzo-20prive.png"
+                src="/images/logo-semzo-prive.png"
                 alt="SP"
                 width={32}
                 height={40}
