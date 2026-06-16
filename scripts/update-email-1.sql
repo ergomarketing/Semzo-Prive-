@@ -15,7 +15,7 @@ UPDATE email_templates SET
   <!-- HEADER LOGO -->
   <tr>
     <td align="center" style="padding:36px 40px 24px 40px;background:#ffffff;">
-      <img src="https://semzoprive.com/images/semzo-prive-logo.png"
+      <img src="https://semzoprive.com/images/logo-semzo-prive.png"
            alt="SEMZO PRIVE" width="260"
            style="display:block;max-width:260px;height:auto;" />
     </td>
@@ -24,7 +24,7 @@ UPDATE email_templates SET
   <!-- HERO IMAGE -->
   <tr>
     <td style="padding:0;margin:0;">
-      <img src="https://semzoprive.com/images/petite-membership.jpg"
+      <img src="https://semzoprive.com/images/memberships/petite-membership.jpg"
            alt="Membresía Petite SEMZO PRIVÉ"
            width="620"
            style="display:block;width:100%;max-width:620px;height:auto;" />
