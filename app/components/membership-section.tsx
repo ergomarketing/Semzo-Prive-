@@ -270,7 +270,7 @@ export default function MembershipSection() {
                   <button
                     type="button"
                     onClick={() => setOpenDetails(m)}
-                    className="mt-4 self-start text-[10px] tracking-[0.25em] text-indigo-dark/70 underline-offset-4 transition hover:text-[#b8a06a] hover:underline"
+                    className="mt-4 self-start text-[11px] font-semibold tracking-[0.2em] text-[#b8a06a] underline underline-offset-4 transition hover:text-[#9a7a45]"
                   >
                     VER DETALLES
                   </button>
