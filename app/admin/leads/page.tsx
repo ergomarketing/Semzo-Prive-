@@ -92,8 +92,25 @@ function StatCard({ label, value, sub }: { label: string; value: number | string
 export default function AdminLeadsPage() {
   const [data, setData] = useState<{ stats: Stats; leads: Lead[]; bySource: SourceStat[]; page: number; hasMore: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("all")
+
+  const triggerCron = async () => {
+    setSending(true)
+    setSendResult(null)
+    try {
+      const res = await fetch("/api/admin/trigger-lead-emails", { method: "POST" })
+      const json = await res.json()
+      setSendResult(`Enviados: ${json.sent ?? 0} emails`)
+      fetchData()
+    } catch {
+      setSendResult("Error al disparar el cron")
+    } finally {
+      setSending(false)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -127,10 +144,19 @@ export default function AdminLeadsPage() {
             Editar plantillas de email
           </Link>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Actualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            {sendResult && (
+              <span className="text-xs font-medium text-green-600">{sendResult}</span>
+            )}
+            <Button size="sm" onClick={triggerCron} disabled={sending} className="bg-[#1a1a4b] text-white hover:bg-[#2a2a6b]">
+              <Send className={`mr-2 h-4 w-4 ${sending ? "animate-pulse" : ""}`} />
+              {sending ? "Enviando..." : "Enviar emails ahora"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Actualizar
+            </Button>
+          </div>
         </div>
 
         {/* Stats cards */}
