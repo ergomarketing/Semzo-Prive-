@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RefreshCw, Users, MailCheck, TrendingUp, UserX, FileText } from "lucide-react"
+import { RefreshCw, Users, MailCheck, TrendingUp, UserX, FileText, Send } from "lucide-react"
 import Link from "next/link"
 
 interface OpenRates {
