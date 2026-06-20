@@ -36,13 +36,34 @@ export async function POST(request: NextRequest) {
     })
 
     if (!res.ok) {
-      let message = `Error ${res.status} de Remove.bg`
+      let detail = ""
       try {
         const err = await res.json()
-        message = err?.errors?.[0]?.title || message
+        detail = err?.errors?.[0]?.title || err?.errors?.[0]?.detail || ""
       } catch {
         // respuesta sin JSON
       }
+
+      let message: string
+      switch (res.status) {
+        case 402:
+          message = "Sin créditos en Remove.bg. Recarga tu cuenta o usa otra API key."
+          break
+        case 403:
+        case 401:
+          message = "API key de Remove.bg inválida o no autorizada. Revisa REMOVE_BG_API_KEY."
+          break
+        case 400:
+          message = detail ? `Imagen rechazada: ${detail}` : "Imagen no válida para Remove.bg."
+          break
+        case 429:
+          message = "Demasiadas peticiones a Remove.bg. Espera unos segundos e intenta de nuevo."
+          break
+        default:
+          message = detail || `Error ${res.status} de Remove.bg`
+      }
+
+      console.error(`[v0] remove-bg fallo (${res.status}): ${detail || "sin detalle"}`)
       return NextResponse.json({ error: message }, { status: res.status })
     }
 
