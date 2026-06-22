@@ -51,20 +51,14 @@ export default function CatalogImageEditor() {
   // Cargar lista de bolsos al montar
   useEffect(() => {
     setBagsLoading(true)
-    fetch("/api/admin/inventory", { credentials: "include" })
+    fetch("/api/admin/catalog-editor/bags")
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
       .then((data) => {
-        const raw = Array.isArray(data) ? data : (data.inventory ?? data.bags ?? data.data ?? [])
-        const list: Bag[] = raw.map((b: Bag) => ({
-          id: b.id,
-          name: b.name,
-          brand: b.brand,
-          image_url: b.image_url,
-        }))
-        setBags(list)
+        const raw: Bag[] = Array.isArray(data) ? data : (data.bags ?? [])
+        setBags(raw)
       })
       .catch(() => {})
       .finally(() => setBagsLoading(false))
