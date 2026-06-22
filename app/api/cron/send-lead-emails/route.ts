@@ -110,12 +110,24 @@ export async function GET(req: NextRequest) {
 </html>`
 
     try {
-      await resend.emails.send({
+      const { data: resendData, error: resendError } = await resend.emails.send({
         from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",
         to: [lead.email],
         subject,
         html,
       })
+
+      if (resendError) {
+        console.error(`[cron] Resend error email_${row.email_number} to ${lead.email}:`, resendError)
+        await supabase
+          .from("email_sequence_log")
+          .update({ status: "failed", error_message: JSON.stringify(resendError) })
+          .eq("id", row.id)
+        failed++
+        continue
+      }
+
+      console.log(`[cron] Resend OK email_${row.email_number} to ${lead.email} id=${resendData?.id}`)
 
       await supabase
         .from("email_sequence_log")
