@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useRef, useState } from "react"
-import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,18 +10,28 @@ import { Label } from "@/components/ui/label"
 const SIZE = 1000
 
 type OutFormat = "jpeg" | "png" | "webp"
+type ImgStatus = "processing" | "done" | "error"
+
+interface Bag {
+  id: string
+  name: string
+  brand: string
+  image_url: string | null
+}
 
 interface EditedImage {
   id: string
   originalName: string
-  previewUrl: string // URL del original o del resultado
-  resultUrl: string | null // dataURL final con fondo
+  previewUrl: string
+  resultUrl: string | null
   resultBlob: Blob | null
   fileName: string
-  status: "processing" | "done" | "error"
+  status: ImgStatus
   error?: string
-  uploadedUrl?: string // URL en blob tras subir a la librería
+  uploadedUrl?: string
   uploading?: boolean
+  assigning?: boolean
+  assignedBagId?: string
 }
 
 function baseName(name: string) {
@@ -34,7 +44,27 @@ export default function CatalogImageEditor() {
   const [images, setImages] = useState<EditedImage[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [bags, setBags] = useState<Bag[]>([])
+  const [bagsLoading, setBagsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Cargar lista de bolsos al montar
+  useEffect(() => {
+    setBagsLoading(true)
+    fetch("/api/admin/inventory")
+      .then((r) => r.json())
+      .then((data) => {
+        const list: Bag[] = (Array.isArray(data) ? data : data.bags || data.data || []).map((b: Bag) => ({
+          id: b.id,
+          name: b.name,
+          brand: b.brand,
+          image_url: b.image_url,
+        }))
+        setBags(list)
+      })
+      .catch(() => {})
+      .finally(() => setBagsLoading(false))
+  }, [])
 
   const updateImage = (id: string, patch: Partial<EditedImage>) => {
     setImages((prev) => prev.map((img) => (img.id === id ? { ...img, ...patch } : img)))
@@ -105,10 +135,7 @@ export default function CatalogImageEditor() {
       try {
         const form = new FormData()
         form.append("file", file)
-        const res = await fetch("/api/admin/catalog-editor/remove-bg", {
-          method: "POST",
-          body: form,
-        })
+        const res = await fetch("/api/admin/catalog-editor/remove-bg", { method: "POST", body: form })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || `Error ${res.status}`)
@@ -116,17 +143,9 @@ export default function CatalogImageEditor() {
         const cutoutBlob = await res.blob()
         const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
         const finalUrl = URL.createObjectURL(finalBlob)
-        updateImage(id, {
-          resultUrl: finalUrl,
-          resultBlob: finalBlob,
-          previewUrl: finalUrl,
-          status: "done",
-        })
+        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, previewUrl: finalUrl, status: "done" })
       } catch (e) {
-        updateImage(id, {
-          status: "error",
-          error: e instanceof Error ? e.message : "Error desconocido",
-        })
+        updateImage(id, { status: "error", error: e instanceof Error ? e.message : "Error desconocido" })
       }
 
       done++
@@ -145,10 +164,7 @@ export default function CatalogImageEditor() {
   }
 
   const downloadAll = () => {
-    const ready = images.filter((i) => i.resultUrl)
-    ready.forEach((img, i) => {
-      setTimeout(() => downloadOne(img), i * 300)
-    })
+    images.filter((i) => i.resultUrl).forEach((img, i) => setTimeout(() => downloadOne(img), i * 300))
   }
 
   const uploadToLibrary = async (img: EditedImage) => {
@@ -172,8 +188,31 @@ export default function CatalogImageEditor() {
     }
   }
 
-  const clearAll = () => setImages([])
+  const assignToBag = async (img: EditedImage, bagId: string) => {
+    if (!img.uploadedUrl || !bagId) return
+    updateImage(img.id, { assigning: true })
+    try {
+      const res = await fetch(`/api/admin/inventory/${bagId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: img.uploadedUrl }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "Error al asignar")
+      }
+      updateImage(img.id, { assigning: false, assignedBagId: bagId })
+      // Actualizar lista local de bolsos para reflejar la nueva imagen
+      setBags((prev) => prev.map((b) => (b.id === bagId ? { ...b, image_url: img.uploadedUrl! } : b)))
+    } catch (e) {
+      updateImage(img.id, {
+        assigning: false,
+        error: e instanceof Error ? e.message : "Error al asignar",
+      })
+    }
+  }
 
+  const clearAll = () => setImages([])
   const readyCount = images.filter((i) => i.status === "done").length
 
   return (
@@ -199,7 +238,7 @@ export default function CatalogImageEditor() {
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
                 className="font-mono text-sm"
-                aria-label="Código de color de fondo"
+                aria-label="Código hex de fondo"
               />
             </div>
           </div>
@@ -232,19 +271,10 @@ export default function CatalogImageEditor() {
         role="button"
         tabIndex={0}
         onClick={() => fileInputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click()
-        }}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setIsDragging(true)
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click() }}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setIsDragging(false)
-          handleFiles([...e.dataTransfer.files])
-        }}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles([...e.dataTransfer.files]) }}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white px-6 py-12 text-center transition-colors ${
           isDragging ? "border-slate-900 bg-slate-50" : "border-slate-300 hover:border-slate-900 hover:bg-slate-50"
         }`}
@@ -258,19 +288,14 @@ export default function CatalogImageEditor() {
           accept="image/*"
           multiple
           className="hidden"
-          onChange={(e) => {
-            handleFiles([...(e.target.files || [])])
-            e.target.value = ""
-          }}
+          onChange={(e) => { handleFiles([...(e.target.files || [])]); e.target.value = "" }}
         />
       </div>
 
       {/* Progreso */}
       {progress && (
         <div className="space-y-2">
-          <p className="text-sm text-slate-600">
-            {progress.done} de {progress.total} procesadas
-          </p>
+          <p className="text-sm text-slate-600">{progress.done} de {progress.total} procesadas</p>
           <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
             <div
               className="h-full rounded-full bg-slate-900 transition-all"
@@ -292,16 +317,22 @@ export default function CatalogImageEditor() {
                 <Trash2 className="mr-2 h-4 w-4" />
                 Limpiar
               </Button>
-              <Button size="sm" onClick={downloadAll} disabled={readyCount === 0} className="bg-[#1a1a4b] text-white hover:bg-[#2a2a6b]">
+              <Button
+                size="sm"
+                onClick={downloadAll}
+                disabled={readyCount === 0}
+                className="bg-[#1a1a4b] text-white hover:bg-[#2a2a6b]"
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Descargar todas
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {images.map((img) => (
-              <div key={img.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div key={img.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                {/* Imagen */}
                 <div className="relative aspect-square" style={{ background: bgColor }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img.previewUrl || "/placeholder.svg"} alt={img.originalName} className="h-full w-full object-contain" />
@@ -321,46 +352,124 @@ export default function CatalogImageEditor() {
                       <X className="h-3 w-3" /> Error
                     </span>
                   )}
-                  {img.uploadedUrl && (
-                    <span className="absolute left-2 top-2 rounded-full bg-[#1a1a4b] px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                  {img.assignedBagId && (
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-[#1a1a4b] px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                      <Link2 className="h-3 w-3" /> Asignada
+                    </span>
+                  )}
+                  {img.uploadedUrl && !img.assignedBagId && (
+                    <span className="absolute left-2 top-2 rounded-full bg-sky-700 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
                       En librería
                     </span>
                   )}
                 </div>
-                <div className="space-y-2 p-2.5">
-                  <p
-                    className="truncate text-[11px] text-slate-500"
-                    title={img.status === "error" ? img.error : img.fileName}
-                  >
-                    {img.status === "error" ? img.error : img.fileName}
+
+                {/* Footer */}
+                <div className="space-y-2.5 p-3">
+                  <p className="truncate text-[11px] text-slate-500" title={img.status === "error" ? img.error : img.fileName}>
+                    {img.status === "error" ? (
+                      <span className="text-red-600">{img.error}</span>
+                    ) : (
+                      img.fileName
+                    )}
                   </p>
+
                   {img.status === "done" && (
-                    <div className="flex gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 flex-1 px-2 text-[11px]"
-                        onClick={() => downloadOne(img)}
-                      >
-                        <Download className="mr-1 h-3.5 w-3.5" />
-                        Bajar
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 flex-1 bg-[#1a1a4b] px-2 text-[11px] text-white hover:bg-[#2a2a6b]"
-                        onClick={() => uploadToLibrary(img)}
-                        disabled={img.uploading || !!img.uploadedUrl}
-                      >
-                        {img.uploading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <CloudUpload className="mr-1 h-3.5 w-3.5" />
-                            {img.uploadedUrl ? "Subida" : "Subir"}
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    <>
+                      {/* Botones subir / descargar */}
+                      {!img.uploadedUrl && (
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 flex-1 px-2 text-[11px]"
+                            onClick={() => downloadOne(img)}
+                          >
+                            <Download className="mr-1 h-3.5 w-3.5" />
+                            Bajar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 flex-1 bg-[#1a1a4b] px-2 text-[11px] text-white hover:bg-[#2a2a6b]"
+                            onClick={() => uploadToLibrary(img)}
+                            disabled={img.uploading}
+                          >
+                            {img.uploading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <>
+                                <CloudUpload className="mr-1 h-3.5 w-3.5" />
+                                Subir a librería
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Asignar a bolso — aparece una vez subida a la librería */}
+                      {img.uploadedUrl && !img.assignedBagId && (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium text-slate-600">Asignar a un bolso del catálogo:</p>
+                          <div className="flex gap-1.5">
+                            <select
+                              className="h-8 flex-1 rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-slate-900 disabled:opacity-50"
+                              defaultValue=""
+                              id={`bag-select-${img.id}`}
+                              disabled={bagsLoading || img.assigning}
+                            >
+                              <option value="" disabled>
+                                {bagsLoading ? "Cargando bolsos…" : "Selecciona un bolso"}
+                              </option>
+                              {bags.map((bag) => (
+                                <option key={bag.id} value={bag.id}>
+                                  {bag.brand} — {bag.name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              size="sm"
+                              className="h-8 bg-[#1a1a4b] px-3 text-[11px] text-white hover:bg-[#2a2a6b]"
+                              disabled={img.assigning}
+                              onClick={() => {
+                                const sel = document.getElementById(`bag-select-${img.id}`) as HTMLSelectElement
+                                if (sel?.value) assignToBag(img, sel.value)
+                              }}
+                            >
+                              {img.assigning ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Link2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Confirmación de asignación */}
+                      {img.assignedBagId && (
+                        <div className="rounded-md bg-green-50 px-3 py-2 text-[11px] text-green-800">
+                          <Check className="mr-1 inline h-3.5 w-3.5" />
+                          Foto asignada a{" "}
+                          <strong>
+                            {bags.find((b) => b.id === img.assignedBagId)?.brand} —{" "}
+                            {bags.find((b) => b.id === img.assignedBagId)?.name}
+                          </strong>
+                        </div>
+                      )}
+
+                      {/* Descargar siempre disponible */}
+                      {img.uploadedUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-full px-2 text-[11px]"
+                          onClick={() => downloadOne(img)}
+                        >
+                          <Download className="mr-1 h-3.5 w-3.5" />
+                          Descargar también
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
