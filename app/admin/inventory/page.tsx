@@ -1,6 +1,7 @@
 import InventorySystem from "../../components/inventory-system"
 import ReservationCalendar from "../../components/reservation-calendar"
 import BagOrderManager from "../../components/admin/bag-order-manager"
+import CatalogImageEditor from "../../components/admin/catalog-image-editor"
 import Navbar from "../../components/navbar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -16,9 +17,10 @@ export default function AdminInventoryPage() {
           </div>
 
           <Tabs defaultValue="inventory" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+            <TabsList className="grid w-full grid-cols-4 max-w-3xl">
               <TabsTrigger value="inventory">Inventario</TabsTrigger>
               <TabsTrigger value="order">Ordenar Catálogo</TabsTrigger>
+              <TabsTrigger value="editor">Editor de Fotos</TabsTrigger>
               <TabsTrigger value="calendar">Calendario</TabsTrigger>
             </TabsList>
 
@@ -28,6 +30,10 @@ export default function AdminInventoryPage() {
 
             <TabsContent value="order" className="mt-6">
               <BagOrderManager />
+            </TabsContent>
+
+            <TabsContent value="editor" className="mt-6">
+              <CatalogImageEditor />
             </TabsContent>
 
             <TabsContent value="calendar" className="mt-6">
