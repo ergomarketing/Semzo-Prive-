@@ -51,10 +51,14 @@ export default function CatalogImageEditor() {
   // Cargar lista de bolsos al montar
   useEffect(() => {
     setBagsLoading(true)
-    fetch("/api/admin/inventory")
-      .then((r) => r.json())
+    fetch("/api/admin/inventory", { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((data) => {
-        const list: Bag[] = (Array.isArray(data) ? data : data.inventory || data.bags || data.data || []).map((b: Bag) => ({
+        const raw = Array.isArray(data) ? data : (data.inventory ?? data.bags ?? data.data ?? [])
+        const list: Bag[] = raw.map((b: Bag) => ({
           id: b.id,
           name: b.name,
           brand: b.brand,
@@ -70,29 +74,61 @@ export default function CatalogImageEditor() {
     setImages((prev) => prev.map((img) => (img.id === id ? { ...img, ...patch } : img)))
   }
 
+  // Detecta el bounding box real de píxeles no-transparentes en el canvas
+  const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    const pixels = ctx.getImageData(0, 0, w, h).data
+    let minX = w, minY = h, maxX = 0, maxY = 0
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const alpha = pixels[(y * w + x) * 4 + 3]
+        if (alpha > 10) {
+          if (x < minX) minX = x
+          if (x > maxX) maxX = x
+          if (y < minY) minY = y
+          if (y > maxY) maxY = y
+        }
+      }
+    }
+    if (maxX < minX) return { x: 0, y: 0, w, h } // fallback imagen sin transparencia
+    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+  }
+
   const applyBackground = (pngBlob: Blob, fmt: OutFormat, color: string): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(pngBlob)
       const img = new Image()
       img.crossOrigin = "anonymous"
       img.onload = () => {
+        // 1. Renderizar la imagen original en un canvas temporal para leer píxeles
+        const tmp = document.createElement("canvas")
+        tmp.width = img.width
+        tmp.height = img.height
+        const tmpCtx = tmp.getContext("2d")
+        if (!tmpCtx) { URL.revokeObjectURL(url); reject(new Error("Canvas error")); return }
+        tmpCtx.drawImage(img, 0, 0)
+
+        // 2. Detectar bounding box real del bolso (recortar transparencia extra)
+        const bb = getBoundingBox(tmpCtx, img.width, img.height)
+
+        // 3. Dibujar en el canvas final con padding del 10%
         const canvas = document.createElement("canvas")
         canvas.width = SIZE
         canvas.height = SIZE
         const ctx = canvas.getContext("2d")
-        if (!ctx) {
-          URL.revokeObjectURL(url)
-          reject(new Error("No se pudo crear el canvas"))
-          return
-        }
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas error")); return }
         ctx.fillStyle = color
         ctx.fillRect(0, 0, SIZE, SIZE)
-        const pad = SIZE * 0.08
+
+        const pad = SIZE * 0.10
         const avail = SIZE - pad * 2
-        const ratio = Math.min(avail / img.width, avail / img.height)
-        const w = img.width * ratio
-        const h = img.height * ratio
-        ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h)
+        const ratio = Math.min(avail / bb.w, avail / bb.h)
+        const dw = bb.w * ratio
+        const dh = bb.h * ratio
+        const dx = (SIZE - dw) / 2
+        const dy = (SIZE - dh) / 2
+
+        // Dibujar solo la zona recortada del bolso, centrada
+        ctx.drawImage(img, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh)
         URL.revokeObjectURL(url)
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
