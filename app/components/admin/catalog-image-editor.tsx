@@ -54,7 +54,7 @@ export default function CatalogImageEditor() {
     fetch("/api/admin/inventory")
       .then((r) => r.json())
       .then((data) => {
-        const list: Bag[] = (Array.isArray(data) ? data : data.bags || data.data || []).map((b: Bag) => ({
+        const list: Bag[] = (Array.isArray(data) ? data : data.inventory || data.bags || data.data || []).map((b: Bag) => ({
           id: b.id,
           name: b.name,
           brand: b.brand,
