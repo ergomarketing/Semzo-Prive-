@@ -235,7 +235,17 @@ export async function GET() {
         type: membershipType,
         // Exponer el estado real del DB para que el dashboard pueda redirigir
         // a Identity / SEPA cuando corresponda.
-        status: isPetiteExpired ? "expired" : membershipStatus,
+        //
+        // PRIORIDAD: un impago (past_due) es un problema de cobro que SIEMPRE
+        // debe mostrar el aviso de pago, aunque el periodo Petite ya haya
+        // vencido. Sin esta prioridad, isPetiteExpired convertía past_due en
+        // "expired" y el banner de pago no aparecía nunca.
+        status:
+          membershipStatus === "past_due"
+            ? "past_due"
+            : isPetiteExpired
+              ? "expired"
+              : membershipStatus,
         raw_status: anyMembership?.status || null,
         ui_status: uiStatus,
         billing_cycle: billingCycle, // 'monthly' | 'quarterly'
