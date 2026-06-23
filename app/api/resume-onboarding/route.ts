@@ -106,6 +106,28 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // GUARD: membresía real con incidencia de pago (past_due) o acceso limitado.
+    //
+    // Estos estados representan una suscripción EXISTENTE, no un onboarding
+    // incompleto. NO deben enrutar a /cart ni a checkout: sin este guard, un
+    // intent antiguo sin pago confirmado provoca el bucle resume_checkout → /cart
+    // (carrito vacío) → dashboard → resume_checkout... El dashboard ya muestra el
+    // aviso de dunning/pago para estos estados.
+    if (
+      existingMembership &&
+      ["past_due", "limited_access", "paused", "cancelled_active"].includes(existingMembership.status)
+    ) {
+      console.log("[resume-onboarding] existing membership with payment/access state, allow dashboard", {
+        status: existingMembership.status,
+        membership_type: existingMembership.membership_type,
+      })
+      return NextResponse.json({
+        action: "active" as ResumeAction,
+        membership_status: existingMembership.status,
+        membership_type: existingMembership.membership_type,
+      })
+    }
+
     // GUARD: si la membresía ya está active, no hay nada que reanudar.
     // Sin este guard, intents antiguos huérfanos (ej. essentiel sin pago dejado
     // por un click antiguo) provocan un bucle resume_checkout aunque el usuario
