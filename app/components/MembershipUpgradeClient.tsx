@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { Check, Gift, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,7 +48,6 @@ interface Props {
 }
 
 export default function MembershipUpgradeClient({ plan, userId }: Props) {
-  const router = useRouter()
   const [giftCardCode, setGiftCardCode] = useState("")
   const [appliedGiftCard, setAppliedGiftCard] = useState<GiftCardState | null>(null)
   const [gcLoading, setGcLoading] = useState(false)
@@ -106,37 +104,11 @@ export default function MembershipUpgradeClient({ plan, userId }: Props) {
     setLoading(true)
 
     try {
-      // RAMA A: Gift card cubre el 100% → pasa por /guarantee-card para
-      // verificar tarjeta de garantia antes de activar la membresia.
-      if (finalAmount === 0 && appliedGiftCard) {
-        if (!appliedGiftCard.id) {
-          toast.error("Error interno: gift card sin ID. Vuelve a aplicarla.")
-          return
-        }
-
-        try {
-          sessionStorage.setItem(
-            "semzo_pending_gift_card_activation",
-            JSON.stringify({
-              userId,
-              giftCardId: appliedGiftCard.id,
-              amountCents: Math.round(plan.price * 100),
-              membershipType: plan.membershipType,
-              billingCycle: plan.billingCycle,
-              source: "upgrade",
-            }),
-          )
-        } catch {
-          toast.error("No se pudo continuar (almacenamiento local bloqueado).")
-          return
-        }
-
-        toast.success("Verifica tu tarjeta de garantía para activar la membresía.")
-        router.push("/guarantee-card")
-        return
-      }
-
-      // RAMA B: Pago con Stripe (total o parcial)
+      // Fuente de verdad UNICA: Stripe. Toda membresia (incluida la cubierta
+      // 100% por gift card) pasa por create-subscription-checkout, que aplica
+      // la gift card como coupon y exige tarjeta de garantia (payment_method_
+      // collection: "always"). El orquestador activa solo con pago + identidad
+      // + SEPA. No hay flujo paralelo.
       const priceId = PRICE_MAP[plan.membershipType]?.[plan.billingCycle]
 
       if (!priceId) {

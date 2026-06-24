@@ -201,17 +201,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     }
   }
 
-  // Flag puesto por /guarantee-card cuando termino la activacion con
-  // gift card + tarjeta de garantia. Vacia el carrito al volver aqui.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("semzo_clear_cart_on_next_load") === "1") {
-        sessionStorage.removeItem("semzo_clear_cart_on_next_load")
-        clearCart()
-      }
-    } catch {}
-  }, [clearCart])
-
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = getSupabaseBrowser()
@@ -1054,35 +1043,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       }
                     }
 
-                    // GIFT CARD 100% — no pasa por Stripe pero exigimos
-                    // tarjeta de garantia. Redirigimos a /guarantee-card,
-                    // que tras verificar tarjeta llama a purchase-with-gift-card.
-                    if (finalAmount === 0 && appliedGiftCard) {
-                      const resolvedType = membershipType || type
-                      const resolvedCycle = billingCycle || cycle
-                      try {
-                        sessionStorage.setItem(
-                          "semzo_pending_gift_card_activation",
-                          JSON.stringify({
-                            userId: user.id,
-                            giftCardId: appliedGiftCard.id,
-                            amountCents: Math.round(Math.min(appliedGiftCard.balance, total) * 100),
-                            membershipType: resolvedType,
-                            billingCycle: resolvedCycle,
-                            source: "cart",
-                            clearCartAfter: true,
-                          }),
-                        )
-                      } catch {
-                        toast.error("No se pudo continuar (almacenamiento local bloqueado).")
-                        setCheckoutLoading(false)
-                        return
-                      }
-
-                      toast.success("Verifica tu tarjeta de garantía para activar la membresía.")
-                      router.push("/guarantee-card")
-                      return
-                    }
+                    // GIFT CARD 100% en MEMBRESIA: pasa por el MISMO Stripe
+                    // Checkout de suscripcion (create-subscription-checkout) que
+                    // aplica la gift card como coupon one-time y, gracias a
+                    // payment_method_collection: "always", OBLIGA a registrar la
+                    // tarjeta de garantia aunque el primer cobro sea 0€. Stripe es
+                    // la unica fuente de verdad; el webhook/orquestador exige
+                    // identidad + SEPA antes de activar.
 
                     // PASO 1: Crear intent en DB ANTES de Stripe
                     // IMPORTANTE: enviar `total` (precio original sin descuentos).

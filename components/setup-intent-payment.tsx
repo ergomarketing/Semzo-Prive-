@@ -20,8 +20,7 @@ interface SetupIntentFormProps {
   onSuccess: (result: { setupIntentId: string }) => void
   onError: (error: string) => void
   // Si es false, NO se llama a confirm-payment-method internamente.
-  // El caller se encargara de hacerlo (caso gift card: lo hace
-  // purchase-with-gift-card cuando recibe setupIntentId).
+  // El caller se encargara de hacerlo.
   autoConfirm?: boolean
 }
 
@@ -77,9 +76,7 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfi
 
       if (autoConfirm) {
         // confirm-payment-method actualiza user_memberships si status=active.
-        // En el flujo gift-card la membresía puede estar en otro estado; no
-        // bloqueamos el onSuccess si falla — purchase-with-gift-card se encarga
-        // de guardar el payment_method en su propio paso.
+        // No bloqueamos el onSuccess si falla; el caller decide el siguiente paso.
         await fetch("/api/stripe/confirm-payment-method", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
