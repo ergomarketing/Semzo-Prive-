@@ -97,7 +97,7 @@ const nextConfig = {
               "img-src * data: blob:",
               "font-src * data:",
               "connect-src * wss: ws:",
-              "frame-src * data: blob: https://verify.stripe.com https://js.stripe.com https://*.stripe.com",
+              "frame-src * data: blob: https://verify.stripe.com https://js.stripe.com https://*.stripe.com https://*.redsys.es https://redsys.es https://*.redsysintegration.com https://*.caixabank.es https://*.caixabank.com https://p11.techlab-cdn.com https://*.techlab-cdn.com",
               "object-src 'none'",
             ].join('; ')
           },

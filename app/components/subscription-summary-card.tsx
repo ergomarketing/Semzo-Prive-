@@ -26,6 +26,8 @@ type Summary = {
   end_date: string | null
   next_charge_at: string | null
   stripe_status: string | null
+  membership_status: string | null
+  cancel_at_period_end: boolean | null
   payment_method: PaymentMethod | null
   stripe_available: boolean
   error?: string
@@ -185,21 +187,37 @@ export function SubscriptionSummaryCard() {
           )}
 
           {/* Próximo cobro / fin de acceso */}
-          {(data.next_charge_at || data.end_date) && (
-            <div className="flex items-start gap-3">
-              <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                  {data.stripe_status === "canceled" || data.end_date
-                    ? "Acceso hasta"
-                    : "Próximo cobro"}
-                </p>
-                <p className="text-sm font-semibold text-indigo-dark">
-                  {formatDate(data.next_charge_at || data.end_date)}
-                </p>
+          {(() => {
+            // Estados que NO representan una suscripción al corriente: para ellos
+            // la fecha relevante es el fin de acceso REAL de BD (end_date), no la
+            // proyección de próximo cobro de Stripe (next_charge_at).
+            const isEndedOrUnpaid =
+              ["past_due", "expired", "cancelled", "canceled", "cancelling", "limited_access"].includes(
+                data.membership_status || "",
+              ) ||
+              data.stripe_status === "canceled" ||
+              data.stripe_status === "past_due" ||
+              data.stripe_status === "unpaid" ||
+              data.cancel_at_period_end === true
+
+            const displayDate = isEndedOrUnpaid
+              ? data.end_date || data.next_charge_at
+              : data.next_charge_at || data.end_date
+
+            if (!displayDate) return null
+
+            return (
+              <div className="flex items-start gap-3">
+                <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                    {isEndedOrUnpaid ? "Acceso hasta" : "Próximo cobro"}
+                  </p>
+                  <p className="text-sm font-semibold text-indigo-dark">{formatDate(displayDate)}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Método de pago */}
           {data.payment_method && (
