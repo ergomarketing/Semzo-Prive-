@@ -65,17 +65,13 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfi
         },
       })
 
-      console.log("[v0] confirmCardSetup result:", { error, status: setupIntent?.status, id: setupIntent?.id })
-
       if (error) {
-        console.log("[v0] confirmCardSetup error:", error.code, error.decline_code, error.message)
         onError(error.message || "Error al verificar la tarjeta")
         return
       }
 
       if (setupIntent?.status !== "succeeded") {
-        console.log("[v0] setupIntent no succeeded, status:", setupIntent?.status)
-        onError(`La verificación no se completó (estado: ${setupIntent?.status}). Las tarjetas de prepago o gift cards pueden no ser compatibles con la verificación 3D Secure.`)
+        onError("La verificación no se completó. Por favor, inténtalo de nuevo.")
         return
       }
 

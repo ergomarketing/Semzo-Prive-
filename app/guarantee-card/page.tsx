@@ -169,7 +169,10 @@ export default function GuaranteeCardPage() {
             onSuccess={async ({ setupIntentId }) => {
               await finishActivation(setupIntentId)
             }}
-            onError={(err) => toast.error(err)}
+            onError={(err) => {
+              toast.error(err)
+              setErrorMsg(err)
+            }}
           />
         )}
 
