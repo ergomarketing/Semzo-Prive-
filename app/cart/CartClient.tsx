@@ -1054,35 +1054,15 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       }
                     }
 
-                    // GIFT CARD 100% — no pasa por Stripe pero exigimos
-                    // tarjeta de garantia. Redirigimos a /guarantee-card,
-                    // que tras verificar tarjeta llama a purchase-with-gift-card.
-                    if (finalAmount === 0 && appliedGiftCard) {
-                      const resolvedType = membershipType || type
-                      const resolvedCycle = billingCycle || cycle
-                      try {
-                        sessionStorage.setItem(
-                          "semzo_pending_gift_card_activation",
-                          JSON.stringify({
-                            userId: user.id,
-                            giftCardId: appliedGiftCard.id,
-                            amountCents: Math.round(Math.min(appliedGiftCard.balance, total) * 100),
-                            membershipType: resolvedType,
-                            billingCycle: resolvedCycle,
-                            source: "cart",
-                            clearCartAfter: true,
-                          }),
-                        )
-                      } catch {
-                        toast.error("No se pudo continuar (almacenamiento local bloqueado).")
-                        setCheckoutLoading(false)
-                        return
-                      }
-
-                      toast.success("Verifica tu tarjeta de garantía para activar la membresía.")
-                      router.push("/guarantee-card")
-                      return
-                    }
+                    // GIFT CARD 100% en MEMBRESIA: ya NO se desvia a un flujo
+                    // aparte. Pasa por el MISMO Stripe Checkout de suscripcion
+                    // (create-subscription-checkout) que aplica la gift card como
+                    // coupon one-time y, gracias a payment_method_collection:
+                    // "always", OBLIGA a registrar la tarjeta de garantia aunque
+                    // el primer cobro sea 0€. Asi Stripe es la unica fuente de
+                    // verdad y el webhook/orquestador exige identidad + SEPA antes
+                    // de activar. (El flujo /guarantee-card + purchase-with-gift-card
+                    // queda obsoleto para membresias.)
 
                     // PASO 1: Crear intent en DB ANTES de Stripe
                     // IMPORTANTE: enviar `total` (precio original sin descuentos).

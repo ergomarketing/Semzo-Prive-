@@ -137,16 +137,63 @@ export async function syncMembershipFromStripe(
   // flujo de gift card 100%; ahora tambien en el flujo Stripe normal y mixto.
   const pm = await resolvePaymentMethodFromStripe(subscription)
 
+  // ===== EVALUAR LAS 3 CONDICIONES ANTES DEL UPSERT =====
+  // Regla de negocio (esqueleto del pago): una membresia NUNCA queda "active"
+  // ni abre reservas hasta cumplir: pago OK (Stripe) + identidad verificada +
+  // mandato SEPA. Se evalua ANTES del upsert para que el estado escrito ya
+  // sea el correcto (antes se abria can_make_reservations solo con el pago).
+
+  // Condicion 1: pago OK (fuente: Stripe)
+  const paymentOk = isStripeActive
+
+  // Condicion 2: identidad verificada (fuente: identity_verifications)
+  const { data: identityRecord } = await supabase
+    .from("identity_verifications")
+    .select("status")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  const hasIdentityVerified =
+    identityRecord?.status === "verified" || identityRecord?.status === "approved"
+
+  // Condicion 3: mandato SEPA (fuente: profiles.sepa_payment_method_id)
+  const { data: profilePayment } = await supabase
+    .from("profiles")
+    .select("sepa_payment_method_id")
+    .eq("id", userId)
+    .single()
+
+  const hasSepaMandate = !!profilePayment?.sepa_payment_method_id
+
+  const allConditionsMet = paymentOk && hasIdentityVerified && hasSepaMandate
+
+  // status final:
+  // - 3 condiciones OK            -> "active"
+  // - pago OK pero falta id/SEPA  -> "pending_verification" (NO abre reservas)
+  // - resto                       -> status mapeado de Stripe (past_due, canceled...)
+  const finalStatus = allConditionsMet ? "active" : paymentOk ? "pending_verification" : status
+
+  console.log("[ORCHESTRATOR CHECK] condiciones de activacion:", {
+    userId,
+    payment_ok: paymentOk,
+    identity_verified_ok: hasIdentityVerified,
+    sepa_mandate_ok: hasSepaMandate,
+    all_conditions_met: allConditionsMet,
+    final_status: finalStatus,
+  })
+
   const upsertPayload: Record<string, unknown> = {
     user_id: userId,
     stripe_subscription_id: subscription.id,
     stripe_customer_id: pm.customerId,
     membership_type: membershipType,
     billing_cycle: billingCycle,
-    status,
+    status: finalStatus,
     start_date: startDate.toISOString(),
     end_date: endDate.toISOString(),
-    can_make_reservations: isStripeActive,
+    can_make_reservations: allConditionsMet,
     updated_at: new Date().toISOString(),
   }
 
@@ -157,91 +204,19 @@ export async function syncMembershipFromStripe(
     if (pm.brand) upsertPayload.payment_method_brand = pm.brand
   }
 
+  // onConflict: user_id es la UNIQUE key real de la tabla (un usuario = una
+  // membresia). Asi un usuario que recontrata con una NUEVA suscripcion Stripe
+  // actualiza su fila existente en vez de chocar con la unique de user_id.
   const { error } = await supabase
     .from("user_memberships")
-    .upsert(upsertPayload, { onConflict: "stripe_subscription_id" })
+    .upsert(upsertPayload, { onConflict: "user_id" })
 
   if (error) {
     return { success: false, error: error.message }
   }
 
-  // --- ACTIVACION AUTOMATICA DE MEMBRESIA ---
-  // Verificar condiciones usando FUENTES DE VERDAD correctas
-  
-  // Condicion 1: pago OK (ya verificado: status viene de Stripe)
-  const hasActiveMembership = status === "active" || subscription.status === "trialing"
-
-  // Condicion 2: identidad verificada (FUENTE DE VERDAD: identity_verifications)
-  const { data: identityRecord } = await supabase
-    .from("identity_verifications")
-    .select("status")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  const hasIdentityVerified = identityRecord?.status === "verified" || identityRecord?.status === "approved"
-
-  // Condicion 3: mandato SEPA (dato de pago en profiles, aceptable)
-  const { data: profilePayment } = await supabase
-    .from("profiles")
-    .select("sepa_payment_method_id")
-    .eq("id", userId)
-    .single()
-
-  const hasSepaMandate = !!profilePayment?.sepa_payment_method_id
-
-  // Condicion 4: no duplicar activacion (leer de user_memberships)
-  const { data: currentMembership } = await supabase
-    .from("user_memberships")
-    .select("status")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  const isNotAlreadyActive = currentMembership?.status !== "active"
-
-  console.log("[ORCHESTRATOR CHECK] Evaluando condiciones de activacion:", {
-    userId,
-    payment_ok: hasActiveMembership,
-    identity_verified_ok: hasIdentityVerified,
-    sepa_mandate_ok: hasSepaMandate,
-    current_status: currentMembership?.status,
-    is_not_already_active: isNotAlreadyActive,
-    should_activate: hasActiveMembership && hasIdentityVerified && hasSepaMandate && isNotAlreadyActive,
-  })
-
-  const shouldActivate =
-    hasActiveMembership &&
-    hasIdentityVerified &&
-    hasSepaMandate &&
-    isNotAlreadyActive
-
-  if (shouldActivate) {
-    // Activar en user_memberships (FUENTE DE VERDAD)
-    // can_make_reservations: true → habilita el gate de reservas.
-    // Sin esto, la membresia queda activa pero el endpoint
-    // /api/user/reservations bloquea al usuario.
-    const { error: activationError } = await supabase
-      .from("user_memberships")
-      .update({
-        status: "active",
-        can_make_reservations: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-
-    if (activationError) {
-      console.log("[ORCHESTRATOR ERROR] Fallo al activar membresia:", {
-        userId,
-        error: activationError.message,
-        code: activationError.code,
-      })
-      return { success: false, error: activationError.message }
-    }
-
-    console.log("[ORCHESTRATOR] Membresia activada para userId:", userId)
+  if (allConditionsMet) {
+    console.log("[ORCHESTRATOR] Membresia ACTIVA (pago + identidad + SEPA) para userId:", userId)
   }
 
   return { success: true }
