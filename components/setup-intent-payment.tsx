@@ -76,15 +76,15 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfi
       }
 
       if (autoConfirm) {
-        const confirmResponse = await fetch("/api/stripe/confirm-payment-method", {
+        // confirm-payment-method actualiza user_memberships si status=active.
+        // En el flujo gift-card la membresía puede estar en otro estado; no
+        // bloqueamos el onSuccess si falla — purchase-with-gift-card se encarga
+        // de guardar el payment_method en su propio paso.
+        await fetch("/api/stripe/confirm-payment-method", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ setupIntentId: setupIntent.id, userId }),
-        })
-
-        if (!confirmResponse.ok) {
-          throw new Error("Error confirming payment method")
-        }
+        }).catch(() => {})
       }
 
       onSuccess({ setupIntentId: setupIntent.id })
@@ -121,6 +121,7 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfi
           <div className="p-4 border border-slate-200 rounded-lg">
             <CardElement
               options={{
+                disableLink: true,
                 style: {
                   base: {
                     fontSize: "16px",
@@ -178,7 +179,7 @@ export default function SetupIntentPayment(props: SetupIntentFormProps) {
   }
 
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={{ loader: "never" }}>
       <SetupIntentForm {...props} />
     </Elements>
   )
