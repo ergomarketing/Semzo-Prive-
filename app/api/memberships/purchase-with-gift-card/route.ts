@@ -39,6 +39,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // INVARIANTE DE NEGOCIO: la membresía NUNCA se activa sin tarjeta de
+    // garantía verificada. setupIntentId es OBLIGATORIO.
+    if (!setupIntentId) {
+      return NextResponse.json(
+        { error: "Falta la tarjeta de garantía. No se puede activar la membresía sin un método de pago verificado." },
+        { status: 400 },
+      )
+    }
+
     if (!validateMembershipType(membershipType)) {
       return NextResponse.json(
         { error: `Tipo de membresía inválido: ${membershipType}` },
@@ -73,51 +82,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
     }
 
-    // 2. Validar SetupIntent (tarjeta de garantía) ANTES de descontar saldo.
-    // Si la validacion falla, NO se descuenta la gift card.
+    // 2. Validar SetupIntent (tarjeta de garantía) ANTES de crear la membresía.
+    // Si la validacion falla, NO se crea la membresía ni se descuenta la gift card.
     let stripeCustomerId: string | null = null
     let stripePaymentMethodId: string | null = null
     let paymentMethodLast4: string | null = null
     let paymentMethodBrand: string | null = null
 
-    if (setupIntentId) {
-      try {
-        const setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
+    try {
+      const setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
 
-        if (setupIntent.status !== "succeeded") {
-          return NextResponse.json(
-            { error: "La tarjeta de garantía no se verificó correctamente. Inténtalo de nuevo." },
-            { status: 400 },
-          )
-        }
-
-        stripeCustomerId = (setupIntent.customer as string) || null
-        stripePaymentMethodId = (setupIntent.payment_method as string) || null
-
-        if (!stripeCustomerId || !stripePaymentMethodId) {
-          return NextResponse.json(
-            { error: "No se pudo recuperar la tarjeta de garantía. Inténtalo de nuevo." },
-            { status: 400 },
-          )
-        }
-
-        // Recuperar marca/last4 para mostrar al usuario
-        const pm = await stripe.paymentMethods.retrieve(stripePaymentMethodId)
-        paymentMethodLast4 = pm.card?.last4 || null
-        paymentMethodBrand = pm.card?.brand || null
-
-        // Guardar customer_id en profiles para futuras compras
-        await supabase
-          .from("profiles")
-          .update({ stripe_customer_id: stripeCustomerId, updated_at: new Date().toISOString() })
-          .eq("id", userId)
-      } catch (siErr: any) {
-        console.error("[gift-card] SetupIntent validation failed", siErr)
+      if (setupIntent.status !== "succeeded") {
         return NextResponse.json(
-          { error: "Error verificando la tarjeta de garantía: " + (siErr.message || "desconocido") },
+          { error: "La tarjeta de garantía no se verificó correctamente. Inténtalo de nuevo." },
           { status: 400 },
         )
       }
+
+      stripeCustomerId = (setupIntent.customer as string) || null
+      stripePaymentMethodId = (setupIntent.payment_method as string) || null
+
+      if (!stripeCustomerId || !stripePaymentMethodId) {
+        return NextResponse.json(
+          { error: "No se pudo recuperar la tarjeta de garantía. Inténtalo de nuevo." },
+          { status: 400 },
+        )
+      }
+
+      // Recuperar marca/last4 para mostrar al usuario
+      const pm = await stripe.paymentMethods.retrieve(stripePaymentMethodId)
+      paymentMethodLast4 = pm.card?.last4 || null
+      paymentMethodBrand = pm.card?.brand || null
+
+      // Asegurar que la tarjeta queda como metodo por defecto del customer
+      // para poder cobrar incidencias off_session.
+      await stripe.customers.update(stripeCustomerId, {
+        invoice_settings: { default_payment_method: stripePaymentMethodId },
+      })
+
+      // Guardar customer_id en profiles para futuras compras
+      await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: stripeCustomerId, updated_at: new Date().toISOString() })
+        .eq("id", userId)
+    } catch (siErr: any) {
+      console.error("[gift-card] SetupIntent validation failed", siErr)
+      return NextResponse.json(
+        { error: "Error verificando la tarjeta de garantía: " + (siErr.message || "desconocido") },
+        { status: 400 },
+      )
+    }
+
+    // Guarda extra: nunca continuar sin payment method verificado.
+    if (!stripePaymentMethodId || !stripeCustomerId) {
+      return NextResponse.json(
+        { error: "No se pudo asegurar la tarjeta de garantía. Inténtalo de nuevo." },
+        { status: 400 },
+      )
     }
 
     // 4. Calcular fecha de fin
