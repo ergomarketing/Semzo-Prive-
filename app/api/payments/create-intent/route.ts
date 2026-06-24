@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Este endpoint solo procesa pagos con Stripe (amount > 0)",
-          details: "Para compras con gift card, usar /api/memberships/purchase-with-gift-card",
+          details: "Las membresias cubiertas 100% por gift card pasan por /api/stripe/create-subscription-checkout (suscripcion real en Stripe con coupon).",
         },
         { status: 400 },
       )

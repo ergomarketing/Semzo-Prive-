@@ -201,17 +201,6 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     }
   }
 
-  // Flag puesto por /guarantee-card cuando termino la activacion con
-  // gift card + tarjeta de garantia. Vacia el carrito al volver aqui.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("semzo_clear_cart_on_next_load") === "1") {
-        sessionStorage.removeItem("semzo_clear_cart_on_next_load")
-        clearCart()
-      }
-    } catch {}
-  }, [clearCart])
-
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = getSupabaseBrowser()
@@ -1054,15 +1043,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       }
                     }
 
-                    // GIFT CARD 100% en MEMBRESIA: ya NO se desvia a un flujo
-                    // aparte. Pasa por el MISMO Stripe Checkout de suscripcion
-                    // (create-subscription-checkout) que aplica la gift card como
-                    // coupon one-time y, gracias a payment_method_collection:
-                    // "always", OBLIGA a registrar la tarjeta de garantia aunque
-                    // el primer cobro sea 0€. Asi Stripe es la unica fuente de
-                    // verdad y el webhook/orquestador exige identidad + SEPA antes
-                    // de activar. (El flujo /guarantee-card + purchase-with-gift-card
-                    // queda obsoleto para membresias.)
+                    // GIFT CARD 100% en MEMBRESIA: pasa por el MISMO Stripe
+                    // Checkout de suscripcion (create-subscription-checkout) que
+                    // aplica la gift card como coupon one-time y, gracias a
+                    // payment_method_collection: "always", OBLIGA a registrar la
+                    // tarjeta de garantia aunque el primer cobro sea 0€. Stripe es
+                    // la unica fuente de verdad; el webhook/orquestador exige
+                    // identidad + SEPA antes de activar.
 
                     // PASO 1: Crear intent en DB ANTES de Stripe
                     // IMPORTANTE: enviar `total` (precio original sin descuentos).
