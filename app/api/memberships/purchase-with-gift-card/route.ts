@@ -120,21 +120,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Descontar saldo (solo despues de validar tarjeta)
-    const newAmount = gc.amount - amountCents
-    const { error: gcUpdateErr } = await supabase
-      .from("gift_cards")
-      .update({
-        amount: newAmount,
-        status: newAmount <= 0 ? "used" : "partial",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", giftCardId)
-
-    if (gcUpdateErr) {
-      return NextResponse.json({ error: "Error actualizando gift card" }, { status: 500 })
-    }
-
     // 4. Calcular fecha de fin
     const endDate = new Date()
     if (billingCycle === "quarterly") endDate.setMonth(endDate.getMonth() + 3)
@@ -177,6 +162,18 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       )
     }
+
+    // 5b. Descontar saldo SOLO despues de crear la membresia con exito.
+    // Asi un fallo nunca deja la gift card gastada sin membresia (evita loop).
+    const newAmount = gc.amount - amountCents
+    await supabase
+      .from("gift_cards")
+      .update({
+        amount: newAmount,
+        status: newAmount <= 0 ? "used" : "partial",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", giftCardId)
 
     // 6. Sincronizar profiles
     await supabase
