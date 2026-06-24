@@ -121,6 +121,7 @@ function SetupIntentForm({ userId, membershipType, onSuccess, onError, autoConfi
           <div className="p-4 border border-slate-200 rounded-lg">
             <CardElement
               options={{
+                disableLink: true,
                 style: {
                   base: {
                     fontSize: "16px",
@@ -178,7 +179,7 @@ export default function SetupIntentPayment(props: SetupIntentFormProps) {
   }
 
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={{ loader: "never" }}>
       <SetupIntentForm {...props} />
     </Elements>
   )
