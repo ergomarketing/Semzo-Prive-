@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle } from "lucide-react"
+import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle, ShieldCheck } from "lucide-react"
 import useSWR from "swr"
 import { toast } from "sonner"
 
@@ -25,6 +25,7 @@ export default function MembresiaPage() {
   const [isPhoneEmail, setIsPhoneEmail] = useState(false)
   const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [resumeLoading, setResumeLoading] = useState(false)
 
   // SINGLE SOURCE OF TRUTH - NO guardias aquí, layout.tsx maneja redirects
   const { data, error, isLoading, mutate } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
@@ -62,6 +63,48 @@ export default function MembresiaPage() {
       alert("Error al actualizar email")
     } finally {
       setSavingEmail(false)
+    }
+  }
+
+  // Membresia pagada pero pendiente de verificacion (identidad/SEPA).
+  // Preguntamos al orquestador (resume-onboarding) cual es el siguiente
+  // paso REAL y enrutamos ahi. Nunca mandamos a /#membresias (eso era el loop).
+  const handleResumeOnboarding = async () => {
+    setResumeLoading(true)
+    try {
+      const res = await fetch("/api/resume-onboarding", { method: "POST" })
+      const resume = await res.json().catch(() => ({}))
+
+      switch (resume?.action) {
+        case "active":
+          await mutate()
+          router.replace("/dashboard")
+          break
+        case "launch_identity":
+          if (resume.verification_url) {
+            window.location.href = resume.verification_url
+          } else {
+            router.push("/verify-identity")
+          }
+          break
+        case "pending_sepa":
+          router.push("/onboarding-complete")
+          break
+        case "resume_checkout":
+        case "payment_incomplete":
+          router.push(resume.checkout_url || "/cart")
+          break
+        case "processing_payment":
+          toast.info("Estamos procesando tu pago. Espera unos segundos y recarga.")
+          break
+        default:
+          // Fallback seguro: empezar por identidad (nunca a membresias)
+          router.push("/verify-identity")
+      }
+    } catch {
+      toast.error("No se pudo continuar la activación. Inténtalo de nuevo.")
+    } finally {
+      setResumeLoading(false)
     }
   }
 
@@ -520,7 +563,32 @@ export default function MembresiaPage() {
                   </div>
                 )}
 
-                {!isActive && membership.status !== "paused" && (
+                {/* Membresia pagada pendiente de verificacion: continuar el
+                    flujo (identidad → SEPA), NO mandar a /#membresias. */}
+                {uiStatus === "pending_verification" && (
+                  <div className="mt-4">
+                    <div className="bg-rose-nude border border-rose-pastel rounded-lg p-3 mb-3">
+                      <p className="text-sm text-indigo-dark">
+                        Tu pago está confirmado. Para activar tu membresía solo falta verificar tu
+                        identidad y firmar el mandato SEPA.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleResumeOnboarding}
+                      disabled={resumeLoading}
+                      className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                    >
+                      {resumeLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                      )}
+                      Continuar activación
+                    </Button>
+                  </div>
+                )}
+
+                {!isActive && uiStatus !== "pending_verification" && membership.status !== "paused" && (
                   <Button
                     onClick={() => {
                       window.location.href = "/#membresias"
