@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle, ShieldCheck } from "lucide-react"
+import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle, ShieldCheck, CreditCard } from "lucide-react"
 import useSWR from "swr"
 import { toast } from "sonner"
 
@@ -26,6 +26,7 @@ export default function MembresiaPage() {
   const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [resumeLoading, setResumeLoading] = useState(false)
+  const [payLoading, setPayLoading] = useState(false)
 
   // SINGLE SOURCE OF TRUTH - NO guardias aquí, layout.tsx maneja redirects
   const { data, error, isLoading, mutate } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
@@ -105,6 +106,34 @@ export default function MembresiaPage() {
       toast.error("No se pudo continuar la activación. Inténtalo de nuevo.")
     } finally {
       setResumeLoading(false)
+    }
+  }
+
+  // Membresia impagada (past_due / unpaid): pagar la factura pendiente de SU
+  // suscripcion existente directamente en Stripe. NO la mandamos al catalogo
+  // de membresias (eso crearia una suscripcion nueva).
+  const handlePayMembership = async () => {
+    setPayLoading(true)
+    try {
+      const res = await fetch("/api/stripe/pay-membership", { method: "POST" })
+      const result = await res.json().catch(() => ({}))
+
+      if (res.ok && result?.url) {
+        window.location.href = result.url
+        return
+      }
+
+      if (result?.alreadyPaid) {
+        toast.success("Tu factura ya está pagada. Actualizando…")
+        await mutate()
+        return
+      }
+
+      toast.error(result?.error || "No se pudo iniciar el pago. Inténtalo de nuevo.")
+    } catch {
+      toast.error("No se pudo iniciar el pago. Inténtalo de nuevo.")
+    } finally {
+      setPayLoading(false)
     }
   }
 
@@ -588,17 +617,39 @@ export default function MembresiaPage() {
                   </div>
                 )}
 
-                {!isActive && uiStatus !== "pending_verification" && membership.status !== "paused" && (
-                  <Button
-                    onClick={() => {
-                      window.location.href = "/#membresias"
-                    }}
-                    className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
-                  >
-                    <Crown className="h-4 w-4 mr-2" />
-                    Activar Membresía
-                  </Button>
+                {/* Membresia impagada: pagar la factura pendiente de SU
+                    suscripcion, NO crear una nueva desde el catalogo. */}
+                {uiStatus === "past_due" && (
+                  <div className="mt-4">
+                    <Button
+                      onClick={handlePayMembership}
+                      disabled={payLoading}
+                      className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                    >
+                      {payLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-4 w-4 mr-2" />
+                      )}
+                      Pagar ahora
+                    </Button>
+                  </div>
                 )}
+
+                {!isActive &&
+                  uiStatus !== "pending_verification" &&
+                  uiStatus !== "past_due" &&
+                  membership.status !== "paused" && (
+                    <Button
+                      onClick={() => {
+                        window.location.href = "/#membresias"
+                      }}
+                      className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
+                    >
+                      <Crown className="h-4 w-4 mr-2" />
+                      Activar Membresía
+                    </Button>
+                  )}
               </div>
             </div>
           </CardContent>
