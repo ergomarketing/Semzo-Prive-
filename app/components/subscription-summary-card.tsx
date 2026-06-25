@@ -4,7 +4,6 @@ import useSWR from "swr"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Copy, Check, CreditCard, Calendar, Hash, Crown, Loader2, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ChangePaymentMethodDialog } from "./change-payment-method-dialog"
@@ -276,16 +275,7 @@ export function SubscriptionSummaryCard() {
 
         {/* Acciones de la suscripcion (Fase B sencilla: solo reportar incidencia) */}
         <div className="mt-5 pt-4 border-t border-rose-pastel/30 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2 text-xs text-indigo-dark/70">
-            {data.stripe_status && data.stripe_status !== "active" && data.stripe_status !== "trialing" && (
-              <>
-                <span>Estado en Stripe:</span>
-                <Badge variant="outline" className="font-mono border-indigo-dark/30 text-indigo-dark">
-                  {data.stripe_status}
-                </Badge>
-              </>
-            )}
-          </div>
+          <div className="flex items-center gap-2 text-xs text-indigo-dark/70" />
           <Button
             variant="ghost"
             size="sm"
