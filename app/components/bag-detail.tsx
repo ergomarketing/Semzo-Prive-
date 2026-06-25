@@ -299,7 +299,40 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
     }
   }
 
-  const handleReserve = () => {
+  const handleReserve = async () => {
+    // GATE DE ELEGIBILIDAD (antes de llevar al carrito).
+    // Aplica a cualquier socia logueada. El endpoint deja pasar a socias
+    // nuevas (sin membresia) y bloquea morosas (past_due/unpaid) o con un
+    // bolso en posesion sin devolver. No usamos userMembership.tier porque
+    // ese fetch solo lee status=active y no detecta a las morosas.
+    if (userId) {
+      try {
+        setIsReserving(true)
+        const res = await fetch("/api/user/reservation-eligibility")
+        const elig = await res.json().catch(() => ({}))
+        if (!elig?.allowed) {
+          toast({
+            title: "No puedes reservar ahora",
+            description: elig?.message || "Tu membresía no permite reservar en este momento.",
+            variant: "destructive",
+          })
+          setIsReserving(false)
+          return
+        }
+      } catch {
+        // Si la verificacion falla, el backend (carrito/checkout) sigue
+        // bloqueando: no dejamos pasar por seguridad.
+        toast({
+          title: "No se pudo verificar tu elegibilidad",
+          description: "Inténtalo de nuevo en unos segundos.",
+          variant: "destructive",
+        })
+        setIsReserving(false)
+        return
+      }
+      setIsReserving(false)
+    }
+
     const option = membershipOptions[selectedMembership]
     let itemsToAdd: any[] = []
 
