@@ -237,6 +237,10 @@ export async function POST(request: NextRequest) {
         status_incomplete_expired: "Tu membresía no llegó a activarse. Inicia el proceso de nuevo.",
         status_initiated: "Tu membresía aún se está activando. Espera unos minutos.",
         status_paused: "Tu membresía está pausada. Reactivala para reservar.",
+        status_past_due:
+          "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
+        status_unpaid:
+          "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
       }
       const userMessage =
         reasonMessages[eligibility.reason || ""] ||
@@ -258,11 +262,13 @@ export async function POST(request: NextRequest) {
     // no puede reservar otro bolso hasta que devuelva el actual. La reserva solo
     // pasa a 'completed' cuando logistica confirma la devolucion fisica.
     // 'overdue' = bolso vencido pero todavia en poder de la socia.
+    // En curso = cualquier reserva que NO este completada ni cancelada.
+    // Cubre pending/confirmed/active/shipped/delivered/in_use/returning/overdue.
     const { data: ongoingReservation } = await supabase
       .from("reservations")
       .select("id, bag_id, end_date, status, bags(name, brand)")
       .eq("user_id", userId)
-      .in("status", ["pending", "confirmed", "active", "overdue"])
+      .not("status", "in", "(completed,cancelled,canceled)")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -428,7 +434,7 @@ export async function POST(request: NextRequest) {
 
       if (!membershipStartDate) {
         return NextResponse.json(
-          { error: "No se encontró la fecha de inicio de tu membresía. Contacta soporte." },
+          { error: "No se encontró la fecha de inicio de tu membres��a. Contacta soporte." },
           { status: 400 },
         )
       }
