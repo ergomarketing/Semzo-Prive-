@@ -194,8 +194,17 @@ export function canCreateReservations(membership: {
 }): { allowed: boolean; reason?: string } {
   if (!membership) return { allowed: false, reason: "no_membership" }
 
-  // Bloqueos duros independientemente del flag
-  const hardBlockStatuses = new Set(["expired", "incomplete_expired", "initiated", "paused"])
+  // Bloqueos duros independientemente del flag.
+  // past_due / unpaid = socia MOROSA: jamas puede reservar hasta regularizar
+  // el pago (esto es regla de negocio del ecommerce, no opcional).
+  const hardBlockStatuses = new Set([
+    "expired",
+    "incomplete_expired",
+    "initiated",
+    "paused",
+    "past_due",
+    "unpaid",
+  ])
   if (membership.status && hardBlockStatuses.has(membership.status)) {
     return { allowed: false, reason: `status_${membership.status}` }
   }
@@ -214,6 +223,26 @@ export function canCreateReservations(membership: {
   }
 
   return { allowed: true }
+}
+
+/**
+ * Estados de reserva que se consideran TERMINADAS (la socia ya NO tiene el
+ * bolso en su poder). Cualquier otro estado = bolso en posesion / en curso.
+ */
+export const FINISHED_RESERVATION_STATUSES = ["completed", "cancelled", "canceled"] as const
+
+/**
+ * Una reserva esta "en curso" (bolso en posesion de la socia o pendiente de
+ * entrega/devolucion) mientras NO este completada ni cancelada. Esto cubre
+ * pending, confirmed, active, shipped, delivered, in_use, returning, overdue
+ * y cualquier estado intermedio futuro, sin tener que enumerarlos.
+ *
+ * Regla de negocio: 1 bolso a la vez. Si hay una reserva en curso, la socia
+ * NO puede reservar ni comprar otro pase hasta devolver el bolso actual.
+ */
+export function isReservationOngoing(status: string | null | undefined): boolean {
+  if (!status) return false
+  return !FINISHED_RESERVATION_STATUSES.includes(status as any)
 }
 
 /**

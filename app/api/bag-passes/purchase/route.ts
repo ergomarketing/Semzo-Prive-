@@ -1,6 +1,7 @@
 import { getSupabaseServer } from "@/lib/supabase-server"
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { canCreateReservations } from "@/lib/membership-state-mapper"
 
 export async function POST(request: Request) {
   try {
@@ -81,11 +82,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Perfil de usuario no encontrado" }, { status: 404 })
     }
 
+    // Membresia mas reciente (sin filtrar por status) para aplicar el gate
+    // unico de elegibilidad: morosa (past_due/unpaid), expirada, pausada, etc.
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("membership_type, status")
+      .select("membership_type, status, end_date, can_make_reservations")
       .eq("user_id", finalUserId)
-      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (!membership) {
@@ -102,6 +106,34 @@ export async function POST(request: Request) {
       )
     }
 
+    // GATE UNICO: misma logica que /api/user/reservations.
+    // Bloquea morosas (past_due/unpaid), expiradas, pausadas, etc.
+    const eligibility = canCreateReservations({
+      status: membership.status,
+      can_make_reservations: (membership as any).can_make_reservations,
+      end_date: membership.end_date,
+    })
+
+    if (!eligibility.allowed) {
+      const reasonMessages: Record<string, string> = {
+        status_past_due: "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
+        status_unpaid: "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
+        status_paused: "Tu membresía está pausada. Reactivala para reservar.",
+        status_expired: "Tu membresía Petite expiró. Renueva para seguir reservando.",
+        end_date_passed: "Tu membresía Petite expiró. Renueva para seguir reservando.",
+        can_make_reservations_false:
+          "Tu membresía no permite reservar en este momento.",
+      }
+      return NextResponse.json(
+        {
+          error: reasonMessages[eligibility.reason || ""] || "Tu membresía no permite reservar.",
+          membership_status: membership.status,
+          reason: eligibility.reason,
+        },
+        { status: 403 }
+      )
+    }
+
     // ========================================================================
     // VALIDACION: 1 bolso a la vez para socias Petite (igual que flujo Stripe)
     // Bloquea comprar un nuevo pase si la socia ya tiene:
@@ -109,13 +141,16 @@ export async function POST(request: Request) {
     //  - Un pase comprado pendiente de uso (status = available)
     // Aplica SIEMPRE: tanto con gift card como con dinero.
     // ========================================================================
-    const { data: activeReservations } = await supabase
+    // En curso = cualquier reserva NO completada ni cancelada. Cubre
+    // active, overdue (devolucion pendiente), shipped, delivered, in_use,
+    // returning, etc. Una socia con un bolso sin devolver NO puede reservar.
+    const { data: ongoingReservations } = await supabase
       .from("reservations")
-      .select("id")
+      .select("id, status")
       .eq("user_id", finalUserId)
-      .eq("status", "active")
+      .not("status", "in", "(completed,cancelled,canceled)")
 
-    if (activeReservations && activeReservations.length > 0) {
+    if (ongoingReservations && ongoingReservations.length > 0) {
       return NextResponse.json(
         {
           error:

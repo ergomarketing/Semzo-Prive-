@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@/app/lib/supabase/server"
+import { canCreateReservations } from "@/lib/membership-state-mapper"
 
 export const dynamic = "force-dynamic"
 
@@ -57,18 +58,54 @@ export async function POST(req: NextRequest) {
     // Solo aplica cuando el checkout es de tipo bag_pass (presencia de bagId).
     // ========================================================================
     if (bagId) {
-      // 1) Reservas activas del usuario
-      const { data: activeReservations, error: resError } = await supabase
+      // 0) GATE DE ELIGIBILIDAD: morosa (past_due/unpaid), expirada, pausada.
+      const { data: membershipGate } = await supabase
+        .from("user_memberships")
+        .select("status, end_date, can_make_reservations")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const eligibility = canCreateReservations({
+        status: membershipGate?.status,
+        can_make_reservations: (membershipGate as any)?.can_make_reservations,
+        end_date: membershipGate?.end_date,
+      })
+
+      if (!eligibility.allowed) {
+        const reasonMessages: Record<string, string> = {
+          status_past_due: "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
+          status_unpaid: "Tienes un pago pendiente. Regulariza tu membresía para poder reservar.",
+          status_paused: "Tu membresía está pausada. Reactivala para reservar.",
+          status_expired: "Tu membresía expiró. Renueva para seguir reservando.",
+          end_date_passed: "Tu membresía expiró. Renueva para seguir reservando.",
+          can_make_reservations_false: "Tu membresía no permite reservar en este momento.",
+          no_membership: "Necesitas una membresía activa para reservar.",
+        }
+        return NextResponse.json(
+          {
+            error: reasonMessages[eligibility.reason || ""] || "Tu membresía no permite reservar.",
+            code: "MEMBERSHIP_NOT_ELIGIBLE",
+            reason: eligibility.reason,
+          },
+          { status: 403 }
+        )
+      }
+
+      // 1) Reserva en curso = cualquiera NO completada ni cancelada (cubre
+      //    active, overdue, shipped, delivered, in_use, returning...).
+      const { data: ongoingReservations, error: resError } = await supabase
         .from("reservations")
         .select("id, status")
         .eq("user_id", userId)
-        .eq("status", "active")
+        .not("status", "in", "(completed,cancelled,canceled)")
 
       if (resError) {
         console.error("[v0][create-payment-checkout] error reservations:", resError)
       }
 
-      if (activeReservations && activeReservations.length > 0) {
+      if (ongoingReservations && ongoingReservations.length > 0) {
         return NextResponse.json(
           {
             error:
