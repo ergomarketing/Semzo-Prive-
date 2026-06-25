@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
 
 // Delays en horas para cada email de la secuencia
 const EMAIL_DELAYS_HOURS = [0, 48, 96, 144, 168]
