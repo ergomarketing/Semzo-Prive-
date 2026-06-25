@@ -138,7 +138,7 @@ async function sendEmailNow(leadId: string, email: string, name: string) {
     .replace(/\{\{unsubscribe_url\}\}/g, unsubUrl)
     + trackingPixel
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
   const fromEmail = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
   await resend.emails.send({ from: fromEmail, to: email, subject, html: bodyHtml })
