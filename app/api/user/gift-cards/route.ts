@@ -14,14 +14,27 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // First get gift cards directly assigned to user
+    // Email del usuario para buscar GCs asignadas por recipient_email
+    const userEmail = user.email || ""
+
+    // 1. GCs directamente usadas por el usuario (used_by = user.id)
     const { data: directGiftCards } = await supabase
       .from("gift_cards")
       .select("id, code, amount, original_amount, status, expires_at, created_at, used_by, used_at")
       .eq("used_by", user.id)
       .order("created_at", { ascending: false })
 
-    // Also get gift cards used via membership_intents
+    // 2. GCs asignadas por recipient_email (cubre el caso en que se asignaron
+    //    antes de que existiera el user_id vinculado, o GCs con saldo disponible)
+    const { data: recipientGiftCards } = userEmail
+      ? await supabase
+          .from("gift_cards")
+          .select("id, code, amount, original_amount, status, expires_at, created_at, used_by, used_at")
+          .eq("recipient_email", userEmail)
+          .order("created_at", { ascending: false })
+      : { data: [] }
+
+    // 3. GCs usadas via membership_intents
     const { data: intentsWithGiftCards } = await supabase
       .from("membership_intents")
       .select("gift_card_id")
@@ -40,8 +53,8 @@ export async function GET() {
       intentGiftCards = data || []
     }
 
-    // Merge and deduplicate
-    const allGiftCards = [...(directGiftCards || []), ...intentGiftCards]
+    // Merge and deduplicate (directas + recipient_email + intents)
+    const allGiftCards = [...(directGiftCards || []), ...(recipientGiftCards || []), ...intentGiftCards]
     const uniqueGiftCards = allGiftCards.filter(
       (card, index, self) => index === self.findIndex((c) => c.id === card.id),
     )
