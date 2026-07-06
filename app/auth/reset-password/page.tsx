@@ -24,66 +24,24 @@ export default function ResetPasswordPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const checkRecoveryLink = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-
-      const accessToken = hashParams.get("access_token")
-      const refreshToken = hashParams.get("refresh_token")
-      const type = hashParams.get("type")
-
-      console.log("[ResetPassword] Hash params:", {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        type: type,
-      })
-
-      if (!accessToken || !refreshToken) {
-        console.error("[ResetPassword] Missing tokens in hash")
+    // El callback de Supabase (/auth/callback) ya verificó el token OTP y
+    // estableció la sesión antes de redirigir aquí. Solo comprobamos que
+    // exista una sesión activa; si no, pedimos un nuevo enlace.
+    const checkSession = async () => {
+      const supabase = getSupabaseBrowser()
+      if (!supabase) {
+        setError("Error de configuración. Contacta al administrador.")
+        return
+      }
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
         setError("Enlace inválido o expirado. Solicita un nuevo enlace de recuperación.")
         setIsReady(false)
         return
       }
-
-      if (type !== "recovery" && type !== "email_change") {
-        console.error("[ResetPassword] Invalid type:", type)
-        setError("Enlace inválido. Este no es un enlace válido.")
-        setIsReady(false)
-        return
-      }
-
-      if (type === "email_change") {
-        setIsEmailChange(true)
-      }
-
-      const supabase = getSupabaseBrowser()
-      if (supabase) {
-        try {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-
-          if (sessionError) {
-            console.error("[ResetPassword] Error setting session:", sessionError)
-            setError("Error al validar el enlace. Por favor, solicita uno nuevo.")
-            setIsReady(false)
-            return
-          }
-
-          console.log("[ResetPassword] Session established successfully")
-          setIsReady(true)
-        } catch (err) {
-          console.error("[ResetPassword] Exception setting session:", err)
-          setError("Error al procesar el enlace. Por favor, intenta de nuevo.")
-          setIsReady(false)
-        }
-      } else {
-        setError("Error de configuración. Contacta al administrador.")
-        setIsReady(false)
-      }
+      setIsReady(true)
     }
-
-    checkRecoveryLink()
+    checkSession()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

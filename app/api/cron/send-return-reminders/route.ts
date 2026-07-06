@@ -1,184 +1,162 @@
 /**
- * CRON JOB: Enviar recordatorios de devolucion
- * 
- * Ejecuta diariamente para enviar recordatorios a usuarios con devoluciones proximas.
- * Envia recordatorio 3 dias antes y 1 dia antes de la fecha de devolucion.
- * 
- * Frecuencia: Diaria (sugerido: 9:00 AM CET)
- * Endpoint: /api/cron/send-return-reminders
+ * CRON: Recordatorios de devolucion 2 dias antes
+ *
+ * Logica por tipo de membresia:
+ *  - Petite: delivered_at + 5 dias (aviso 2 dias antes de los 7 que tiene)
+ *  - Essentiel / Signature / Prive: pass_expires_at - 2 dias
+ *
+ * Guard de deduplicacion: columna reminder_2d_sent_at en reservations.
+ * Frecuencia: diaria (08:00 UTC en vercel.json)
  */
 
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
-import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { Resend } from "resend"
+import { generateReturnReminderHTML } from "@/lib/email-templates-membership"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  },
-)
+const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
+const FROM_EMAIL = "hola@semzoprive.com"
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_ENV === "production"
+    ? "https://semzoprive.com"
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000")
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(request: NextRequest) {
-  try {
-    // Verificar autorizacion del cron
-    const authHeader = request.headers.get("authorization")
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    console.log("[RETURN REMINDER] Iniciando envio de recordatorios...")
-
-    const emailService = EmailServiceProduction.getInstance()
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // Fechas objetivo: 3 dias y 1 dia antes
-    const threeDaysFromNow = new Date(today)
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
-
-    const oneDayFromNow = new Date(today)
-    oneDayFromNow.setDate(oneDayFromNow.getDate() + 1)
-
-    // Buscar reservas activas con fecha de devolucion proxima
-    const { data: reservations, error: reservationsError } = await supabaseAdmin
-      .from("reservations")
-      .select(`
-        id,
-        user_id,
-        bag_id,
-        return_date,
-        end_date,
-        status,
-        return_reminder_sent_3d,
-        return_reminder_sent_1d,
-        profiles!inner(id, email, full_name, first_name, last_name),
-        bags!inner(id, name, brand)
-      `)
-      .eq("status", "active")
-      .or(`return_date.eq.${threeDaysFromNow.toISOString().split('T')[0]},return_date.eq.${oneDayFromNow.toISOString().split('T')[0]},end_date.eq.${threeDaysFromNow.toISOString().split('T')[0]},end_date.eq.${oneDayFromNow.toISOString().split('T')[0]}`)
-
-    if (reservationsError) {
-      console.error("[RETURN REMINDER] Error consultando reservas:", reservationsError)
-      return NextResponse.json({
-        success: false,
-        error: reservationsError.message,
-      }, { status: 500 })
-    }
-
-    if (!reservations || reservations.length === 0) {
-      console.log("[RETURN REMINDER] No hay recordatorios pendientes")
-      return NextResponse.json({
-        success: true,
-        message: "No hay recordatorios pendientes",
-        processed: 0,
-      })
-    }
-
-    console.log(`[RETURN REMINDER] Encontradas ${reservations.length} reservas para recordatorio`)
-
-    const results = []
-
-    for (const reservation of reservations) {
-      try {
-        const profile = reservation.profiles
-        const bag = reservation.bags
-
-        if (!profile || !bag) {
-          console.warn(`[RETURN REMINDER] Reserva ${reservation.id}: datos incompletos`)
-          continue
-        }
-
-        const returnDate = new Date(reservation.return_date || reservation.end_date)
-        const daysRemaining = Math.ceil((returnDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-
-        // Verificar si ya se envio el recordatorio correspondiente
-        if (daysRemaining === 3 && reservation.return_reminder_sent_3d) {
-          console.log(`[RETURN REMINDER] Reserva ${reservation.id}: recordatorio 3d ya enviado`)
-          continue
-        }
-        if (daysRemaining === 1 && reservation.return_reminder_sent_1d) {
-          console.log(`[RETURN REMINDER] Reserva ${reservation.id}: recordatorio 1d ya enviado`)
-          continue
-        }
-
-        const customerName = profile.full_name || 
-          `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
-          "Cliente"
-        const bagName = `${bag.brand} ${bag.name}`.trim()
-
-        console.log(`[RETURN REMINDER] Enviando recordatorio ${daysRemaining}d a ${profile.email}`)
-
-        // Enviar email de recordatorio
-        const emailSent = await emailService.sendReturnReminderEmail({
-          userEmail: profile.email,
-          userName: customerName,
-          bagName,
-          returnDate: returnDate.toISOString(),
-          daysRemaining,
-        })
-
-        if (emailSent) {
-          // Actualizar registro de recordatorio enviado
-          const updateField = daysRemaining === 3 
-            ? { return_reminder_sent_3d: new Date().toISOString() }
-            : { return_reminder_sent_1d: new Date().toISOString() }
-
-          await supabaseAdmin
-            .from("reservations")
-            .update(updateField)
-            .eq("id", reservation.id)
-
-          console.log(`[RETURN REMINDER] Recordatorio enviado para reserva ${reservation.id}`)
-          results.push({
-            reservationId: reservation.id,
-            email: profile.email,
-            daysRemaining,
-            success: true,
-          })
-        } else {
-          results.push({
-            reservationId: reservation.id,
-            email: profile.email,
-            success: false,
-            error: "Error enviando email",
-          })
-        }
-      } catch (error) {
-        console.error(`[RETURN REMINDER] Error procesando reserva ${reservation.id}:`, error)
-        results.push({
-          reservationId: reservation.id,
-          success: false,
-          error: error instanceof Error ? error.message : "Error desconocido",
-        })
-      }
-    }
-
-    const successCount = results.filter((r) => r.success).length
-    const failCount = results.filter((r) => !r.success).length
-
-    console.log(`[RETURN REMINDER] Completado: ${successCount} exitosos, ${failCount} fallidos`)
-
-    return NextResponse.json({
-      success: true,
-      message: "Recordatorios enviados",
-      processed: reservations.length,
-      successful: successCount,
-      failed: failCount,
-      results,
-    })
-  } catch (error) {
-    console.error("[RETURN REMINDER] Error critico:", error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-    }, { status: 500 })
+  const authHeader = request.headers.get("authorization")
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const supabase = getSupabase()
+  const now = new Date()
+
+  // Rango: reservas donde el aviso cae HOY (±12h para no saltarse nada)
+  const windowStart = new Date(now)
+  windowStart.setHours(0, 0, 0, 0)
+  const windowEnd = new Date(now)
+  windowEnd.setHours(23, 59, 59, 999)
+
+  // Reservas activas (bolso en posesión) sin recordatorio enviado aún
+  const { data: reservations, error } = await supabase
+    .from("reservations")
+    .select(`
+      id,
+      user_id,
+      membership_type,
+      delivered_at,
+      pass_expires_at,
+      reminder_2d_sent_at,
+      bags!inner(name, brand),
+      profiles!inner(email, first_name, last_name)
+    `)
+    .not("status", "in", "(completed,cancelled,canceled)")
+    .is("reminder_2d_sent_at", null)
+    .not("delivered_at", "is", null) // solo bolsos ya entregados a la socia
+
+  if (error) {
+    console.error("[return-reminder] Error cargando reservas:", error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  let sent = 0
+  let skipped = 0
+
+  for (const res of reservations || []) {
+    const bag = res.bags as any
+    const profile = res.profiles as any
+    if (!profile?.email || !bag) { skipped++; continue }
+
+    const delivered = new Date(res.delivered_at!)
+    const membershipType: string = res.membership_type || "petite"
+
+    // Calcular la fecha en que debemos enviar el aviso (2 días antes del vencimiento)
+    let reminderDate: Date
+
+    if (membershipType === "petite") {
+      // Petite: el pase dura 7 días desde entrega → aviso el día 5
+      reminderDate = new Date(delivered.getTime() + 5 * 24 * 60 * 60 * 1000)
+    } else if (res.pass_expires_at) {
+      // Resto: usar pass_expires_at - 2 días
+      reminderDate = new Date(new Date(res.pass_expires_at).getTime() - 2 * 24 * 60 * 60 * 1000)
+    } else {
+      skipped++
+      continue
+    }
+
+    // Solo enviar si el aviso cae hoy
+    reminderDate.setHours(0, 0, 0, 0)
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
+    if (reminderDate.getTime() !== todayStart.getTime()) { skipped++; continue }
+
+    // Fecha de devolución para mostrar en el email
+    const returnBy = new Date(delivered.getTime() + 7 * 24 * 60 * 60 * 1000)
+    if (membershipType !== "petite" && res.pass_expires_at) {
+      returnBy.setTime(new Date(res.pass_expires_at).getTime())
+    }
+    const returnByFormatted = returnBy.toLocaleDateString("es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    })
+
+    const userName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "socia"
+    const bagName = bag.name
+    const bagBrand = bag.brand
+
+    const html = generateReturnReminderHTML({
+      userName,
+      bagName,
+      bagBrand,
+      returnByDate: returnByFormatted,
+      membershipType,
+      dashboardUrl: `${SITE_URL}/dashboard`,
+    })
+
+    const subject =
+      membershipType === "petite"
+        ? `Tu bolso ${bagBrand} ${bagName} regresa pronto — Semzo Privé`
+        : `Recordatorio: devolución de tu bolso en 2 días — Semzo Privé`
+
+    const { error: sendErr } = await resend.emails.send({
+      from: `Semzo Privé <${FROM_EMAIL}>`,
+      to: profile.email,
+      subject,
+      html,
+    })
+
+    if (sendErr) {
+      console.error("[return-reminder] Error enviando a:", profile.email, sendErr)
+      continue
+    }
+
+    // Marcar como enviado
+    await supabase
+      .from("reservations")
+      .update({ reminder_2d_sent_at: new Date().toISOString() })
+      .eq("id", res.id)
+
+    sent++
+    console.log(`[return-reminder] Recordatorio enviado a ${profile.email} | bolso: ${bagBrand} ${bagName}`)
+  }
+
+  return NextResponse.json({
+    ok: true,
+    sent,
+    skipped,
+    total: (reservations || []).length,
+  })
 }

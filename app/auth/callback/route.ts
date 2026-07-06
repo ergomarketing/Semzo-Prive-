@@ -104,6 +104,13 @@ export async function GET(request: NextRequest) {
         // Error de sync no bloquea el flujo
       }
 
+      // Flujo de recuperacion de contrasena: no ejecutar onboarding ni logica de compra.
+      // Redirigir directo a reset-password (con sesion ya establecida via verifyOtp).
+      if (type === "recovery") {
+        const destination = (next && next.startsWith("/")) ? next : "/auth/reset-password"
+        return NextResponse.redirect(new URL(destination, request.url))
+      }
+
       // Ejecutar orquestador para reconciliar estado de membresia/identity/sepa
       // tras exchangeCodeForSession. Idempotente: si no hay intent, devuelve payment_incomplete y el flujo sigue.
       try {

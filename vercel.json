@@ -35,6 +35,14 @@
     {
       "path": "/api/cron/send-lead-emails",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/send-return-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/send-dunning-emails",
+      "schedule": "0 8 * * *"
     }
   ],
   "git": {
