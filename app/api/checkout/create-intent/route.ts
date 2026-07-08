@@ -73,7 +73,12 @@ export async function POST(request: NextRequest) {
 
       if (card) {
         resolvedGiftCardId = card.id
-        giftCardAppliedCents = Math.min(card.amount, finalAmountCents)
+        // Protección triple: nunca descontar más que
+        //   1) el saldo real de la GC en BD (card.amount),
+        //   2) el precio del plan tras cupón (finalAmountCents),
+        //   3) el importe que el frontend dice que aplica (giftCard.amountEuros * 100 si viene)
+        const frontendCents = giftCard.amountEuros ? Math.round(giftCard.amountEuros * 100) : Infinity
+        giftCardAppliedCents = Math.min(card.amount, finalAmountCents, frontendCents)
         finalAmountCents -= giftCardAppliedCents
       }
     }

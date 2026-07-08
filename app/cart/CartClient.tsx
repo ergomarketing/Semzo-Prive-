@@ -1127,7 +1127,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       }
                       if (appliedGiftCard) {
                         checkoutBody.gift_card_id = appliedGiftCard.id
-                        checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
+                        // Importe REAL a descontar = mínimo entre saldo GC y precio del pase.
+                        // Nunca enviar el saldo total de la GC si supera el precio del artículo.
+                        checkoutBody.giftCardAmountEuros = Math.min(appliedGiftCard.balance, total)
                       }
                     } else {
                       // MEMBRESIA: priceId ES OBLIGATORIO, mode SIEMPRE "subscription".
@@ -1138,8 +1140,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       checkoutBody.priceId = priceId
                       if (appliedGiftCard) {
                         checkoutBody.gift_card_id = appliedGiftCard.id
-                        // Backend calcula Math.min(gift_card, plan_price) y crea coupon one-time
-                        checkoutBody.giftCardAmountEuros = appliedGiftCard.balance
+                        // Importe REAL a descontar = mínimo entre saldo GC y precio del plan.
+                        // Nunca enviar el saldo total de la GC si supera el precio del plan.
+                        checkoutBody.giftCardAmountEuros = Math.min(appliedGiftCard.balance, total)
                       }
                     }
                     // Pasar cupón a Stripe para que lo aplique en el checkout

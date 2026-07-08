@@ -168,11 +168,25 @@ export async function POST(req: NextRequest) {
           ? `https://${process.env.VERCEL_URL}`
           : "http://localhost:3000")
 
-    // Persistir cuánto cubre la gift card en membership_intents ANTES de Stripe
-    // El webhook lo leerá de aquí como fuente de verdad para consumirla
+    // Persistir cuánto cubre la gift card en membership_intents ANTES de Stripe.
+    // El webhook lo leerá de aquí como fuente de verdad para consumirla.
+    // PROTECCIÓN: verificar el saldo real de la GC en BD y usar Math.min para
+    // garantizar que nunca se descuenta más del precio del artículo NI más del
+    // saldo disponible de la GC. Esto evita descuentos incorrectos aunque el
+    // frontend envíe un valor erróneo.
     if (giftCardId && giftCardAmountEuros && intentId) {
-      const originalAmountCents = amountCents + Math.round(giftCardAmountEuros * 100)
-      const giftCardAppliedCents = originalAmountCents - amountCents
+      // Saldo real de la GC directamente desde BD (fuente de verdad)
+      const { data: gcRow } = await supabase
+        .from("gift_cards")
+        .select("amount")
+        .eq("id", giftCardId)
+        .maybeSingle()
+
+      const gcBalanceCents = gcRow?.amount ?? 0
+      const requestedCents = Math.round(giftCardAmountEuros * 100)
+      // Nunca descontar más que: el saldo real de la GC Y el precio del artículo
+      const giftCardAppliedCents = Math.min(requestedCents, gcBalanceCents, amountCents)
+
       if (giftCardAppliedCents > 0) {
         await supabase
           .from("membership_intents")
