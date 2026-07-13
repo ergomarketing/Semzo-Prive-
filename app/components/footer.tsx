@@ -23,23 +23,9 @@ import { useTranslations } from "next-intl"
 // ---- Datos estaticos del footer (extraidos para legibilidad) -------------
 // Los labels usan tildes y enes correctas para SEO y respeto a la lengua.
 
-const COMPANY_LINKS = [
-  { label: "Sobre Nosotros", href: "/#nuestra-vision" },
-  { label: "Membresías", href: "/#membresias" },
-  { label: "Colección", href: "/catalog" },
-  { label: "Cómo Funciona", href: "/proceso" },
-  { label: "Magazine", href: "/blog" },
-  { label: "Tarjetas Regalo", href: "/gift-cards" },
-]
-
-const CUSTOMER_LINKS = [
-  { label: "Centro de Soporte", href: "/support" },
-  { label: "Preguntas Frecuentes", href: "/support#faq" },
-  { label: "Envíos y Devoluciones", href: "/support#envios" },
-  { label: "Términos y Condiciones", href: "/legal/terms" },
-  { label: "Política de Privacidad", href: "/legal/privacy" },
-  { label: "Política de Cookies", href: "/legal/cookies" },
-]
+// Links moved inside components to support i18n (labels resolved via useTranslations)
+const COMPANY_HREFS = ["/#nuestra-vision","/#membresias","/catalog","/proceso","/blog","/gift-cards"]
+const CUSTOMER_HREFS = ["/support","/support#faq","/support#envios","/legal/terms","/legal/privacy","/legal/cookies"]
 
 const SOCIAL_LINKS = [
   {
@@ -64,6 +50,7 @@ const MARQUEE_PHRASES = [
 // ---- Sub-componente: Newsletter signup -----------------------------------
 
 function NewsletterForm() {
+  const t = useTranslations("footer")
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
@@ -86,16 +73,16 @@ function NewsletterForm() {
 
       if (!res.ok || data.error) {
         setStatus("error")
-        setMessage(data.message || "No pudimos suscribirte, inténtalo de nuevo.")
+        setMessage(data.message || t("newsletter.errorMsg"))
         return
       }
 
       setStatus("success")
-      setMessage(data.message || "Te has unido al club. Pronto recibirás novedades.")
+      setMessage(data.message || t("newsletter.successMsg"))
       setEmail("")
     } catch {
       setStatus("error")
-      setMessage("Error de conexión. Inténtalo de nuevo en un momento.")
+      setMessage(t("newsletter.connectionError"))
     }
   }
 
@@ -103,7 +90,7 @@ function NewsletterForm() {
     <form onSubmit={handleSubmit} className="w-full max-w-md" noValidate>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <label htmlFor="footer-newsletter-email" className="sr-only">
-          Correo electrónico
+          {t("newsletter.emailLabel")}
         </label>
         <div className="flex-1 relative">
           <input
@@ -114,7 +101,7 @@ function NewsletterForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Tu correo electrónico"
+            placeholder={t("newsletter.placeholder")}
             disabled={status === "loading"}
             className="w-full bg-white text-indigo-dark placeholder:text-indigo-dark/50 px-5 py-3.5 pr-14 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-pastel disabled:opacity-60"
             aria-describedby="footer-newsletter-status"
@@ -123,7 +110,7 @@ function NewsletterForm() {
             type="submit"
             disabled={status === "loading" || !email.trim()}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-indigo-dark text-white flex items-center justify-center hover:bg-indigo-dark/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Suscribirse al newsletter"
+            aria-label={t("newsletter.ariaSubscribe")}
           >
             {status === "success" ? (
               <Check className="h-4 w-4" aria-hidden="true" />
@@ -134,7 +121,6 @@ function NewsletterForm() {
         </div>
       </div>
 
-      {/* Mensaje de estado: accesible (aria-live) y visualmente discreto */}
       <p
         id="footer-newsletter-status"
         role="status"
@@ -147,9 +133,7 @@ function NewsletterForm() {
               : "text-white/60"
         }`}
       >
-        {status === "idle"
-          ? "Recibe novedades, lanzamientos y ofertas exclusivas. Sin spam."
-          : message}
+        {status === "idle" ? t("newsletter.hint") : message}
       </p>
     </form>
   )
@@ -193,6 +177,15 @@ function FooterMarquee() {
 // ---- Footer principal ----------------------------------------------------
 
 export default function Footer() {
+  const t = useTranslations("footer")
+  const companyLinks = [
+    t("links.company.about"), t("links.company.memberships"), t("links.company.collection"),
+    t("links.company.howItWorks"), t("links.company.magazine"), t("links.company.giftCards"),
+  ].map((label, i) => ({ label, href: COMPANY_HREFS[i] }))
+  const customerLinks = [
+    t("links.customer.support"), t("links.customer.faq"), t("links.customer.shipping"),
+    t("links.customer.terms"), t("links.customer.privacy"), t("links.customer.cookies"),
+  ].map((label, i) => ({ label, href: CUSTOMER_HREFS[i] }))
   return (
     <footer>
       {/* ====== BLOQUE INDIGO: marca + newsletter + columnas ====== */}
@@ -210,16 +203,14 @@ export default function Footer() {
               SEMZO <span className="text-rose-pastel">PRIVÉ</span>
             </Link>
             <p className="text-white/75 font-light leading-relaxed max-w-md text-sm md:text-base">
-              Accede a bolsos de lujo autenticados con la membresía de Semzo Privé.
-              Hermès, Chanel, Louis Vuitton y más marcas exclusivas, sin compromiso
-              de compra. Tu armario de ensueño, a un solo paso.
+              {t("brand.desc")}
             </p>
           </div>
 
           {/* Newsletter */}
           <div className="md:col-span-7">
             <h2 className="font-serif text-2xl md:text-3xl mb-4 leading-tight">
-              Únete al <span className="text-rose-pastel">club</span>
+              {t("newsletter.heading")}
             </h2>
             <NewsletterForm />
           </div>
@@ -237,10 +228,10 @@ export default function Footer() {
           {/* Columna: Compania */}
           <div className="col-span-1 md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-4">
-              Compañía
+              {t("columns.company")}
             </h3>
             <ul className="space-y-2.5">
-              {COMPANY_LINKS.map((link) => (
+              {companyLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -256,10 +247,10 @@ export default function Footer() {
           {/* Columna: Atencion al cliente */}
           <div className="col-span-1 md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-4">
-              Atención al Cliente
+              {t("columns.customer")}
             </h3>
             <ul className="space-y-2.5">
-              {CUSTOMER_LINKS.map((link) => (
+              {customerLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -275,7 +266,7 @@ export default function Footer() {
           {/* Columna: Contacto + redes — ancho completo en movil */}
           <div className="col-span-2 md:col-span-4">
             <h3 className="font-serif text-xs uppercase tracking-[0.25em] text-white mb-5">
-              Contacto
+              {t("columns.contact")}
             </h3>
             <ul className="space-y-3 text-sm text-white/70 mb-6">
               <li>

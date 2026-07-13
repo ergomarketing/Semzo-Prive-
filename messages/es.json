@@ -142,30 +142,41 @@
     }
   },
   "footer": {
-    "company": "Empresa",
-    "customer": "Clientas",
-    "followUs": "Síguenos",
+    "brand": {
+      "desc": "Accede a bolsos de lujo autenticados con la membresía de Semzo Privé. Hermès, Chanel, Louis Vuitton y más marcas exclusivas, sin compromiso de compra. Tu armario de ensueño, a un solo paso."
+    },
+    "columns": {
+      "company": "Compañía",
+      "customer": "Atención al Cliente",
+      "contact": "Contacto"
+    },
     "newsletter": {
-      "title": "Únete al club privado",
-      "desc": "Novedades, inspiración y acceso anticipado a nuevas incorporaciones.",
+      "heading": "Únete al <span>club</span>",
+      "emailLabel": "Correo electrónico",
       "placeholder": "Tu correo electrónico",
-      "button": "Suscribirse",
-      "success": "Te has unido al club. Pronto recibirás novedades.",
-      "error": "No pudimos suscribirte, inténtalo de nuevo."
+      "ariaSubscribe": "Suscribirse al newsletter",
+      "hint": "Recibe novedades, lanzamientos y ofertas exclusivas. Sin spam.",
+      "successMsg": "Te has unido al club. Pronto recibirás novedades.",
+      "errorMsg": "No pudimos suscribirte, inténtalo de nuevo.",
+      "connectionError": "Error de conexión. Inténtalo de nuevo en un momento."
     },
     "links": {
-      "about": "Sobre Nosotros",
-      "memberships": "Membresías",
-      "collection": "Colección",
-      "howItWorks": "Cómo Funciona",
-      "magazine": "Magazine",
-      "giftCards": "Tarjetas Regalo",
-      "support": "Centro de Soporte",
-      "faq": "Preguntas Frecuentes",
-      "shipping": "Envíos y Devoluciones",
-      "terms": "Términos y Condiciones",
-      "privacy": "Política de Privacidad",
-      "cookies": "Política de Cookies"
+      "company": {
+        "about": "Sobre Nosotros",
+        "memberships": "Membresías",
+        "collection": "Colección",
+        "howItWorks": "Cómo Funciona",
+        "magazine": "Magazine",
+        "giftCards": "Tarjetas Regalo"
+      },
+      "customer": {
+        "support": "Centro de Soporte",
+        "faq": "Preguntas Frecuentes",
+        "shipping": "Envíos y Devoluciones",
+        "terms": "Términos y Condiciones",
+        "privacy": "Política de Privacidad",
+        "cookies": "Política de Cookies"
+      }
     },
     "copyright": "Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad."
   },

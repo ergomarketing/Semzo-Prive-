@@ -142,30 +142,41 @@
     }
   },
   "footer": {
-    "company": "Company",
-    "customer": "Members",
-    "followUs": "Follow us",
+    "brand": {
+      "desc": "Access authenticated luxury bags with your Semzo Privé membership. Hermès, Chanel, Louis Vuitton and more iconic brands, no purchase commitment. Your dream wardrobe, one step away."
+    },
+    "columns": {
+      "company": "Company",
+      "customer": "Client Services",
+      "contact": "Contact"
+    },
     "newsletter": {
-      "title": "Join the private club",
-      "desc": "News, inspiration and early access to new arrivals.",
+      "heading": "Join the <span>club</span>",
+      "emailLabel": "Email address",
       "placeholder": "Your email address",
-      "button": "Subscribe",
-      "success": "You have joined the club. You will receive news soon.",
-      "error": "We could not subscribe you, please try again."
+      "ariaSubscribe": "Subscribe to newsletter",
+      "hint": "Receive news, launches and exclusive offers. No spam.",
+      "successMsg": "You have joined the club. You will receive news soon.",
+      "errorMsg": "We could not subscribe you, please try again.",
+      "connectionError": "Connection error. Please try again in a moment."
     },
     "links": {
-      "about": "About Us",
-      "memberships": "Memberships",
-      "collection": "Collection",
-      "howItWorks": "How It Works",
-      "magazine": "Magazine",
-      "giftCards": "Gift Cards",
-      "support": "Support Centre",
-      "faq": "Frequently Asked Questions",
-      "shipping": "Shipping & Returns",
-      "terms": "Terms & Conditions",
-      "privacy": "Privacy Policy",
-      "cookies": "Cookie Policy"
+      "company": {
+        "about": "About Us",
+        "memberships": "Memberships",
+        "collection": "Collection",
+        "howItWorks": "How It Works",
+        "magazine": "Magazine",
+        "giftCards": "Gift Cards"
+      },
+      "customer": {
+        "support": "Support Centre",
+        "faq": "Frequently Asked Questions",
+        "shipping": "Shipping & Returns",
+        "terms": "Terms & Conditions",
+        "privacy": "Privacy Policy",
+        "cookies": "Cookie Policy"
+      }
     },
     "copyright": "Semzo Privé — Premium luxury bag rental platform. All our pieces are verified by experts to guarantee authenticity."
   },
