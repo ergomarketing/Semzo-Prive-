@@ -4,8 +4,10 @@
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 export default function CTASection() {
+  const t = useTranslations("cta")
   return (
     <section
       // Padding vertical reducido: antes py-16/24, ahora py-10/14.
@@ -40,18 +42,16 @@ export default function CTASection() {
               className="text-sm uppercase tracking-widest font-medium"
               style={{ color: "#c9a86c" }}
             >
-              Atención Personalizada
+              {t("consult.eyebrow")}
             </p>
             <h2 
               className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight"
               style={{ color: "#1a1a4b" }}
             >
-              Descubre tu bolso ideal
+              {t("consult.title")}
             </h2>
             <p className="text-slate-600 leading-relaxed text-base md:text-lg max-w-lg">
-              Nuestro equipo de estilistas está disponible para ayudarte a elegir 
-              la pieza perfecta para cada ocasión. Agenda una consulta gratuita 
-              y recibe recomendaciones personalizadas.
+              {t("consult.desc")}
             </p>
             <div className="pt-2">
               <Link href="/support">
@@ -63,7 +63,7 @@ export default function CTASection() {
                     border: "2px solid #1a1a4b",
                   }}
                 >
-                  Agendar Consulta
+                  {t("consult.button")}
                 </Button>
               </Link>
             </div>
@@ -77,18 +77,16 @@ export default function CTASection() {
               className="text-sm uppercase tracking-widest font-medium"
               style={{ color: "#c9a86c" }}
             >
-              Únete Ahora
+              {t("join.eyebrow")}
             </p>
             <h2 
               className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight"
               style={{ color: "#1a1a4b" }}
             >
-              Comienza tu experiencia de lujo hoy mismo
+              {t("join.title")}
             </h2>
             <p className="text-slate-600 leading-relaxed text-base md:text-lg max-w-lg">
-              Sé parte de una comunidad exclusiva de mujeres que valoran la calidad, 
-              el diseño y la sostenibilidad. Nuestras plazas son limitadas para 
-              garantizar un servicio impecable.
+              {t("join.desc")}
             </p>
             <div className="pt-2 flex justify-center md:justify-start">
               <Link href="/gift-cards">
@@ -99,7 +97,7 @@ export default function CTASection() {
                     color: "#ffffff",
                   }}
                 >
-                  Comprar Gift Card
+                  {t("join.button")}
                 </Button>
               </Link>
             </div>

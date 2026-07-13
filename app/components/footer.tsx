@@ -18,6 +18,7 @@
 import Link from "next/link"
 import { Instagram, Facebook, ArrowRight, Check } from "lucide-react"
 import { useState, type FormEvent } from "react"
+import { useTranslations } from "next-intl"
 
 // ---- Datos estaticos del footer (extraidos para legibilidad) -------------
 // Los labels usan tildes y enes correctas para SEO y respeto a la lengua.

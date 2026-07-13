@@ -1,0 +1,234 @@
+{
+  "nav": {
+    "collection": "Colección",
+    "memberships": "Membresías",
+    "process": "El Proceso",
+    "magazine": "Magazine",
+    "testimonials": "Testimonios",
+    "login": "Acceder",
+    "myAccount": "Mi cuenta",
+    "logout": "Cerrar sesión",
+    "cart": "Carrito"
+  },
+  "hero": {
+    "eyebrow": "Alquiler de bolsos de lujo mediante membresía",
+    "headline1": "Tu puerta de acceso al",
+    "headline2": "armario de tus sueños",
+    "subtext": "Accede a bolsos Hermès, Chanel, Louis Vuitton y más marcas exclusivas en Madrid y Marbella.",
+    "ctaPrimary": "Comenzar suscripción",
+    "ctaSecondary": "Ver colección"
+  },
+  "howItWorks": {
+    "eyebrow": "El proceso",
+    "title": "Simplicidad y elegancia en cada paso",
+    "subtitle": "Hemos diseñado un proceso intuitivo que te permite disfrutar de bolsos de lujo sin complicaciones. Desde la selección hasta la entrega, cada detalle ha sido cuidadosamente considerado.",
+    "step1": {
+      "label": "Paso 01",
+      "title": "Selecciona tu membresía",
+      "desc": "Elige entre nuestros tres niveles de membresía según tus necesidades y preferencias."
+    },
+    "step2": {
+      "label": "Paso 02",
+      "title": "Explora nuestra colección",
+      "desc": "Navega por nuestro catálogo curado de bolsos de las marcas más prestigiosas del mundo."
+    },
+    "step3": {
+      "label": "Paso 03",
+      "title": "Recibe y disfruta",
+      "desc": "Tu selección llegará a tu puerta en un packaging exclusivo, lista para ser disfrutada."
+    }
+  },
+  "twoModes": {
+    "eyebrow": "Tu bolso, tus reglas",
+    "title": "Dos formas de vivir el lujo",
+    "subtitle": "Una sola membresía. Dos caminos para disfrutarla. Eliges cuando reservas tu primer bolso y puedes cambiar de opinión en cualquier momento.",
+    "discover": {
+      "tag": "Modo Descubre",
+      "title": "Cambia cuando quieras",
+      "desc": "Prueba marcas, modelos y estilos. Tu membresía te abre las puertas de toda la colección para que cada temporada lleves algo diferente.",
+      "feature1": "Acceso completo al catálogo curado",
+      "feature2": "Rotación incluida en tu cuota mensual",
+      "feature3": "Cobertura por uso normal incluida"
+    },
+    "collect": {
+      "tag": "Modo Colecciona",
+      "title": "Hazlo tuyo",
+      "desc": "¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Cada cuota suma hacia su compra. Cuando completes su precio, es tuyo para siempre.",
+      "feature1": "El bolso es solo tuyo desde el día uno",
+      "feature2": "Cada mes suma hacia su propiedad",
+      "feature3": "Certificado de autenticidad desde el inicio"
+    },
+    "cta": "Hazte socia",
+    "note": "Decides al reservar tu primer bolso. Sin compromiso, sin permanencia."
+  },
+  "cta": {
+    "consult": {
+      "eyebrow": "Atención Personalizada",
+      "title": "Descubre tu bolso ideal",
+      "desc": "Nuestro equipo de estilistas está disponible para ayudarte a elegir la pieza perfecta para cada ocasión. Agenda una consulta gratuita y recibe recomendaciones personalizadas.",
+      "button": "Agendar Consulta"
+    },
+    "join": {
+      "eyebrow": "Únete Ahora",
+      "title": "Comienza tu experiencia de lujo hoy mismo",
+      "desc": "Sé parte de una comunidad exclusiva de mujeres que valoran la calidad, el diseño y la sostenibilidad. Nuestras plazas son limitadas para garantizar un servicio impecable.",
+      "button": "Comprar Gift Card"
+    }
+  },
+  "memberships": {
+    "eyebrow": "Cuatro niveles",
+    "title": "Elige tu membresía",
+    "monthly": "Mensual",
+    "quarterly": "Trimestral",
+    "quarterlySave": "Ahorra 20%",
+    "mostPopular": "Más popular",
+    "selectPlan": "Seleccionar plan",
+    "learnMore": "Saber más",
+    "petite": {
+      "tagline": "Pases sueltos",
+      "desc": "Favoritos del día a día. Pide un bolso por semana sin compromiso.",
+      "longDesc": "Para quien quiere descubrir el mundo de los bolsos de lujo a su propio ritmo. Activa tu membresía mensual y compra pases sueltos cada vez que quieras llevar un bolso.",
+      "features": [
+        "Hasta 4 pases por mes (1 por semana)",
+        "Compra pases solo cuando los necesites",
+        "Pase Essentiel: 52€ · Pase Signature: 99€ · Pase Privé: 137€",
+        "Envío gratuito en 24-48h",
+        "Seguro incluido en cada préstamo",
+        "Sin permanencia"
+      ],
+      "forWhom": "Ideal para descubrir, ocasiones puntuales o uso ligero."
+    },
+    "essentiel": {
+      "tagline": "Un bolso al mes",
+      "desc": "La introducción perfecta al mundo de los bolsos de lujo.",
+      "longDesc": "El primer paso al universo Semzo. Disfruta de un bolso premium cada mes, cámbialo cuando quieras y siente la libertad de renovar tu estilo sin acumular.",
+      "features": [
+        "1 bolso al mes incluido",
+        "Marcas como Coach, Furla, Michael Kors, Tory Burch",
+        "Cambio mensual flexible",
+        "Envío gratuito en 24-48h",
+        "Seguro incluido",
+        "Atención al cliente prioritaria"
+      ],
+      "forWhom": "Para quien desea elegancia diaria con un toque de lujo accesible."
+    },
+    "signature": {
+      "tagline": "Marcas premium",
+      "desc": "La experiencia preferida por nuestras clientas más exigentes.",
+      "longDesc": "El equilibrio perfecto entre lujo y exclusividad. Accede a las casas más deseadas con un bolso premium cada mes, atención personalizada y prioridad en novedades.",
+      "features": [
+        "1 bolso al mes incluido",
+        "Acceso a Chanel, Dior, Louis Vuitton, Gucci",
+        "Cambio mensual sin límites",
+        "Envío express gratuito",
+        "Seguro premium incluido",
+        "Stylist personal"
+      ],
+      "forWhom": "Para la mujer que quiere lo mejor sin renunciar a la variedad."
+    },
+    "prive": {
+      "tagline": "Lo más exclusivo",
+      "desc": "Acceso ilimitado a nuestra selección más codiciada.",
+      "longDesc": "La cima del servicio Semzo. Bolsos de espera imposible, piezas únicas y un servicio diseñado para quienes no aceptan compromisos.",
+      "features": [
+        "1 bolso de la categoría Privé al mes",
+        "Hermès, Chanel vintage, ediciones limitadas",
+        "Servicio de conserjería dedicado",
+        "Entrega en mano disponible",
+        "Seguro a todo riesgo",
+        "Acceso prioritario a nuevas incorporaciones"
+      ],
+      "forWhom": "Para quien vive el lujo como un estilo de vida."
+    }
+  },
+  "footer": {
+    "company": "Empresa",
+    "customer": "Clientas",
+    "followUs": "Síguenos",
+    "newsletter": {
+      "title": "Únete al club privado",
+      "desc": "Novedades, inspiración y acceso anticipado a nuevas incorporaciones.",
+      "placeholder": "Tu correo electrónico",
+      "button": "Suscribirse",
+      "success": "Te has unido al club. Pronto recibirás novedades.",
+      "error": "No pudimos suscribirte, inténtalo de nuevo."
+    },
+    "links": {
+      "about": "Sobre Nosotros",
+      "memberships": "Membresías",
+      "collection": "Colección",
+      "howItWorks": "Cómo Funciona",
+      "magazine": "Magazine",
+      "giftCards": "Tarjetas Regalo",
+      "support": "Centro de Soporte",
+      "faq": "Preguntas Frecuentes",
+      "shipping": "Envíos y Devoluciones",
+      "terms": "Términos y Condiciones",
+      "privacy": "Política de Privacidad",
+      "cookies": "Política de Cookies"
+    },
+    "copyright": "Semzo Privé — Marca y plataforma de servicio premium de alquiler de bolsos de lujo auténticos y certificados. Todas nuestras piezas son verificadas por expertos para garantizar autenticidad."
+  },
+  "catalog": {
+    "title": "Nuestra Colección",
+    "subtitle": "Descubre bolsos de las casas más prestigiosas del mundo",
+    "filters": "Filtros",
+    "allBrands": "Todas las marcas",
+    "allCategories": "Todas las categorías",
+    "sortBy": "Ordenar por",
+    "noResults": "No se encontraron bolsos con esos filtros.",
+    "reserve": "Reservar",
+    "available": "Disponible",
+    "unavailable": "No disponible"
+  },
+  "proceso": {
+    "title": "Cómo funciona",
+    "subtitle": "Todo lo que necesitas saber para empezar"
+  },
+  "giftCards": {
+    "title": "Gift Cards",
+    "subtitle": "El regalo perfecto para una mujer con estilo",
+    "buy": "Comprar Gift Card",
+    "redeem": "Canjear código",
+    "balance": "Saldo disponible",
+    "history": "Historial de uso"
+  },
+  "support": {
+    "title": "Centro de Soporte",
+    "subtitle": "Estamos aquí para ayudarte",
+    "contactUs": "Contáctanos",
+    "faq": "Preguntas Frecuentes"
+  },
+  "signup": {
+    "title": "Crear cuenta",
+    "subtitle": "Únete a Semzo Privé",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "name": "Nombre completo",
+    "phone": "Teléfono",
+    "submit": "Crear cuenta",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "login": "Inicia sesión"
+  },
+  "legal": {
+    "terms": "Términos y Condiciones",
+    "privacy": "Política de Privacidad",
+    "cookies": "Política de Cookies",
+    "lastUpdated": "Última actualización"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ha ocurrido un error",
+    "backHome": "Volver al inicio",
+    "seeAll": "Ver todo",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "month": "mes",
+    "quarter": "trimestre",
+    "free": "Gratuito",
+    "included": "incluido",
+    "from": "desde"
+  }
+}

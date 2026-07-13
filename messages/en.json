@@ -1,0 +1,234 @@
+{
+  "nav": {
+    "collection": "Collection",
+    "memberships": "Memberships",
+    "process": "How It Works",
+    "magazine": "Magazine",
+    "testimonials": "Testimonials",
+    "login": "Sign In",
+    "myAccount": "My account",
+    "logout": "Sign out",
+    "cart": "Cart"
+  },
+  "hero": {
+    "eyebrow": "Luxury bag rental by membership",
+    "headline1": "Your gateway to",
+    "headline2": "the wardrobe of your dreams",
+    "subtext": "Access Hermès, Chanel, Louis Vuitton and more iconic brands in Madrid and Marbella.",
+    "ctaPrimary": "Start membership",
+    "ctaSecondary": "View collection"
+  },
+  "howItWorks": {
+    "eyebrow": "The process",
+    "title": "Simplicity and elegance at every step",
+    "subtitle": "We have designed an intuitive process that lets you enjoy luxury bags without complications. From selection to delivery, every detail has been carefully considered.",
+    "step1": {
+      "label": "Step 01",
+      "title": "Choose your membership",
+      "desc": "Select from our membership levels based on your needs and preferences."
+    },
+    "step2": {
+      "label": "Step 02",
+      "title": "Explore our collection",
+      "desc": "Browse our curated catalogue of bags from the world's most prestigious fashion houses."
+    },
+    "step3": {
+      "label": "Step 03",
+      "title": "Receive and enjoy",
+      "desc": "Your selection will arrive at your door in exclusive packaging, ready to be enjoyed."
+    }
+  },
+  "twoModes": {
+    "eyebrow": "Your bag, your rules",
+    "title": "Two ways to live luxury",
+    "subtitle": "One membership. Two paths to enjoy it. You choose when you book your first bag and can change your mind at any time.",
+    "discover": {
+      "tag": "Discover Mode",
+      "title": "Change whenever you want",
+      "desc": "Try brands, models and styles. Your membership opens the doors to the entire collection so every season you carry something different.",
+      "feature1": "Full access to the curated catalogue",
+      "feature2": "Rotation included in your monthly fee",
+      "feature3": "Coverage for normal use included"
+    },
+    "collect": {
+      "tag": "Collect Mode",
+      "title": "Make it yours",
+      "desc": "Fallen in love? Reserve the bag you never want to let go. Each payment counts toward its purchase. Once you complete its price, it's yours forever.",
+      "feature1": "The bag is exclusively yours from day one",
+      "feature2": "Each month counts toward ownership",
+      "feature3": "Certificate of authenticity from the start"
+    },
+    "cta": "Become a member",
+    "note": "You decide when you book your first bag. No commitment, no lock-in."
+  },
+  "cta": {
+    "consult": {
+      "eyebrow": "Personalised Attention",
+      "title": "Discover your ideal bag",
+      "desc": "Our team of stylists is available to help you choose the perfect piece for every occasion. Book a free consultation and receive personalised recommendations.",
+      "button": "Book a Consultation"
+    },
+    "join": {
+      "eyebrow": "Join Now",
+      "title": "Start your luxury experience today",
+      "desc": "Become part of an exclusive community of women who value quality, design and sustainability. Our spots are limited to guarantee impeccable service.",
+      "button": "Buy a Gift Card"
+    }
+  },
+  "memberships": {
+    "eyebrow": "Four levels",
+    "title": "Choose your membership",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "quarterlySave": "Save 20%",
+    "mostPopular": "Most popular",
+    "selectPlan": "Select plan",
+    "learnMore": "Learn more",
+    "petite": {
+      "tagline": "Pay-per-use passes",
+      "desc": "Everyday favourites. Borrow a bag every week, no commitment.",
+      "longDesc": "For those who want to discover the world of luxury bags at their own pace. Activate your monthly membership and buy single passes whenever you want to carry a bag.",
+      "features": [
+        "Up to 4 passes per month (1 per week)",
+        "Buy passes only when you need them",
+        "Essentiel pass: €52 · Signature pass: €99 · Privé pass: €137",
+        "Free shipping in 24–48h",
+        "Insurance included with each loan",
+        "No lock-in"
+      ],
+      "forWhom": "Ideal for discovering, special occasions or light use."
+    },
+    "essentiel": {
+      "tagline": "One bag a month",
+      "desc": "The perfect introduction to the world of luxury bags.",
+      "longDesc": "Your first step into the Semzo universe. Enjoy one premium bag every month, swap it whenever you like and feel the freedom of refreshing your style without accumulating.",
+      "features": [
+        "1 bag per month included",
+        "Brands such as Coach, Furla, Michael Kors, Tory Burch",
+        "Flexible monthly swap",
+        "Free shipping in 24–48h",
+        "Insurance included",
+        "Priority customer support"
+      ],
+      "forWhom": "For those who want daily elegance with an accessible touch of luxury."
+    },
+    "signature": {
+      "tagline": "Premium brands",
+      "desc": "The experience preferred by our most discerning members.",
+      "longDesc": "The perfect balance between luxury and exclusivity. Access the most coveted fashion houses with a premium bag each month, personalised attention and priority on new arrivals.",
+      "features": [
+        "1 bag per month included",
+        "Access to Chanel, Dior, Louis Vuitton, Gucci",
+        "Unlimited monthly swaps",
+        "Free express shipping",
+        "Premium insurance included",
+        "Personal stylist"
+      ],
+      "forWhom": "For the woman who wants the best without giving up variety."
+    },
+    "prive": {
+      "tagline": "The most exclusive",
+      "desc": "Unlimited access to our most coveted selection.",
+      "longDesc": "The pinnacle of Semzo service. Impossible-to-wait bags, unique pieces and a service designed for those who accept no compromises.",
+      "features": [
+        "1 Privé-category bag per month",
+        "Hermès, vintage Chanel, limited editions",
+        "Dedicated concierge service",
+        "In-person delivery available",
+        "Comprehensive insurance",
+        "Priority access to new arrivals"
+      ],
+      "forWhom": "For those who live luxury as a lifestyle."
+    }
+  },
+  "footer": {
+    "company": "Company",
+    "customer": "Members",
+    "followUs": "Follow us",
+    "newsletter": {
+      "title": "Join the private club",
+      "desc": "News, inspiration and early access to new arrivals.",
+      "placeholder": "Your email address",
+      "button": "Subscribe",
+      "success": "You have joined the club. You will receive news soon.",
+      "error": "We could not subscribe you, please try again."
+    },
+    "links": {
+      "about": "About Us",
+      "memberships": "Memberships",
+      "collection": "Collection",
+      "howItWorks": "How It Works",
+      "magazine": "Magazine",
+      "giftCards": "Gift Cards",
+      "support": "Support Centre",
+      "faq": "Frequently Asked Questions",
+      "shipping": "Shipping & Returns",
+      "terms": "Terms & Conditions",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookie Policy"
+    },
+    "copyright": "Semzo Privé — Premium luxury bag rental platform. All our pieces are verified by experts to guarantee authenticity."
+  },
+  "catalog": {
+    "title": "Our Collection",
+    "subtitle": "Discover bags from the world's most prestigious fashion houses",
+    "filters": "Filters",
+    "allBrands": "All brands",
+    "allCategories": "All categories",
+    "sortBy": "Sort by",
+    "noResults": "No bags found with those filters.",
+    "reserve": "Reserve",
+    "available": "Available",
+    "unavailable": "Unavailable"
+  },
+  "proceso": {
+    "title": "How It Works",
+    "subtitle": "Everything you need to know to get started"
+  },
+  "giftCards": {
+    "title": "Gift Cards",
+    "subtitle": "The perfect gift for a woman with style",
+    "buy": "Buy Gift Card",
+    "redeem": "Redeem code",
+    "balance": "Available balance",
+    "history": "Usage history"
+  },
+  "support": {
+    "title": "Support Centre",
+    "subtitle": "We are here to help you",
+    "contactUs": "Contact us",
+    "faq": "Frequently Asked Questions"
+  },
+  "signup": {
+    "title": "Create account",
+    "subtitle": "Join Semzo Privé",
+    "email": "Email address",
+    "password": "Password",
+    "name": "Full name",
+    "phone": "Phone number",
+    "submit": "Create account",
+    "hasAccount": "Already have an account?",
+    "login": "Sign in"
+  },
+  "legal": {
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "cookies": "Cookie Policy",
+    "lastUpdated": "Last updated"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "backHome": "Back to home",
+    "seeAll": "See all",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "month": "month",
+    "quarter": "quarter",
+    "free": "Free",
+    "included": "included",
+    "from": "from"
+  }
+}

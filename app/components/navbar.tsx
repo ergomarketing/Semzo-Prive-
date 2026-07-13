@@ -9,6 +9,7 @@ import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag, Menu, X } from "lucide-react"
 import { useCart } from "@/app/contexts/cart-context"
 import { usePathname } from "next/navigation"
+import LanguageSwitcher from "./language-switcher"
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -127,6 +128,10 @@ export default function Navbar() {
 
           <div className="flex-shrink-0">
             <div className="flex items-center space-x-2">
+              {/* Language switcher — hidden on mobile to avoid clutter */}
+              <div className="hidden md:flex items-center mr-1">
+                <LanguageSwitcher />
+              </div>
               {/* Mobile menu button */}
               <Button
                 variant="ghost"
@@ -242,6 +247,9 @@ export default function Navbar() {
             >
               Testimonios
             </Link>
+            <div className="border-t border-slate-100 pt-4 mt-2">
+              <LanguageSwitcher />
+            </div>
             {user && (
               <button
                 onClick={() => {

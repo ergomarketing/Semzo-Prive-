@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Shield, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 
 export default function HeroSection() {
+  const t = useTranslations("hero")
   return (
     // Hero compacto: antes ocupaba 100svh (pantalla completa) lo que
     // alargaba demasiado el scroll y aburria al usuario antes de llegar
@@ -43,17 +45,17 @@ export default function HeroSection() {
           <div className="space-y-6 md:space-y-10 text-center lg:text-left">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/80 mb-4 md:mb-6 font-medium">
-                Alquiler de bolsos de lujo mediante membresía
+                {t("eyebrow")}
               </p>
               <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-[1.1] tracking-tight">
-                Tu puerta de acceso al
+                {t("headline1")}
                 <br />
-                <span className="text-rose-pastel">armario de tus sueños</span>
+                <span className="text-rose-pastel">{t("headline2")}</span>
               </h1>
             </div>
 
             <p className="text-white/90 text-lg md:text-xl leading-relaxed font-light max-w-2xl mx-auto lg:mx-0">
-              Accede a bolsos Hermès, Chanel, Louis Vuitton y más marcas exclusivas en Madrid y Marbella.
+              {t("subtext")}
             </p>
 
             {/* Botones */}
@@ -67,14 +69,14 @@ export default function HeroSection() {
                 }}
                 className="w-full sm:w-auto rounded-none px-6 md:px-8 py-4 md:py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 bg-rose-pastel text-indigo-dark hover:bg-rose-pastel/90 hover:scale-105 transform"
               >
-                Comenzar suscripción
+                {t("ctaPrimary")}
               </Button>
               <Link href="/catalog">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto rounded-none px-6 md:px-8 py-4 md:py-6 text-sm uppercase tracking-widest font-medium transition-all duration-300 border-2 border-white text-white hover:bg-white hover:text-indigo-dark hover:scale-105 transform bg-transparent"
                 >
-                  Ver colección
+                  {t("ctaSecondary")}
                 </Button>
               </Link>
             </div>
