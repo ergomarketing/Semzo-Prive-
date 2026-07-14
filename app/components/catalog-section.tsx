@@ -14,6 +14,7 @@ import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 import { LoginModal } from "@/app/components/login-modal"
 import { UpgradeMembershipDialog } from "@/app/components/upgrade-membership-dialog"
+import { useTranslations, useLocale } from "next-intl"
 
 interface BagItem {
   id: string
@@ -36,6 +37,7 @@ const MEMBERSHIP_PRICES: Record<string, number> = {
 }
 
 export default function CatalogSection({ initialBags = [] }: { initialBags?: BagItem[] } = {}) {
+  const t = useTranslations("catalog")
   const { user } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
   const [bags, setBags] = useState<BagItem[]>(initialBags)
@@ -219,7 +221,7 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
           <div className="flex justify-center mb-8">
             <TabsList className="bg-slate-100">
               <TabsTrigger value="all" className="text-sm">
-                Todos los bolsos
+                {t("tabAll")}
               </TabsTrigger>
               <TabsTrigger value="essentiel" className="text-sm">
                 L'Essentiel
@@ -264,13 +266,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-rose-nude/10 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía L'Essentiel</h3>
-              <p className="text-slate-700 mb-4">
-                Con nuestra membresía L'Essentiel por solo 59€/mes, puedes disfrutar de estos elegantes bolsos y muchos
-                más. La introducción perfecta al mundo de los bolsos de lujo.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("essentielPromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("essentielPromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=essentiel">Suscribirse a L'Essentiel</Link>
+                <Link href="/signup?plan=essentiel">{t("essentielPromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -290,13 +289,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-rose-pastel/20 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Signature</h3>
-              <p className="text-slate-700 mb-4">
-                Nuestra membresía Signature por 149€/mes te da acceso a bolsos de mayor valor y exclusividad. La
-                experiencia preferida por nuestras clientas más exigentes.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("signaturePromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("signaturePromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=signature">Suscribirse a Signature</Link>
+                <Link href="/signup?plan=signature">{t("signaturePromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -316,13 +312,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-indigo-dark/10 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Privé</h3>
-              <p className="text-slate-700 mb-4">
-                La membresía Privé por 279€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La
-                experiencia definitiva para verdaderas conocedoras.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("privePromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("privePromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=prive">Suscribirse a Privé</Link>
+                <Link href="/signup?plan=prive">{t("privePromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -363,6 +356,8 @@ function BagCard({
     bagLabel: "",
   })
 
+  const t = useTranslations("catalog")
+  const locale = useLocale()
   const { toast } = useToast()
   const { addItem } = useCart()
   const router = useRouter()
@@ -460,7 +455,7 @@ function BagCard({
         const bagInfo = (ongoing as any).bags
         const bagLabel = bagInfo
           ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
-          : "tu bolso actual"
+          : t("currentBagFallback")
         setActiveBagDialog({ open: true, bagLabel })
         return
       }
@@ -492,8 +487,8 @@ function BagCard({
         addItem(bagPassItem)
 
         toast({
-          title: "🎫 Pase agregado al carrito",
-          description: `Completa tu compra para reservar este bolso ${tierNames[bagTier as keyof typeof tierNames]}.`,
+          title: t("toastPassAddedTitle"),
+          description: t("toastPassAddedDesc", { tier: tierNames[bagTier as keyof typeof tierNames] }),
           duration: 3000,
         })
 
@@ -568,13 +563,13 @@ function BagCard({
         // Bolso ya en posesion: modal centrado
         if (data.code === "ACTIVE_RESERVATION_IN_PROGRESS") {
           setIsReserving(false)
-          setActiveBagDialog({ open: true, bagLabel: "tu bolso actual" })
+          setActiveBagDialog({ open: true, bagLabel: t("currentBagFallback") })
           return
         }
 
         const fullMsg = data.details
-          ? `${data.error || "Error al crear la reserva"} (${data.details})`
-          : data.error || "Error al crear la reserva"
+          ? `${data.error || t("reservationError")} (${data.details})`
+          : data.error || t("reservationError")
         throw new Error(fullMsg)
       }
 
@@ -582,8 +577,8 @@ function BagCard({
       setIsReserving(false)
 
       toast({
-        title: "¡Reserva creada!",
-        description: "Tu reserva ha sido creada exitosamente. Redirigiendo...",
+        title: t("toastReserveCreatedTitle"),
+        description: t("toastReserveCreatedDesc"),
         duration: 2000,
       })
 
@@ -595,8 +590,8 @@ function BagCard({
 
       toast({
         variant: "destructive",
-        title: "Error al crear reserva",
-        description: error.message || "Por favor intenta de nuevo o contacta soporte.",
+        title: t("toastReserveErrorTitle"),
+        description: error.message || t("toastReserveErrorDesc"),
         duration: 5000,
       })
     }
@@ -666,7 +661,7 @@ function BagCard({
 
         {!isAvailable && (
           <div className="text-center py-2 border-b border-slate-200">
-            <p className="text-sm font-medium tracking-widest text-slate-400">FUERA CON MIEMBRO</p>
+            <p className="text-sm font-medium tracking-widest text-slate-400">{t("outWithMember")}</p>
           </div>
         )}
 
@@ -674,16 +669,19 @@ function BagCard({
           <p className="text-sm text-slate-500">{bag.brand}</p>
           <h3 className="font-serif text-xl text-indigo-dark mb-2">{bag.name}</h3>
           <div className="mb-4">
-            <p className="text-lg font-medium text-indigo-dark">{monthlyPrice}€/mes</p>
+            <p className="text-lg font-medium text-indigo-dark">
+              {monthlyPrice}
+              {t("perMonth")}
+            </p>
             {bag.retail_price && bag.retail_price > 0 && (
-              <p className="text-sm text-slate-500">Valor: {bag.retail_price}€</p>
+              <p className="text-sm text-slate-500">{t("value", { price: bag.retail_price })}</p>
             )}
           </div>
 
           {showSuccess && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-              <p className="text-sm text-green-800 font-medium">¡Reserva creada exitosamente!</p>
-              <p className="text-xs text-green-600 mt-1">Redirigiendo a tus reservas...</p>
+              <p className="text-sm text-green-800 font-medium">{t("reserveSuccessTitle")}</p>
+              <p className="text-xs text-green-600 mt-1">{t("reserveSuccessSub")}</p>
             </div>
           )}
 
