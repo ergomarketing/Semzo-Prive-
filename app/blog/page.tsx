@@ -4,6 +4,7 @@ import Image from "next/image"
 import { Calendar, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
+import { getTranslations } from "next-intl/server"
 import { BlogScrollContainer } from "./blog-scroll-container"
 import { listPosts, type BlogPost } from "@/lib/blog-supabase"
 

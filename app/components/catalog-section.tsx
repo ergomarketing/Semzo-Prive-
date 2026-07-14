@@ -693,7 +693,7 @@ function BagCard({
                   className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
                 >
                   <Info className="h-4 w-4 mr-2" />
-                  Detalles
+                  {t("details")}
                 </Button>
               </Link>
               <Button
@@ -708,12 +708,12 @@ function BagCard({
                 {isReserving ? (
                   <>
                     <span className="inline-block animate-spin mr-2">⏳</span>
-                    Procesando...
+                    {t("processing")}
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4 mr-2" />
-                    Reservar
+                    {t("reserve")}
                   </>
                 )}
               </Button>
@@ -724,7 +724,7 @@ function BagCard({
                 disabled
                 className="w-full bg-indigo-200 text-indigo-dark/70 cursor-not-allowed hover:bg-indigo-200"
               >
-                FUERA CON MIEMBRO
+                {t("outWithMember")}
               </Button>
               <Button
                 onClick={(e) => {
@@ -737,7 +737,7 @@ function BagCard({
                 className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark/5 transition-colors"
               >
                 <Heart className={`h-4 w-4 mr-2 ${isInWaitlist ? "fill-rose-500 text-rose-500" : ""}`} />
-                {isInWaitlist ? "En Lista de Espera" : "NOTIFICARME"}
+                {isInWaitlist ? t("inWaitlist") : t("notifyMe")}
               </Button>
             </div>
           )}
@@ -747,10 +747,11 @@ function BagCard({
       <Dialog open={showPassSelector} onOpenChange={setShowPassSelector}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Selecciona un Pase de Bolso</DialogTitle>
+            <DialogTitle>{t("passSelectorTitle")}</DialogTitle>
             <DialogDescription>
-              Tienes {availablePasses.length} pase{availablePasses.length !== 1 ? "s" : ""} disponible
-              {availablePasses.length !== 1 ? "s" : ""} para esta categoría
+              {availablePasses.length === 1
+                ? t("passSelectorDescOne", { count: availablePasses.length })
+                : t("passSelectorDescMany", { count: availablePasses.length })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -767,7 +768,7 @@ function BagCard({
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-medium text-slate-900">
-                      Pase{" "}
+                      {t("passPrefix")}{" "}
                       {pass.pass_tier === "essentiel"
                         ? "L'Essentiel"
                         : pass.pass_tier === "signature"
@@ -775,11 +776,15 @@ function BagCard({
                           : "Privé"}
                     </p>
                     <p className="text-sm text-slate-600">
-                      Comprado: {new Date(pass.purchased_at).toLocaleDateString("es-ES")}
+                      {t("passPurchased", {
+                        date: new Date(pass.purchased_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES"),
+                      })}
                     </p>
                     {pass.expires_at && (
                       <p className="text-xs text-slate-500">
-                        Expira: {new Date(pass.expires_at).toLocaleDateString("es-ES")}
+                        {t("passExpires", {
+                          date: new Date(pass.expires_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES"),
+                        })}
                       </p>
                     )}
                   </div>
@@ -801,14 +806,14 @@ function BagCard({
               }}
               className="flex-1"
             >
-              Cancelar
+              {t("cancel")}
             </Button>
             <Button
               onClick={() => executeReservation(selectedPassId)}
               disabled={!selectedPassId || isReserving}
               className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90"
             >
-              {isReserving ? "Procesando..." : "Confirmar Reserva"}
+              {isReserving ? t("processing") : t("confirmReserve")}
             </Button>
           </div>
         </DialogContent>
@@ -868,8 +873,8 @@ function BagCard({
                 }
           addItem(bagPassItem)
           toast({
-            title: "Pase añadido al carrito",
-            description: `Completa tu compra para reservar ${bag.brand} ${bag.name}.`,
+            title: t("toastUpgradePassTitle"),
+            description: t("toastUpgradePassDesc", { brand: bag.brand, name: bag.name }),
             duration: 3000,
           })
           setTimeout(() => router.push("/cart"), 400)
@@ -884,13 +889,13 @@ function BagCard({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">
-              Ya tienes un bolso en curso
+              {t("activeBagTitle")}
             </DialogTitle>
             <DialogDescription className="pt-2 leading-relaxed text-foreground/80">
-              Para reservar un nuevo bolso, primero envía a Semzo Privé el{" "}
-              <span className="font-medium text-foreground">{activeBagDialog.bagLabel}</span>{" "}
-              que tienes actualmente. En cuanto recibamos la devolución podrás
-              elegir tu siguiente bolso.
+              {t.rich("activeBagDesc", {
+                label: activeBagDialog.bagLabel,
+                b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -898,10 +903,10 @@ function BagCard({
               variant="outline"
               onClick={() => setActiveBagDialog({ open: false, bagLabel: "" })}
             >
-              Entendido
+              {t("understood")}
             </Button>
             <Button onClick={() => router.push("/dashboard")}>
-              Ir a mi dashboard
+              {t("goDashboard")}
             </Button>
           </div>
         </DialogContent>
