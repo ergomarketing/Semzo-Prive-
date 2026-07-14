@@ -76,18 +76,25 @@
     }
   },
   "memberships": {
-    "eyebrow": "Cuatro niveles",
-    "title": "Elige tu membresía",
-    "monthly": "Mensual",
-    "quarterly": "Trimestral",
-    "quarterlySave": "Ahorra 20%",
-    "mostPopular": "Más popular",
-    "selectPlan": "Seleccionar plan",
-    "learnMore": "Saber más",
+    "sectionTitle": "Nuestras Membresías",
+    "sectionSubtitle": "Una invitación a vivir el lujo de otra manera. Cada membresía es una puerta a una experiencia distinta: desde el descubrimiento hasta lo excepcional. Tú eliges cómo entrar.",
+    "eyebrow": "CUATRO NIVELES",
+    "chooseTitle": "Elige tu",
+    "chooseTitleItalic": "membresia",
+    "monthly": "MENSUAL",
+    "quarterly": "TRIMESTRAL",
+    "quarterlySave": "AHORRA 20%",
+    "mostPopular": "MAS ELEGIDA",
+    "monthlyOnly": "SOLO PAGO MENSUAL",
+    "viewDetails": "VER DETALLES",
+    "select": "ELEGIR",
+    "membershipLabel": "MEMBRESIA",
+    "selectNamed": "ELEGIR",
+    "stylistNote": "Si no encuentras el bolso perfecto para ti, agenda una cita personalizada con nuestro Fashion Stylist para una experiencia completamente a medida.",
     "petite": {
       "tagline": "Pases sueltos",
       "desc": "Favoritos del día a día. Pide un bolso por semana sin compromiso.",
-      "longDesc": "Para quien quiere descubrir el mundo de los bolsos de lujo a su propio ritmo. Activa tu membresía mensual y compra pases sueltos cada vez que quieras llevar un bolso.",
+      "longDesc": "Para quien quiere descubrir el mundo de los bolsos de lujo a su propio ritmo. Activa tu membresía mensual y compra pases sueltos cada vez que quieras llevar un bolso. Ideal para eventos puntuales, fines de semana o probar antes de comprometerte con un plan superior.",
       "features": [
         "Hasta 4 pases por mes (1 por semana)",
         "Compra pases solo cuando los necesites",
@@ -101,7 +108,7 @@
     "essentiel": {
       "tagline": "Un bolso al mes",
       "desc": "La introducción perfecta al mundo de los bolsos de lujo.",
-      "longDesc": "El primer paso al universo Semzo. Disfruta de un bolso premium cada mes, cámbialo cuando quieras y siente la libertad de renovar tu estilo sin acumular.",
+      "longDesc": "El primer paso al universo Semzo. Disfruta de un bolso premium cada mes, cámbialo cuando quieras y siente la libertad de renovar tu estilo sin acumular. Pensado para clientas que quieren incorporar el lujo a su día a día con elegancia y consistencia.",
       "features": [
         "1 bolso al mes incluido",
         "Marcas como Coach, Furla, Michael Kors, Tory Burch",
@@ -115,30 +122,32 @@
     "signature": {
       "tagline": "Marcas premium",
       "desc": "La experiencia preferida por nuestras clientas más exigentes.",
-      "longDesc": "El equilibrio perfecto entre lujo y exclusividad. Accede a las casas más deseadas con un bolso premium cada mes, atención personalizada y prioridad en novedades.",
+      "longDesc": "El equilibrio perfecto entre lujo y exclusividad. Accede a las casas más deseadas con un bolso premium cada mes, atención personalizada y prioridad en novedades. La membresía favorita de quienes ya saben lo que quieren.",
       "features": [
         "1 bolso al mes incluido",
-        "Acceso a Chanel, Dior, Louis Vuitton, Gucci",
-        "Cambio mensual sin límites",
+        "Marcas como Prada, Gucci, Saint Laurent, Bottega Veneta",
         "Envío express gratuito",
         "Seguro premium incluido",
-        "Stylist personal"
+        "Acceso a colecciones exclusivas",
+        "Personal shopper dedicado"
       ],
-      "forWhom": "Para la mujer que quiere lo mejor sin renunciar a la variedad."
+      "forWhom": "La opción más elegida. Para quienes buscan presencia y distinción."
     },
     "prive": {
-      "tagline": "Lo más exclusivo",
-      "desc": "Acceso ilimitado a nuestra selección más codiciada.",
-      "longDesc": "La cima del servicio Semzo. Bolsos de espera imposible, piezas únicas y un servicio diseñado para quienes no aceptan compromisos.",
+      "tagline": "Coleccion exclusiva",
+      "desc": "La experiencia definitiva para verdaderas conocedoras.",
+      "longDesc": "El círculo más íntimo de Semzo Privé. Bolsos icónicos de Hermès, Chanel y Louis Vuitton, atención de conserjería personal, eventos privados y acceso anticipado a piezas raras. Pensado para clientas que valoran lo único, lo exclusivo y lo irrepetible.",
       "features": [
-        "1 bolso de la categoría Privé al mes",
-        "Hermès, Chanel vintage, ediciones limitadas",
-        "Servicio de conserjería dedicado",
-        "Entrega en mano disponible",
-        "Seguro a todo riesgo",
-        "Acceso prioritario a nuevas incorporaciones"
+        "1 bolso al mes incluido",
+        "Hermès, Chanel, Louis Vuitton, Goyard, Loewe",
+        "Envío express gratuito",
+        "Seguro premium incluido",
+        "Acceso VIP a nuevas colecciones",
+        "Personal shopper dedicado",
+        "Eventos exclusivos para socias Privé",
+        "Servicio de conserjería personal"
       ],
-      "forWhom": "Para quien vive el lujo como un estilo de vida."
+      "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos."
     }
   },
   "footer": {

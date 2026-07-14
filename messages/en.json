@@ -76,18 +76,25 @@
     }
   },
   "memberships": {
-    "eyebrow": "Four levels",
-    "title": "Choose your membership",
-    "monthly": "Monthly",
-    "quarterly": "Quarterly",
-    "quarterlySave": "Save 20%",
-    "mostPopular": "Most popular",
-    "selectPlan": "Select plan",
-    "learnMore": "Learn more",
+    "sectionTitle": "Our Memberships",
+    "sectionSubtitle": "An invitation to experience luxury differently. Each membership is a door to a distinct experience: from discovery to the exceptional. You choose how to step in.",
+    "eyebrow": "FOUR LEVELS",
+    "chooseTitle": "Choose your",
+    "chooseTitleItalic": "membership",
+    "monthly": "MONTHLY",
+    "quarterly": "QUARTERLY",
+    "quarterlySave": "SAVE 20%",
+    "mostPopular": "MOST CHOSEN",
+    "monthlyOnly": "MONTHLY PAYMENT ONLY",
+    "viewDetails": "VIEW DETAILS",
+    "select": "CHOOSE",
+    "membershipLabel": "MEMBERSHIP",
+    "selectNamed": "CHOOSE",
+    "stylistNote": "If you can't find the perfect bag for you, book a personalised appointment with our Fashion Stylist for a fully tailored experience.",
     "petite": {
       "tagline": "Pay-per-use passes",
       "desc": "Everyday favourites. Borrow a bag every week, no commitment.",
-      "longDesc": "For those who want to discover the world of luxury bags at their own pace. Activate your monthly membership and buy single passes whenever you want to carry a bag.",
+      "longDesc": "For those who want to discover the world of luxury bags at their own pace. Activate your monthly membership and buy single passes whenever you want to carry a bag. Ideal for one-off events, weekends or trying before committing to a higher plan.",
       "features": [
         "Up to 4 passes per month (1 per week)",
         "Buy passes only when you need them",
@@ -101,7 +108,7 @@
     "essentiel": {
       "tagline": "One bag a month",
       "desc": "The perfect introduction to the world of luxury bags.",
-      "longDesc": "Your first step into the Semzo universe. Enjoy one premium bag every month, swap it whenever you like and feel the freedom of refreshing your style without accumulating.",
+      "longDesc": "Your first step into the Semzo universe. Enjoy one premium bag every month, swap it whenever you like and feel the freedom of refreshing your style without accumulating. Designed for members who want to bring luxury into their everyday life with elegance and consistency.",
       "features": [
         "1 bag per month included",
         "Brands such as Coach, Furla, Michael Kors, Tory Burch",
@@ -115,30 +122,32 @@
     "signature": {
       "tagline": "Premium brands",
       "desc": "The experience preferred by our most discerning members.",
-      "longDesc": "The perfect balance between luxury and exclusivity. Access the most coveted fashion houses with a premium bag each month, personalised attention and priority on new arrivals.",
+      "longDesc": "The perfect balance between luxury and exclusivity. Access the most coveted fashion houses with a premium bag each month, personalised attention and priority on new arrivals. The favourite membership of those who already know what they want.",
       "features": [
         "1 bag per month included",
-        "Access to Chanel, Dior, Louis Vuitton, Gucci",
-        "Unlimited monthly swaps",
+        "Brands such as Prada, Gucci, Saint Laurent, Bottega Veneta",
         "Free express shipping",
         "Premium insurance included",
-        "Personal stylist"
+        "Access to exclusive collections",
+        "Dedicated personal shopper"
       ],
-      "forWhom": "For the woman who wants the best without giving up variety."
+      "forWhom": "The most chosen option. For those seeking presence and distinction."
     },
     "prive": {
-      "tagline": "The most exclusive",
-      "desc": "Unlimited access to our most coveted selection.",
-      "longDesc": "The pinnacle of Semzo service. Impossible-to-wait bags, unique pieces and a service designed for those who accept no compromises.",
+      "tagline": "Exclusive collection",
+      "desc": "The ultimate experience for true connoisseurs.",
+      "longDesc": "The most intimate circle of Semzo Privé. Iconic bags from Hermès, Chanel and Louis Vuitton, personal concierge service, private events and early access to rare pieces. Designed for members who value the unique, the exclusive and the irreplaceable.",
       "features": [
-        "1 Privé-category bag per month",
-        "Hermès, vintage Chanel, limited editions",
-        "Dedicated concierge service",
-        "In-person delivery available",
-        "Comprehensive insurance",
-        "Priority access to new arrivals"
+        "1 bag per month included",
+        "Hermès, Chanel, Louis Vuitton, Goyard, Loewe",
+        "Free express shipping",
+        "Premium insurance included",
+        "VIP access to new collections",
+        "Dedicated personal shopper",
+        "Exclusive events for Privé members",
+        "Personal concierge service"
       ],
-      "forWhom": "For those who live luxury as a lifestyle."
+      "forWhom": "For connoisseurs who aspire to the exceptional, no compromises."
     }
   },
   "footer": {
