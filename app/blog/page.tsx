@@ -2,10 +2,9 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { Calendar, User } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 
-import { getTranslations } from "next-intl/server"
 import { BlogScrollContainer } from "./blog-scroll-container"
+import { BlogHero, BlogSectionIntro, BlogEmptyState } from "./blog-texts"
 import { listPosts, type BlogPost } from "@/lib/blog-supabase"
 
 export const dynamic = "force-dynamic"
@@ -56,27 +55,15 @@ export default async function BlogPage() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/40" />
 
-          <div className="relative z-10 text-center max-w-3xl mx-auto px-4">
-            <Badge className="bg-white/90 backdrop-blur-sm text-indigo-dark border-0 mb-6">Semzo Magazine</Badge>
-            <h1 className="text-4xl md:text-6xl font-serif text-white mb-6">Historias del Mundo del Lujo</h1>
-            <p className="text-lg md:text-xl text-white/90">
-              Descubre las últimas tendencias, consejos de estilo y las historias detrás de los bolsos más icónicos del
-              mundo.
-            </p>
-          </div>
+          <BlogHero />
         </section>
 
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
-            <p className="text-lg text-indigo-dark/70 mb-8">Todas las tendencias del momento</p>
+            <BlogSectionIntro />
 
             {posts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">Los artículos están temporalmente inaccesibles.</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Estamos trabajando para restaurar el acceso. Tus artículos originales están seguros y volverán pronto.
-                </p>
-              </div>
+              <BlogEmptyState />
             ) : (
               <BlogScrollContainer>
                 {posts.map((post) => (
