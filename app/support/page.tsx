@@ -21,8 +21,8 @@ import {
   Shield,
   Settings,
 } from "lucide-react"
-import { faqCategoriesData, type FaqCategoryData } from "./faq-data"
-import { useTranslations } from "next-intl"
+import { faqCategoriesData, faqCategoriesDataEn, type FaqCategoryData } from "./faq-data"
+import { useTranslations, useLocale } from "next-intl"
 
 // Mapa de nombres de icono a componentes lucide. Asi el archivo de datos
 // (faq-data.ts) se mantiene puro JSON sin imports de iconos, y aqui hacemos
@@ -41,10 +41,11 @@ const iconMap = {
 type FaqCategoryWithIcon = Omit<FaqCategoryData, "iconName"> & {
   icon: (typeof iconMap)[keyof typeof iconMap]
 }
-const faqCategoriesWithIcons: FaqCategoryWithIcon[] = faqCategoriesData.map((cat) => ({
-  ...cat,
-  icon: iconMap[cat.iconName],
-}))
+const withIcons = (data: FaqCategoryData[]): FaqCategoryWithIcon[] =>
+  data.map((cat) => ({
+    ...cat,
+    icon: iconMap[cat.iconName],
+  }))
 
 export default function SupportPage() {
   const t = useTranslations("support")

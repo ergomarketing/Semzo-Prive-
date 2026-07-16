@@ -471,6 +471,28 @@
     "cookies": "Cookie Policy",
     "lastUpdated": "Last updated"
   },
+  "calculator": {
+    "eyebrow": "Discover your savings",
+    "title": "Calculate How Much You Save",
+    "subtitle": "Compare the cost of buying luxury bags vs. being a SEMZO Privé member",
+    "customise": "Customise your calculation",
+    "tierLabel": "Bag tier you're interested in",
+    "bagsLabel": "Bags you'd use per year",
+    "bag1": "1 bag",
+    "bag12": "12 bags",
+    "membershipLabel": "Membership",
+    "month": "month",
+    "estimatedSavings": "Your estimated savings",
+    "buyingLabel": "Buying {count} bags",
+    "avgPrice": "Average price",
+    "withSemzo": "With SEMZO Privé",
+    "annualMembership": "Annual membership",
+    "savingsPerYear": "You save per year",
+    "freeBagsEquivalent": "Equivalent to {count} free bags",
+    "savingsPercent": "Savings percentage",
+    "monthlySavings": "Monthly savings",
+    "cta": "Start Saving"
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",

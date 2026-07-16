@@ -471,6 +471,28 @@
     "cookies": "Política de Cookies",
     "lastUpdated": "Última actualización"
   },
+  "calculator": {
+    "eyebrow": "Descubre tu ahorro",
+    "title": "Calcula Cuánto Ahorras",
+    "subtitle": "Compara el costo de comprar bolsos de lujo vs. ser miembro de SEMZO Privé",
+    "customise": "Personaliza tu cálculo",
+    "tierLabel": "Nivel de bolsos que te interesan",
+    "bagsLabel": "Bolsos que usarías al año",
+    "bag1": "1 bolso",
+    "bag12": "12 bolsos",
+    "membershipLabel": "Membresía",
+    "month": "mes",
+    "estimatedSavings": "Tu ahorro estimado",
+    "buyingLabel": "Comprando {count} bolsos",
+    "avgPrice": "Precio promedio",
+    "withSemzo": "Con SEMZO Privé",
+    "annualMembership": "Membresía anual",
+    "savingsPerYear": "Ahorras al año",
+    "freeBagsEquivalent": "Equivale a {count} bolsos gratis",
+    "savingsPercent": "Porcentaje de ahorro",
+    "monthlySavings": "Ahorro mensual",
+    "cta": "Comenzar a Ahorrar"
+  },
   "common": {
     "loading": "Cargando...",
     "error": "Ha ocurrido un error",
