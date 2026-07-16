@@ -160,7 +160,8 @@
       "contact": "Contact"
     },
     "newsletter": {
-      "heading": "Join the <span>club</span>",
+      "headingBefore": "Join the",
+      "headingHighlight": "club",
       "emailLabel": "Email address",
       "placeholder": "Your email address",
       "ariaSubscribe": "Subscribe to newsletter",

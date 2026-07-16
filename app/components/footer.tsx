@@ -210,7 +210,8 @@ export default function Footer() {
           {/* Newsletter */}
           <div className="md:col-span-7">
             <h2 className="font-serif text-2xl md:text-3xl mb-4 leading-tight">
-              {t("newsletter.heading")}
+              {t("newsletter.headingBefore")}{" "}
+              <span className="text-rose-pastel">{t("newsletter.headingHighlight")}</span>
             </h2>
             <NewsletterForm />
           </div>
