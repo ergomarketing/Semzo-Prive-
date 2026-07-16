@@ -49,6 +49,7 @@ const withIcons = (data: FaqCategoryData[]): FaqCategoryWithIcon[] =>
 
 export default function SupportPage() {
   const t = useTranslations("support")
+  const locale = useLocale()
   const [searchQuery, setSearchQuery] = useState("")
   const [showContactForm, setShowContactForm] = useState(false)
   const [showChatForm, setShowChatForm] = useState(false)
@@ -65,8 +66,9 @@ export default function SupportPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Datos importados desde ./faq-data (compartidos con layout.tsx para
-  // generar el JSON-LD FAQPage schema). Single source of truth.
-  const faqCategories = faqCategoriesWithIcons
+  // generar el JSON-LD FAQPage schema). El schema se mantiene en ES; el
+  // render de la pagina cambia con el idioma activo.
+  const faqCategories = withIcons(locale === "en" ? faqCategoriesDataEn : faqCategoriesData)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
