@@ -12,117 +12,81 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useTranslations } from "next-intl"
 
 type BillingCycle = "monthly" | "quarterly"
 
-const memberships = [
+// Datos NO traducibles (precios, imágenes, marca, flags). El texto se resuelve por i18n.
+const membershipBase = [
   {
     id: "petite",
     name: "Petite",
-    tagline: "Pases sueltos",
     image: "/images/membership-petite.svg",
     priceMonthly: "19,99€",
     priceQuarterly: "19,99€",
     periodMonthly: "/mes",
     periodQuarterly: "/mes",
-    description: "Favoritos del día a día. Pide un bolso por semana sin compromiso.",
-    longDescription:
-      "Para quien quiere descubrir el mundo de los bolsos de lujo a su propio ritmo. Activa tu membresía mensual y compra pases sueltos cada vez que quieras llevar un bolso. Ideal para eventos puntuales, fines de semana o probar antes de comprometerte con un plan superior.",
     brand: "Flexible",
-    features: [
-      "Hasta 4 pases por mes (1 por semana)",
-      "Compra pases solo cuando los necesites",
-      "Pase Essentiel: 52€ · Pase Signature: 99€ · Pase Privé: 137€",
-      "Envío gratuito en 24-48h",
-      "Seguro incluido en cada préstamo",
-      "Sin permanencia",
-    ],
     highlight: false,
     canUseQuarterly: false,
-    forWhom: "Ideal para descubrir, ocasiones puntuales o uso ligero.",
   },
   {
     id: "essentiel",
     name: "Essentiel",
-    tagline: "Un bolso al mes",
     image: "/images/membership-essentiel.jpeg",
     priceMonthly: "59€",
     priceQuarterly: "142€",
     periodMonthly: "/mes",
     periodQuarterly: "/trimestre",
-    description: "La introducción perfecta al mundo de los bolsos de lujo.",
-    longDescription:
-      "El primer paso al universo Semzo. Disfruta de un bolso premium cada mes, cámbialo cuando quieras y siente la libertad de renovar tu estilo sin acumular. Pensado para clientas que quieren incorporar el lujo a su día a día con elegancia y consistencia.",
     brand: "Valentino",
-    features: [
-      "1 bolso al mes incluido",
-      "Marcas como Coach, Furla, Michael Kors, Tory Burch",
-      "Cambio mensual flexible",
-      "Envío gratuito en 24-48h",
-      "Seguro incluido",
-      "Atención al cliente prioritaria",
-    ],
     highlight: false,
     canUseQuarterly: true,
-    forWhom: "Para quien desea elegancia diaria con un toque de lujo accesible.",
   },
   {
     id: "signature",
     name: "Signature",
-    tagline: "Marcas premium",
     image: "/images/membership-signature.svg",
     priceMonthly: "149€",
     priceQuarterly: "357€",
     periodMonthly: "/mes",
     periodQuarterly: "/trimestre",
-    description: "La experiencia preferida por nuestras clientas más exigentes.",
-    longDescription:
-      "El equilibrio perfecto entre lujo y exclusividad. Accede a las casas más deseadas con un bolso premium cada mes, atención personalizada y prioridad en novedades. La membresía favorita de quienes ya saben lo que quieren.",
     brand: "Dior",
-    features: [
-      "1 bolso al mes incluido",
-      "Marcas como Prada, Gucci, Saint Laurent, Bottega Veneta",
-      "Envío express gratuito",
-      "Seguro premium incluido",
-      "Acceso a colecciones exclusivas",
-      "Personal shopper dedicado",
-    ],
     highlight: true,
     canUseQuarterly: true,
-    forWhom: "La opción más elegida. Para quienes buscan presencia y distinción.",
   },
   {
     id: "prive",
     name: "Privé",
-    tagline: "Coleccion exclusiva",
     image: "/images/membership-prive.jpg",
     priceMonthly: "279€",
     priceQuarterly: "669€",
     periodMonthly: "/mes",
     periodQuarterly: "/trimestre",
-    description: "La experiencia definitiva para verdaderas conocedoras.",
-    longDescription:
-      "El círculo más íntimo de Semzo Privé. Bolsos icónicos de Hermès, Chanel y Louis Vuitton, atención de conserjería personal, eventos privados y acceso anticipado a piezas raras. Pensado para clientas que valoran lo único, lo exclusivo y lo irrepetible.",
     brand: "Chanel",
-    features: [
-      "1 bolso al mes incluido",
-      "Hermès, Chanel, Louis Vuitton, Goyard, Loewe",
-      "Envío express gratuito",
-      "Seguro premium incluido",
-      "Acceso VIP a nuevas colecciones",
-      "Personal shopper dedicado",
-      "Eventos exclusivos para socias Privé",
-      "Servicio de conserjería personal",
-    ],
     highlight: false,
     canUseQuarterly: true,
-    forWhom: "Para conocedoras que aspiran a lo excepcional, sin compromisos.",
   },
 ]
 
-type Membership = (typeof memberships)[number]
+type Membership = (typeof membershipBase)[number] & {
+  tagline: string
+  description: string
+  longDescription: string
+  features: string[]
+  forWhom: string
+}
 
 export default function MembershipSection() {
+  const t = useTranslations("memberships")
+  // Combinar datos base con texto traducido según el id de cada membresía
+  const memberships: Membership[] = membershipBase.map((m) => ({
+    ...m,
+    tagline: t(`${m.id}.tagline`),
+    description: t(`${m.id}.desc`),
+    longDescription: t(`${m.id}.longDesc`),
+    features: t.raw(`${m.id}.features`) as string[],
+    forWhom: t(`${m.id}.forWhom`),
+  }))
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
   const [openDetails, setOpenDetails] = useState<Membership | null>(null)
   const { addItem } = useCart()
@@ -172,15 +136,14 @@ export default function MembershipSection() {
         {/* Header */}
         <div className="mb-8 text-center md:mb-12">
           <h2 className="text-balance font-serif text-4xl leading-tight text-indigo-dark md:text-6xl">
-            Nuestras Membresías
+            {t("sectionTitle")}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-indigo-dark/70 md:text-base">
-            Una invitación a vivir el lujo de otra manera. Cada membresía es una puerta a una experiencia distinta:
-            desde el descubrimiento hasta lo excepcional. Tú eliges cómo entrar.
+            {t("sectionSubtitle")}
           </p>
-          <p className="mb-2 mt-8 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">CUATRO NIVELES</p>
+          <p className="mb-2 mt-8 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">{t("eyebrow")}</p>
           <h3 className="text-balance font-serif text-3xl leading-tight text-indigo-dark md:text-5xl">
-            Elige tu <span className="italic">membresia</span>.
+            {t("chooseTitle")} <span className="italic">{t("chooseTitleItalic")}</span>.
           </h3>
         </div>
 
@@ -195,7 +158,7 @@ export default function MembershipSection() {
                   : "bg-transparent text-indigo-dark/70 hover:text-indigo-dark"
               }`}
             >
-              MENSUAL
+              {t("monthly")}
             </button>
             <button
               onClick={() => setBillingCycle("quarterly")}
@@ -205,13 +168,13 @@ export default function MembershipSection() {
                   : "bg-transparent text-indigo-dark/70 hover:text-indigo-dark"
               }`}
             >
-              <span>TRIMESTRAL</span>
+              <span>{t("quarterly")}</span>
               <span
                 className={`mt-1 text-[8px] tracking-[0.2em] md:text-[9px] ${
                   billingCycle === "quarterly" ? "text-rose-pastel" : "text-rose-700"
                 }`}
               >
-                AHORRA 20%
+                {t("quarterlySave")}
               </span>
             </button>
           </div>
@@ -246,7 +209,7 @@ export default function MembershipSection() {
                   />
                   {m.highlight ? (
                     <span className="absolute right-3 top-3 z-20 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
-                      MAS ELEGIDA
+                      {t("mostPopular")}
                     </span>
                   ) : null}
                 </div>
@@ -261,9 +224,9 @@ export default function MembershipSection() {
                   </div>
 
                   {useQuarterly ? (
-                    <p className="mt-2 text-[10px] tracking-[0.2em] text-rose-700">AHORRA 20%</p>
+                    <p className="mt-2 text-[10px] tracking-[0.2em] text-rose-700">{t("quarterlySave")}</p>
                   ) : billingCycle === "quarterly" && !m.canUseQuarterly ? (
-                    <p className="mt-2 text-[10px] tracking-[0.2em] text-indigo-dark/50">SOLO PAGO MENSUAL</p>
+                    <p className="mt-2 text-[10px] tracking-[0.2em] text-indigo-dark/50">{t("monthlyOnly")}</p>
                   ) : null}
 
                   {/* Ver detalles */}
@@ -272,7 +235,7 @@ export default function MembershipSection() {
                     onClick={() => setOpenDetails(m)}
                     className="mt-4 self-start text-[11px] font-semibold tracking-[0.2em] text-[#b8a06a] underline underline-offset-4 transition hover:text-[#9a7a45]"
                   >
-                    VER DETALLES
+                    {t("viewDetails")}
                   </button>
 
                   <button
@@ -284,7 +247,7 @@ export default function MembershipSection() {
                         : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                     }`}
                   >
-                    ELEGIR
+                    {t("select")}
                     <ArrowRight className="h-3 w-3 transition group-hover:translate-x-1" />
                   </button>
                 </div>
@@ -294,8 +257,7 @@ export default function MembershipSection() {
         </div>
 
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-indigo-dark/60 md:text-sm">
-          Si no encuentras el bolso perfecto para ti, agenda una cita personalizada con nuestro Fashion Stylist para una
-          experiencia completamente a medida.
+          {t("stylistNote")}
         </p>
       </div>
 
@@ -314,14 +276,14 @@ export default function MembershipSection() {
                 />
                 {openDetails.highlight ? (
                   <span className="absolute right-3 top-3 bg-indigo-dark px-3 py-1 text-[9px] tracking-[0.3em] text-white">
-                    MAS ELEGIDA
+                    {t("mostPopular")}
                   </span>
                 ) : null}
               </div>
 
               <div className="flex flex-col p-6 md:p-8">
                 <DialogHeader className="text-left">
-                  <p className="text-[10px] tracking-[0.3em] text-[#b8a06a]">MEMBRESIA</p>
+                  <p className="text-[10px] tracking-[0.3em] text-[#b8a06a]">{t("membershipLabel")}</p>
                   <DialogTitle className="font-serif text-3xl text-indigo-dark md:text-4xl">
                     {openDetails.name}
                   </DialogTitle>
@@ -372,7 +334,7 @@ export default function MembershipSection() {
                       : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                   }`}
                 >
-                  ELEGIR {openDetails.name.toUpperCase()}
+                  {t("selectNamed")} {openDetails.name.toUpperCase()}
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </div>

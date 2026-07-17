@@ -25,6 +25,7 @@ import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/app/hooks/useAuth"
 import { LoginModal } from "@/app/components/login-modal"
 import { ModeSelectorDialog } from "@/app/components/mode-selector-dialog"
+import { useTranslations, useLocale } from "next-intl"
 
 interface BagDetailProps {
   bag: {
@@ -63,6 +64,8 @@ interface BagDetailProps {
 }
 
 export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
+  const t = useTranslations("bagDetail")
+  const locale = useLocale()
   const [selectedImage, setSelectedImage] = useState(0)
   const [inWishlist, setInWishlist] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
@@ -160,22 +163,22 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   const membershipConfig: Record<string, { name: string; price: number; quarterlyPrice: number; description: string }> =
     {
       essentiel: {
-        name: "MEMBRESÍA L'ESSENTIEL",
+        name: `${t("membershipWord")} L'ESSENTIEL`,
         price: 59,
         quarterlyPrice: 149,
-        description: "Accede a este bolso y cámbialo por otro de la colección L'Essentiel cada mes.",
+        description: t("descEssentiel"),
       },
       signature: {
-        name: "MEMBRESÍA SIGNATURE",
+        name: `${t("membershipWord")} SIGNATURE`,
         price: 149,
         quarterlyPrice: 357,
-        description: "Accede a este bolso y cámbialo por otro de la colección Signature cada mes.",
+        description: t("descSignature"),
       },
       prive: {
-        name: "MEMBRESÍA PRIVÉ",
+        name: `${t("membershipWord")} PRIVÉ`,
         price: 279,
         quarterlyPrice: 669,
-        description: "Accede a este bolso y cámbialo por otro de la colección Privé cada mes.",
+        description: t("descPrive"),
       },
     }
 
@@ -197,32 +200,31 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   > = {
     petite: {
       name: membershipNames.petite,
-      badge: "Semanal",
+      badge: t("badgeWeekly"),
       badgeColor: "bg-rose-50 text-rose-500",
-      description:
-        "Accede a este bolso por una semana. Perfecto para eventos especiales o para probar antes de comprometerte.",
+      description: t("petiteDesc"),
       basePrice: 19.99,
       bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137,
-      period: "/semana",
+      period: t("perWeek"),
       billingCycle: "weekly",
     },
     essentiel: {
       name: currentMembershipConfig.name,
-      badge: "Mensual",
+      badge: t("badgeMonthly"),
       badgeColor: "bg-rose-50 text-rose-500",
       description: currentMembershipConfig.description,
       price: currentMembershipConfig.price,
-      period: "/mes",
+      period: t("perMonth"),
       billingCycle: "monthly",
     },
     "essentiel-quarterly": {
       name: currentMembershipConfig.name,
-      badge: "Ahorra 16%",
+      badge: t("badgeSave16"),
       badgeColor: "bg-rose-50 text-rose-500",
-      description: `Accede a la colección ${membershipNames[bag.membership]} completa durante 3 meses con descuento especial.`,
+      description: t("quarterlyDesc", { tier: membershipNames[bag.membership] }),
       price: currentMembershipConfig.quarterlyPrice,
-      monthlyEquivalent: `${(currentMembershipConfig.quarterlyPrice / 3).toFixed(2)}€/mes`,
-      period: "/trimestre",
+      monthlyEquivalent: t("monthlyEquiv", { amount: (currentMembershipConfig.quarterlyPrice / 3).toFixed(2) }),
+      period: t("perQuarter"),
       billingCycle: "quarterly",
     },
   }
@@ -236,16 +238,16 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
   const availabilityStatus = {
     available: {
-      label: "Disponible",
+      label: t("available"),
       color: "text-[#1a2c4e]",
       bgColor: "bg-rose-50",
-      message: "Este bolso está disponible para reserva inmediata",
+      message: t("availableMsg"),
     },
     rented: {
-      label: "Fuera con Miembro",
+      label: t("rented"),
       color: "text-[#1a2c4e]",
       bgColor: "bg-rose-50",
-      message: "Este bolso está actualmente con un miembro. Te notificaremos cuando esté disponible.",
+      message: t("rentedMsg"),
     },
   }
 
@@ -277,7 +279,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
       if (existing) {
         setIsInWaitlist(true)
-        alert("Ya estás en la lista de espera para este bolso")
+        alert(t("alreadyWaitlist"))
         return
       }
 

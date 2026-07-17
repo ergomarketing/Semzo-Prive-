@@ -10,6 +10,11 @@ import CookieConsent from "./components/cookie-consent"
 import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
 import { Toaster } from "@/components/ui/toaster"
+import IntlProvider from "@/providers/IntlProvider"
+import esMessages from "@/messages/es.json"
+import enMessages from "@/messages/en.json"
+
+const intlMessages = { es: esMessages, en: enMessages }
 
 const inter = Inter({
   subsets: ["latin"],
@@ -257,15 +262,17 @@ export default function RootLayout({
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <CartProvider>
-            <Navbar />
-            {children}
-            <Footer />
-            <CookieConsent />
-            <Toaster />
-          </CartProvider>
-        </AuthProvider>
+        <IntlProvider messages={intlMessages}>
+          <AuthProvider>
+            <CartProvider>
+              <Navbar />
+              {children}
+              <Footer />
+              <CookieConsent />
+              <Toaster />
+            </CartProvider>
+          </AuthProvider>
+        </IntlProvider>
 
         {/* Structured Data al final del body (valido para Google y evita hydration mismatch con script de sandbox en head) */}
         <script

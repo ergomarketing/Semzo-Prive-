@@ -14,6 +14,7 @@ import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 import { LoginModal } from "@/app/components/login-modal"
 import { UpgradeMembershipDialog } from "@/app/components/upgrade-membership-dialog"
+import { useTranslations, useLocale } from "next-intl"
 
 interface BagItem {
   id: string
@@ -36,6 +37,7 @@ const MEMBERSHIP_PRICES: Record<string, number> = {
 }
 
 export default function CatalogSection({ initialBags = [] }: { initialBags?: BagItem[] } = {}) {
+  const t = useTranslations("catalog")
   const { user } = useAuth()
   const [wishlist, setWishlist] = useState<string[]>([])
   const [bags, setBags] = useState<BagItem[]>(initialBags)
@@ -219,7 +221,7 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
           <div className="flex justify-center mb-8">
             <TabsList className="bg-slate-100">
               <TabsTrigger value="all" className="text-sm">
-                Todos los bolsos
+                {t("tabAll")}
               </TabsTrigger>
               <TabsTrigger value="essentiel" className="text-sm">
                 L'Essentiel
@@ -264,13 +266,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-rose-nude/10 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía L'Essentiel</h3>
-              <p className="text-slate-700 mb-4">
-                Con nuestra membresía L'Essentiel por solo 59€/mes, puedes disfrutar de estos elegantes bolsos y muchos
-                más. La introducción perfecta al mundo de los bolsos de lujo.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("essentielPromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("essentielPromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=essentiel">Suscribirse a L'Essentiel</Link>
+                <Link href="/signup?plan=essentiel">{t("essentielPromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -290,13 +289,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-rose-pastel/20 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Signature</h3>
-              <p className="text-slate-700 mb-4">
-                Nuestra membresía Signature por 149€/mes te da acceso a bolsos de mayor valor y exclusividad. La
-                experiencia preferida por nuestras clientas más exigentes.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("signaturePromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("signaturePromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=signature">Suscribirse a Signature</Link>
+                <Link href="/signup?plan=signature">{t("signaturePromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -316,13 +312,10 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
               ))}
             </div>
             <div className="mt-12 p-6 bg-indigo-dark/10 rounded-lg">
-              <h3 className="font-serif text-xl text-slate-900 mb-4">Membresía Privé</h3>
-              <p className="text-slate-700 mb-4">
-                La membresía Privé por 279€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La
-                experiencia definitiva para verdaderas conocedoras.
-              </p>
+              <h3 className="font-serif text-xl text-slate-900 mb-4">{t("privePromoTitle")}</h3>
+              <p className="text-slate-700 mb-4">{t("privePromoDesc")}</p>
               <Button className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
-                <Link href="/signup?plan=prive">Suscribirse a Privé</Link>
+                <Link href="/signup?plan=prive">{t("privePromoCta")}</Link>
               </Button>
             </div>
           </TabsContent>
@@ -363,6 +356,8 @@ function BagCard({
     bagLabel: "",
   })
 
+  const t = useTranslations("catalog")
+  const locale = useLocale()
   const { toast } = useToast()
   const { addItem } = useCart()
   const router = useRouter()
@@ -460,7 +455,7 @@ function BagCard({
         const bagInfo = (ongoing as any).bags
         const bagLabel = bagInfo
           ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
-          : "tu bolso actual"
+          : t("currentBagFallback")
         setActiveBagDialog({ open: true, bagLabel })
         return
       }
@@ -492,8 +487,8 @@ function BagCard({
         addItem(bagPassItem)
 
         toast({
-          title: "🎫 Pase agregado al carrito",
-          description: `Completa tu compra para reservar este bolso ${tierNames[bagTier as keyof typeof tierNames]}.`,
+          title: t("toastPassAddedTitle"),
+          description: t("toastPassAddedDesc", { tier: tierNames[bagTier as keyof typeof tierNames] }),
           duration: 3000,
         })
 
@@ -568,13 +563,13 @@ function BagCard({
         // Bolso ya en posesion: modal centrado
         if (data.code === "ACTIVE_RESERVATION_IN_PROGRESS") {
           setIsReserving(false)
-          setActiveBagDialog({ open: true, bagLabel: "tu bolso actual" })
+          setActiveBagDialog({ open: true, bagLabel: t("currentBagFallback") })
           return
         }
 
         const fullMsg = data.details
-          ? `${data.error || "Error al crear la reserva"} (${data.details})`
-          : data.error || "Error al crear la reserva"
+          ? `${data.error || t("reservationError")} (${data.details})`
+          : data.error || t("reservationError")
         throw new Error(fullMsg)
       }
 
@@ -582,8 +577,8 @@ function BagCard({
       setIsReserving(false)
 
       toast({
-        title: "¡Reserva creada!",
-        description: "Tu reserva ha sido creada exitosamente. Redirigiendo...",
+        title: t("toastReserveCreatedTitle"),
+        description: t("toastReserveCreatedDesc"),
         duration: 2000,
       })
 
@@ -595,8 +590,8 @@ function BagCard({
 
       toast({
         variant: "destructive",
-        title: "Error al crear reserva",
-        description: error.message || "Por favor intenta de nuevo o contacta soporte.",
+        title: t("toastReserveErrorTitle"),
+        description: error.message || t("toastReserveErrorDesc"),
         duration: 5000,
       })
     }
@@ -666,7 +661,7 @@ function BagCard({
 
         {!isAvailable && (
           <div className="text-center py-2 border-b border-slate-200">
-            <p className="text-sm font-medium tracking-widest text-slate-400">FUERA CON MIEMBRO</p>
+            <p className="text-sm font-medium tracking-widest text-slate-400">{t("outWithMember")}</p>
           </div>
         )}
 
@@ -674,16 +669,19 @@ function BagCard({
           <p className="text-sm text-slate-500">{bag.brand}</p>
           <h3 className="font-serif text-xl text-indigo-dark mb-2">{bag.name}</h3>
           <div className="mb-4">
-            <p className="text-lg font-medium text-indigo-dark">{monthlyPrice}€/mes</p>
+            <p className="text-lg font-medium text-indigo-dark">
+              {monthlyPrice}
+              {t("perMonth")}
+            </p>
             {bag.retail_price && bag.retail_price > 0 && (
-              <p className="text-sm text-slate-500">Valor: {bag.retail_price}€</p>
+              <p className="text-sm text-slate-500">{t("value", { price: bag.retail_price })}</p>
             )}
           </div>
 
           {showSuccess && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-              <p className="text-sm text-green-800 font-medium">¡Reserva creada exitosamente!</p>
-              <p className="text-xs text-green-600 mt-1">Redirigiendo a tus reservas...</p>
+              <p className="text-sm text-green-800 font-medium">{t("reserveSuccessTitle")}</p>
+              <p className="text-xs text-green-600 mt-1">{t("reserveSuccessSub")}</p>
             </div>
           )}
 
@@ -695,7 +693,7 @@ function BagCard({
                   className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white transition-colors bg-transparent"
                 >
                   <Info className="h-4 w-4 mr-2" />
-                  Detalles
+                  {t("details")}
                 </Button>
               </Link>
               <Button
@@ -710,12 +708,12 @@ function BagCard({
                 {isReserving ? (
                   <>
                     <span className="inline-block animate-spin mr-2">⏳</span>
-                    Procesando...
+                    {t("processing")}
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4 mr-2" />
-                    Reservar
+                    {t("reserve")}
                   </>
                 )}
               </Button>
@@ -726,7 +724,7 @@ function BagCard({
                 disabled
                 className="w-full bg-indigo-200 text-indigo-dark/70 cursor-not-allowed hover:bg-indigo-200"
               >
-                FUERA CON MIEMBRO
+                {t("outWithMember")}
               </Button>
               <Button
                 onClick={(e) => {
@@ -739,7 +737,7 @@ function BagCard({
                 className="w-full border-indigo-dark text-indigo-dark hover:bg-indigo-dark/5 transition-colors"
               >
                 <Heart className={`h-4 w-4 mr-2 ${isInWaitlist ? "fill-rose-500 text-rose-500" : ""}`} />
-                {isInWaitlist ? "En Lista de Espera" : "NOTIFICARME"}
+                {isInWaitlist ? t("inWaitlist") : t("notifyMe")}
               </Button>
             </div>
           )}
@@ -749,10 +747,11 @@ function BagCard({
       <Dialog open={showPassSelector} onOpenChange={setShowPassSelector}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Selecciona un Pase de Bolso</DialogTitle>
+            <DialogTitle>{t("passSelectorTitle")}</DialogTitle>
             <DialogDescription>
-              Tienes {availablePasses.length} pase{availablePasses.length !== 1 ? "s" : ""} disponible
-              {availablePasses.length !== 1 ? "s" : ""} para esta categoría
+              {availablePasses.length === 1
+                ? t("passSelectorDescOne", { count: availablePasses.length })
+                : t("passSelectorDescMany", { count: availablePasses.length })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -769,7 +768,7 @@ function BagCard({
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-medium text-slate-900">
-                      Pase{" "}
+                      {t("passPrefix")}{" "}
                       {pass.pass_tier === "essentiel"
                         ? "L'Essentiel"
                         : pass.pass_tier === "signature"
@@ -777,11 +776,15 @@ function BagCard({
                           : "Privé"}
                     </p>
                     <p className="text-sm text-slate-600">
-                      Comprado: {new Date(pass.purchased_at).toLocaleDateString("es-ES")}
+                      {t("passPurchased", {
+                        date: new Date(pass.purchased_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES"),
+                      })}
                     </p>
                     {pass.expires_at && (
                       <p className="text-xs text-slate-500">
-                        Expira: {new Date(pass.expires_at).toLocaleDateString("es-ES")}
+                        {t("passExpires", {
+                          date: new Date(pass.expires_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES"),
+                        })}
                       </p>
                     )}
                   </div>
@@ -803,14 +806,14 @@ function BagCard({
               }}
               className="flex-1"
             >
-              Cancelar
+              {t("cancel")}
             </Button>
             <Button
               onClick={() => executeReservation(selectedPassId)}
               disabled={!selectedPassId || isReserving}
               className="flex-1 bg-indigo-dark text-white hover:bg-indigo-dark/90"
             >
-              {isReserving ? "Procesando..." : "Confirmar Reserva"}
+              {isReserving ? t("processing") : t("confirmReserve")}
             </Button>
           </div>
         </DialogContent>
@@ -870,8 +873,8 @@ function BagCard({
                 }
           addItem(bagPassItem)
           toast({
-            title: "Pase añadido al carrito",
-            description: `Completa tu compra para reservar ${bag.brand} ${bag.name}.`,
+            title: t("toastUpgradePassTitle"),
+            description: t("toastUpgradePassDesc", { brand: bag.brand, name: bag.name }),
             duration: 3000,
           })
           setTimeout(() => router.push("/cart"), 400)
@@ -886,13 +889,13 @@ function BagCard({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">
-              Ya tienes un bolso en curso
+              {t("activeBagTitle")}
             </DialogTitle>
             <DialogDescription className="pt-2 leading-relaxed text-foreground/80">
-              Para reservar un nuevo bolso, primero envía a Semzo Privé el{" "}
-              <span className="font-medium text-foreground">{activeBagDialog.bagLabel}</span>{" "}
-              que tienes actualmente. En cuanto recibamos la devolución podrás
-              elegir tu siguiente bolso.
+              {t.rich("activeBagDesc", {
+                label: activeBagDialog.bagLabel,
+                b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -900,10 +903,10 @@ function BagCard({
               variant="outline"
               onClick={() => setActiveBagDialog({ open: false, bagLabel: "" })}
             >
-              Entendido
+              {t("understood")}
             </Button>
             <Button onClick={() => router.push("/dashboard")}>
-              Ir a mi dashboard
+              {t("goDashboard")}
             </Button>
           </div>
         </DialogContent>

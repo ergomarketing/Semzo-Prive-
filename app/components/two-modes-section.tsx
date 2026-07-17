@@ -1,6 +1,9 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Repeat, Heart } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 /**
  * Sección "Tu bolso, tus reglas"
@@ -9,6 +12,7 @@ import { ArrowRight, Repeat, Heart } from "lucide-react"
  * la socia lo descubre dentro del producto cuando reserva su primer bolso.
  */
 export default function TwoModesSection() {
+  const t = useTranslations("twoModes")
   return (
     <section id="modos" className="py-24 bg-white">
       <div className="container mx-auto px-4">
@@ -16,17 +20,16 @@ export default function TwoModesSection() {
         <div className="grid md:grid-cols-12 gap-8 mb-16">
           <div className="md:col-span-5">
             <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-              Tu bolso, tus reglas
+              {t("eyebrow")}
             </p>
             <h2 className="font-serif text-4xl md:text-5xl font-light leading-tight" style={{ color: "#1a1a4b" }}>
-              Dos formas de vivir el lujo
+              {t("title")}
             </h2>
           </div>
           <div className="md:col-span-1"></div>
           <div className="md:col-span-6 flex items-end">
             <p className="text-slate-600 text-lg leading-relaxed font-light">
-              Una sola membresía. Dos caminos para disfrutarla. Eliges cuando reservas tu primer bolso y puedes cambiar
-              de opinión en cualquier momento.
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -49,40 +52,30 @@ export default function TwoModesSection() {
               <div className="absolute top-5 left-5 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm">
                 <Repeat className="h-3.5 w-3.5" style={{ color: "#1a1a4b" }} />
                 <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#1a1a4b" }}>
-                  Modo Descubre
+                  {t("discover.tag")}
                 </span>
               </div>
             </div>
 
             <div className="p-8 md:p-10">
               <h3 className="font-serif text-3xl mb-4 font-light" style={{ color: "#1a1a4b" }}>
-                Cambia cuando quieras
+                {t("discover.title")}
               </h3>
               <p className="text-slate-600 font-light leading-relaxed mb-6">
-                Prueba marcas, modelos y estilos. Tu membresía te abre las puertas de toda la colección para que cada
-                temporada lleves algo diferente.
+                {t("discover.desc")}
               </p>
               <ul className="space-y-3 text-sm text-slate-700">
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  Acceso completo al catálogo curado
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("discover.feature1")}
                 </li>
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  Rotación incluida en tu cuota mensual
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("discover.feature2")}
                 </li>
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  Cobertura por uso normal incluida
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("discover.feature3")}
                 </li>
               </ul>
             </div>
@@ -109,39 +102,29 @@ export default function TwoModesSection() {
                 style={{ backgroundColor: "rgba(26, 26, 75, 0.9)" }}
               >
                 <Heart className="h-3.5 w-3.5 text-white" />
-                <span className="text-xs font-medium uppercase tracking-wider text-white">Modo Colecciona</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-white">{t("collect.tag")}</span>
               </div>
             </div>
 
             <div className="p-8 md:p-10">
               <h3 className="font-serif text-3xl mb-4 font-light" style={{ color: "#1a1a4b" }}>
-                Hazlo tuyo
+                {t("collect.title")}
               </h3>
               <p className="text-slate-600 font-light leading-relaxed mb-6">
-                ¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Cada cuota suma hacia su compra. Cuando
-                completes su precio, es tuyo para siempre.
+                {t("collect.desc")}
               </p>
               <ul className="space-y-3 text-sm text-slate-700">
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  El bolso es solo tuyo desde el día uno
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("collect.feature1")}
                 </li>
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  Cada mes suma hacia su propiedad
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("collect.feature2")}
                 </li>
                 <li className="flex items-start gap-3">
-                  <span
-                    className="mt-2 h-1 w-1 rounded-full shrink-0"
-                    style={{ backgroundColor: "#1a1a4b" }}
-                  />
-                  Certificado de autenticidad desde el inicio
+                  <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: "#1a1a4b" }} />
+                  {t("collect.feature3")}
                 </li>
               </ul>
             </div>
@@ -155,11 +138,11 @@ export default function TwoModesSection() {
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-medium tracking-wide transition-all hover:gap-3"
             style={{ backgroundColor: "#1a1a4b" }}
           >
-            Hazte socia
+            {t("cta")}
             <ArrowRight className="h-4 w-4" />
           </Link>
           <p className="mt-5 text-sm text-slate-500 font-light">
-            Decides al reservar tu primer bolso. Sin compromiso, sin permanencia.
+            {t("note")}
           </p>
         </div>
       </div>

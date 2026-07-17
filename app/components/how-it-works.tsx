@@ -1,6 +1,10 @@
+"use client"
+
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 
 export default function HowItWorks() {
+  const t = useTranslations("howItWorks")
   return (
     <section
       id="como-funciona"
@@ -15,17 +19,16 @@ export default function HowItWorks() {
         <div className="grid md:grid-cols-12 gap-8 mb-20">
           <div className="md:col-span-4">
             <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-              El proceso
+              {t("eyebrow")}
             </p>
             <h2 className="font-serif text-4xl md:text-5xl font-light leading-tight" style={{ color: "#1a1a4b" }}>
-              Simplicidad y elegancia en cada paso
+              {t("title")}
             </h2>
           </div>
           <div className="md:col-span-1"></div>
           <div className="md:col-span-7">
             <p className="text-slate-600 text-lg leading-relaxed font-light">
-              Hemos diseñado un proceso intuitivo que te permite disfrutar de bolsos de lujo sin complicaciones. Desde
-              la selección hasta la entrega, cada detalle ha sido cuidadosamente considerado.
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -40,7 +43,7 @@ export default function HowItWorks() {
             }}
           >
             <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-              Paso 01
+              {t("step1.label")}
             </div>
 
             {/* Imagen Chanel WOC */}
@@ -54,10 +57,10 @@ export default function HowItWorks() {
             </div>
 
             <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
-              Selecciona tu membresía
+              {t("step1.title")}
             </h3>
             <p className="text-slate-600 font-light">
-              Elige entre nuestros tres niveles de membresía según tus necesidades y preferencias.
+              {t("step1.desc")}
             </p>
           </div>
 
@@ -70,7 +73,7 @@ export default function HowItWorks() {
             }}
           >
             <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-              Paso 02
+              {t("step2.label")}
             </div>
 
             <div className="relative w-full aspect-[4/3] mb-6 rounded-lg overflow-hidden">
@@ -83,10 +86,10 @@ export default function HowItWorks() {
             </div>
 
             <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
-              Explora nuestra colección
+              {t("step2.title")}
             </h3>
             <p className="text-slate-600 font-light">
-              Navega por nuestro catálogo curado de bolsos de las marcas más prestigiosas del mundo.
+              {t("step2.desc")}
             </p>
           </div>
 
@@ -99,7 +102,7 @@ export default function HowItWorks() {
             }}
           >
             <div className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-              Paso 03
+              {t("step3.label")}
             </div>
 
             <div className="relative w-full aspect-[4/3] mb-6 rounded-lg overflow-hidden">
@@ -112,10 +115,10 @@ export default function HowItWorks() {
             </div>
 
             <h3 className="font-serif text-2xl mb-4" style={{ color: "#1a1a4b" }}>
-              Recibe y disfruta
+              {t("step3.title")}
             </h3>
             <p className="text-slate-600 font-light">
-              Tu selección llegará a tu puerta en un packaging exclusivo, lista para ser disfrutada.
+              {t("step3.desc")}
             </p>
           </div>
         </div>

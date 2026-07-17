@@ -9,8 +9,11 @@ import { useAuth } from "../hooks/useAuth"
 import { User, LogOut, ShoppingBag, Menu, X } from "lucide-react"
 import { useCart } from "@/app/contexts/cart-context"
 import { usePathname } from "next/navigation"
+import LanguageSwitcher from "./language-switcher"
+import { useTranslations } from "next-intl"
 
 export default function Navbar() {
+  const t = useTranslations("nav")
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, profile, loading, signOut } = useAuth()
@@ -97,36 +100,40 @@ export default function Navbar() {
 
           <div className="flex-1 mx-4 sm:mx-8">
             <nav className="hidden md:flex items-center justify-center space-x-6 lg:space-x-10">
-              <NavLink href="/catalog">Colección</NavLink>
+              <NavLink href="/catalog">{t("collection")}</NavLink>
               <button
                 onClick={() => scrollToSection("membresias")}
                 className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
-                Membresías
+                {t("memberships")}
               </button>
             <Link
               href="/proceso"
               className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
             >
-              Proceso
+              {t("process")}
             </Link>
               <Link
                 href="/blog"
                 className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
-                Magazine
+                {t("magazine")}
               </Link>
               <button
                 onClick={() => scrollToSection("testimonios")}
                 className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
-                Testimonios
+                {t("testimonials")}
               </button>
             </nav>
           </div>
 
           <div className="flex-shrink-0">
             <div className="flex items-center space-x-2">
+              {/* Language switcher — hidden on mobile to avoid clutter */}
+              <div className="hidden md:flex items-center mr-1">
+                <LanguageSwitcher />
+              </div>
               {/* Mobile menu button */}
               <Button
                 variant="ghost"
@@ -194,7 +201,7 @@ export default function Navbar() {
               ) : (
                 <Link href="/auth/login">
                   <Button className="rounded-none px-3 sm:px-6 py-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800">
-                    Acceso
+                    {t("login")}
                   </Button>
                 </Link>
               )}
@@ -212,36 +219,39 @@ export default function Navbar() {
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Colección
+              {t("collection")}
             </Link>
             <Link
               href="/#membresias"
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Membresías
+              {t("memberships")}
             </Link>
             <Link
               href="/proceso"
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Proceso
+              {t("process")}
             </Link>
             <Link
               href="/blog"
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Magazine
+              {t("magazine")}
             </Link>
             <Link
               href="/#testimonios"
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Testimonios
+              {t("testimonials")}
             </Link>
+            <div className="border-t border-slate-100 pt-4 mt-2">
+              <LanguageSwitcher />
+            </div>
             {user && (
               <button
                 onClick={() => {
@@ -251,7 +261,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 text-sm uppercase tracking-widest font-medium text-red-600 hover:text-red-700 py-2 w-full text-left border-t border-slate-100 pt-4 mt-2"
               >
                 <LogOut className="w-4 h-4" />
-                Cerrar Sesión
+                {t("logout")}
               </button>
             )}
           </nav>

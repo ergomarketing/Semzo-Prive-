@@ -2,12 +2,14 @@
 
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 interface CatalogGateOverlayProps {
   onUnlock: () => void
 }
 
 export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps) {
+  const t = useTranslations("catalogGate")
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [whatsapp, setWhatsapp] = useState("")
@@ -19,11 +21,11 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
     setError(null)
 
     if (!email || !email.includes("@")) {
-      setError("Introduce un email valido")
+      setError(t("errorEmail"))
       return
     }
     if (!fullName.trim()) {
-      setError("Introduce tu nombre")
+      setError(t("errorName"))
       return
     }
 
@@ -44,11 +46,11 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
       })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
-        throw new Error(d.error || "Error al solicitar acceso")
+        throw new Error(d.error || t("errorRequest"))
       }
       onUnlock()
     } catch (err: any) {
-      setError(err.message || "Error inesperado")
+      setError(err.message || t("errorUnexpected"))
     } finally {
       setLoading(false)
     }
@@ -62,15 +64,15 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
           <div className="relative hidden md:block min-h-[600px]">
             <img
               src="/images/login-modal-chanel.jpg"
-              alt="Catalogo privado Semzo Prive"
+              alt={t("imageAlt")}
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute bottom-8 left-8 right-8">
               <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4">
                 <p className="text-sm font-medium" style={{ color: "#1a1a4b" }}>
-                  CATALOGO PRIVADO
+                  {t("badgeTitle")}
                 </p>
-                <p className="text-xs text-slate-600 mt-1">Acceso reservado a futuras socias</p>
+                <p className="text-xs text-slate-600 mt-1">{t("badgeSubtitle")}</p>
               </div>
             </div>
           </div>
@@ -80,20 +82,20 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
             <div className="w-full max-w-sm mx-auto">
               <div className="text-center mb-8">
                 <p className="text-xs tracking-[0.25em] uppercase text-slate-500 mb-3">
-                  Acceso Exclusivo
+                  {t("eyebrow")}
                 </p>
                 <h2 className="font-serif text-3xl font-light mb-3 text-balance" style={{ color: "#1a1a4b" }}>
-                  Catalogo Privado
+                  {t("title")}
                 </h2>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Descubre nuestra coleccion completa de bolsos de lujo.
+                  {t("subtitle")}
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
                   <label htmlFor="cg-name" className="text-sm font-medium block" style={{ color: "#1a1a4b" }}>
-                    Nombre completo
+                    {t("fullName")}
                   </label>
                   <input
                     id="cg-name"
@@ -101,7 +103,7 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Tu nombre"
+                    placeholder={t("fullNamePlaceholder")}
                     className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a4b]"
                     autoComplete="name"
                     disabled={loading}
@@ -110,7 +112,7 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
 
                 <div className="space-y-2">
                   <label htmlFor="cg-email" className="text-sm font-medium block" style={{ color: "#1a1a4b" }}>
-                    Email
+                    {t("email")}
                   </label>
                   <input
                     id="cg-email"
@@ -118,7 +120,7 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
+                    placeholder={t("emailPlaceholder")}
                     className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a4b]"
                     autoComplete="email"
                     disabled={loading}
@@ -127,14 +129,14 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
 
                 <div className="space-y-2">
                   <label htmlFor="cg-whatsapp" className="text-sm font-medium block" style={{ color: "#1a1a4b" }}>
-                    WhatsApp <span className="text-xs text-slate-400 font-normal">(opcional)</span>
+                    {t("whatsapp")} <span className="text-xs text-slate-400 font-normal">{t("optional")}</span>
                   </label>
                   <input
                     id="cg-whatsapp"
                     type="tel"
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="+34 600 000 000"
+                    placeholder={t("whatsappPlaceholder")}
                     className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a4b]"
                     autoComplete="tel"
                     disabled={loading}
@@ -153,13 +155,12 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
                   className="w-full h-12 rounded-lg text-sm uppercase tracking-widest font-medium flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "#1a1a4b", color: "#ffffff" }}
                 >
-                  {loading ? <Loader2 className="animate-spin h-4 w-4" /> : "Acceder al catalogo"}
+                  {loading ? <Loader2 className="animate-spin h-4 w-4" /> : t("submit")}
                 </button>
               </form>
 
               <p className="text-center text-xs text-slate-500 mt-6 leading-relaxed">
-                Al continuar aceptas recibir comunicaciones de Semzo Prive.
-                Puedes darte de baja en cualquier momento.
+                {t("consent")}
               </p>
             </div>
           </div>

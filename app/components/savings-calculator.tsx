@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, TrendingUp, ShoppingBag, Crown } from "lucide-react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 // Precios promedio de bolsos de lujo por categoría
 const BAG_PRICES = {
@@ -32,6 +33,7 @@ const MEMBERSHIP_NAMES = {
 }
 
 export default function SavingsCalculator() {
+  const t = useTranslations("calculator")
   const [selectedTier, setSelectedTier] = useState<"essentiel" | "signature" | "prive">("signature")
   const [monthsUsing, setMonthsUsing] = useState(6)
   const [bagsPerYear, setBagsPerYear] = useState(4)
@@ -91,13 +93,13 @@ export default function SavingsCalculator() {
           >
             <span className="inline-flex items-center gap-2 text-indigo-dark/70 text-sm font-medium tracking-widest uppercase mb-4">
               <Sparkles className="w-4 h-4" />
-              Descubre tu ahorro
+              {t("eyebrow")}
             </span>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-indigo-dark mb-6 text-balance">
-              Calcula Cuánto Ahorras
+              {t("title")}
             </h2>
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Compara el costo de comprar bolsos de lujo vs. ser miembro de SEMZO Privé
+              {t("subtitle")}
             </p>
           </motion.div>
         </div>
@@ -113,12 +115,12 @@ export default function SavingsCalculator() {
               <div className="grid lg:grid-cols-2 gap-0">
                 {/* Left side - Controls */}
                 <div className="p-8 md:p-12 bg-gradient-to-br from-indigo-dark to-indigo-dark/90">
-                  <h3 className="text-2xl font-serif font-bold text-white mb-8">Personaliza tu cálculo</h3>
+                  <h3 className="text-2xl font-serif font-bold text-white mb-8">{t("customise")}</h3>
 
                   {/* Tier Selection */}
                   <div className="mb-10">
                     <label className="block text-rose-pastel/80 text-sm font-medium mb-4 uppercase tracking-wider">
-                      Nivel de bolsos que te interesan
+                      {t("tierLabel")}
                     </label>
                     <div className="grid grid-cols-3 gap-3">
                       {(["essentiel", "signature", "prive"] as const).map((tier) => (
@@ -144,7 +146,7 @@ export default function SavingsCalculator() {
                   <div className="mb-10">
                     <div className="flex justify-between items-center mb-4">
                       <label className="text-rose-pastel/80 text-sm font-medium uppercase tracking-wider">
-                        Bolsos que usarías al año
+                        {t("bagsLabel")}
                       </label>
                       <span className="text-white font-bold text-2xl">{bagsPerYear}</span>
                     </div>
@@ -157,8 +159,8 @@ export default function SavingsCalculator() {
                       className="[&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg [&_.bg-primary]:bg-rose-pastel"
                     />
                     <div className="flex justify-between text-xs text-white/50 mt-2">
-                      <span>1 bolso</span>
-                      <span>12 bolsos</span>
+                      <span>{t("bag1")}</span>
+                      <span>{t("bag12")}</span>
                     </div>
                   </div>
 
@@ -166,18 +168,18 @@ export default function SavingsCalculator() {
                   <div className="bg-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <div className="flex items-center gap-3 mb-3">
                       <Crown className="w-5 h-5 text-rose-pastel" />
-                      <span className="text-white font-medium">Membresía {MEMBERSHIP_NAMES[selectedTier]}</span>
+                      <span className="text-white font-medium">{t("membershipLabel")} {MEMBERSHIP_NAMES[selectedTier]}</span>
                     </div>
                     <div className="text-3xl font-bold text-white">
                       {formatCurrency(MEMBERSHIP_PRICES[selectedTier])}
-                      <span className="text-lg font-normal text-white/60">/mes</span>
+                      <span className="text-lg font-normal text-white/60">/{t("month")}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Right side - Results */}
                 <div className="p-8 md:p-12 bg-rose-nude/20">
-                  <h3 className="text-2xl font-serif font-bold text-indigo-dark mb-8">Tu ahorro estimado</h3>
+                  <h3 className="text-2xl font-serif font-bold text-indigo-dark mb-8">{t("estimatedSavings")}</h3>
 
                   {/* Comparison */}
                   <div className="space-y-6 mb-10">
@@ -187,9 +189,9 @@ export default function SavingsCalculator() {
                           <ShoppingBag className="w-5 h-5 text-red-500" />
                         </div>
                         <div>
-                          <span className="block text-sm text-slate-500">Comprando {bagsPerYear} bolsos</span>
+                          <span className="block text-sm text-slate-500">{t("buyingLabel", { count: bagsPerYear })}</span>
                           <span className="block text-xs text-slate-400">
-                            Precio promedio {formatCurrency(calculations.bagPrice)}
+                            {t("avgPrice")} {formatCurrency(calculations.bagPrice)}
                           </span>
                         </div>
                       </div>
@@ -204,8 +206,8 @@ export default function SavingsCalculator() {
                           <Crown className="w-5 h-5 text-emerald-500" />
                         </div>
                         <div>
-                          <span className="block text-sm text-slate-500">Con SEMZO Privé</span>
-                          <span className="block text-xs text-slate-400">Membresía anual</span>
+                          <span className="block text-sm text-slate-500">{t("withSemzo")}</span>
+                          <span className="block text-xs text-slate-400">{t("annualMembership")}</span>
                         </div>
                       </div>
                       <span className="text-xl font-bold text-emerald-600">
@@ -224,10 +226,10 @@ export default function SavingsCalculator() {
                       transition={{ duration: 0.3 }}
                       className="bg-gradient-to-r from-indigo-dark to-indigo-dark/90 rounded-2xl p-6 text-center mb-8"
                     >
-                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="flex items-center justify-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-rose-pastel" />
                         <span className="text-rose-pastel/80 text-sm font-medium uppercase tracking-wider">
-                          Ahorras al año
+                          {t("savingsPerYear")}
                         </span>
                       </div>
                       <div className="text-4xl md:text-5xl font-bold text-white mb-2">
@@ -235,7 +237,7 @@ export default function SavingsCalculator() {
                       </div>
                       {calculations.annualSavings > 0 && (
                         <div className="text-rose-pastel text-sm">
-                          Equivale a {calculations.freeBagsEquivalent} bolsos gratis
+                          {t("freeBagsEquivalent", { count: calculations.freeBagsEquivalent })}
                         </div>
                       )}
                     </motion.div>
@@ -247,20 +249,20 @@ export default function SavingsCalculator() {
                       <span className="block text-3xl font-bold text-indigo-dark">
                         {calculations.savingsPercent > 0 ? calculations.savingsPercent : 0}%
                       </span>
-                      <span className="block text-xs text-slate-500 mt-1">Porcentaje de ahorro</span>
+                      <span className="block text-xs text-slate-500 mt-1">{t("savingsPercent")}</span>
                     </div>
                     <div className="bg-white rounded-xl p-4 text-center shadow-sm">
                       <span className="block text-3xl font-bold text-indigo-dark">
                         {formatCurrency(Math.max(0, calculations.monthlySavings))}
                       </span>
-                      <span className="block text-xs text-slate-500 mt-1">Ahorro mensual</span>
+                      <span className="block text-xs text-slate-500 mt-1">{t("monthlySavings")}</span>
                     </div>
                   </div>
 
                   {/* CTA */}
                   <Link href="/#membresias">
                     <Button className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-                      Comenzar a Ahorrar
+                      {t("cta")}
                     </Button>
                   </Link>
                 </div>

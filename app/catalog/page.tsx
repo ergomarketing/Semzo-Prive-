@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import CatalogSection from "../components/catalog-section"
+import CatalogHero from "../components/catalog-hero"
 import CatalogGate from "../components/catalog-gate"
 import { createClient } from "../lib/supabase/server"
 
@@ -174,17 +175,7 @@ export default async function CatalogPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <div className="bg-gradient-to-b from-rose-nude/10 to-white py-12">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="font-serif text-4xl md:text-5xl text-slate-900 mb-6">
-            Alquiler de Bolsos de Lujo desde 59€/mes
-          </h1>
-          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-            Alquila bolsos originales de Chanel, Dior, Louis Vuitton, Fendi, Prada y mas marcas premium. Envio gratis,
-            seguro incluido y autenticidad garantizada en cada pieza de nuestro catalogo.
-          </p>
-        </div>
-      </div>
+      <CatalogHero />
       <CatalogSection initialBags={initialBags} />
       <CatalogGate showGate={showGate} />
     </main>

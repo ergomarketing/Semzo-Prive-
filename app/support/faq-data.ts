@@ -210,3 +210,193 @@ export const faqCategoriesData: FaqCategoryData[] = [
     ],
   },
 ]
+
+// English version of the FAQ data. Used only for on-page rendering when the
+// active locale is "en". The JSON-LD FAQPage schema in layout.tsx keeps using
+// the Spanish version above for consistent SEO on the primary domain.
+export const faqCategoriesDataEn: FaqCategoryData[] = [
+  {
+    title: "Discover and Collect Modes",
+    iconName: "Package",
+    description: "How the two ways of enjoying your membership work: rotating bags or making one yours",
+    articles: 6,
+    faqs: [
+      {
+        question: "Can I change my bag whenever I want?",
+        answer:
+          "Yes. In Discover Mode you can request a change whenever you want, within the limits of your membership. In Collect Mode the bag is yours from day one, so it stays with you until you decide to make it definitively yours or give it up.",
+      },
+      {
+        question: "How long does it take for a bag to become mine?",
+        answer:
+          "Each bag has a set purchase price. Your monthly fee adds up towards that price until it is completed. You can also bring the purchase forward at any time by paying the outstanding difference from your member panel.",
+      },
+      {
+        question: "What happens if I cancel my membership while in Collect Mode?",
+        answer:
+          "You keep full access until the end of the billed cycle. If you were in Collect Mode, the accumulated credit is lost upon cancellation — that's why we recommend doing it only when you are sure you won't continue.",
+      },
+      {
+        question: "Is there insurance or coverage for the bag?",
+        answer:
+          "Discover Mode: included in your monthly fee. It covers wear from normal use (small scratches, surface dirt, etc.). It does not cover negligence, loss, unreported theft or serious damage caused by misuse. Collect Mode: responsibility for the bag is yours while you have it in the purchase process, just as with any instalment purchase. If you decide to abandon the purchase, you lose the credit accumulated up to that point.",
+      },
+      {
+        question: "Can I switch from one mode to the other?",
+        answer:
+          "Yes. If you are in Discover Mode and fall in love with the bag you're carrying, you can convert it to Collect Mode from your panel: credit starts accumulating from that moment. If you are in Collect Mode and prefer to change bags, you can give it up and return to Discover Mode (you lose the credit accumulated on that bag).",
+      },
+      {
+        question: "Is the certificate of authenticity real?",
+        answer:
+          "Yes. All our bags go through professional verification (Entrupy and equivalent partners). Members in Collect Mode can view and download the certificate from their panel from day one.",
+      },
+    ],
+  },
+  {
+    title: "Memberships and Subscriptions",
+    iconName: "Users",
+    description: "Information about membership plans and luxury bag subscriptions",
+    articles: 10,
+    faqs: [
+      {
+        question: "What is the SEMZO PRIVE membership?",
+        answer:
+          "SEMZO is a membership subscription service for luxury bags. The membership unlocks access to the SEMZO collection, with bags that adapt to every style, occasion and personality; delivered directly to your door. Members can experience a new bag each month, and buy the styles they wish to keep forever. It is a smarter, more circular way to enjoy variety and novelty.",
+      },
+      {
+        question: "Can I refer my friend to SEMZO PRIVE?",
+        answer:
+          "Yes you can! With SEMZO PRIVE's REFER A FRIEND programme, you can refer as many friends as you wish. When your friend registers with your referral code (email our membership team), they will receive €50 in SEMZO PRIVE credit on their first charge for any full-time membership. Once they complete the minimum 60-day term, you will also earn €50 in SEMZO PRIVE credit. Credits are only valid for memberships.",
+      },
+      {
+        question: "How does the Semzo Privé luxury bag membership work?",
+        answer:
+          "Our membership lets you access an exclusive collection of designer bags for a monthly fee. You can reserve 1 bag per month, enjoy it throughout the month and swap it for another model in the next cycle.",
+      },
+      {
+        question: "Can I change my membership plan at any time?",
+        answer:
+          "Yes, you can upgrade or change your membership plan from your personal dashboard. Changes will be applied on your next billing cycle and you will have immediate access to the benefits of the new plan.",
+      },
+    ],
+  },
+  {
+    title: "Reservation Process",
+    iconName: "Package",
+    description: "Everything about how to reserve and manage your designer bags",
+    articles: 6,
+    faqs: [
+      {
+        question: "How do I reserve a designer bag?",
+        answer:
+          "From your dashboard, browse our collection of bags from brands such as Chanel, Louis Vuitton, Hermès and more. Select the bag you want, choose the dates and confirm your reservation. The bag will be prepared and shipped within 24-48 hours.",
+      },
+      {
+        question: "How many bags can I have at the same time?",
+        answer:
+          "All our memberships include one luxury bag at a time. Your monthly membership price adjusts automatically according to the value of the bag you select, allowing you to access exclusive pieces from Chanel, Hermès, Louis Vuitton and other luxury brands with total flexibility.",
+      },
+    ],
+  },
+  {
+    title: "Delivery and Returns",
+    iconName: "Truck",
+    description: "Information about shipping, deliveries and the return process",
+    articles: 7,
+    faqs: [
+      {
+        question: "How does home delivery of bags work?",
+        answer:
+          "We offer free delivery within 24-48 hours in Marbella and Málaga. For other cities in Spain, delivery time is 2-3 business days. All shipments include full insurance and real-time tracking.",
+      },
+      {
+        question: "How do I return a bag when I've finished using it?",
+        answer:
+          "The return happens automatically at the end of your membership month. You must return the bag with all original items (dust bag, authenticity cards, etc.) using the prepaid shipping label you received with the bag. Once sent, you will receive confirmation of receipt within 24-48 hours.",
+      },
+      {
+        question: "How do I know my bag has been returned successfully?",
+        answer:
+          "Once we have received the bag at our warehouse, it undergoes a physical inspection and is then processed for return. You will receive an email to confirm that your order has been returned. If your order has been returned with damage that was not there when the bag was shipped to you, we will email you separately regarding the damage and describing the next steps.",
+      },
+      {
+        question: "What happens if I can't return my bags within the specified time?",
+        answer:
+          "As a Semzo Privé member, it is your responsibility to ensure you can return your bag order within the allotted one-month period. Regardless of where you are, your membership requirements still apply and members who cannot return their bags on time may be charged late fees or may be asked to purchase the bag instead of returning it. If you do not return a bag by the required date, you will be responsible for a late fee of €15 per business day until the bag is returned. Any bag not returned after 4 weeks will be considered not returned, and the member will be responsible for paying the full retail value of the bag.",
+      },
+    ],
+  },
+  {
+    title: "Condition and Authenticity",
+    iconName: "Shield",
+    description: "Information about the authenticity and condition of our luxury bags",
+    articles: 2,
+    faqs: [
+      {
+        question: "How do I know the bags in your collection are authentic?",
+        answer:
+          "All our bags are sourced directly from brands, authorised sellers or reputable third-party second-hand suppliers. All our items have gone through a rigorous multi-layer authentication process, carried out independently by our in-house team of experts as well as by third-party authenticators, before becoming available. We can provide an Entrupy Certificate of Authenticity for certain styles in the collection on request. If you purchase an item and a verified authenticator proves it is not genuine, SEMZO PRIVE will provide you with a full refund upon returning the bag. If for any reason you are not satisfied with a bag you have purchased from SEMZO PRIVE, you can return it in accordance with our returns policy. Contact our membership team if you have any questions about a bag you have ordered with your SEMZO PRIVE membership or purchased from SEMZO PRIVE. Please note that SEMZO PRIVE is not an authorised seller of the brands it lists on its website. The brands whose items are offered are not responsible for any products purchased from SEMZO PRIVE and do not guarantee the authenticity of the items.",
+      },
+      {
+        question: "What condition are the bags in?",
+        answer:
+          "All our bags are new or pre-owned styles in perfect condition. Our vintage items have lived a previous life, so of course they may show some signs of age. Some may also have required repairs (always carried out to the highest standards), but all of this is part of the bag's charm. If we receive a bag that has normal wear, we make a decision on whether we want to keep it in the collection for our members to enjoy. When bags need a little care, they are repaired to extend their useful life. When they are no longer a good fit for the collection, we find a loving owner so they can continue to empower and elevate.",
+      },
+    ],
+  },
+  {
+    title: "Billing and Payments",
+    iconName: "CreditCard",
+    description: "Managing payments, billing and accepted payment methods",
+    articles: 4,
+    faqs: [
+      {
+        question: "What payment methods do you accept for the membership?",
+        answer:
+          "We accept all major credit cards (Visa, Mastercard, American Express), PayPal and bank transfer. Payments are processed securely and automatically each month.",
+      },
+      {
+        question: "Can I pause my membership temporarily?",
+        answer:
+          "Yes, you can pause your membership for up to 3 months per year without penalties. During the pause no charges will be made and you can reactivate it whenever you wish from your account.",
+      },
+    ],
+  },
+  {
+    title: "Care and Maintenance",
+    iconName: "Shield",
+    description: "Tips for caring for luxury bags and the damage policy",
+    articles: 7,
+    faqs: [
+      {
+        question: "What happens if the bag is damaged or stained?",
+        answer:
+          "It depends on the mode in which you have the bag. In Discover Mode your fee includes coverage for normal use: small stains, scuffs or scratches are handled by our team (professional cleaning or repair). For serious damage caused by negligence, a fair policy based on the value of the bag applies. In Collect Mode the responsibility is yours while you have it in the purchase process, just as with any instalment purchase. We want you to enjoy it with freedom, not fear.",
+      },
+      {
+        question: "How should I care for leather bags during my use?",
+        answer:
+          "We include a care guide with each bag. We recommend avoiding direct sun exposure, using specific cleaning products for luxury leather, and storing the bag in its dust bag when not in use.",
+      },
+    ],
+  },
+  {
+    title: "Account and Profile",
+    iconName: "Settings",
+    description: "Managing your account, personal profile and settings",
+    articles: 3,
+    faqs: [
+      {
+        question: "How do I update my profile information and address?",
+        answer:
+          "Access your dashboard and go to the 'My Profile' section. There you can update your personal information, delivery addresses, payment methods and communication preferences in real time.",
+      },
+      {
+        question: "Can I have multiple delivery addresses?",
+        answer:
+          "Yes, you can add up to 3 different delivery addresses (home, office, etc.) and select which one to use for each reservation. This gives you total flexibility to receive your bags wherever suits you best.",
+      },
+    ],
+  },
+]

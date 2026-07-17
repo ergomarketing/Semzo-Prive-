@@ -13,8 +13,10 @@ import { Mail, CheckCircle2, AlertCircle, Phone } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/app/hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
+import { useTranslations } from "next-intl"
 
 function SignupContent() {
+  const t = useTranslations("signup")
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
@@ -86,13 +88,13 @@ function SignupContent() {
     setMessage(null)
 
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Las contraseñas no coinciden" })
+      setMessage({ type: "error", text: t("errPasswordsMismatch") })
       setLoading(false)
       return
     }
 
     if (formData.password.length < 8) {
-      setMessage({ type: "error", text: "La contraseña debe tener al menos 8 caracteres" })
+      setMessage({ type: "error", text: t("errPasswordShort") })
       setLoading(false)
       return
     }
@@ -101,7 +103,7 @@ function SignupContent() {
     if (!passwordRegex.test(formData.password)) {
       setMessage({
         type: "error",
-        text: "La contraseña debe contener al menos una mayúscula, una minúscula y un número",
+        text: t("errPasswordWeak"),
       })
       setLoading(false)
       return
@@ -130,10 +132,10 @@ function SignupContent() {
         if (result.error === "EMAIL_ALREADY_EXISTS") {
           setMessage({
             type: "error",
-            text: "Este correo ya esta registrado. Por favor inicia sesion o usa la opcion de recuperar contraseña.",
+            text: t("errEmailExists"),
           })
         } else {
-          setMessage({ type: "error", text: result.message || "Error al crear la cuenta" })
+          setMessage({ type: "error", text: result.message || t("errCreate") })
         }
         setLoading(false)
         return
@@ -203,12 +205,12 @@ function SignupContent() {
       if (needsConfirmation) {
         setMessage({
           type: "success",
-          text: "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
+          text: t("successConfirm"),
         })
       } else {
         setMessage({
           type: "success",
-          text: "Cuenta creada exitosamente. Redirigiendo...",
+          text: t("successRedirect"),
         })
 
         setTimeout(() => {
@@ -228,7 +230,7 @@ function SignupContent() {
         phone: "",
       })
     } catch (error) {
-      setMessage({ type: "error", text: "Error de conexión. Por favor verifica tu internet e inténtalo de nuevo." })
+      setMessage({ type: "error", text: t("errConnection") })
     } finally {
       setLoading(false)
     }
@@ -238,7 +240,7 @@ function SignupContent() {
   if (authLoading) {
     return (
       <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
-        <p className="text-slate-600">Cargando...</p>
+        <p className="text-slate-600">{t("loading")}</p>
       </div>
     )
   }
@@ -247,7 +249,7 @@ function SignupContent() {
   if (user) {
     return (
       <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
-        <p className="text-slate-600">Ya tienes sesion activa. Redirigiendo...</p>
+        <p className="text-slate-600">{t("alreadyLogged")}</p>
       </div>
     )
   }
@@ -259,13 +261,13 @@ function SignupContent() {
         <div className="relative hidden md:block min-h-[600px]">
           <img
             src="/images/login-modal-chanel.jpg"
-            alt="Bolso de lujo Semzo Prive"
+            alt={t("imageAlt")}
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute bottom-8 left-8 right-8">
             <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-sm font-medium" style={{ color: "#1a1a4b" }}>SEMZO PRIVE</p>
-              <p className="text-xs text-slate-600 mt-1">Acceso exclusivo al lujo</p>
+              <p className="text-sm font-medium" style={{ color: "#1a1a4b" }}>{t("badgeTitle")}</p>
+              <p className="text-xs text-slate-600 mt-1">{t("badgeSubtitle")}</p>
             </div>
           </div>
         </div>
@@ -274,13 +276,13 @@ function SignupContent() {
         <div className="p-8 md:p-10 overflow-y-auto max-h-[90vh]">
           <div className="text-center mb-6">
             <h2 className="font-serif text-3xl font-light mb-2" style={{ color: "#1a1a4b" }}>
-              Crear Cuenta
+              {t("title")}
             </h2>
             <p className="text-sm text-slate-600">
               {selectedPlan ? (
-                <>Plan seleccionado: <span className="font-semibold capitalize">{selectedPlan}</span></>
+                <>{t("planSelected")} <span className="font-semibold capitalize">{selectedPlan}</span></>
               ) : (
-                "Únete a nuestro círculo exclusivo"
+                t("subtitle")
               )}
             </p>
           </div>
@@ -294,7 +296,7 @@ function SignupContent() {
           onClick={() => setShowSMSModal(true)}
         >
           <Phone className="h-4 w-4 mr-2" />
-          Registrarse con SMS
+          {t("signupSms")}
         </Button>
 
         <div className="relative mb-4">
@@ -302,14 +304,14 @@ function SignupContent() {
             <span className="w-full border-t border-slate-200" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-slate-400">o con email</span>
+            <span className="bg-white px-2 text-slate-400">{t("orEmail")}</span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">Nombre</Label>
+              <Label htmlFor="firstName">{t("firstName")}</Label>
               <Input
                 id="firstName"
                 name="firstName"
@@ -321,7 +323,7 @@ function SignupContent() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Apellido</Label>
+              <Label htmlFor="lastName">{t("lastName")}</Label>
               <Input
                 id="lastName"
                 name="lastName"
@@ -335,7 +337,7 @@ function SignupContent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               name="email"
@@ -348,7 +350,7 @@ function SignupContent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono (opcional)</Label>
+            <Label htmlFor="phone">{t("phone")}</Label>
             <Input
               id="phone"
               name="phone"
@@ -360,7 +362,7 @@ function SignupContent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password">{t("password")}</Label>
             <Input
               id="password"
               name="password"
@@ -370,11 +372,11 @@ function SignupContent() {
               required
               disabled={loading}
             />
-            <p className="text-xs text-gray-500">Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas y números</p>
+            <p className="text-xs text-gray-500">{t("passwordHint")}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+            <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
             <Input
               id="confirmPassword"
               name="confirmPassword"
@@ -412,14 +414,12 @@ function SignupContent() {
                   {message.text}
                   {message.type === "success" && requiresConfirmation && (
                     <div className="mt-3 p-3 bg-white/50 rounded border border-indigo-dark">
-                      <p className="text-sm font-medium text-indigo-dark mb-1">Revisa tu bandeja de entrada</p>
-                      <p className="text-xs text-indigo-dark">
-                        Te hemos enviado un email de confirmación. Haz clic en el enlace para activar tu cuenta.
-                      </p>
+                      <p className="text-sm font-medium text-indigo-dark mb-1">{t("checkInboxTitle")}</p>
+                      <p className="text-xs text-indigo-dark">{t("checkInboxDesc")}</p>
                     </div>
                   )}
                   {message.type === "success" && !requiresConfirmation && (
-                    <div className="mt-2 text-sm text-indigo-dark">Serás redirigido al login en 2 segundos...</div>
+                    <div className="mt-2 text-sm text-indigo-dark">{t("redirectingLogin")}</div>
                   )}
                 </AlertDescription>
               </div>
@@ -432,18 +432,18 @@ function SignupContent() {
             style={{ backgroundColor: "#1a1a4b", color: "#ffffff" }}
             disabled={loading}
           >
-            {loading ? "Creando cuenta..." : "Crear Cuenta"}
+            {loading ? t("submitting") : t("submit")}
           </Button>
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-4">
-          ¿Ya tienes cuenta?{" "}
+          {t("hasAccount")}{" "}
           <Link
             href={selectedPlan ? `/auth/login?plan=${selectedPlan}` : "/auth/login"}
             className="underline font-medium hover:text-slate-700"
             style={{ color: "#1a1a4b" }}
           >
-            Inicia sesión
+            {t("login")}
           </Link>
         </p>
         </div>
@@ -468,14 +468,19 @@ function SignupContent() {
   )
 }
 
+function SignupFallback() {
+  const t = useTranslations("signup")
+  return (
+    <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
+      <p className="text-slate-600">{t("loading")}</p>
+    </div>
+  )
+}
+
 export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
-      <Suspense fallback={
-        <div className="w-full max-w-4xl bg-white rounded-2xl p-10 shadow-2xl flex items-center justify-center">
-          <p className="text-slate-600">Cargando...</p>
-        </div>
-      }>
+      <Suspense fallback={<SignupFallback />}>
         <SignupContent />
       </Suspense>
     </div>
