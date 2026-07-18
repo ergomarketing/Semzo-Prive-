@@ -292,10 +292,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       if (error) throw error
 
       setIsInWaitlist(true)
-      alert("¡Te notificaremos cuando este bolso esté disponible!")
+      alert(t("waitlistAdded"))
     } catch (error) {
       console.error("Error al agregar a lista de espera:", error)
-      alert("Hubo un error. Por favor intenta de nuevo.")
+      alert(t("genericError"))
     } finally {
       setIsAddingToWaitlist(false)
     }
@@ -314,8 +314,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         const elig = await res.json().catch(() => ({}))
         if (!elig?.allowed) {
           toast({
-            title: "No puedes reservar ahora",
-            description: elig?.message || "Tu membresía no permite reservar en este momento.",
+            title: t("cannotReserve"),
+            description: elig?.message || t("cannotReserveDesc"),
             variant: "destructive",
           })
           setIsReserving(false)
@@ -325,8 +325,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         // Si la verificacion falla, el backend (carrito/checkout) sigue
         // bloqueando: no dejamos pasar por seguridad.
         toast({
-          title: "No se pudo verificar tu elegibilidad",
-          description: "Inténtalo de nuevo en unos segundos.",
+          title: t("cannotVerify"),
+          description: t("cannotVerifyDesc"),
           variant: "destructive",
         })
         setIsReserving(false)
@@ -342,10 +342,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       // Para Petite: agregar DOS items separados
       const membershipItem = {
         id: `petite-membership-${Date.now()}`,
-        name: "Membresía Petite",
+        name: t("petiteMembership"),
         price: `${option.basePrice.toFixed(2)}€`,
         billingCycle: option.billingCycle,
-        description: "Membresía base semanal",
+        description: t("petiteMembershipDesc"),
         image: membershipImages.petite,
         brand: "Semzo Privé",
         itemType: "membership",
@@ -353,7 +353,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
       const bagPassItem = {
         id: `bag-pass-${bag.id}-${Date.now()}`,
-        name: `Pase Bolso ${membershipNames[bag.membership]}`,
+        name: t("bagPass", { tier: membershipNames[bag.membership] }),
         price: `${option.bagPass.toFixed(2)}€`,
         billingCycle: option.billingCycle,
         description: `${bag.brand} ${bag.name}`,
@@ -429,20 +429,20 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Error al crear la reserva")
+        throw new Error(data.error || t("reservationCreateError"))
       }
 
       toast({
-        title: "Reserva exitosa",
-        description: `Has reservado ${bag.brand} ${bag.name}. La fecha de devolucion se ha calculado segun tu membresia.`,
+        title: t("reservationSuccess"),
+        description: t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
       })
 
       router.push("/dashboard/reservas")
     } catch (error: any) {
       console.error("[v0] Error creating reservation:", error)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
+        title: t("error"),
+        description: error instanceof Error ? error.message : t("reservationCreateError"),
         variant: "destructive",
       })
     } finally {
@@ -483,8 +483,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
     if (!canReserveWithMembership()) {
       toast({
-        title: "Membresía insuficiente",
-        description: `Este bolso requiere membresía ${bag.membership.toUpperCase()}. Tu membresía actual: ${userMembership.tier || "Free"}`,
+        title: t("insufficientMembership"),
+        description: t("insufficientMembershipDesc", { required: bag.membership.toUpperCase(), current: userMembership.tier || "Free" }),
         variant: "destructive",
       })
       return
@@ -531,20 +531,20 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Error al crear la reserva")
+        throw new Error(data.error || t("reservationCreateError"))
       }
 
       toast({
-        title: "Reserva exitosa",
-        description: `Has reservado ${bag.brand} ${bag.name}. La fecha de devolucion se ha calculado segun tu membresia.`,
+        title: t("reservationSuccess"),
+        description: t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
       })
 
       router.push("/dashboard/reservas")
     } catch (error) {
       console.error("[v0] Error creating quick reservation:", error)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo crear la reserva",
+        title: t("error"),
+        description: error instanceof Error ? error.message : t("reservationCreateError"),
         variant: "destructive",
       })
     } finally {
@@ -582,8 +582,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
     setAutoReserveTriggered(true)
     toast({
-      title: "Completando tu reserva",
-      description: `Reservando ${bag.brand} ${bag.name}...`,
+      title: t("completingReservation"),
+      description: t("reserving", { brand: bag.brand, name: bag.name }),
     })
     handleQuickReserve()
     const url = new URL(window.location.href)
@@ -629,7 +629,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
           className="inline-flex items-center text-indigo-dark hover:underline mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver al catálogo
+          {t("backToCatalog")}
         </Link>
       </div>
 
@@ -640,7 +640,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               {bag.availability.status === "rented" && (
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
                   <div className="text-center text-white">
-                    <p className="text-2xl font-serif mb-2">FUERA CON MIEMBRO</p>
+                    <p className="text-2xl font-serif mb-2">{t("outWithMember")}</p>
                   </div>
                 </div>
               )}
@@ -711,10 +711,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     <button
                       type="button"
                       onClick={handleShareClick}
-                      aria-label="Compartir este bolso"
+                      aria-label={t("shareBag")}
                       aria-expanded={shareMenuOpen}
                       aria-haspopup="menu"
-                      title="Compartir"
+                      title={t("share")}
                       className="p-2 rounded-full hover:bg-slate-100 transition-colors"
                     >
                       <Share2 className="h-6 w-6 text-slate-400" />
@@ -728,7 +728,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                         />
                         <div
                           role="menu"
-                          aria-label="Compartir en redes sociales"
+                          aria-label={t("shareSocial")}
                           className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[200px]"
                         >
                           <a
@@ -811,7 +811,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                             >
                               {shareCopied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
                             </span>
-                            {shareCopied ? "Enlace copiado" : "Copiar enlace"}
+                            {shareCopied ? t("linkCopied") : t("copyLink")}
                           </button>
                         </div>
                       </>
@@ -822,12 +822,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
 
                 <p className="text-lg text-slate-500 mb-1">{bag.brand}</p>
                 <h1 className="font-serif text-4xl text-slate-900 mb-2">
-                  Alquila {bag.brand} {bag.name}
+                  {t("rent")} {bag.brand} {bag.name}
                   {bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""}
                 </h1>
 
               <p className="text-sm text-slate-500 uppercase tracking-wide mb-2">
-                PRECIO DE VENTA ESTIMADO: <span className="text-slate-700">{bag.retailPrice}</span>
+                {t("estimatedRetail")} <span className="text-slate-700">{bag.retailPrice}</span>
               </p>
 
 
@@ -847,20 +847,15 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                       className={`font-semibold ${canReserveWithMembership() ? "text-indigo-dark" : "text-indigo-dark/70"}`}
                     >
                       {canReserveWithMembership()
-                        ? `Membresía Activa - Puedes alquilar`
-                        : `Membresía Inactiva - Completa verificación`}
+                        ? t("membershipActive")
+                        : t("membershipInactive")}
                     </span>
                   </div>
 
                   {canReserveWithMembership() ? (
-                    <p className="text-sm text-indigo-dark/70">
-                      Tu membresía está activa. Puedes reservar este bolso ahora.
-                    </p>
+                    <p className="text-sm text-indigo-dark/70">{t("membershipActiveDesc")}</p>
                   ) : (
-                    <p className="text-sm text-indigo-dark/70">
-                      Tu membresía está pendiente de verificación. Completa la verificación de identidad para poder
-                      alquilar.
-                    </p>
+                    <p className="text-sm text-indigo-dark/70">{t("membershipInactiveDesc")}</p>
                   )}
                 </div>
 
@@ -873,12 +868,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     {isReserving ? (
                       <>
                         <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Procesando...
+                        {t("processing")}
                       </>
                     ) : (
                       <>
                         <Calendar className="h-5 w-5 mr-2" />
-                        Reservar Ahora
+                        {t("reserveNow")}
                       </>
                     )}
                   </Button>
@@ -889,14 +884,14 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     onClick={() => router.push("/dashboard/membresia")}
                     className="w-full py-6 text-lg bg-rose-pastel hover:bg-rose-pastel/90 text-indigo-dark"
                   >
-                    Completar Verificación de Identidad
+                    {t("completeVerification")}
                   </Button>
                 )}
               </div>
             ) : (
               // User is not logged in - show membership options
               <div className="space-y-4">
-                <h3 className="font-medium text-slate-900">Elige tu membresía</h3>
+                <h3 className="font-medium text-slate-900">{t("chooseMembership")}</h3>
 
                 <div
                   onClick={() => setSelectedMembership("petite")}
@@ -931,8 +926,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     <span className="text-slate-500">{membershipOptions.petite.period}</span>
                   </div>
                   <p className="text-xs text-[#1a2c4e] mt-1 ml-7">
-                    Base {membershipOptions.petite.basePrice}€ + Bolso {membershipNames[bag.membership]}{" "}
-                    {membershipOptions.petite.bagPass}€
+                    {t("petiteBreakdown", { base: membershipOptions.petite.basePrice, tier: membershipNames[bag.membership], pass: membershipOptions.petite.bagPass })}
                   </p>
                 </div>
 
@@ -1014,12 +1008,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 onClick={handleQuickReserve}
                 className="w-full py-6 text-lg bg-indigo-dark hover:bg-indigo-dark/90 text-white"
               >
-                Reservar por{" "}
+                {t("reserveFor")}{" "}
                 {selectedMembership === "petite"
-                  ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€/semana`
+                  ? `${(membershipOptions.petite.basePrice + membershipOptions.petite.bagPass).toFixed(2)}€${t("perWeek")}`
                   : selectedMembership === "essentiel"
-                    ? `${membershipOptions.essentiel.price}€/mes`
-                    : `${membershipOptions["essentiel-quarterly"].price}€/trimestre`}
+                    ? `${membershipOptions.essentiel.price}€${t("perMonth")}`
+                    : `${membershipOptions["essentiel-quarterly"].price}€${t("perQuarter")}`}
               </Button>
             )}
 
@@ -1043,15 +1037,15 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             <div className="flex items-center justify-around py-4 border-y border-slate-100">
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <Truck className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Envío gratis</span>
+                <span>{t("freeShipping")}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <Shield className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Seguro incluido</span>
+                <span>{t("insuranceIncluded")}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <RotateCcw className="h-5 w-5 text-[#1a2c4e]" />
-                <span>Devolución fácil</span>
+                <span>{t("easyReturn")}</span>
               </div>
             </div>
           </div>
@@ -1069,7 +1063,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                Características
+                {t("tabDetails")}
               </button>
               <button
                 onClick={() => setActiveTab("care")}
@@ -1079,7 +1073,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                Cuidados
+                {t("tabCare")}
               </button>
             </div>
           </div>
@@ -1089,15 +1083,15 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Material</span>
+                    <span className="text-slate-500">{t("material")}</span>
                     <span className="text-slate-900">{bag.material}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Dimensiones</span>
+                    <span className="text-slate-500">{t("dimensions")}</span>
                     <span className="text-slate-900">{bag.dimensions}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500">Condición</span>
+                    <span className="text-slate-500">{t("condition")}</span>
                     <span className="text-slate-900">{bag.condition}</span>
                   </div>
                 </div>
@@ -1105,18 +1099,10 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
             )}
             {activeTab === "care" && (
               <div className="space-y-4 text-slate-600 leading-relaxed">
-                <p>
-                  Trata la bolsa que has pedido con el cariño y respeto que merece durante vuestro tiempo juntos, para que otros miembros puedan disfrutar tanto como tú.
-                </p>
-                <p>
-                  Si te preocupa cualquier marca, habla siempre con nosotros primero para que podamos aconsejarte cuál es la mejor acción a tomar.
-                </p>
-                <p>
-                  En general, la amabilidad ayuda mucho: las bolsas de nuestra colección prefieren mucho más estar en el regazo que en el suelo, por ejemplo, y no nos gusta sentirse demasiado llenas.
-                </p>
-                <p>
-                  Inspeccionamos cada bolsa al devolucionar y te avisaremos si hay algún problema.
-                </p>
+                <p>{t("care1")}</p>
+                <p>{t("care2")}</p>
+                <p>{t("care3")}</p>
+                <p>{t("care4")}</p>
               </div>
             )}
           </div>
@@ -1125,7 +1111,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
         {/* Related bags */}
         {bagsToShow.length > 0 && (
           <div className="mt-16">
-            <h2 className="font-serif text-2xl text-slate-900 mb-8">También te puede gustar</h2>
+            <h2 className="font-serif text-2xl text-slate-900 mb-8">{t("youMayLike")}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {bagsToShow.slice(0, 4).map((relatedBag) => (
                 <Link
