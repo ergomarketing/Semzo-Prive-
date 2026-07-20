@@ -8,7 +8,12 @@
     "login": "Acceder",
     "myAccount": "Mi cuenta",
     "logout": "Cerrar sesión",
-    "cart": "Carrito"
+    "cart": "Carrito",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "openCart": "Abrir carrito",
+    "cartWithItems": "Carrito con {count} artículo",
+    "signOut": "Cerrar Sesión"
   },
   "hero": {
     "eyebrow": "Alquiler de bolsos de lujo mediante membresía",
@@ -576,6 +581,19 @@
     "savingsPercent": "Porcentaje de ahorro",
     "monthlySavings": "Ahorro mensual",
     "cta": "Comenzar a Ahorrar"
+  },
+  "testimonialSection": {
+    "eyebrow": "Testimonios",
+    "title": "Lo que dicen nuestras clientas",
+    "t1quote": "Semzo Privé ha transformado mi relación con la moda de lujo. Ahora puedo acceder a bolsos que antes solo podía admirar en revistas.",
+    "t1author": "María González",
+    "t1role": "Empresaria",
+    "t2quote": "La calidad del servicio es impecable. Desde la selección hasta la entrega, cada detalle refleja el compromiso con la excelencia.",
+    "t2author": "Carmen Ruiz",
+    "t2role": "Directora Creativa",
+    "t3quote": "Lo que más valoro es la flexibilidad. Puedo cambiar mi bolso según la temporada o mi estado de ánimo, sin comprometerme a una compra permanente.",
+    "t3author": "Laura Martínez",
+    "t3role": "Arquitecta"
   },
   "pricing": {
     "title": "Nuestras Membresías",

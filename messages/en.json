@@ -2,13 +2,18 @@
   "nav": {
     "collection": "Collection",
     "memberships": "Memberships",
-    "process": "How It Works",
+    "process": "The Process",
     "magazine": "Magazine",
     "testimonials": "Testimonials",
     "login": "Sign In",
     "myAccount": "My account",
     "logout": "Sign out",
-    "cart": "Cart"
+    "cart": "Cart",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "openCart": "Open cart",
+    "cartWithItems": "Cart with {count} item",
+    "signOut": "Sign Out"
   },
   "hero": {
     "eyebrow": "Luxury bag rental by membership",
@@ -576,6 +581,19 @@
     "savingsPercent": "Savings percentage",
     "monthlySavings": "Monthly savings",
     "cta": "Start Saving"
+  },
+  "testimonialSection": {
+    "eyebrow": "Testimonials",
+    "title": "What our clients say",
+    "t1quote": "Semzo Privé has transformed my relationship with luxury fashion. I can now access bags I could previously only admire in magazines.",
+    "t1author": "María González",
+    "t1role": "Entrepreneur",
+    "t2quote": "The quality of service is impeccable. From selection to delivery, every detail reflects a commitment to excellence.",
+    "t2author": "Carmen Ruiz",
+    "t2role": "Creative Director",
+    "t3quote": "What I value most is the flexibility. I can change my bag according to the season or my mood, without committing to a permanent purchase.",
+    "t3author": "Laura Martínez",
+    "t3role": "Architect"
   },
   "pricing": {
     "title": "Our Memberships",
