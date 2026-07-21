@@ -582,6 +582,21 @@
     "monthlySavings": "Ahorro mensual",
     "cta": "Comenzar a Ahorrar"
   },
+  "marqueeBanner": {
+    "text": "Alquiler de bolsos de lujo mediante membresía"
+  },
+  "collectionSection": {
+    "eyebrow": "Nuestra colección",
+    "title": "Piezas icónicas, experiencias memorables",
+    "description": "Cada bolso cuenta una historia de artesanía excepcional y diseño atemporal. Nuestra colección curada incluye piezas icónicas de las casas de moda más prestigiosas del mundo, seleccionadas por su belleza, calidad y relevancia cultural.",
+    "imageAlt": "Alquiler de bolsos de lujo — Semzo Privé",
+    "galleryEyebrow": "Descubre la colección",
+    "galleryTitle": "Un armario curado de bolsos icónicos de las casas más influyentes del mundo.",
+    "gallerySubtitle": "Accede a piezas excepcionales cuando tu vida lo necesite.",
+    "exploreButton": "Explorar bolsos",
+    "featuredBrands": "Marcas destacadas",
+    "viewCatalog": "Ver catálogo completo"
+  },
   "testimonialSection": {
     "eyebrow": "Testimonios",
     "title": "Lo que dicen nuestras clientas",
