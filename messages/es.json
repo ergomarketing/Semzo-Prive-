@@ -582,6 +582,14 @@
     "monthlySavings": "Ahorro mensual",
     "cta": "Comenzar a Ahorrar"
   },
+  "magazine": {
+    "eyebrow": "Semzo Magazine",
+    "title": "Historias del Mundo del Lujo",
+    "subtitle": "Descubre las últimas tendencias, consejos de estilo y las historias detrás de los bolsos más icónicos del mundo.",
+    "loading": "Cargando artículos...",
+    "emptyTitle": "No hay artículos publicados aún.",
+    "emptyHint": "Publica tu primer artículo desde el panel de administración."
+  },
   "marqueeBanner": {
     "text": "Alquiler de bolsos de lujo mediante membresía"
   },

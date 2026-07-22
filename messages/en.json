@@ -582,6 +582,29 @@
     "monthlySavings": "Monthly savings",
     "cta": "Start Saving"
   },
+  "magazine": {
+    "eyebrow": "Semzo Magazine",
+    "title": "Stories from the World of Luxury",
+    "subtitle": "Discover the latest trends, style tips and the stories behind the world's most iconic bags.",
+    "loading": "Loading articles...",
+    "emptyTitle": "No articles published yet.",
+    "emptyHint": "Publish your first article from the admin panel."
+  },
+  "marqueeBanner": {
+    "text": "Luxury bag rental by membership"
+  },
+  "collectionSection": {
+    "eyebrow": "Our collection",
+    "title": "Iconic pieces, memorable experiences",
+    "description": "Every bag tells a story of exceptional craftsmanship and timeless design. Our curated collection features iconic pieces from the world's most prestigious fashion houses, selected for their beauty, quality and cultural relevance.",
+    "imageAlt": "Luxury bag rental — Semzo Privé",
+    "galleryEyebrow": "Discover the collection",
+    "galleryTitle": "A curated wardrobe of iconic bags from the world's most influential fashion houses.",
+    "gallerySubtitle": "Access exceptional pieces whenever your life calls for it.",
+    "exploreButton": "Explore bags",
+    "featuredBrands": "Featured brands",
+    "viewCatalog": "View full catalogue"
+  },
   "testimonialSection": {
     "eyebrow": "Testimonials",
     "title": "What our clients say",

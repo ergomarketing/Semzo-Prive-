@@ -1,7 +1,10 @@
 "use client"
 
+import { useTranslations } from "next-intl"
+
 export default function MarqueeBanner() {
-  const text = "Alquiler de bolsos de lujo mediante membresía"
+  const t = useTranslations("marqueeBanner")
+  const text = t("text")
   const separator = "   ✦   "
   
   // Repetimos el texto varias veces para crear el efecto continuo

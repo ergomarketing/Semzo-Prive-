@@ -3,8 +3,10 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 
 export default function CollectionSection() {
+  const t = useTranslations("collectionSection")
   const brands = [
     "Bottega Veneta",
     "Burberry",
@@ -31,18 +33,16 @@ export default function CollectionSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-12 md:mb-20">
           <div className="lg:col-span-4 text-center lg:text-left">
             <p className="text-xs uppercase tracking-widest mb-4 md:mb-6 font-medium text-indigo-dark">
-              Nuestra colección
+              {t("eyebrow")}
             </p>
             <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900">
-              Piezas icónicas, experiencias memorables
+              {t("title")}
             </h2>
           </div>
           <div className="hidden lg:block lg:col-span-1"></div>
           <div className="lg:col-span-7">
             <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light text-center lg:text-left">
-              Cada bolso cuenta una historia de artesanía excepcional y diseño atemporal. Nuestra colección curada
-              incluye piezas icónicas de las casas de moda más prestigiosas del mundo, seleccionadas por su belleza,
-              calidad y relevancia cultural.
+              {t("description")}
             </p>
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function CollectionSection() {
         <div className="relative aspect-[4/3] md:aspect-[16/9] overflow-hidden mb-12">
           <Image
             src="/images/hero-luxury-bags.jpg"
-            alt="Alquiler de bolsos de lujo — Semzo Privé"
+            alt={t("imageAlt")}
             fill
             className="object-cover object-center"
             sizes="100vw"
@@ -62,18 +62,18 @@ export default function CollectionSection() {
           {/* Contenido editorial sobre la imagen */}
           <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 lg:px-24">
             <p className="text-xs uppercase tracking-widest text-white/70 mb-4 font-medium">
-              Descubre la colección
+              {t("galleryEyebrow")}
             </p>
             <h3 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light text-white leading-tight mb-4 max-w-lg">
-              Un armario curado de bolsos icónicos de las casas más influyentes del mundo.
+              {t("galleryTitle")}
             </h3>
             <p className="text-white/75 text-base md:text-lg font-light mb-8 max-w-md">
-              Accede a piezas excepcionales cuando tu vida lo necesite.
+              {t("gallerySubtitle")}
             </p>
             <div>
               <Link href="/catalog">
                 <Button className="rounded-none px-8 py-5 text-xs uppercase tracking-widest font-medium bg-white text-indigo-dark hover:bg-rose-pastel hover:text-indigo-dark transition-all duration-300">
-                  Explorar bolsos
+                  {t("exploreButton")}
                 </Button>
               </Link>
             </div>
@@ -82,7 +82,7 @@ export default function CollectionSection() {
 
         <div className="mb-12">
           <p className="text-xs uppercase tracking-widest mb-6 font-medium text-indigo-dark text-center">
-            Marcas destacadas
+            {t("featuredBrands")}
           </p>
 
           <style jsx>{`
@@ -130,7 +130,7 @@ export default function CollectionSection() {
         <div className="flex justify-center">
           <Link href="/catalog">
             <Button className="rounded-none px-8 md:px-12 py-4 md:py-6 text-sm uppercase tracking-widest font-medium bg-white/80 backdrop-blur-sm transition-all duration-300 border border-slate-200 text-slate-900 hover:bg-white">
-              Ver catálogo completo
+              {t("viewCatalog")}
             </Button>
           </Link>
         </div>
