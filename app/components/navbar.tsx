@@ -140,17 +140,17 @@ export default function Navbar() {
                 size="sm"
                 className="md:hidden rounded-none px-2 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label="Abrir menú"
+                aria-label={mobileMenuOpen ? t("closeMenu") : t("openMenu")}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
 
-              <Link href="/cart" className="relative" aria-label={itemCount > 0 ? `Carrito de compra con ${itemCount} artículo` : "Carrito de compra"}>
+              <Link href="/cart" className="relative" aria-label={itemCount > 0 ? t("cartWithItems", { count: itemCount }) : t("openCart")}>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="rounded-none px-2 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                  aria-label="Abrir carrito"
+                  aria-label={t("openCart")}
                 >
                   <ShoppingBag className="w-4 h-4" aria-hidden="true" />
                   {itemCount > 0 && (
@@ -192,8 +192,8 @@ export default function Navbar() {
                   <Button
                     onClick={handleLogout}
                     className="rounded-none px-2 py-2 text-xs bg-slate-600 text-white hover:bg-slate-500 transition-all duration-300"
-                    title="Cerrar Sesión"
-                    aria-label="Cerrar sesión"
+                    title={t("signOut")}
+                    aria-label={t("signOut")}
                   >
                     <LogOut className="w-3 h-3" aria-hidden="true" />
                   </Button>

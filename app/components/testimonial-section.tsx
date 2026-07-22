@@ -9,31 +9,20 @@
  *  - Respeta prefers-reduced-motion (definido en globals.css).
  * Paleta Semzo: rose-nude / rose-pastel / indigo-dark.
  */
-const TESTIMONIALS = [
-  {
-    quote:
-      "Semzo Privé ha transformado mi relación con la moda de lujo. Ahora puedo acceder a bolsos que antes solo podía admirar en revistas.",
-    author: "María González",
-    role: "Empresaria",
-  },
-  {
-    quote:
-      "La calidad del servicio es impecable. Desde la selección hasta la entrega, cada detalle refleja el compromiso con la excelencia.",
-    author: "Carmen Ruiz",
-    role: "Directora Creativa",
-  },
-  {
-    quote:
-      "Lo que más valoro es la flexibilidad. Puedo cambiar mi bolso según la temporada o mi estado de ánimo, sin comprometerme a una compra permanente.",
-    author: "Laura Martínez",
-    role: "Arquitecta",
-  },
-]
+"use client"
+
+import { useTranslations } from "next-intl"
 
 export default function TestimonialSection() {
+  const t = useTranslations("testimonialSection")
+
+  const TESTIMONIALS = [
+    { quote: t("t1quote"), author: t("t1author"), role: t("t1role") },
+    { quote: t("t2quote"), author: t("t2author"), role: t("t2role") },
+    { quote: t("t3quote"), author: t("t3author"), role: t("t3role") },
+  ]
+
   // Duplicamos el array para que el marquee sea visualmente continuo.
-  // Al llegar al -50% del ancho, vuelve al 0% y como el segundo array es
-  // identico al primero el usuario no nota el "salto".
   const items = [...TESTIMONIALS, ...TESTIMONIALS]
 
   return (
@@ -43,9 +32,9 @@ export default function TestimonialSection() {
     >
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 md:mb-10">
-          <p className="text-xs uppercase tracking-widest text-indigo-dark mb-3 font-medium">Testimonios</p>
+          <p className="text-xs uppercase tracking-widest text-indigo-dark mb-3 font-medium">{t("eyebrow")}</p>
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light text-slate-900 leading-tight">
-            Lo que dicen nuestras clientas
+            {t("title")}
           </h2>
         </div>
 

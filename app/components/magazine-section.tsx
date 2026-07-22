@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Calendar, User, ChevronLeft, ChevronRight } from "lucide-react"
+import { useTranslations, useLocale } from "next-intl"
 
 interface BlogPost {
   slug: string
@@ -16,6 +17,8 @@ interface BlogPost {
 }
 
 export default function MagazineSection() {
+  const t = useTranslations("magazine")
+  const locale = useLocale()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -76,13 +79,13 @@ export default function MagazineSection() {
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">Semzo Magazine</p>
+            <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">{t("eyebrow")}</p>
             <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900 mb-6">
-              Historias del Mundo del Lujo
+              {t("title")}
             </h2>
           </div>
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando artículos...</p>
+            <p className="text-gray-500">{t("loading")}</p>
           </div>
         </div>
       </section>
@@ -93,20 +96,19 @@ export default function MagazineSection() {
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">Semzo Magazine</p>
+          <p className="text-xs uppercase tracking-widest mb-4 font-medium text-indigo-dark">{t("eyebrow")}</p>
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900 mb-6">
-            Historias del Mundo del Lujo
+            {t("title")}
           </h2>
           <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light max-w-3xl mx-auto mb-8">
-            Descubre las últimas tendencias, consejos de estilo y las historias detrás de los bolsos más icónicos del
-            mundo.
+            {t("subtitle")}
           </p>
         </div>
 
         {posts.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No hay artículos publicados aún.</p>
-            <p className="text-sm text-gray-400 mt-2">Publica tu primer artículo desde el panel de administración.</p>
+            <p className="text-gray-500">{t("emptyTitle")}</p>
+            <p className="text-sm text-gray-400 mt-2">{t("emptyHint")}</p>
           </div>
         ) : (
           <div className="relative group">
@@ -172,7 +174,7 @@ export default function MagazineSection() {
                         <div className="flex items-center gap-3 text-xs text-indigo-dark/75">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {post.created_at ? new Date(post.created_at).toLocaleDateString("es-ES", {
+                            {post.created_at ? new Date(post.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", {
                               day: "numeric",
                               month: "short",
                             }) : "—"}

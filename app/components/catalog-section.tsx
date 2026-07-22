@@ -192,7 +192,7 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
         <div className="container mx-auto px-4">
           <div className="flex justify-center mb-8">
             <div className="flex gap-2">
-              {["Todos", "L'Essentiel", "Signature", "Privé"].map((tab) => (
+              {[t("tabAll"), "L'Essentiel", "Signature", "Privé"].map((tab) => (
                 <div key={tab} className="h-9 w-24 rounded-md bg-slate-100 animate-pulse" />
               ))}
             </div>
