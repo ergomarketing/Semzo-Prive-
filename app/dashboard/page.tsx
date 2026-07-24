@@ -491,8 +491,8 @@ export default function DashboardHome() {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif">Acciones Rápidas</CardTitle>
-            <CardDescription>Accede rápidamente a las funciones principales</CardDescription>
+            <CardTitle className="font-serif">{t("quickActions")}</CardTitle>
+            <CardDescription>{t("quickActionsDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -500,17 +500,15 @@ export default function DashboardHome() {
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
-              Explorar Catálogo
+              {t("exploreCatalog")}
             </Button>
             {membership?.type !== "prive" && (
               <Button
-                onClick={() => {
-                  window.location.href = "/#membresias"
-                }}
+                onClick={() => { window.location.href = "/#membresias" }}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
               >
                 <Crown className="h-4 w-4 mr-2" />
-                Upgrade a Privé
+                {t("upgradePrive")}
               </Button>
             )}
           </CardContent>
@@ -518,18 +516,18 @@ export default function DashboardHome() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif">Estado de la Cuenta</CardTitle>
-            <CardDescription>Información sobre tu cuenta</CardDescription>
+            <CardTitle className="font-serif">{t("accountStatus")}</CardTitle>
+            <CardDescription>{t("accountStatusDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Email verificado</span>
+              <span className="text-sm text-slate-600">{t("emailVerified")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {user?.email_confirmed_at ? "Sí" : "Pendiente"}
+                {user?.email_confirmed_at ? t("yes") : t("pending")}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Membresía</span>
+              <span className="text-sm text-slate-600">{t("membershipLabel")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
                 {membership?.type
                   ? `${
@@ -542,18 +540,14 @@ export default function DashboardHome() {
                             : membership.type === "petite"
                               ? "Petite"
                               : membershipLabel
-                    }${
-                      membershipUIStatus === "cancelled_active"
-                        ? " (cancelada)"
-                        : ""
-                    }`
+                    }${membershipUIStatus === "cancelled_active" ? ` (${t("cancelledBadge")})` : ""}`
                   : membershipLabel}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Dirección configurada</span>
+              <span className="text-sm text-slate-600">{t("shippingConfigured")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {profile?.shipping_address ? "Sí" : "No"}
+                {profile?.shipping_address ? t("yes") : "No"}
               </Badge>
             </div>
           </CardContent>

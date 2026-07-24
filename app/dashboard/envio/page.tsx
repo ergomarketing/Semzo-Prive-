@@ -17,6 +17,7 @@ import { MapPin, Loader2, Save, AlertTriangle } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { SPANISH_PROVINCES, VIA_TYPES } from "@/lib/spanish-provinces"
+import { useTranslations } from "next-intl"
 
 interface ShippingForm {
   shipping_first_name: string
@@ -69,6 +70,7 @@ const REQUIRED_FIELDS: (keyof ShippingForm)[] = [
 ]
 
 export default function EnvioPage() {
+  const t = useTranslations("envioPage")
   const { user } = useAuth()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
@@ -119,13 +121,13 @@ export default function EnvioPage() {
   const validate = (): boolean => {
     const next: Record<string, string> = {}
     for (const k of REQUIRED_FIELDS) {
-      if (!form[k] || form[k].trim() === "") next[k] = "Obligatorio"
+      if (!form[k] || form[k].trim() === "") next[k] = t("required")
     }
     if (form.shipping_postal_code && !/^\d{5}$/.test(form.shipping_postal_code.trim())) {
-      next.shipping_postal_code = "Debe tener 5 dígitos"
+      next.shipping_postal_code = t("invalidPostal")
     }
     if (form.shipping_phone && !/^[6-9]\d{8}$/.test(form.shipping_phone.replace(/\D/g, "").replace(/^34/, ""))) {
-      next.shipping_phone = "Móvil español de 9 dígitos"
+      next.shipping_phone = t("invalidPhone")
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -135,8 +137,8 @@ export default function EnvioPage() {
     if (!user) return
     if (!validate()) {
       toast({
-        title: "Revisa los campos",
-        description: "Hay campos obligatorios por completar",
+        title: t("toastReview"),
+        description: t("toastReviewDesc"),
         variant: "destructive",
       })
       return
@@ -167,14 +169,14 @@ export default function EnvioPage() {
       }
 
       toast({
-        title: "Dirección guardada",
-        description: "Tus datos de envío se han actualizado correctamente",
+        title: t("toastSaved"),
+        description: t("toastSavedDesc"),
       })
     } catch (e: any) {
       console.error("Error saving shipping info:", e)
       toast({
-        title: "Error",
-        description: e.message || "No se pudo guardar la dirección",
+        title: t("toastError"),
+        description: e.message || t("toastSaved"),
         variant: "destructive",
       })
     } finally {
@@ -196,30 +198,26 @@ export default function EnvioPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">Dirección de Envío</h2>
-        <p className="text-slate-600">
-          Completa todos los campos para que podamos enviarte tus bolsos a través de Correos.
-        </p>
+        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
+        <p className="text-slate-600">{t("subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="font-serif flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Información de Envío
+            {t("shippingInfoTitle")}
           </CardTitle>
-          <CardDescription>
-            Estos datos se usan para generar la etiqueta de envío. Asegúrate de que sean exactos.
-          </CardDescription>
+          <CardDescription>{t("shippingInfoDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Datos personales */}
           <div className="space-y-4">
-            <h3 className="font-medium text-slate-900">Datos personales</h3>
+            <h3 className="font-medium text-slate-900">{t("personalDataSection")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first_name">
-                  Nombre <span className="text-red-500">*</span>
+                  {t("firstName")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="first_name"
@@ -230,7 +228,7 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last_name_1">
-                  Primer apellido <span className="text-red-500">*</span>
+                  {t("lastName1")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="last_name_1"
@@ -240,7 +238,7 @@ export default function EnvioPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="last_name_2">Segundo apellido</Label>
+                <Label htmlFor="last_name_2">{t("lastName2")}</Label>
                 <Input
                   id="last_name_2"
                   value={form.shipping_last_name_2}
@@ -253,7 +251,7 @@ export default function EnvioPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="document_type">
-                  Tipo de documento <span className="text-red-500">*</span>
+                  {t("docType")} <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={form.shipping_document_type}
@@ -271,7 +269,7 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="document_number">
-                  Número de documento <span className="text-red-500">*</span>
+                  {t("docNumber")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="document_number"
@@ -286,11 +284,11 @@ export default function EnvioPage() {
 
           {/* Dirección */}
           <div className="space-y-4 pt-4 border-t">
-            <h3 className="font-medium text-slate-900">Dirección</h3>
+            <h3 className="font-medium text-slate-900">{t("addressSection")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="via_type">
-                  Tipo de vía <span className="text-red-500">*</span>
+                  {t("viaType")} <span className="text-red-500">*</span>
                 </Label>
                 <Select value={form.shipping_via_type} onValueChange={(v) => update("shipping_via_type", v)}>
                   <SelectTrigger id="via_type" className={fieldClass("shipping_via_type")}>
