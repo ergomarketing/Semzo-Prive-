@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Copy, Check, Gift, Users, Crown, Wallet, Loader2 } from "lucide-react"
+import { useTranslations, useLocale } from "next-intl"
 
 interface ReferralStatsResponse {
   referralCode: string
@@ -53,6 +54,8 @@ const fetcher = async (url: string) => {
 const REDEEM_OPTIONS = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
 
 export default function ReferralSystem() {
+  const t = useTranslations("referralSystem")
+  const locale = useLocale()
   const [copied, setCopied] = useState(false)
   const [redeemOpen, setRedeemOpen] = useState(false)
   const [redeemAmount, setRedeemAmount] = useState<number>(50)
@@ -79,7 +82,7 @@ export default function ReferralSystem() {
     return (
       <Card className="border-0 shadow-md">
         <CardContent className="p-10 text-center text-slate-500">
-          Cargando tu programa de referidos...
+          {t("loading")}
         </CardContent>
       </Card>
     )
@@ -89,8 +92,7 @@ export default function ReferralSystem() {
     return (
       <Card className="border-0 shadow-md">
         <CardContent className="p-10 text-center text-slate-500">
-          No hemos podido cargar tu programa de referidos. Vuelve a
-          intentarlo en unos segundos.
+          {t("loadError")}
         </CardContent>
       </Card>
     )
@@ -103,13 +105,13 @@ export default function ReferralSystem() {
   }
 
   const shareViaWhatsApp = () => {
-    const message = `¡Descubre Semzo Privé! Alquila bolsos de lujo de Chanel, Hermès, Dior y más. Regístrate con mi enlace y obtén 50€ en crédito en tu primera membresía: ${data.referralLink}`
+    const message = t("whatsappMsg", { link: data.referralLink })
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
   }
 
   const shareViaEmail = () => {
-    const subject = "Te invito a Semzo Privé — 50€ de crédito"
-    const body = `Hola,\n\nTe invito a Semzo Privé, la plataforma premium de alquiler de bolsos de lujo (Chanel, Hermès, Dior, Louis Vuitton y más).\n\nRegístrate con mi enlace y obtén 50€ en crédito Semzo Privé en tu primera membresía:\n${data.referralLink}\n\nUn abrazo`
+    const subject = t("emailSubject")
+    const body = t("emailBody", { link: data.referralLink })
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
   }
 
@@ -137,15 +139,14 @@ export default function ReferralSystem() {
 
       if (!res.ok || !body?.ok) {
         const reasonMap: Record<string, string> = {
-          insufficient_balance: "Saldo insuficiente para ese importe.",
-          no_stripe_customer:
-            "Aun no tienes un metodo de pago activo. Activa una membresia primero.",
-          another_pending: "Ya tienes un canje en curso. Espera unos segundos.",
-          invalid_amount: "Importe no valido.",
-          stripe_error: body?.message || "Error procesando el canje. Saldo devuelto.",
-          unauthorized: "Inicia sesion de nuevo.",
+          insufficient_balance: t("reasonInsufficient"),
+          no_stripe_customer: t("reasonNoStripe"),
+          another_pending: t("reasonPending"),
+          invalid_amount: t("reasonInvalid"),
+          stripe_error: body?.message || t("reasonStripe"),
+          unauthorized: t("reasonUnauthorized"),
         }
-        setRedeemError(reasonMap[body?.reason] || body?.message || "No se pudo canjear.")
+        setRedeemError(reasonMap[body?.reason] || body?.message || t("errorCode", { reason: body?.reason }))
         setRedeemLoading(false)
         return
       }
@@ -171,12 +172,9 @@ export default function ReferralSystem() {
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl font-serif text-indigo-dark">
             <Gift className="h-6 w-6" />
-            Programa de Referidos
+            {t("programTitle")}
           </CardTitle>
-          <p className="text-slate-700 mt-2">
-            Invita a tus amigas y gana 50€ en crédito Semzo Privé. Ellas
-            también reciben 50€ al registrarse.
-          </p>
+          <p className="text-slate-700 mt-2">{t("programDesc")}</p>
         </CardHeader>
       </Card>
 
@@ -186,7 +184,7 @@ export default function ReferralSystem() {
           <CardContent className="p-4 text-center">
             <Users className="h-8 w-8 text-indigo-dark mx-auto mb-2" />
             <p className="text-2xl font-bold text-indigo-dark">{data.totalReferrals}</p>
-            <p className="text-sm text-slate-600">Amigas referidas</p>
+            <p className="text-sm text-slate-600">{t("statFriends")}</p>
           </CardContent>
         </Card>
 
@@ -194,7 +192,7 @@ export default function ReferralSystem() {
           <CardContent className="p-4 text-center">
             <Crown className="h-8 w-8 text-rose-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-rose-500">{data.qualifiedReferrals}</p>
-            <p className="text-sm text-slate-600">Cualificadas (60 días)</p>
+            <p className="text-sm text-slate-600">{t("statQualified")}</p>
           </CardContent>
         </Card>
 
@@ -204,7 +202,7 @@ export default function ReferralSystem() {
               <span className="text-amber-600 font-bold">⏳</span>
             </div>
             <p className="text-2xl font-bold text-amber-600">{data.pendingReferrals}</p>
-            <p className="text-sm text-slate-600">Pendientes</p>
+            <p className="text-sm text-slate-600">{t("statPending")}</p>
           </CardContent>
         </Card>
 
@@ -214,7 +212,7 @@ export default function ReferralSystem() {
               <span className="text-green-600 font-bold">€</span>
             </div>
             <p className="text-2xl font-bold text-green-600">{data.balanceEuros}€</p>
-            <p className="text-sm text-slate-600">Crédito disponible</p>
+            <p className="text-sm text-slate-600">{t("statCredit")}</p>
           </CardContent>
         </Card>
       </div>
@@ -224,12 +222,9 @@ export default function ReferralSystem() {
         <CardHeader>
           <CardTitle className="text-lg font-serif text-indigo-dark flex items-center gap-2">
             <Wallet className="h-5 w-5" />
-            Canjear crédito
+            {t("redeemTitle")}
           </CardTitle>
-          <p className="text-sm text-slate-600 mt-1">
-            Aplica tu saldo de referidos como descuento en tu próxima factura.
-            Mínimo 50€, en múltiplos de 50€.
-          </p>
+          <p className="text-sm text-slate-600 mt-1">{t("redeemDesc")}</p>
         </CardHeader>
         <CardContent>
           <Button
@@ -237,11 +232,11 @@ export default function ReferralSystem() {
             disabled={!canRedeem}
             className="bg-indigo-dark hover:bg-indigo-dark/90 text-white"
           >
-            {canRedeem ? `Canjear (${data.balanceEuros}€ disponibles)` : "Necesitas al menos 50€"}
+            {canRedeem ? t("redeemBtn", { amount: data.balanceEuros }) : t("redeemNeedMore")}
           </Button>
           {!canRedeem && data.balanceEuros > 0 && (
             <p className="text-xs text-slate-500 mt-2">
-              Tienes {data.balanceEuros}€. Invita a más amigas para alcanzar el mínimo de 50€.
+              {t("redeemNeedMoreHint", { amount: data.balanceEuros })}
             </p>
           )}
         </CardContent>
@@ -252,7 +247,7 @@ export default function ReferralSystem() {
         <Card className="border-0 shadow-md">
           <CardHeader>
             <CardTitle className="text-lg font-serif text-indigo-dark">
-              Historial de canjes
+              {t("redemptionHistory")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -265,16 +260,16 @@ export default function ReferralSystem() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-indigo-dark">{r.amount_euros}€</p>
                     <p className="text-xs text-slate-500">
-                      {new Date(r.created_at).toLocaleDateString("es-ES", {
+                      {new Date(r.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                       })}
                       {r.applied_at &&
-                        ` · Aplicado ${new Date(r.applied_at).toLocaleDateString("es-ES")}`}
+                        ` · ${t("statusApplied")} ${new Date(r.applied_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES")}`}
                     </p>
                     {r.status === "failed" && r.failure_reason && (
-                      <p className="text-xs text-rose-600 mt-1">Error: {r.failure_reason}</p>
+                      <p className="text-xs text-rose-600 mt-1">{t("errorCode", { reason: r.failure_reason })}</p>
                     )}
                   </div>
                   <span
@@ -287,12 +282,12 @@ export default function ReferralSystem() {
                     }`}
                   >
                     {r.status === "applied"
-                      ? "Aplicado"
+                      ? t("statusApplied")
                       : r.status === "pending"
-                        ? "Pendiente"
+                        ? t("statusPending")
                         : r.status === "failed"
-                          ? "Fallido"
-                          : "Revertido"}
+                          ? t("statusFailed")
+                          : t("statusReverted")}
                   </span>
                 </div>
               ))}
@@ -305,31 +300,31 @@ export default function ReferralSystem() {
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle className="text-lg font-serif text-indigo-dark">
-            Tu enlace de referido
+            {t("referralLinkTitle")}
           </CardTitle>
           <p className="text-xs text-slate-500 mt-1">
-            Código:{" "}
+            {t("code")}{" "}
             <span className="font-mono font-semibold text-indigo-dark">{data.referralCode}</span>
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
             <Input value={data.referralLink} readOnly className="bg-slate-50 font-mono text-sm" />
-            <Button size="icon" onClick={copyToClipboard} variant="outline" className="flex-shrink-0">
+            <Button size="icon" onClick={copyToClipboard} variant="outline" className="flex-shrink-0" title={copied ? t("copied") : t("copyCode")}>
               {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Button onClick={shareViaWhatsApp} className="bg-green-600 hover:bg-green-700 text-white">
-              Compartir por WhatsApp
+              {t("shareWhatsApp")}
             </Button>
             <Button
               onClick={shareViaEmail}
               variant="outline"
               className="border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
             >
-              Compartir por Email
+              {t("shareEmail")}
             </Button>
           </div>
         </CardContent>
@@ -338,7 +333,7 @@ export default function ReferralSystem() {
       {/* How it Works */}
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg font-serif text-indigo-dark">¿Cómo funciona?</CardTitle>
+          <CardTitle className="text-lg font-serif text-indigo-dark">{t("howItWorksTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -346,33 +341,24 @@ export default function ReferralSystem() {
               <div className="w-12 h-12 bg-rose-nude rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-indigo-dark font-bold">1</span>
               </div>
-              <h4 className="font-semibold text-indigo-dark mb-2">Comparte tu enlace</h4>
-              <p className="text-sm text-slate-600">
-                Envía tu enlace personalizado a tus amigas por WhatsApp, email
-                o redes sociales.
-              </p>
+              <h4 className="font-semibold text-indigo-dark mb-2">{t("step1Title")}</h4>
+              <p className="text-sm text-slate-600">{t("step1Desc")}</p>
             </div>
 
             <div className="text-center">
               <div className="w-12 h-12 bg-rose-pastel/50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-indigo-dark font-bold">2</span>
               </div>
-              <h4 className="font-semibold text-indigo-dark mb-2">Ella se registra</h4>
-              <p className="text-sm text-slate-600">
-                Tu amiga obtiene 50€ en crédito Semzo Privé al activar
-                cualquier membresía.
-              </p>
+              <h4 className="font-semibold text-indigo-dark mb-2">{t("step2Title")}</h4>
+              <p className="text-sm text-slate-600">{t("step2Desc")}</p>
             </div>
 
             <div className="text-center">
               <div className="w-12 h-12 bg-indigo-dark rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-white font-bold">3</span>
               </div>
-              <h4 className="font-semibold text-indigo-dark mb-2">Tú ganas 50€</h4>
-              <p className="text-sm text-slate-600">
-                Cuando tu amiga completa 60 días de membresía, recibes 50€ en
-                crédito Semzo Privé.
-              </p>
+              <h4 className="font-semibold text-indigo-dark mb-2">{t("step3Title")}</h4>
+              <p className="text-sm text-slate-600">{t("step3Desc")}</p>
             </div>
           </div>
         </CardContent>
@@ -381,14 +367,14 @@ export default function ReferralSystem() {
       {/* Terms */}
       <Card className="border-0 shadow-md bg-slate-50">
         <CardContent className="p-4">
-          <h4 className="font-semibold text-slate-800 mb-2">Términos y condiciones:</h4>
+          <h4 className="font-semibold text-slate-800 mb-2">{t("termsTitle")}</h4>
           <ul className="text-sm text-slate-600 space-y-1">
-            <li>• La amiga referida debe completar al menos 60 días de membresía activa.</li>
-            <li>• Los 50€ son crédito Semzo Privé aplicable a futuras mensualidades.</li>
-            <li>• El crédito no es transferible ni canjeable por dinero.</li>
-            <li>• No hay límite en la cantidad de referidos que puedes hacer.</li>
-            <li>• Canje mínimo: 50€. Canje máximo por operación: 500€.</li>
-            <li>• Semzo Privé puede modificar o cancelar el programa con preaviso.</li>
+            <li>• {t("term1")}</li>
+            <li>• {t("term2")}</li>
+            <li>• {t("term3")}</li>
+            <li>• {t("term4")}</li>
+            <li>• {t("term5")}</li>
+            <li>• {t("term6")}</li>
           </ul>
         </CardContent>
       </Card>
@@ -397,10 +383,8 @@ export default function ReferralSystem() {
       <Dialog open={redeemOpen} onOpenChange={setRedeemOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-serif text-indigo-dark">Canjear crédito</DialogTitle>
-            <DialogDescription>
-              El importe se aplicará como descuento en tu próxima factura de Semzo Privé.
-            </DialogDescription>
+            <DialogTitle className="font-serif text-indigo-dark">{t("redeemTitle")}</DialogTitle>
+            <DialogDescription>{t("dialogDesc")}</DialogDescription>
           </DialogHeader>
 
           {redeemSuccess ? (

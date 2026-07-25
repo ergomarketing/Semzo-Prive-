@@ -305,7 +305,7 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="via_name">
-                  Nombre de la vía <span className="text-red-500">*</span>
+                  {t("viaName")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="via_name"
@@ -319,7 +319,7 @@ export default function EnvioPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="number">Número</Label>
+                <Label htmlFor="number">{t("number")}</Label>
                 <Input
                   id="number"
                   placeholder="459"
@@ -329,7 +329,7 @@ export default function EnvioPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="portal">Portal</Label>
+                <Label htmlFor="portal">{t("portal")}</Label>
                 <Input
                   id="portal"
                   value={form.shipping_portal}
@@ -338,7 +338,7 @@ export default function EnvioPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="floor">Piso</Label>
+                <Label htmlFor="floor">{t("floor")}</Label>
                 <Input
                   id="floor"
                   placeholder="2"
@@ -349,7 +349,7 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="door">
-                  Puerta <span className="text-red-500">*</span>
+                  {t("door")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="door"
@@ -364,7 +364,7 @@ export default function EnvioPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="postal">
-                  Código postal <span className="text-red-500">*</span>
+                  {t("postalCode")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="postal"
@@ -377,7 +377,7 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="city">
-                  Localidad <span className="text-red-500">*</span>
+                  {t("city")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="city"
@@ -389,11 +389,11 @@ export default function EnvioPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="province">
-                  Provincia <span className="text-red-500">*</span>
+                  {t("province")} <span className="text-red-500">*</span>
                 </Label>
                 <Select value={form.shipping_province} onValueChange={(v) => update("shipping_province", v)}>
                   <SelectTrigger id="province" className={fieldClass("shipping_province")}>
-                    <SelectValue placeholder="Selecciona" />
+                    <SelectValue placeholder={t("provinceSelect")} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[260px]">
                     {SPANISH_PROVINCES.map((p) => (
@@ -409,10 +409,10 @@ export default function EnvioPage() {
 
           {/* Contacto */}
           <div className="space-y-4 pt-4 border-t">
-            <h3 className="font-medium text-slate-900">Contacto</h3>
+            <h3 className="font-medium text-slate-900">{t("contactSection")}</h3>
             <div className="space-y-2">
               <Label htmlFor="phone">
-                Móvil de contacto <span className="text-red-500">*</span>
+                {t("phone")} <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="phone"
@@ -421,16 +421,14 @@ export default function EnvioPage() {
                 onChange={(e) => update("shipping_phone", e.target.value)}
                 className={fieldClass("shipping_phone")}
               />
-              <p className="text-xs text-slate-500">
-                Correos enviará un SMS con el código de seguimiento a este número.
-              </p>
+              <p className="text-xs text-slate-500">{t("phoneNote")}</p>
             </div>
           </div>
 
           {Object.keys(errors).length > 0 && (
             <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
               <AlertTriangle className="h-4 w-4 mt-0.5" />
-              <span>Hay campos obligatorios sin completar o con formato incorrecto.</span>
+              <span>{t("validationErrors")}</span>
             </div>
           )}
 
@@ -442,12 +440,12 @@ export default function EnvioPage() {
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
+                {t("saving")}
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Guardar dirección
+                {t("saveAddress")}
               </>
             )}
           </Button>

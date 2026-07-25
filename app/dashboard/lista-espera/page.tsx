@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Loader2, Package, Bell } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { useTranslations, useLocale } from "next-intl"
 
 interface WaitlistItem {
   id: string
@@ -20,6 +21,8 @@ interface WaitlistItem {
 }
 
 export default function ListaEsperaPage() {
+  const t = useTranslations("listaEsperaPage")
+  const locale = useLocale()
   const { user } = useAuth()
   const [waitlistItems, setWaitlistItems] = useState<WaitlistItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,28 +70,22 @@ export default function ListaEsperaPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">Mi Lista de Espera</h2>
-        <p className="text-slate-600">
-          Todas las bolsas que estás vigilando. Te enviaremos un correo electrónico cuando estos estilos estén
-          disponibles.
-        </p>
+        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
+        <p className="text-slate-600">{t("subtitle")}</p>
       </div>
 
       {waitlistItems.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Clock className="h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-xl font-serif text-slate-900 mb-2">No tienes bolsos en lista de espera</h3>
-            <p className="text-slate-600 text-center mb-6">
-              Explora nuestro catálogo y agrega bolsos a tu lista de espera para recibir notificaciones cuando estén
-              disponibles.
-            </p>
+            <h3 className="text-xl font-serif text-slate-900 mb-2">{t("empty")}</h3>
+            <p className="text-slate-600 text-center mb-6">{t("emptyDesc")}</p>
             <Button
               onClick={() => (window.location.href = "/catalog")}
               className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
             >
               <Package className="h-4 w-4 mr-2" />
-              Explorar Catálogo
+              {t("exploreCatalog")}
             </Button>
           </CardContent>
         </Card>
@@ -109,15 +106,15 @@ export default function ListaEsperaPage() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-serif text-slate-900">{item.bags?.name || "Bolso sin nombre"}</h3>
-                  <p className="text-sm text-slate-600">{item.bags?.brand || "Marca desconocida"}</p>
+                  <h3 className="text-lg font-serif text-slate-900">{item.bags?.name || t("unknownBag")}</h3>
+                  <p className="text-sm text-slate-600">{item.bags?.brand || t("unknownBrand")}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary" className="bg-rose-100 text-rose-800 border-rose-200">
                       <Bell className="h-3 w-3 mr-1" />
-                      En espera
+                      {t("waiting")}
                     </Badge>
                     <span className="text-xs text-slate-500">
-                      Agregado el {new Date(item.created_at).toLocaleDateString("es-ES")}
+                      {t("addedOn")} {new Date(item.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES")}
                     </span>
                   </div>
                 </div>
@@ -125,7 +122,7 @@ export default function ListaEsperaPage() {
                   variant="outline"
                   className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
                 >
-                  Eliminar
+                  {t("remove")}
                 </Button>
               </CardContent>
             </Card>
