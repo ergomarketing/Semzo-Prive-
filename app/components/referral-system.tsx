@@ -392,15 +392,13 @@ export default function ReferralSystem() {
               <div className="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
                 <Check className="h-6 w-6 text-green-600" />
               </div>
-              <p className="font-semibold text-indigo-dark">¡Canje realizado!</p>
+              <p className="font-semibold text-indigo-dark">{t("dialogSuccess")}</p>
               <p className="text-sm text-slate-600">{redeemSuccess}</p>
             </div>
           ) : (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Importe a canjear
-                </label>
+                <label className="text-sm font-medium text-slate-700">{t("redeemAmountLabel")}</label>
                 <Select
                   value={String(redeemAmount)}
                   onValueChange={(v) => setRedeemAmount(Number(v))}
@@ -421,15 +419,15 @@ export default function ReferralSystem() {
 
               <div className="bg-slate-50 rounded-md p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Saldo actual</span>
+                  <span className="text-slate-600">{t("currentBalance")}</span>
                   <span className="font-semibold text-indigo-dark">{data.balanceEuros}€</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Canje</span>
+                  <span className="text-slate-600">{t("redemption")}</span>
                   <span className="font-semibold text-rose-600">-{redeemAmount}€</span>
                 </div>
                 <div className="flex justify-between border-t border-slate-200 pt-1 mt-1">
-                  <span className="text-slate-700 font-medium">Saldo restante</span>
+                  <span className="text-slate-700 font-medium">{t("remainingBalance")}</span>
                   <span className="font-bold text-indigo-dark">
                     {data.balanceEuros - redeemAmount}€
                   </span>
@@ -445,12 +443,12 @@ export default function ReferralSystem() {
           <DialogFooter>
             {redeemSuccess ? (
               <Button onClick={() => setRedeemOpen(false)} className="bg-indigo-dark hover:bg-indigo-dark/90 text-white">
-                Cerrar
+                {t("close")}
               </Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setRedeemOpen(false)} disabled={redeemLoading}>
-                  Cancelar
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleRedeem}
@@ -460,10 +458,10 @@ export default function ReferralSystem() {
                   {redeemLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Procesando...
+                      {t("processing")}
                     </>
                   ) : (
-                    `Confirmar canje de ${redeemAmount}€`
+                    t("confirmRedeem", { amount: redeemAmount })
                   )}
                 </Button>
               </>

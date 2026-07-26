@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Copy, Check, CreditCard, Calendar, Hash, Crown, Loader2, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ChangePaymentMethodDialog } from "./change-payment-method-dialog"
+import { useTranslations, useLocale } from "next-intl"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -44,18 +45,10 @@ function getPlanName(type: string | null): string {
   return map[type.toLowerCase()] || type
 }
 
-function getBillingLabel(cycle: string | null): string {
-  if (!cycle) return ""
-  if (cycle === "quarterly") return "Trimestral"
-  if (cycle === "monthly") return "Mensual"
-  if (cycle === "yearly" || cycle === "annual") return "Anual"
-  return cycle
-}
-
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: string): string {
   if (!iso) return "—"
   try {
-    return new Date(iso).toLocaleDateString("es-ES", {
+    return new Date(iso).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -79,6 +72,8 @@ function formatBrand(brand: string): string {
 }
 
 export function SubscriptionSummaryCard() {
+  const t = useTranslations("subscriptionCard")
+  const locale = useLocale()
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
@@ -102,7 +97,7 @@ export function SubscriptionSummaryCard() {
       <Card className="border-rose-pastel/40">
         <CardContent className="flex items-center gap-3 py-6">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          <span className="text-sm text-slate-500">Cargando resumen de tu suscripción...</span>
+          <span className="text-sm text-slate-500">{t("loading")}</span>
         </CardContent>
       </Card>
     )
@@ -121,7 +116,7 @@ export function SubscriptionSummaryCard() {
       <CardHeader className="pb-3">
         <CardTitle className="font-serif text-xl text-indigo-dark flex items-center gap-2">
           <Crown className="h-5 w-5 text-rose-pastel" />
-          Resumen de tu suscripción
+          {t("title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -132,7 +127,7 @@ export function SubscriptionSummaryCard() {
               <Hash className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                  ID de suscripción
+                  {t("subscriptionId")}
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="font-mono text-sm font-semibold text-indigo-dark bg-rose-nude/40 px-2 py-1 rounded">
@@ -141,7 +136,7 @@ export function SubscriptionSummaryCard() {
                   <button
                     onClick={handleCopy}
                     className="text-indigo-dark/60 hover:text-indigo-dark transition-colors"
-                    aria-label="Copiar ID"
+                    aria-label={t("copyId")}
                   >
                     {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                   </button>
@@ -156,13 +151,13 @@ export function SubscriptionSummaryCard() {
               <Crown className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                  Plan actual
+                  {t("currentPlan")}
                 </p>
                 <p className="text-sm font-semibold text-indigo-dark">
                   {getPlanName(data.membership_type)}
                   {data.billing_cycle && (
                     <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
-                      · {getBillingLabel(data.billing_cycle)}
+                      · {data.billing_cycle === "quarterly" ? t("billingQuarterly") : data.billing_cycle === "monthly" ? t("billingMonthly") : data.billing_cycle === "yearly" || data.billing_cycle === "annual" ? t("billingYearly") : data.billing_cycle}
                     </span>
                   )}
                 </p>
@@ -176,10 +171,10 @@ export function SubscriptionSummaryCard() {
               <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                  Socia desde
+                  {t("memberSince")}
                 </p>
                 <p className="text-sm font-semibold text-indigo-dark">
-                  {formatDate(data.member_since)}
+                  {formatDate(data.member_since, locale)}
                 </p>
               </div>
             </div>
@@ -210,9 +205,9 @@ export function SubscriptionSummaryCard() {
                 <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                    {isEndedOrUnpaid ? "Acceso hasta" : "Próximo cobro"}
+                    {isEndedOrUnpaid ? t("accessUntil") : t("nextCharge")}
                   </p>
-                  <p className="text-sm font-semibold text-indigo-dark">{formatDate(displayDate)}</p>
+                  <p className="text-sm font-semibold text-indigo-dark">{formatDate(displayDate, locale)}</p>
                 </div>
               </div>
             )
@@ -225,13 +220,13 @@ export function SubscriptionSummaryCard() {
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                    Método de pago
+                    {t("paymentMethod")}
                   </p>
                   <p className="text-sm font-semibold text-indigo-dark">
                     {formatBrand(data.payment_method.brand)} •••• {data.payment_method.last4}
                     {data.payment_method.exp_month > 0 && data.payment_method.exp_year > 0 && (
                       <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
-                        Caduca {String(data.payment_method.exp_month).padStart(2, "0")}/
+                        {t("expires")} {String(data.payment_method.exp_month).padStart(2, "0")}/
                         {String(data.payment_method.exp_year).slice(-2)}
                       </span>
                     )}
@@ -243,7 +238,7 @@ export function SubscriptionSummaryCard() {
                   className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
                   onClick={() => setShowPaymentDialog(true)}
                 >
-                  Cambiar
+                  {t("change")}
                 </Button>
               </div>
             </div>
@@ -256,9 +251,9 @@ export function SubscriptionSummaryCard() {
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
-                    Método de pago
+                    {t("paymentMethod")}
                   </p>
-                  <p className="text-sm text-indigo-dark/60">No configurado</p>
+                  <p className="text-sm text-indigo-dark/60">{t("notConfigured")}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -266,7 +261,7 @@ export function SubscriptionSummaryCard() {
                   className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
                   onClick={() => setShowPaymentDialog(true)}
                 >
-                  Configurar
+                  {t("configure")}
                 </Button>
               </div>
             </div>
@@ -290,7 +285,7 @@ export function SubscriptionSummaryCard() {
               )}`}
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Reportar incidencia con bolso
+              {t("reportIssue")}
             </a>
           </Button>
         </div>

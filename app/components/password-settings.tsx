@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, Check, AlertCircle } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 interface PasswordSettingsProps {
   hasPassword: boolean // true si el usuario ya tiene contraseña configurada
 }
 
 export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
+  const t = useTranslations("passwordSettings")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -32,22 +34,22 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
 
     // Validaciones
     if (hasPassword && !currentPassword) {
-      setError("Ingresa tu contraseña actual")
+      setError(t("errCurrentRequired"))
       return
     }
 
     if (!newPassword) {
-      setError("Ingresa tu nueva contraseña")
+      setError(t("errNewRequired"))
       return
     }
 
     if (newPassword.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres")
+      setError(t("errTooShort"))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Las contraseñas no coinciden")
+      setError(t("errNoMatch"))
       return
     }
 
@@ -66,7 +68,7 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || "Error actualizando contraseña")
+        setError(data.error || t("errDefault"))
         return
       }
 
@@ -81,7 +83,7 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
       }, 2000)
     } catch (err) {
       console.error("[v0] Error setting password:", err)
-      setError("Error de conexión. Inténtalo de nuevo.")
+      setError(t("errConnection"))
     } finally {
       setLoading(false)
     }
