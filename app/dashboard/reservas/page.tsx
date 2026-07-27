@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingBag, Loader2, Package, Calendar, Filter, X, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useTranslations, useLocale } from "next-intl"
 
 interface Reservation {
   id: string
@@ -33,6 +34,8 @@ interface Stats {
 }
 
 export default function ReservasPage() {
+  const t = useTranslations("reservasPage")
+  const locale = useLocale()
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [reservations, setReservations] = useState<Reservation[]>([])
@@ -69,7 +72,7 @@ export default function ReservasPage() {
       const contentType = response.headers.get("content-type")
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text()
-        throw new Error(response.status === 429 ? "Demasiadas solicitudes. Espera un momento." : text)
+        throw new Error(response.status === 429 ? t("tooManyRequests") : text)
       }
 
       const data = await response.json()
@@ -123,12 +126,12 @@ export default function ReservasPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { label: "Activa", className: "bg-green-100 text-green-800 border-green-200" },
-      pending: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-      confirmed: { label: "Confirmada", className: "bg-blue-100 text-blue-800 border-blue-200" },
-      completed: { label: "Completada", className: "bg-slate-100 text-slate-800 border-slate-200" },
-      cancelled: { label: "Cancelada", className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
-      overdue: { label: "Devolución pendiente", className: "bg-red-100 text-red-800 border-red-200" },
+      active:    { label: t("statusActive"),    className: "bg-green-100 text-green-800 border-green-200" },
+      pending:   { label: t("statusPending"),   className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+      confirmed: { label: t("statusConfirmed"), className: "bg-blue-100 text-blue-800 border-blue-200" },
+      completed: { label: t("statusCompleted"), className: "bg-slate-100 text-slate-800 border-slate-200" },
+      cancelled: { label: t("statusCancelled"), className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
+      overdue:   { label: t("statusOverdue"),   className: "bg-red-100 text-red-800 border-red-200" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || { label: status, className: "bg-slate-100 text-slate-800 border-slate-200" }
@@ -161,9 +164,9 @@ export default function ReservasPage() {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-serif mb-2">Inicia sesión para ver tus reservas</h3>
+            <h3 className="text-lg font-serif mb-2">{t("loginRequired")}</h3>
             <Button onClick={() => router.push("/auth/login")} className="bg-slate-900 hover:bg-slate-800 text-white">
-              Iniciar Sesión
+              {t("signIn")}
             </Button>
           </CardContent>
         </Card>
@@ -176,7 +179,7 @@ export default function ReservasPage() {
       <div className="max-w-4xl mx-auto">
         <Card className="border-[#f4c4cc] bg-[#fff0f3]">
           <CardContent className="p-6">
-            <h3 className="text-[#1a1a4b] font-serif text-lg mb-2">Error al cargar reservas</h3>
+            <h3 className="text-[#1a1a4b] font-serif text-lg mb-2">{t("errorTitle")}</h3>
             <p className="text-[#1a1a4b]/70 text-sm mb-4">{error}</p>
             <Button
               onClick={handleManualRefresh}
@@ -184,7 +187,7 @@ export default function ReservasPage() {
               className="border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b] hover:text-white bg-transparent"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Reintentar
+              {t("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -195,8 +198,8 @@ export default function ReservasPage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">Mis Reservas</h2>
-        <p className="text-slate-600">Gestiona tus reservas activas y revisa tu historial</p>
+        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
+        <p className="text-slate-600">{t("subtitle")}</p>
       </div>
 
       {/* Estadísticas */}
@@ -204,37 +207,37 @@ export default function ReservasPage() {
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("all")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-sm text-slate-600">Total</div>
+            <div className="text-sm text-slate-600">{t("statTotal")}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("active")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <div className="text-sm text-slate-600">Activas</div>
+            <div className="text-sm text-slate-600">{t("statActive")}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("confirmed")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
-            <div className="text-sm text-slate-600">Confirmadas</div>
+            <div className="text-sm text-slate-600">{t("statConfirmed")}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("pending")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-            <div className="text-sm text-slate-600">Pendientes</div>
+            <div className="text-sm text-slate-600">{t("statPending")}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("completed")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
-            <div className="text-sm text-slate-600">Completadas</div>
+            <div className="text-sm text-slate-600">{t("statCompleted")}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-[#1a1a4b]">{stats.cancelled}</div>
-            <div className="text-sm text-slate-600">Canceladas</div>
+            <div className="text-sm text-slate-600">{t("statCancelled")}</div>
           </CardContent>
         </Card>
       </div>
@@ -244,7 +247,7 @@ export default function ReservasPage() {
         <div className="mb-4 flex items-center gap-2">
           <Badge variant="outline" className="text-sm py-1 px-3">
             <Filter className="h-3 w-3 mr-1" />
-            Filtrando por: {activeFilter}
+            {t("filteringBy")} {activeFilter}
           </Badge>
           <Button variant="ghost" size="sm" onClick={clearFilter} className="h-7 px-2">
             <X className="h-4 w-4" />
@@ -258,12 +261,10 @@ export default function ReservasPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ShoppingBag className="h-12 w-12 text-slate-400 mb-4" />
             <h3 className="text-xl font-serif text-slate-900 mb-2">
-              {activeFilter === "all" ? "No tienes reservas" : `No tienes reservas ${activeFilter}`}
+              {activeFilter === "all" ? t("noReservations") : t("noReservationsFiltered", { status: activeFilter })}
             </h3>
             <p className="text-slate-600 text-center mb-6">
-              {activeFilter === "all"
-                ? "Explora nuestro catálogo y reserva tu primer bolso de lujo."
-                : "Prueba con otro filtro o explora el catálogo."}
+              {activeFilter === "all" ? t("noReservationsDesc") : t("noReservationsFilteredDesc")}
             </p>
             <div className="flex gap-3">
               {activeFilter !== "all" && (
@@ -272,7 +273,7 @@ export default function ReservasPage() {
                   variant="outline"
                   className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
                 >
-                  Ver Todas
+                  {t("seeAll")}
                 </Button>
               )}
               <Button
@@ -280,7 +281,7 @@ export default function ReservasPage() {
                 className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
               >
                 <Package className="h-4 w-4 mr-2" />
-                Explorar Catálogo
+                {t("exploreCatalog")}
               </Button>
             </div>
           </CardContent>
@@ -310,31 +311,32 @@ export default function ReservasPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-serif text-slate-900 truncate">
-                      {reservation.bags?.name || "Bolso sin nombre"}
+                      {reservation.bags?.name || t("unknownBag")}
                     </h3>
-                    <p className="text-sm text-slate-600 mb-2">{reservation.bags?.brand || "Marca desconocida"}</p>
+                    <p className="text-sm text-slate-600 mb-2">{reservation.bags?.brand || t("unknownBrand")}</p>
                     <div className="flex flex-wrap items-center gap-3">
                       {getStatusBadge(reservation.status)}
                       <div className="flex items-center gap-1 text-xs text-slate-500">
                         <Calendar className="h-3 w-3" />
                         <span>
-                          {startDate.toLocaleDateString("es-ES")} - {endDate.toLocaleDateString("es-ES")}
+                          {startDate.toLocaleDateString(locale === "en" ? "en-GB" : "es-ES")} -{" "}
+                          {endDate.toLocaleDateString(locale === "en" ? "en-GB" : "es-ES")}
                         </span>
                       </div>
                       {isUpcoming && (
                         <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                          Próxima
+                          {t("upcoming")}
                         </Badge>
                       )}
                       {isActive && (
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                          En curso
+                          {t("inProgress")}
                         </Badge>
                       )}
                     </div>
                     {reservation.total_amount && (
                       <p className="text-sm text-slate-700 mt-2 font-medium">
-                        Total: {reservation.total_amount.toFixed(2)}€
+                        {t("totalLabel")} {reservation.total_amount.toFixed(2)}€
                       </p>
                     )}
                   </div>
@@ -343,7 +345,7 @@ export default function ReservasPage() {
                     variant="outline"
                     className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent flex-shrink-0"
                   >
-                    Ver Detalles
+                    {t("viewDetails")}
                   </Button>
                 </CardContent>
               </Card>

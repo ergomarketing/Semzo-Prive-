@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { CreditCard, CheckCircle2 } from "lucide-react"
 import SetupIntentPayment from "@/components/setup-intent-payment"
 import { useAuth } from "@/app/hooks/useAuth"
+import { useTranslations } from "next-intl"
 
 interface ChangePaymentMethodDialogProps {
   open: boolean
@@ -35,6 +36,7 @@ export function ChangePaymentMethodDialog({
   membershipType = "signature",
   onSuccess,
 }: ChangePaymentMethodDialogProps) {
+  const t = useTranslations("changePaymentDialog")
   const { user } = useAuth()
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,24 +68,20 @@ export function ChangePaymentMethodDialog({
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-xl text-slate-900">
-            Cambiar metodo de pago
+            {t("title")}
           </DialogTitle>
           <DialogDescription>
-            {currentBrand && currentLast4 ? (
-              <>
-                Tarjeta actual: {currentBrand.toUpperCase()} terminada en {currentLast4}
-              </>
-            ) : (
-              "Anade una tarjeta para pagos automaticos"
-            )}
+            {currentBrand && currentLast4
+              ? t("currentCard", { brand: currentBrand.toUpperCase(), last4: currentLast4 })
+              : t("addCard")}
           </DialogDescription>
         </DialogHeader>
 
         {success ? (
           <div className="py-8 flex flex-col items-center gap-3 text-center">
             <CheckCircle2 className="h-10 w-10 text-green-600" />
-            <p className="font-medium text-slate-900">Metodo de pago actualizado</p>
-            <p className="text-sm text-slate-500">Tu nueva tarjeta esta lista</p>
+            <p className="font-medium text-slate-900">{t("successTitle")}</p>
+            <p className="text-sm text-slate-500">{t("successDesc")}</p>
           </div>
         ) : (
           <>
@@ -103,7 +101,7 @@ export function ChangePaymentMethodDialog({
             ) : (
               <div className="py-6 text-center text-sm text-slate-500">
                 <CreditCard className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                Cargando...
+                {t("loading")}
               </div>
             )}
 
@@ -113,7 +111,7 @@ export function ChangePaymentMethodDialog({
                 className="w-full bg-transparent"
                 onClick={() => handleClose(false)}
               >
-                Cancelar
+                {t("cancel")}
               </Button>
             </div>
           </>

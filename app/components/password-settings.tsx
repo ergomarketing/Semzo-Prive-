@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, Check, AlertCircle } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 interface PasswordSettingsProps {
   hasPassword: boolean // true si el usuario ya tiene contraseña configurada
 }
 
 export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
+  const t = useTranslations("passwordSettings")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -32,22 +34,22 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
 
     // Validaciones
     if (hasPassword && !currentPassword) {
-      setError("Ingresa tu contraseña actual")
+      setError(t("errCurrentRequired"))
       return
     }
 
     if (!newPassword) {
-      setError("Ingresa tu nueva contraseña")
+      setError(t("errNewRequired"))
       return
     }
 
     if (newPassword.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres")
+      setError(t("errTooShort"))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Las contraseñas no coinciden")
+      setError(t("errNoMatch"))
       return
     }
 
@@ -66,7 +68,7 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || "Error actualizando contraseña")
+        setError(data.error || t("errDefault"))
         return
       }
 
@@ -81,7 +83,7 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
       }, 2000)
     } catch (err) {
       console.error("[v0] Error setting password:", err)
-      setError("Error de conexión. Inténtalo de nuevo.")
+      setError(t("errConnection"))
     } finally {
       setLoading(false)
     }
@@ -90,25 +92,23 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{hasPassword ? "Cambiar Contraseña" : "Establecer Contraseña"}</CardTitle>
+        <CardTitle>{hasPassword ? t("changeTitle") : t("setTitle")}</CardTitle>
         <CardDescription>
-          {hasPassword
-            ? "Actualiza tu contraseña para acceder con email y contraseña"
-            : "Configura una contraseña para poder acceder con email además del código SMS"}
+          {hasPassword ? t("changeDesc") : t("setDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {hasPassword && (
             <div className="space-y-2">
-              <Label htmlFor="current">Contraseña Actual</Label>
+              <Label htmlFor="current">{t("currentLabel")}</Label>
               <div className="relative">
                 <Input
                   id="current"
                   type={showCurrent ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Tu contraseña actual"
+                  placeholder={t("currentPlaceholder")}
                   disabled={loading}
                 />
                 <button
@@ -123,14 +123,14 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="new">Nueva Contraseña</Label>
+            <Label htmlFor="new">{t("newLabel")}</Label>
             <div className="relative">
               <Input
                 id="new"
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
+                placeholder={t("newPlaceholder")}
                 disabled={loading}
               />
               <button
@@ -144,14 +144,14 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm">Confirmar Contraseña</Label>
+            <Label htmlFor="confirm">{t("confirmLabel")}</Label>
             <div className="relative">
               <Input
                 id="confirm"
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite tu contraseña"
+                placeholder={t("confirmPlaceholder")}
                 disabled={loading}
               />
               <button
@@ -182,12 +182,12 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                {t("saving")}
               </>
             ) : hasPassword ? (
-              "Cambiar Contraseña"
+              t("changeBtn")
             ) : (
-              "Establecer Contraseña"
+              t("setBtn")
             )}
           </Button>
         </form>

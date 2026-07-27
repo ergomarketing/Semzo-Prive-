@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
 import { supabase } from "@/lib/supabase" // Import supabase
+import { useTranslations } from "next-intl"
 
 interface UserProfile {
   first_name: string
@@ -23,6 +24,7 @@ interface UserProfile {
 }
 
 export default function PerfilPage() {
+  const t = useTranslations("perfilPage")
   const { user } = useAuth()
   const router = useRouter()
   const supabase = createClient()
@@ -80,7 +82,7 @@ export default function PerfilPage() {
         }
       } catch (error) {
         console.error("[Profile] Error:", error)
-        setErrorMessage("Error al cargar el perfil")
+        setErrorMessage(t("errorLoadingProfile"))
       } finally {
         setLoading(false)
       }
@@ -129,7 +131,7 @@ export default function PerfilPage() {
     if (!user) return
 
     if (!profile.first_name || !profile.last_name) {
-      setErrorMessage("Nombre y apellido son obligatorios")
+      setErrorMessage(t("nameRequired"))
       return
     }
 
@@ -167,7 +169,7 @@ export default function PerfilPage() {
       }
 
       setIsEditing(false)
-      setSuccessMessage("Perfil actualizado correctamente")
+      setSuccessMessage(t("profileUpdated"))
       setTimeout(() => setSuccessMessage(null), 5000)
     } catch (error) {
       console.error("[Profile] Error saving profile:", error)
@@ -179,7 +181,7 @@ export default function PerfilPage() {
 
   const handleUpgradeSuccess = () => {
     setShowUpgradeModal(false)
-    setSuccessMessage("Cuenta actualizada correctamente. Ya puedes iniciar sesión con email y contraseña.")
+    setSuccessMessage(t("accountUpgraded"))
     setTimeout(() => {
       window.location.reload()
     }, 2000)
@@ -187,12 +189,12 @@ export default function PerfilPage() {
 
   const saveProfile = async () => {
     if (!profile.email || profile.email.trim() === "") {
-      setErrorMessage("El email es obligatorio")
+      setErrorMessage(t("emailEmpty"))
       return
     }
 
     if (!validateEmail(profile.email)) {
-      setErrorMessage("El formato del email no es válido")
+      setErrorMessage(t("emailInvalid"))
       return
     }
 
@@ -230,7 +232,7 @@ export default function PerfilPage() {
 
           // Manejar errores específicos
           if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
-            throw new Error("Este email ya está registrado en otra cuenta")
+            throw new Error(t("emailAlreadyExists"))
           }
 
           throw new Error(`Error al actualizar el email: ${authError.message}`)
@@ -263,9 +265,7 @@ export default function PerfilPage() {
       setIsEditing(false)
 
       if (isAddingEmail || isChangingFromTempEmail) {
-        setSuccessMessage(
-          "¡Email actualizado! IMPORTANTE: Ahora debes establecer una contraseña abajo para poder iniciar sesión con email.",
-        )
+        setSuccessMessage(t("emailUpdatedNote"))
         
         // Scroll hacia el componente de contraseña
         setTimeout(() => {
@@ -275,7 +275,7 @@ export default function PerfilPage() {
           }
         }, 500)
       } else {
-        setSuccessMessage("Perfil actualizado correctamente")
+        setSuccessMessage(t("profileUpdated"))
       }
 
       // Limpiar mensaje después de 10 segundos
@@ -310,8 +310,8 @@ export default function PerfilPage() {
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h2 className="text-3xl font-serif text-slate-900 mb-2">Mi Perfil</h2>
-          <p className="text-slate-600">Gestiona tu información personal</p>
+          <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
+          <p className="text-slate-600">{t("subtitle")}</p>
         </div>
 
         {/* Mensajes de éxito/error */}
@@ -336,13 +336,11 @@ export default function PerfilPage() {
             <AlertDescription className="text-rose-900">
               {!user?.email || user.email.trim() === "" ? (
                 <>
-                  <strong>Email no configurado:</strong> Registraste tu cuenta con teléfono. Por favor, agrega tu email
-                  para recibir notificaciones, confirmaciones de reserva y poder recuperar tu cuenta.
+                  <strong>{t("emailAlertNoEmailTitle")}</strong> {t("emailAlertNoEmailDesc")}
                 </>
               ) : (
                 <>
-                  <strong>Email temporal detectado:</strong> Tienes un email temporal. Por favor, actualízalo a tu email
-                  real para recibir notificaciones y confirmaciones.
+                  <strong>{t("emailAlertTempTitle")}</strong> {t("emailAlertTempDesc")}
                 </>
               )}
             </AlertDescription>
@@ -354,9 +352,9 @@ export default function PerfilPage() {
           <Alert className="mb-6 border-slate-200 bg-slate-50">
             <Phone className="h-4 w-4 text-slate-700" />
             <AlertDescription className="text-slate-900">
-              <strong>Registrado con teléfono:</strong> {user.phone}
+              <strong>{t("phoneRegisteredTitle")}</strong> {user.phone}
               <br />
-              <span className="text-sm">Agrega tu email para mejorar la seguridad de tu cuenta</span>
+              <span className="text-sm">{t("phoneRegisteredNote")}</span>
             </AlertDescription>
           </Alert>
         )}
@@ -369,13 +367,13 @@ export default function PerfilPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <h2 className="font-serif">Información Personal</h2>
-              <p>Tu información de contacto y datos personales</p>
+              <h2 className="font-serif">{t("personalInfo")}</h2>
+              <p>{t("personalInfoDesc")}</p>
             </div>
             {!isEditing && (
               <Button onClick={() => setIsEditing(true)} size="sm" variant="outline">
                 <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                Editar
+                {t("edit")}
               </Button>
             )}
           </CardHeader>
@@ -385,7 +383,7 @@ export default function PerfilPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="first_name">
-                      Nombre <span className="text-red-500">*</span>
+                      {t("firstName")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="first_name"
@@ -396,7 +394,7 @@ export default function PerfilPage() {
                   </div>
                   <div>
                     <Label htmlFor="last_name">
-                      Apellido <span className="text-red-500">*</span>
+                      {t("lastName")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="last_name"
@@ -408,7 +406,7 @@ export default function PerfilPage() {
                 </div>
                 <div>
                   <Label htmlFor="email">
-                    Email <span className="text-red-500">*</span>
+                    {t("email")} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="email"
@@ -423,18 +421,18 @@ export default function PerfilPage() {
                     <p className="text-xs text-rose-700 mt-1 flex items-center gap-1">
                       <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12" y2="12"></line><line x1="8" y1="12" x2="12" y2="12"></line><line x1="16" y1="12" x2="12" y2="12"></line></svg>
                       {!user?.email || user.email.trim() === "" ? (
-                        <strong>Agrega tu email para recibir notificaciones y confirmaciones</strong>
+                        <strong>{t("addEmailHint")}</strong>
                       ) : (
-                        <strong>Actualiza tu email temporal a uno real</strong>
+                        <strong>{t("updateTempEmail")}</strong>
                       )}
                     </p>
                   )}
                   {!canEditEmail && (
-                    <p className="text-xs text-slate-500 mt-1">El email no se puede cambiar una vez establecido</p>
+                    <p className="text-xs text-slate-500 mt-1">{t("emailCannotChange")}</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="phone">Teléfono</Label>
+                  <Label htmlFor="phone">{t("phone")}</Label>
                   <Input
                     id="phone"
                     value={profile.phone}
@@ -444,24 +442,21 @@ export default function PerfilPage() {
                     className={user?.phone ? "bg-slate-50" : ""}
                   />
                   {user?.phone && (
-                    <p className="text-xs text-slate-500 mt-1">El teléfono no se puede cambiar (registrado con SMS)</p>
+                    <p className="text-xs text-slate-500 mt-1">{t("phoneNote")}</p>
                   )}
                 </div>
                 <div className="flex space-x-2 pt-2">
                   <Button onClick={saveProfile} disabled={saving} className="bg-slate-900 hover:bg-slate-800 font-serif">
                     {saving ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>}
-                    {saving ? "Guardando..." : "Guardar Cambios"}
+                    {saving ? t("saving") : t("saveChanges")}
                   </Button>
                   <Button
-                    onClick={() => {
-                      setIsEditing(false)
-                      setErrorMessage(null)
-                    }}
+                    onClick={() => { setIsEditing(false); setErrorMessage(null) }}
                     variant="outline"
                     disabled={saving}
                   >
                     <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    Cancelar
+                    {t("cancel")}
                   </Button>
                 </div>
               </div>
@@ -469,34 +464,34 @@ export default function PerfilPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-600">Nombre</Label>
-                    <p className="text-lg font-medium text-slate-900">{profile.first_name || "No especificado"}</p>
+                    <Label className="text-slate-600">{t("firstName")}</Label>
+                    <p className="text-lg font-medium text-slate-900">{profile.first_name || t("notSpecified")}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-600">Apellido</Label>
-                    <p className="text-lg font-medium text-slate-900">{profile.last_name || "No especificado"}</p>
+                    <Label className="text-slate-600">{t("lastName")}</Label>
+                    <p className="text-lg font-medium text-slate-900">{profile.last_name || t("notSpecified")}</p>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-slate-600">Email</Label>
+                  <Label className="text-slate-600">{t("email")}</Label>
                   <div className="flex items-center gap-2">
                     <p className="text-lg font-medium text-slate-900">
                       {profile.email || (
-                        <span className="text-slate-400 italic">No configurado - Haz clic en Editar para agregar</span>
+                        <span className="text-slate-400 italic">{t("notConfigured")}</span>
                       )}
                     </p>
                     {profile.email && canEditEmail && (
                       <span className="text-xs bg-rose-100 text-rose-800 px-2 py-1 rounded font-medium">
                         {!profile.email || profile.email.trim() === "" || !user?.email || user.email.trim() === ""
-                          ? "Sin email"
-                          : "Temporal"}
+                          ? t("noEmailBadge")
+                          : t("temporalBadge")}
                       </span>
                     )}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-slate-600">Teléfono</Label>
-                  <p className="text-lg font-medium text-slate-900">{profile.phone || "No especificado"}</p>
+                  <Label className="text-slate-600">{t("phone")}</Label>
+                  <p className="text-lg font-medium text-slate-900">{profile.phone || t("notSpecified")}</p>
                 </div>
               </div>
             )}

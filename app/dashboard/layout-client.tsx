@@ -21,6 +21,7 @@ import { MapPin, Crown, ShoppingBag, Clock, Heart, LogOut, Gift } from "lucide-r
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/app/hooks/useAuth"
+import { useTranslations } from "next-intl"
 
 export default function DashboardLayoutClient({
   children,
@@ -32,6 +33,7 @@ export default function DashboardLayoutClient({
   const router = useRouter()
   const pathname = usePathname()
   const { signOut, loading } = useAuth()
+  const t = useTranslations("dashboardLayout")
 
   const handleLogout = async () => {
     await signOut()
@@ -39,43 +41,13 @@ export default function DashboardLayoutClient({
   }
 
   const menuItems = [
-    {
-      title: "Mi Perfil",
-      icon: MapPin,
-      href: "/dashboard/perfil",
-    },
-    {
-      title: "Dirección de Envío",
-      icon: MapPin,
-      href: "/dashboard/envio",
-    },
-    {
-      title: "Mi Membresía",
-      icon: Crown,
-      href: "/dashboard/membresia",
-    },
-    {
-      title: "Mis Reservas",
-      icon: ShoppingBag,
-      href: "/dashboard/reservas",
-    },
-    {
-      title: "Lista de Espera",
-      icon: Clock,
-      href: "/dashboard/lista-espera",
-    },
-    {
-      title: "Mi Wishlist",
-      icon: Heart,
-      href: "/wishlist",
-    },
-    {
-      // Programa "Recomendar a una amiga": cada socia tiene su codigo
-      // unico y link de referido. La pagina consume /api/referrals/me.
-      title: "Recomendar a una Amiga",
-      icon: Gift,
-      href: "/dashboard/referidos",
-    },
+    { title: t("myProfile"),        icon: MapPin,     href: "/dashboard/perfil" },
+    { title: t("shippingAddress"),  icon: MapPin,     href: "/dashboard/envio" },
+    { title: t("myMembership"),     icon: Crown,      href: "/dashboard/membresia" },
+    { title: t("myReservations"),   icon: ShoppingBag,href: "/dashboard/reservas" },
+    { title: t("waitlist"),         icon: Clock,      href: "/dashboard/lista-espera" },
+    { title: t("wishlist"),         icon: Heart,      href: "/wishlist" },
+    { title: t("referral"),         icon: Gift,       href: "/dashboard/referidos" },
   ]
 
   const userName =
@@ -100,7 +72,7 @@ export default function DashboardLayoutClient({
               </span>
             </Link>
             <p className="text-sm text-slate-600 font-serif mt-2">
-              Bienvenida, {userName}
+              {t("welcome", { name: userName })}
             </p>
           </SidebarHeader>
 
@@ -130,7 +102,7 @@ export default function DashboardLayoutClient({
               className="w-full justify-start border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Cerrar Sesión
+              {t("signOut")}
             </Button>
           </SidebarFooter>
         </Sidebar>

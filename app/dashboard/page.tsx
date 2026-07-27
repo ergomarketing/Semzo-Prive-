@@ -15,6 +15,7 @@ import { MyBagCard } from "@/app/components/my-bag-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { PetitePassBanner } from "@/app/components/petite-pass-banner"
 import { useState, useEffect } from "react"
+import { useTranslations, useLocale } from "next-intl"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -23,6 +24,8 @@ export const DASHBOARD_KEY = "/api/user/dashboard"
 export default function DashboardHome() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("dashboard")
+  const locale = useLocale()
   const [showIdentityModal, setShowIdentityModal] = useState(false)
   const [membershipTypeForVerification, setMembershipTypeForVerification] = useState<string>("")
   const [isInAppBrowser, setIsInAppBrowser] = useState(false)
@@ -107,15 +110,12 @@ export default function DashboardHome() {
         <Alert className="bg-amber-50 border-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900 space-y-3">
-            <p className="font-medium">
-              Para acceder a tu cuenta necesitas abrir la web en tu navegador (Safari o Chrome). Los navegadores
-              integrados de Instagram y otras apps no permiten mantener la sesión iniciada.
-            </p>
+            <p className="font-medium">{t("openInBrowser")}</p>
             <Button
               onClick={() => window.open(externalUrl, "_blank")}
               className="bg-slate-900 hover:bg-slate-800 text-white font-serif w-full"
             >
-              Abrir en mi navegador
+              {t("openBrowserBtn")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -138,9 +138,9 @@ export default function DashboardHome() {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
         <Loader2 className="animate-spin h-8 w-8 text-slate-600" />
-        <p className="text-sm text-slate-600">Redirigiendo al login…</p>
+        <p className="text-sm text-slate-600">{t("redirectingToLogin")}</p>
         <Button variant="outline" onClick={() => router.replace("/auth/login?redirect=/dashboard")}>
-          Ir al login ahora
+          {t("goToLogin")}
         </Button>
       </div>
     )
@@ -151,7 +151,7 @@ export default function DashboardHome() {
       <div className="max-w-7xl mx-auto">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>Error al cargar el dashboard. Por favor recarga la página.</AlertDescription>
+          <AlertDescription>{t("errorLoading")}</AlertDescription>
         </Alert>
       </div>
     )
@@ -174,7 +174,7 @@ export default function DashboardHome() {
       <div className="max-w-7xl mx-auto">
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>No tienes membresía activa. <a href="/catalog" className="underline">Ver planes disponibles</a></AlertDescription>
+          <AlertDescription>{t("noActiveMembership")} <a href="/catalog" className="underline">{t("viewPlans")}</a></AlertDescription>
         </Alert>
       </div>
     )
@@ -208,8 +208,8 @@ export default function DashboardHome() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Tu membresía ha sido cancelada. No tienes acceso al dashboard.{" "}
-            <a href="/catalog" className="underline">Ver planes disponibles</a>
+            {t("membershipCancelled")}{" "}
+            <a href="/catalog" className="underline">{t("viewPlans")}</a>
           </AlertDescription>
         </Alert>
       </div>
@@ -229,7 +229,7 @@ export default function DashboardHome() {
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-900 flex items-center justify-between flex-wrap gap-2">
                 <span>
-                  <strong>Acceso Limitado.</strong> Han pasado 7 días sin verificar tu identidad. No puedes realizar reservas hasta completarla.
+                  <strong>{t("limitedAccess")}</strong> {t("limitedAccessDesc")}
                 </span>
                 <Button
                   variant="outline"
@@ -237,7 +237,7 @@ export default function DashboardHome() {
                   className="bg-transparent border-red-400 text-red-900 hover:bg-red-100"
                   onClick={() => setShowIdentityModal(true)}
                 >
-                  Verificar ahora
+                  {t("verifyNow")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -246,7 +246,7 @@ export default function DashboardHome() {
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-900 flex items-center justify-between flex-wrap gap-2">
                 <span>
-                  <strong>Verificacion de identidad pendiente.</strong> Completa este paso para desbloquear las reservas de bolsos.
+                  <strong>{t("identityPending")}</strong> {t("identityPendingDesc")}
                 </span>
                 <Button
                   variant="outline"
@@ -254,7 +254,7 @@ export default function DashboardHome() {
                   className="bg-transparent border-amber-400 text-amber-900 hover:bg-amber-100"
                   onClick={() => setShowIdentityModal(true)}
                 >
-                  Verificar ahora
+                  {t("verifyNow")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -267,14 +267,14 @@ export default function DashboardHome() {
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <AlertTriangle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            {"A\u00F1ade tu email para recibir facturas y avisos de pago."}
+            {t("addEmail")}
             <Button
               variant="outline"
               size="sm"
               className="ml-4 bg-transparent"
               onClick={() => router.push("/dashboard/perfil")}
             >
-              {"A\u00F1adir Email"}
+              {t("addEmailBtn")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -293,15 +293,14 @@ export default function DashboardHome() {
           <AlertTriangle className="h-4 w-4 text-indigo-dark" />
           <AlertDescription className="text-indigo-dark flex items-center justify-between flex-wrap gap-2">
             <span>
-              <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
-              <strong>
-                {new Date(membership.end_date).toLocaleDateString("es-ES", {
+              <strong>{t("cancelledActive")}</strong>{" "}
+              {t("cancelledActiveDesc", {
+                date: new Date(membership.end_date).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
-                })}
-              </strong>
-              . Después pasarás a la página pública.
+                }),
+              })}
             </span>
             <Button
               variant="outline"
@@ -309,7 +308,7 @@ export default function DashboardHome() {
               className="bg-transparent border-indigo-dark/30 text-indigo-dark hover:bg-rose-pastel/40"
               onClick={() => router.push("/dashboard/membresia")}
             >
-              Reactivar
+              {t("reactivate")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -327,23 +326,23 @@ export default function DashboardHome() {
         <Alert className="mb-6 bg-rose-pastel/30 border-rose-pastel">
           <AlertTriangle className="h-4 w-4 text-indigo-dark" />
           <AlertDescription className="text-indigo-dark">
-            <strong>Problema con tu pago.</strong> Tu membresía está en riesgo. Por favor actualiza tu método de pago.
-            <div className="text-sm text-indigo-dark/75 mt-2">Para evitar la suspensión del servicio.</div>
+            <strong>{t("pastDue")}</strong> {t("pastDueDesc")}
+            <div className="text-sm text-indigo-dark/75 mt-2">{t("pastDueNote")}</div>
             <Button
               variant="outline"
               size="sm"
               className="ml-4 bg-transparent border-indigo-dark/30 text-indigo-dark hover:bg-rose-nude"
               onClick={() => router.push("/dashboard/membresia")}
             >
-              Actualizar Pago
+              {t("updatePayment")}
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
       <div className="mb-8">
-        <h2 className="text-4xl font-serif text-slate-900 mb-2">Bienvenida, {userName}</h2>
-        <p className="text-lg text-slate-600">Accede a tu colección de bolsos de lujo</p>
+        <h2 className="text-4xl font-serif text-slate-900 mb-2">{t("welcomeUser", { name: userName })}</h2>
+        <p className="text-lg text-slate-600">{t("accessCollection")}</p>
       </div>
 
       {/* Resumen de suscripción (Fase A) - card aislada, solo lectura.
@@ -376,7 +375,7 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/perfil")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Mi Perfil</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardMyProfile")}</CardTitle>
             <User className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
@@ -390,14 +389,14 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/envio")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Dirección de Envío</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardShipping")}</CardTitle>
             <MapPin className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">
-              {profile?.shipping_address ? "Configurada" : "Sin configurar"}
+              {profile?.shipping_address ? t("cardShippingSet") : t("cardShippingNotSet")}
             </div>
-            <p className="text-xs text-slate-600 mt-1">{profile?.shipping_city || "Agrega tu dirección de envío"}</p>
+            <p className="text-xs text-slate-600 mt-1">{profile?.shipping_city || t("cardShippingAdd")}</p>
           </CardContent>
         </Card>
 
@@ -406,7 +405,7 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/membresia")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Mi Membresía</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardMembership")}</CardTitle>
             <Crown className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
@@ -427,9 +426,9 @@ export default function DashboardHome() {
             </div>
             <p className="text-xs text-slate-600 mt-1">
               {membershipUIStatus === "cancelled_active"
-                ? `Cancelada · acceso hasta ${membership?.end_date ? new Date(membership.end_date).toLocaleDateString("es-ES") : "fin de periodo"}`
+                ? `${t("cancelledBadge")} · ${membership?.end_date ? new Date(membership.end_date).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES") : ""}`
                 : membershipUIStatus === "active"
-                  ? `${membership?.billing_cycle === "quarterly" ? "Trimestral" : "Mensual"} · ${membershipDescription}`
+                  ? `${membership?.billing_cycle === "quarterly" ? t("billingQuarterly") : t("billingMonthly")} · ${membershipDescription}`
                   : membershipDescription}
             </p>
           </CardContent>
@@ -440,12 +439,12 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/reservas")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Mis Reservas</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardReservations")}</CardTitle>
             <ShoppingBag className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.active ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">Reservas activas</p>
+            <p className="text-xs text-slate-600 mt-1">{t("cardActiveReservations")}</p>
           </CardContent>
         </Card>
 
@@ -454,23 +453,23 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/lista-espera")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Lista de Espera</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardWaitlist")}</CardTitle>
             <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.waitlist ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">Bolsos en espera</p>
+            <p className="text-xs text-slate-600 mt-1">{t("cardWaitlistBags")}</p>
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/wishlist")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Mi Wishlist</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardWishlist")}</CardTitle>
             <Heart className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.wishlist ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">Favoritos guardados</p>
+            <p className="text-xs text-slate-600 mt-1">{t("cardFavorites")}</p>
           </CardContent>
         </Card>
 
@@ -479,12 +478,12 @@ export default function DashboardHome() {
           onClick={() => router.push("/dashboard/gift-cards")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">Saldo Gift Card</CardTitle>
+            <CardTitle className="text-sm font-serif">{t("cardGiftCard")}</CardTitle>
             <Gift className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-serif font-bold text-indigo-dark">{(gift_cards?.total_balance ?? 0).toFixed(2)}€</div>
-            <p className="text-xs text-slate-600 mt-1">Disponible para usar</p>
+            <p className="text-xs text-slate-600 mt-1">{t("cardGiftCardAvailable")}</p>
           </CardContent>
         </Card>
       </div>
@@ -492,8 +491,8 @@ export default function DashboardHome() {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif">Acciones Rápidas</CardTitle>
-            <CardDescription>Accede rápidamente a las funciones principales</CardDescription>
+            <CardTitle className="font-serif">{t("quickActions")}</CardTitle>
+            <CardDescription>{t("quickActionsDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
@@ -501,17 +500,15 @@ export default function DashboardHome() {
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
-              Explorar Catálogo
+              {t("exploreCatalog")}
             </Button>
             {membership?.type !== "prive" && (
               <Button
-                onClick={() => {
-                  window.location.href = "/#membresias"
-                }}
+                onClick={() => { window.location.href = "/#membresias" }}
                 className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
               >
                 <Crown className="h-4 w-4 mr-2" />
-                Upgrade a Privé
+                {t("upgradePrive")}
               </Button>
             )}
           </CardContent>
@@ -519,18 +516,18 @@ export default function DashboardHome() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif">Estado de la Cuenta</CardTitle>
-            <CardDescription>Información sobre tu cuenta</CardDescription>
+            <CardTitle className="font-serif">{t("accountStatus")}</CardTitle>
+            <CardDescription>{t("accountStatusDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Email verificado</span>
+              <span className="text-sm text-slate-600">{t("emailVerified")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {user?.email_confirmed_at ? "Sí" : "Pendiente"}
+                {user?.email_confirmed_at ? t("yes") : t("pending")}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Membresía</span>
+              <span className="text-sm text-slate-600">{t("membershipLabel")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
                 {membership?.type
                   ? `${
@@ -543,18 +540,14 @@ export default function DashboardHome() {
                             : membership.type === "petite"
                               ? "Petite"
                               : membershipLabel
-                    }${
-                      membershipUIStatus === "cancelled_active"
-                        ? " (cancelada)"
-                        : ""
-                    }`
+                    }${membershipUIStatus === "cancelled_active" ? ` (${t("cancelledBadge")})` : ""}`
                   : membershipLabel}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Dirección configurada</span>
+              <span className="text-sm text-slate-600">{t("shippingConfigured")}</span>
               <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {profile?.shipping_address ? "Sí" : "No"}
+                {profile?.shipping_address ? t("yes") : "No"}
               </Badge>
             </div>
           </CardContent>
