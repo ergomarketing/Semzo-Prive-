@@ -92,25 +92,23 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{hasPassword ? "Cambiar Contraseña" : "Establecer Contraseña"}</CardTitle>
+        <CardTitle>{hasPassword ? t("changeTitle") : t("setTitle")}</CardTitle>
         <CardDescription>
-          {hasPassword
-            ? "Actualiza tu contraseña para acceder con email y contraseña"
-            : "Configura una contraseña para poder acceder con email además del código SMS"}
+          {hasPassword ? t("changeDesc") : t("setDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {hasPassword && (
             <div className="space-y-2">
-              <Label htmlFor="current">Contraseña Actual</Label>
+              <Label htmlFor="current">{t("currentLabel")}</Label>
               <div className="relative">
                 <Input
                   id="current"
                   type={showCurrent ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Tu contraseña actual"
+                  placeholder={t("currentPlaceholder")}
                   disabled={loading}
                 />
                 <button
@@ -125,14 +123,14 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="new">Nueva Contraseña</Label>
+            <Label htmlFor="new">{t("newLabel")}</Label>
             <div className="relative">
               <Input
                 id="new"
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
+                placeholder={t("newPlaceholder")}
                 disabled={loading}
               />
               <button
@@ -146,14 +144,14 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm">Confirmar Contraseña</Label>
+            <Label htmlFor="confirm">{t("confirmLabel")}</Label>
             <div className="relative">
               <Input
                 id="confirm"
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite tu contraseña"
+                placeholder={t("confirmPlaceholder")}
                 disabled={loading}
               />
               <button
@@ -184,12 +182,12 @@ export function PasswordSettings({ hasPassword }: PasswordSettingsProps) {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                {t("saving")}
               </>
             ) : hasPassword ? (
-              "Cambiar Contraseña"
+              t("changeBtn")
             ) : (
-              "Establecer Contraseña"
+              t("setBtn")
             )}
           </Button>
         </form>

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Crown, Check, Loader2, Info, AlertTriangle, PauseCircle, XCircle, PlayCircle, ShieldCheck, CreditCard } from "lucide-react"
 import useSWR from "swr"
 import { toast } from "sonner"
+import { useTranslations, useLocale } from "next-intl"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -18,6 +19,8 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 export const DASHBOARD_KEY = "/api/user/dashboard"
 
 export default function MembresiaPage() {
+  const t = useTranslations("membresiaPage")
+  const locale = useLocale()
   const router = useRouter()
   const { user } = useAuth()
   const [savingEmail, setSavingEmail] = useState(false)
@@ -96,14 +99,14 @@ export default function MembresiaPage() {
           router.push(resume.checkout_url || "/cart")
           break
         case "processing_payment":
-          toast.info("Estamos procesando tu pago. Espera unos segundos y recarga.")
+          toast.info(t("toastProcessingPayment"))
           break
         default:
           // Fallback seguro: empezar por identidad (nunca a membresias)
           router.push("/verify-identity")
       }
     } catch {
-      toast.error("No se pudo continuar la activación. Inténtalo de nuevo.")
+      toast.error(t("toastActivationError"))
     } finally {
       setResumeLoading(false)
     }
@@ -124,14 +127,14 @@ export default function MembresiaPage() {
       }
 
       if (result?.alreadyPaid) {
-        toast.success("Tu factura ya está pagada. Actualizando…")
+        toast.success(t("toastAlreadyPaid"))
         await mutate()
         return
       }
 
-      toast.error(result?.error || "No se pudo iniciar el pago. Inténtalo de nuevo.")
+      toast.error(result?.error || t("toastPaymentError"))
     } catch {
-      toast.error("No se pudo iniciar el pago. Inténtalo de nuevo.")
+      toast.error(t("toastPaymentError"))
     } finally {
       setPayLoading(false)
     }
@@ -148,12 +151,12 @@ export default function MembresiaPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       await mutate()
-      if (action === "pause") toast.success("Membresía pausada correctamente")
-      if (action === "resume") toast.success("Membresía reanudada correctamente")
-      if (action === "cancel") toast.success(`Membresía cancelada. Acceso hasta: ${data.cancelDate}`)
+      if (action === "pause") toast.success(t("toastPaused"))
+      if (action === "resume") toast.success(t("toastResumed"))
+      if (action === "cancel") toast.success(t("toastCancelled", { date: data.cancelDate }))
       setShowCancelConfirm(false)
     } catch (err: any) {
-      toast.error(err.message || "Error al realizar la acción")
+      toast.error(err.message || t("toastActionError"))
     } finally {
       setActionLoading(null)
     }
@@ -173,7 +176,7 @@ export default function MembresiaPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>Error al cargar tu membresía. Por favor recarga la página.</AlertDescription>
+            <AlertDescription>{t("errorLoading")}</AlertDescription>
           </Alert>
         </div>
       </div>
@@ -191,11 +194,11 @@ export default function MembresiaPage() {
   const hasAccess = membership?.has_effective_access === true
 
   const membershipInfo: Record<string, { name: string; price: string; period: string }> = {
-    petite: { name: "Petite", price: "19,99", period: "mes" },
-    essentiel: { name: "L'Essentiel", price: isQuarterly ? "142" : "59", period: isQuarterly ? "trimestre" : "mes" },
-    signature: { name: "Signature", price: isQuarterly ? "357" : "149", period: isQuarterly ? "trimestre" : "mes" },
-    prive: { name: "Privé", price: isQuarterly ? "669" : "279", period: isQuarterly ? "trimestre" : "mes" },
-    free: { name: "Free", price: "0", period: "mes" },
+    petite:    { name: "Petite",      price: "19,99",                    period: t("perMonth") },
+    essentiel: { name: "L'Essentiel", price: isQuarterly ? "142" : "59", period: isQuarterly ? t("perQuarter") : t("perMonth") },
+    signature: { name: "Signature",   price: isQuarterly ? "357" : "149", period: isQuarterly ? t("perQuarter") : t("perMonth") },
+    prive:     { name: "Privé",       price: isQuarterly ? "669" : "279", period: isQuarterly ? t("perQuarter") : t("perMonth") },
+    free:      { name: "Free",        price: "0",                        period: t("perMonth") },
   }
 
   const currentMembership = membershipInfo[membership.type] || membershipInfo.free
@@ -207,50 +210,50 @@ export default function MembresiaPage() {
 
   const formatLongDate = (d: string | null | undefined) => {
     if (!d) return "—"
-    return new Date(d).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+    return new Date(d).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES", { day: "numeric", month: "long", year: "numeric" })
   }
 
   const petiteFeatures = [
-    "Hasta 4 bolsos al mes",
-    "7 días por bolso (alquiler semanal con pase)",
-    "El conteo empieza al recibir el bolso",
-    "Envío y devolución gratuitos",
-    "Seguro incluido",
-    "Pago mensual recurrente",
+    t("feat_petite_1"),
+    t("feat_petite_2"),
+    t("feat_petite_3"),
+    t("feat_petite_4"),
+    t("feat_petite_5"),
+    t("feat_petite_6"),
   ]
 
   const essentielFeatures = [
-    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
-    "El conteo de 30 días empieza al recibir el bolso",
-    "Acceso a la colección L'Essentiel",
-    "Envío y devolución gratuitos",
-    "Seguro incluido",
+    isQuarterly ? t("feat_essentiel_1_quarterly") : t("feat_essentiel_1"),
+    t("feat_essentiel_2"),
+    t("feat_essentiel_3"),
+    t("feat_essentiel_4"),
+    t("feat_essentiel_5"),
   ]
 
   const signatureFeatures = [
-    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
-    "El conteo de 30 días empieza al recibir el bolso",
-    "Acceso a Signature + L'Essentiel",
-    "Reservas prioritarias",
-    "Envío y devolución gratuitos",
-    "Seguro incluido",
+    isQuarterly ? t("feat_signature_1_quarterly") : t("feat_signature_1"),
+    t("feat_signature_2"),
+    t("feat_signature_3"),
+    t("feat_signature_4"),
+    t("feat_signature_5"),
+    t("feat_signature_6"),
   ]
 
   const priveFeatures = [
-    `1 bolso por mes (30 días por bolso)${isQuarterly ? " · 3 bolsos en total" : ""}`,
-    "El conteo de 30 días empieza al recibir el bolso",
-    "Acceso completo al catálogo (Privé + Signature + L'Essentiel)",
-    "Reservas prioritarias",
-    "Lista de espera ilimitada",
-    "Envío y devolución gratuitos",
-    "Eventos exclusivos para miembros",
+    isQuarterly ? t("feat_prive_1_quarterly") : t("feat_prive_1"),
+    t("feat_prive_2"),
+    t("feat_prive_3"),
+    t("feat_prive_4"),
+    t("feat_prive_5"),
+    t("feat_prive_6"),
+    t("feat_prive_7"),
   ]
 
   const freeFeatures = [
-    "Acceso básico al catálogo",
-    "Ver bolsos disponibles",
-    "Lista de espera limitada",
-    "Soporte por email",
+    t("feat_free_1"),
+    t("feat_free_2"),
+    t("feat_free_3"),
+    t("feat_free_4"),
   ]
 
   const getFeatures = () => {
@@ -264,7 +267,7 @@ export default function MembresiaPage() {
   return (
     <div className="min-h-screen bg-white pt-32">
       <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">MI MEMBRESÍA</h1>
+        <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">{t("title")}</h1>
 
         {/*
          * Avisos del dashboard — TODOS alineados a paleta Semzo:
@@ -277,7 +280,7 @@ export default function MembresiaPage() {
           <Alert variant="default" className="mb-6 border-rose-pastel bg-rose-nude">
             <AlertTriangle className="h-4 w-4 text-indigo-dark" />
             <AlertDescription className="text-indigo-dark">
-              <strong>Email requerido:</strong> Necesitamos tu email real para confirmar reservas y notificaciones.
+              <strong>{t("emailRequired")}</strong> {t("emailRequiredDesc")}
             </AlertDescription>
           </Alert>
         )}
@@ -287,9 +290,8 @@ export default function MembresiaPage() {
           <Alert className="mb-6 bg-rose-nude border-rose-pastel">
             <AlertTriangle className="h-4 w-4 text-indigo-dark" />
             <AlertDescription className="text-indigo-dark">
-              <strong>Tu membresía está cancelada.</strong> Conservas acceso completo hasta el{" "}
-              <strong>{formatLongDate(membership.end_date || membership.ends_at)}</strong>. Después
-              dejarás de tener acceso. Si cambias de opinión, puedes reactivarla en cualquier momento.
+              <strong>{t("cancelledBanner")}</strong>{" "}
+              {t("cancelledBannerDesc", { date: formatLongDate(membership.end_date || membership.ends_at) })}
             </AlertDescription>
           </Alert>
         )}
@@ -297,22 +299,22 @@ export default function MembresiaPage() {
         {/* Profile Section */}
         <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="font-serif text-lg text-indigo-dark mb-4">Información Personal</h3>
+            <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("personalInfo")}</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-indigo-dark/70 text-sm">Nombre</Label>
+                  <Label className="text-indigo-dark/70 text-sm">{t("firstName")}</Label>
                   <p className="text-indigo-dark font-medium">{profile.first_name}</p>
                 </div>
                 <div>
-                  <Label className="text-indigo-dark/70 text-sm">Apellido</Label>
+                  <Label className="text-indigo-dark/70 text-sm">{t("lastName")}</Label>
                   <p className="text-indigo-dark font-medium">{profile.last_name}</p>
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="email" className="text-indigo-dark/70 text-sm">
-                  Email
+                  {t("email")}
                 </Label>
                 <div className="flex gap-2 mt-1">
                   <Input
@@ -326,19 +328,19 @@ export default function MembresiaPage() {
                   />
                   {flags.needs_email && (
                     <Button onClick={handleSaveEmail} disabled={savingEmail || !emailInput}>
-                      {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
+                      {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
                     </Button>
                   )}
                 </div>
                 {flags.needs_email && (
-                  <p className="text-sm text-indigo-dark/80 mt-1">Debes completar tu email para poder reservar</p>
+                  <p className="text-sm text-indigo-dark/80 mt-1">{t("emailRequired2")}</p>
                 )}
               </div>
 
               <div>
-                <Label className="text-indigo-dark/70 text-sm">Teléfono</Label>
+                <Label className="text-indigo-dark/70 text-sm">{t("phone")}</Label>
                 <p className="text-indigo-dark font-medium">{profile.phone}</p>
-                <p className="text-xs text-indigo-dark/60 mt-1">El teléfono no se puede cambiar (registrado con SMS)</p>
+                <p className="text-xs text-indigo-dark/60 mt-1">{t("phoneNote")}</p>
               </div>
             </div>
           </CardContent>
@@ -379,19 +381,19 @@ export default function MembresiaPage() {
                   >
                     {isActive
                       ? isQuarterly
-                        ? "Activa · Trimestral"
+                        ? t("activeQuarterly")
                         : isPetite
-                          ? "Activa · Petite"
-                          : "Activa · Mensual"
+                          ? t("activePetite")
+                          : t("activeMonthly")
                       : isCancelledActive
-                        ? "Cancelada (acceso vigente)"
+                        ? t("cancelledActive")
                         : uiStatus === "paused"
-                          ? "Pausada"
+                          ? t("paused")
                           : uiStatus === "past_due"
-                            ? "Pago pendiente"
+                            ? t("pastDue")
                             : uiStatus === "expired"
-                              ? "Expirada"
-                              : "Inactiva"}
+                              ? t("expired")
+                              : t("inactive")}
                   </span>
                 </div>
                 <p className="font-serif text-3xl text-indigo-dark mb-6">
@@ -415,27 +417,27 @@ export default function MembresiaPage() {
                   <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
                     <h4 className="font-medium text-indigo-dark mb-3 flex items-center gap-2">
                       <Crown className="w-4 h-4" />
-                      Periodo de Membresía
+                      {t("membershipPeriodTitle")}
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-indigo-dark/60">Tipo</p>
+                        <p className="text-indigo-dark/60">{t("typeLabel")}</p>
                         <p className="text-indigo-dark font-medium">
                           {isPetite
-                            ? "Petite (mensual)"
+                            ? t("typePetite")
                             : isQuarterly
-                              ? "Trimestral (90 días)"
-                              : "Mensual (30 días)"}
+                              ? t("typeQuarterly")
+                              : t("typeMonthly")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-indigo-dark/60">Estado</p>
+                        <p className="text-indigo-dark/60">{t("statusLabel")}</p>
                         <p className="text-indigo-dark font-medium">
-                          {isCancelledActive ? "Cancelada · acceso vigente" : "Activa"}
+                          {isCancelledActive ? t("statusCancelledActive") : t("statusActive")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-indigo-dark/60">Inicio del ciclo</p>
+                        <p className="text-indigo-dark/60">{t("cycleStart")}</p>
                         <p className="text-indigo-dark font-medium">
                           {formatLongDate(membership.start_date || membership.started_at)}
                         </p>
@@ -443,10 +445,10 @@ export default function MembresiaPage() {
                       <div>
                         <p className="text-indigo-dark/60">
                           {isCancelledActive
-                            ? "Fin de acceso"
+                            ? t("accessEnd")
                             : isQuarterly
-                              ? "Fin del trimestre"
-                              : "Próxima renovación"}
+                              ? t("quarterEnd")
+                              : t("nextRenewal")}
                         </p>
                         <p className="text-indigo-dark font-medium">
                           {formatLongDate(membership.end_date || membership.ends_at)}
@@ -457,17 +459,12 @@ export default function MembresiaPage() {
                     {/* Aclaración importante: tiempo membresía vs tiempo reserva */}
                     <div className="mt-4 pt-4 border-t border-rose-pastel/40">
                       <p className="text-xs text-indigo-dark/70 leading-relaxed">
-                        <strong className="text-indigo-dark">¿Cómo funciona?</strong> Tu membresía dura{" "}
-                        <strong>{cycleDurationDays} días</strong> y te permite reservar{" "}
-                        <strong>
-                          {maxBagsPerCycle === 1
-                            ? "1 bolso"
-                            : `hasta ${maxBagsPerCycle} bolsos`}
-                        </strong>
-                        {isPetite ? " al mes" : isQuarterly ? " durante el trimestre (1 al mes)" : " este mes"}.
-                        Cada reserva tiene una duración de{" "}
-                        <strong>{bagDurationDays} días</strong> que empiezan a contar{" "}
-                        <strong>desde el día en que recibes el bolso</strong>, no desde que haces la reserva.
+                        <strong className="text-indigo-dark">{t("howItWorks")}</strong>{" "}
+                        {t("howItWorksDesc", {
+                          cycle: cycleDurationDays,
+                          bags: maxBagsPerCycle === 1 ? t("oneBag") : t("upToBags", { count: maxBagsPerCycle }),
+                          bagDays: bagDurationDays,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -478,36 +475,36 @@ export default function MembresiaPage() {
                     <div className="flex items-start gap-3">
                       <Info className="w-5 h-5 text-indigo-dark flex-shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="font-medium text-indigo-dark mb-2">Pases de Bolso Disponibles</h4>
-                        <p className="text-sm text-indigo-dark/70 mb-3">
-                          Con tu membresía Petite, puedes acceder a bolsos de colecciones premium comprando pases
-                          individuales:
-                        </p>
+                        <h4 className="font-medium text-indigo-dark mb-2">{t("passesTitle")}</h4>
+                        <p className="text-sm text-indigo-dark/70 mb-3">{t("passesDesc")}</p>
                         <div className="grid grid-cols-3 gap-2">
                           <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
-                            <p className="text-xs text-indigo-dark/60 mb-1">L'Essentiel</p>
+                            <p className="text-xs text-indigo-dark/60 mb-1">L&apos;Essentiel</p>
                             <p className="font-medium text-indigo-dark text-lg">52€</p>
-                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">{t("perWeek")}</p>
                           </div>
                           <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
                             <p className="text-xs text-indigo-dark/60 mb-1">Signature</p>
                             <p className="font-medium text-indigo-dark text-lg">99€</p>
-                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">{t("perWeek")}</p>
                           </div>
                           <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
-                            <p className="text-xs text-indigo-dark/60 mb-1">Privé</p>
+                            <p className="text-xs text-indigo-dark/60 mb-1">Priv&eacute;</p>
                             <p className="font-medium text-indigo-dark text-lg">137€</p>
-                            <p className="text-xs text-indigo-dark/60 mt-1">por semana</p>
+                            <p className="text-xs text-indigo-dark/60 mt-1">{t("perWeek")}</p>
                           </div>
                         </div>
                         <p className="text-sm text-indigo-dark/70 mt-3 mb-3">
-                          <strong>Pases actuales:</strong> {passes.available} disponible{passes.available !== 1 ? "s" : ""}
+                          <strong>{t("currentPasses")}</strong>{" "}
+                          {passes.available !== 1
+                            ? t("passAvailablePlural", { count: passes.available })
+                            : t("passAvailable", { count: passes.available })}
                         </p>
                         <Button
                           onClick={() => router.push("/catalog")}
                           className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                         >
-                          Comprar Pase y Explorar Catálogo
+                          {t("buyPassBtn")}
                         </Button>
                       </div>
                     </div>
@@ -528,7 +525,7 @@ export default function MembresiaPage() {
                       ) : (
                         <PauseCircle className="h-4 w-4 mr-2" />
                       )}
-                      Pausar membresía
+                      {t("pauseBtn")}
                     </Button>
 
                     {!showCancelConfirm ? (
@@ -539,13 +536,11 @@ export default function MembresiaPage() {
                         className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar membresía
+                        {t("cancelBtn")}
                       </Button>
                     ) : (
                       <div className="border border-indigo-dark/20 rounded-lg p-4 bg-rose-nude/30 space-y-3">
-                        <p className="text-sm text-indigo-dark font-medium">
-                          ¿Segura que quieres cancelar? Mantendrás el acceso hasta el final del período actual.
-                        </p>
+                        <p className="text-sm text-indigo-dark font-medium">{t("cancelConfirm")}</p>
                         <div className="flex gap-2">
                           <Button
                             onClick={() => handleMembershipAction("cancel")}
@@ -555,7 +550,7 @@ export default function MembresiaPage() {
                             {actionLoading === "cancel" ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             ) : null}
-                            Sí, cancelar
+                            {t("yesCancel")}
                           </Button>
                           <Button
                             variant="outline"
@@ -563,7 +558,7 @@ export default function MembresiaPage() {
                             disabled={!!actionLoading}
                             className="flex-1 text-sm"
                           >
-                            Mantener
+                            {t("keepMembership")}
                           </Button>
                         </div>
                       </div>
@@ -575,7 +570,7 @@ export default function MembresiaPage() {
                 {membership.status === "paused" && (
                   <div className="mt-4">
                   <div className="bg-rose-nude border border-rose-pastel rounded-lg p-3 mb-3">
-                    <p className="text-sm text-indigo-dark">Tu membresía está pausada. No se realizarán cobros hasta que la reanudes.</p>
+                    <p className="text-sm text-indigo-dark">{t("pausedNotice")}</p>
                   </div>
                     <Button
                       onClick={() => handleMembershipAction("resume")}
@@ -587,7 +582,7 @@ export default function MembresiaPage() {
                       ) : (
                         <PlayCircle className="h-4 w-4 mr-2" />
                       )}
-                      Reanudar membresía
+                      {t("resumeBtn")}
                     </Button>
                   </div>
                 )}
@@ -597,10 +592,7 @@ export default function MembresiaPage() {
                 {uiStatus === "pending_verification" && (
                   <div className="mt-4">
                     <div className="bg-rose-nude border border-rose-pastel rounded-lg p-3 mb-3">
-                      <p className="text-sm text-indigo-dark">
-                        Tu pago está confirmado. Para activar tu membresía solo falta verificar tu
-                        identidad y firmar el mandato SEPA.
-                      </p>
+                      <p className="text-sm text-indigo-dark">{t("pendingVerificationNotice")}</p>
                     </div>
                     <Button
                       onClick={handleResumeOnboarding}
@@ -612,7 +604,7 @@ export default function MembresiaPage() {
                       ) : (
                         <ShieldCheck className="h-4 w-4 mr-2" />
                       )}
-                      Continuar activación
+                      {t("continueActivation")}
                     </Button>
                   </div>
                 )}
@@ -631,7 +623,7 @@ export default function MembresiaPage() {
                       ) : (
                         <CreditCard className="h-4 w-4 mr-2" />
                       )}
-                      Pagar ahora
+                      {t("payNow")}
                     </Button>
                   </div>
                 )}
@@ -647,7 +639,7 @@ export default function MembresiaPage() {
                       className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                     >
                       <Crown className="h-4 w-4 mr-2" />
-                      Activar Membresía
+                      {t("activateBtn")}
                     </Button>
                   )}
               </div>
@@ -659,10 +651,10 @@ export default function MembresiaPage() {
         {gift_cards.total_balance > 0 && (
           <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
             <CardContent className="p-6">
-              <h3 className="font-serif text-lg text-indigo-dark mb-4">Saldo Gift Cards</h3>
+              <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("giftCardBalance")}</h3>
               <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg">
                 <p className="text-2xl font-medium text-indigo-dark">{gift_cards.total_balance.toFixed(2)}€</p>
-                <p className="text-sm text-indigo-dark/70 mt-1">Saldo total disponible</p>
+                <p className="text-sm text-indigo-dark/70 mt-1">{t("giftCardTotal")}</p>
               </div>
             </CardContent>
           </Card>
@@ -671,13 +663,13 @@ export default function MembresiaPage() {
         {/* Historial de Pagos */}
         <Card className="border border-indigo-dark/10 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="font-serif text-lg text-indigo-dark mb-4">Historial de Pagos</h3>
+            <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("paymentHistory")}</h3>
             {reservations.history === 0 ? (
               <p className="text-sm text-indigo-dark/60 bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg">
-                No hay pagos registrados
+                {t("noPayments")}
               </p>
             ) : (
-              <p className="text-sm text-indigo-dark/60">Ver historial completo en tu perfil</p>
+              <p className="text-sm text-indigo-dark/60">{t("seeFullHistory")}</p>
             )}
           </CardContent>
         </Card>
