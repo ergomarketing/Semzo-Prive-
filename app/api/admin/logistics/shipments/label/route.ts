@@ -6,25 +6,20 @@ import { CorreosAPI } from "@/lib/correos-api"
  * Obtener etiqueta PDF de un envio (via proxy Correos).
  *
  * Parametros aceptados (en orden de preferencia):
- *   package_code   — packageCode del paquete (identificador correcto para Labels API)
- *   tracking_number — alias legado; se acepta para compatibilidad pero internamente
- *                     se usa como packageCode si no se proporciona package_code.
+ *   package_code    — packageCode del paquete (identificador correcto para la Labels API).
+ *   tracking_number — alias legado aceptado por compatibilidad con envios anteriores.
  *
- * NOTA: la Labels API de Correos solo imprime usando packageCode, no shipmentCode.
- * Si la etiqueta se creo con la nueva version de correos-api.ts, el packageCode
- * esta disponible en correos_response.packageCode dentro de la tabla shipments.
+ * Internamente llama a CorreosAPI.getLabel(packageCode), que envia:
+ *   POST /api/correos/label  { packageCodes: [packageCode], labelFormat: "PDF" }
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    // Preferir package_code; caer a tracking_number para compatibilidad con
-    // envios creados antes de este cambio.
+    // Preferir package_code; caer a tracking_number para envios creados antes
+    // de que se introdujera el campo packageCode.
     const packageCode = searchParams.get("package_code") || searchParams.get("tracking_number")
     if (!packageCode) {
-      return NextResponse.json(
-        { error: "package_code is required" },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "package_code is required" }, { status: 400 })
     }
 
     const correosClient = new CorreosAPI()
