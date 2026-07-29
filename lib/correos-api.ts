@@ -446,21 +446,31 @@ class CorreosAPI {
     }
   }
 
-  async getLabel(shipmentId: string): Promise<Buffer> {
+  /**
+   * Solicita la etiqueta PDF de un paquete al proxy /api/correos/label.
+   *
+   * @param packageCode - El packageCode del paquete (identificador correcto para
+   *   la Labels API de Correos). Distinto del shipmentCode / codEnvio.
+   *
+   * El proxy recibe: POST /api/correos/label  { packageCodes: [packageCode], labelFormat: "PDF" }
+   * El API de Correos devuelve:               { "pdf": "<base64>" }
+   */
+  async getLabel(packageCode: string): Promise<Buffer> {
     const res = await proxyFetch("/api/correos/label", {
       method: "POST",
-      body: JSON.stringify({ shippingCodes: [shipmentId], labelFormat: "PDF" }),
+      body: JSON.stringify({ packageCodes: [packageCode], labelFormat: "PDF" }),
     })
     if (!res.ok) {
       const errText = await res.text().catch(() => "")
       throw new Error(`Correos label fallo (${res.status}): ${errText}`)
     }
-    const data = await res.json().catch(() => null)
-    // El endpoint moderno devuelve el PDF en base64 dentro del JSON.
-    const b64: string | undefined =
-      data?.label || data?.labels?.[0]?.label || data?.labels?.[0]?.content || data?.content
+    const data: LabelResponse = await res.json().catch(() => ({}))
+    // Parseo centralizado: el API devuelve { "pdf": "<base64>" }
+    const b64 = parseLabelResponse(data)
     if (!b64) {
-      throw new Error("Correos label: no se encontro el PDF en la respuesta del proxy")
+      throw new Error(
+        `Correos label: respuesta recibida pero sin PDF. Estructura: ${JSON.stringify(data)}`,
+      )
     }
     return Buffer.from(b64, "base64")
   }
