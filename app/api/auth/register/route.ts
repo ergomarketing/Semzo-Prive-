@@ -165,6 +165,19 @@ export async function POST(request: NextRequest) {
       // No bloquear el registro si falla la notificación
     }
 
+    // Inscribir en la secuencia de leads (5 emails automáticos)
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      await enrollLead({
+        email: email.toLowerCase().trim(),
+        name: fullName || undefined,
+        source: "organic_web",
+      })
+    } catch (leadError) {
+      // No bloquear el registro si falla el enrol de leads
+      console.error("[register] enrollLead error:", leadError)
+    }
+
     return NextResponse.json({
       success: true,
       message: !authData.session 

@@ -47,7 +47,8 @@ export async function POST() {
   for (const row of pendingEmails) {
     const lead = row.leads as any
 
-    if (!lead || lead.status === "subscribed" || lead.status === "unsubscribed") {
+    // Saltar solo si el lead se dio de baja explícitamente.
+    if (!lead || lead.status === "unsubscribed") {
       await supabase.from("email_sequence_log").update({ status: "skipped" }).eq("id", row.id)
       skipped++
       continue
