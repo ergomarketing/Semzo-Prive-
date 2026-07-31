@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { CorreosAPI } from "@/lib/correos-api"
+import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 
 /**
  * GET /api/admin/logistics/shipments/label?package_code=XXX
@@ -20,6 +20,17 @@ export async function GET(request: NextRequest) {
     const packageCode = searchParams.get("package_code") || searchParams.get("tracking_number")
     if (!packageCode) {
       return NextResponse.json({ error: "package_code is required" }, { status: 400 })
+    }
+
+    if (!isCorreosProxyConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "La integracion con Correos no esta configurada. Anade las variables CORREOS_PROXY_URL y CORREOS_PROXY_API_KEY en el proyecto.",
+          code: "CORREOS_PROXY_NOT_CONFIGURED",
+        },
+        { status: 503 },
+      )
     }
 
     const correosClient = new CorreosAPI()

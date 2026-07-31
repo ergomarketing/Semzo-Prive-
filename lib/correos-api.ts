@@ -203,15 +203,32 @@ export const CORREOS_PRODUCTS = {
   CORREOS_EXPRESS: "P",
 }
 
+/**
+ * Lee la URL y la API key del proxy de Correos desde las variables de entorno.
+ * Acepta nombres alternativos y limpia espacios/comillas accidentales.
+ * Devuelve null si falta cualquiera de las dos (sin lanzar).
+ */
+function readProxyConfig(): { url: string; key: string } | null {
+  const clean = (v?: string | null) => (v ? v.trim().replace(/^["']|["']$/g, "") : "")
+  const url = clean(process.env.CORREOS_PROXY_URL || process.env.NEXT_PUBLIC_CORREOS_PROXY_URL)
+  const key = clean(process.env.CORREOS_PROXY_API_KEY || process.env.CORREOS_PROXY_KEY)
+  if (!url || !key) return null
+  return { url: url.replace(/\/$/, ""), key }
+}
+
+/** True si el proxy de Correos tiene URL y API key configuradas. */
+export function isCorreosProxyConfigured(): boolean {
+  return readProxyConfig() !== null
+}
+
 function getProxyConfig() {
-  const url = process.env.CORREOS_PROXY_URL
-  const key = process.env.CORREOS_PROXY_API_KEY
-  if (!url || !key) {
+  const config = readProxyConfig()
+  if (!config) {
     throw new Error(
       "Correos proxy no configurado: faltan CORREOS_PROXY_URL o CORREOS_PROXY_API_KEY",
     )
   }
-  return { url: url.replace(/\/$/, ""), key }
+  return config
 }
 
 async function proxyFetch(path: string, init: RequestInit = {}): Promise<Response> {
