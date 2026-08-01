@@ -25,8 +25,7 @@ export async function GET(request: NextRequest) {
     if (!isCorreosProxyConfigured()) {
       return NextResponse.json(
         {
-          error:
-            "La integracion con Correos no esta configurada. Anade las variables CORREOS_PROXY_URL y CORREOS_PROXY_API_KEY en el proyecto.",
+          error: "La integracion con Correos no esta configurada. Anade CORREOS_PROXY_URL y CORREOS_PROXY_API_KEY en las variables de entorno del proyecto.",
           code: "CORREOS_PROXY_NOT_CONFIGURED",
         },
         { status: 503 },
