@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 function getServiceClient() {
   return createClient(
@@ -10,6 +11,8 @@ function getServiceClient() {
 
 // GET - Obtener credenciales de Correos
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
 
@@ -41,6 +44,8 @@ export async function GET() {
 
 // POST - Guardar credenciales de Correos
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
     const { clientId, clientSecret } = await request.json()
@@ -97,6 +102,8 @@ export async function POST(request: Request) {
 
 // DELETE - Eliminar credenciales de Correos
 export async function DELETE() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
 

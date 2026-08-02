@@ -5,9 +5,15 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
 
-    // Verificar credenciales de admin
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@semzoprive.com"
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin123"
+    // Las credenciales se leen SOLO desde variables de entorno server-side.
+    // Si no están definidas, el login falla — nunca hay fallback hardcodeado.
+    const adminEmail = process.env.ADMIN_EMAIL
+    const adminPassword = process.env.ADMIN_PASSWORD
+
+    if (!adminEmail || !adminPassword) {
+      console.error("[admin/login] ADMIN_EMAIL o ADMIN_PASSWORD no están definidos en las variables de entorno.")
+      return NextResponse.json({ success: false, message: "Configuración de servidor incompleta" }, { status: 500 })
+    }
 
     if (email === adminEmail && password === adminPassword) {
       // Crear cookie de sesión

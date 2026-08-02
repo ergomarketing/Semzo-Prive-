@@ -1,8 +1,11 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     // Usar SUPABASE_SERVICE_ROLE_KEY si existe, sino usar anon key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

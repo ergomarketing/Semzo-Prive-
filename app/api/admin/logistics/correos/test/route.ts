@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { CorreosAPI } from "@/lib/correos-api"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 /**
  * POST /api/admin/logistics/correos/test
@@ -7,6 +8,8 @@ import { CorreosAPI } from "@/lib/correos-api"
  * Ya no requiere body con credenciales: el proxy las gestiona.
  */
 export async function POST() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const correos = new CorreosAPI()
     const result = await correos.testConnection()

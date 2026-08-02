@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const VERIFICATION_STEPS = [
   {
@@ -39,6 +40,8 @@ const VERIFICATION_STEPS = [
 ]
 
 export async function POST() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     console.log("=== VERIFICANDO CONFIGURACIÓN DE BASE DE DATOS ===")
 

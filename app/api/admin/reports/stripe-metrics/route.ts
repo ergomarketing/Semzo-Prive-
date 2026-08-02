@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-01-27.acacia" })
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)

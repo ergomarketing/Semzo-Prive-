@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 /**
  * GET /api/admin/logistics/shipments/label?package_code=XXX
@@ -13,6 +14,8 @@ import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
  *   POST /api/correos/label  { packageCodes: [packageCode], labelFormat: "PDF" }
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     // Preferir package_code; caer a tracking_number para envios creados antes

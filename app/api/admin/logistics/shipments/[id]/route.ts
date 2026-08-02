@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -26,6 +27,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { id } = await params
     if (!id) {

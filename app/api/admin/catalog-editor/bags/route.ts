@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,8 @@ const supabase = createClient(
 )
 
 export async function GET(_req: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   const { data, error } = await supabase
     .from("bags")
     .select("id, name, brand, image_url")

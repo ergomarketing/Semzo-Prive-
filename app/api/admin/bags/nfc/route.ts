@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 function getSupabase() {
   return createClient(
@@ -9,6 +10,8 @@ function getSupabase() {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   const supabase = getSupabase()
   try {
     const body = await request.json()

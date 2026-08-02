@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { createClient } from "@supabase/supabase-js"
 import { adminNotifications } from "@/lib/admin-notifications"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,8 @@ const supabase = createClient(
  * Cuando se anada, este handler funcionara automaticamente.
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const trackingNumber = request.nextUrl.searchParams.get("tracking_number")
     if (!trackingNumber) {

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabaseUrl =
       process.env.NEXT_PUBLIC_SUPABASE_URL ||

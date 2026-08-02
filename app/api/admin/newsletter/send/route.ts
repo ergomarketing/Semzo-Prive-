@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -18,6 +19,8 @@ export const dynamic = "force-dynamic"
  *   { success: true, sent: number, failed: number }
  */
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { subject, content, audience = "both", raw_html = false } = await request.json()
 

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 function getServiceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -14,6 +15,8 @@ function generateGiftCardCode(): string {
 }
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
 
@@ -45,6 +48,8 @@ export async function GET() {
 
 // Crear gift card manualmente (admin)
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
     const { amount, recipientEmail, recipientName, expiresInMonths = 24 } = await request.json()

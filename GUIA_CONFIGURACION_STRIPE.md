@@ -34,9 +34,9 @@ Ir a: https://vercel.com/tu-proyecto/settings/environment-variables
 **Configurar estas 3 variables:**
 
 \`\`\`
-STRIPE_SECRET_KEY=sk_live_51RP3lcKBSKEgBoTn...TU_CLAVE_COMPLETA
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB
-STRIPE_WEBHOOK_SECRET=whsec_IEcUdP9jyx1fym8l9FQ0LmUszCgecj23
+STRIPE_SECRET_KEY=sk_live_...TU_CLAVE_COMPLETA
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...TU_CLAVE_PUBLICA
+STRIPE_WEBHOOK_SECRET=whsec_...TU_WEBHOOK_SECRET
 \`\`\`
 
 ### 4. 🔄 REDEPLOY OBLIGATORIO
@@ -50,18 +50,12 @@ Después de cambiar las variables de entorno:
 
 Usar la página de diagnósticos: `/admin/stripe-diagnostics`
 
-## 🎯 TUS CLAVES ACTUALES
+## CLAVES ACTUALES
 
-\`\`\`
-✅ Clave Pública (funcionando):
-pk_live_51RP3lcKBSKEgBoTnr4wD4bc7kQjyBS2uvdpVARXyUeXRs3XePkTt1qOJA8GHobCxEjxGZrk5q5HpQpDm00qcY9lh00Y07H4mwB
-
-❌ Clave Secreta (NO funcionando):
-sk_live_...O5hU (necesitas la clave completa)
-
-✅ Webhook Secret:
-whsec_IEcUdP9jyx1fym8l9FQ0LmUszCgecj23
-\`\`\`
+Las claves reales han sido eliminadas de este archivo por seguridad.
+Consúltalas directamente en el panel de Stripe (Developers > API keys) y
+en las variables de entorno de Vercel — nunca las escribas en un archivo
+que se suba al repositorio.
 
 ## 🚨 IMPORTANTE: SEGURIDAD
 

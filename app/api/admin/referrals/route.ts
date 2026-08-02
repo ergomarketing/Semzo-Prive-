@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -37,6 +38,8 @@ interface ProfileLite {
  * Solo lee. Las acciones de mutacion van en PATCH /api/admin/referrals/[id].
  */
 export async function GET(_request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 

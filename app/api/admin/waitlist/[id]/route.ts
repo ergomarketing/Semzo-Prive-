@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
@@ -9,6 +10,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 })
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { error } = await supabase.from("waitlist").delete().eq("id", params.id)
 

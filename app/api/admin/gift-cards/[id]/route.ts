@@ -1,11 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 function getServiceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { id } = await params
     const supabase = getServiceClient()
@@ -25,6 +28,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { id } = await params
     const supabase = getServiceClient()

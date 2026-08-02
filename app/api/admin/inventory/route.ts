@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
@@ -9,6 +10,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 })
 
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     console.log("[v0] Admin inventory API called")
 
@@ -93,6 +96,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { bagId, status } = body
@@ -229,6 +234,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
 

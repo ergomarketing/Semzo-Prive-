@@ -1,6 +1,9 @@
-// Configuración de administración
+// Configuración de administración.
+// Las credenciales se leen SOLO desde variables de entorno server-side
+// (nunca NEXT_PUBLIC_*) — no hay fallbacks hardcodeados.
 export const ADMIN_CONFIG = {
-  username: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.com",
-  password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Semzoprive1*",
-  sessionTimeout: 24 * 60 * 60 * 1000, // 24 horas en milisegundos
+  // Usado como identificador de display; la autenticación real ocurre en
+  // /api/admin/login comparando con ADMIN_EMAIL y ADMIN_PASSWORD server-side.
+  email: process.env.ADMIN_EMAIL ?? "",
+  sessionTimeout: 24 * 60 * 60 * 1000, // 24 horas en ms
 }

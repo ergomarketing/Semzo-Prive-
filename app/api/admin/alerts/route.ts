@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 function getServiceClient() {
   return createClient(
@@ -9,6 +10,8 @@ function getServiceClient() {
 }
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = getServiceClient()
 

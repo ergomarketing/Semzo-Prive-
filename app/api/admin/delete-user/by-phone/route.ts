@@ -1,10 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 /**
  * Endpoint simplificado para eliminar usuario por teléfono
  * Útil para testing y limpieza rápida
  */
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { searchParams } = new URL(request.url)
     const phone = searchParams.get("phone")

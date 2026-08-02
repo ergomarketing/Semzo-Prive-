@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     console.log("[v0] Admin reservations API called")
 
@@ -65,6 +68,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { id, status } = await request.json()
     console.log("[v0] Updating reservation:", id, "to status:", status)
