@@ -52,7 +52,15 @@ export async function POST(request: Request) {
   if (authError) return authError
   try {
     const supabase = getServiceClient()
-    const { amount, recipientEmail, recipientName, expiresInMonths = 24 } = await request.json()
+    const {
+      amount,
+      recipientEmail,
+      recipientName,
+      note,
+      membershipLabel,
+      durationMonths,
+      expiresInMonths = 24,
+    } = await request.json()
 
     const amountCents = Math.round(amount * 100)
 
@@ -70,16 +78,22 @@ export async function POST(request: Request) {
     const expiresAt = new Date()
     expiresAt.setMonth(expiresAt.getMonth() + expiresInMonths)
 
+    // Construir descripcion enriquecida si viene de un preset de membresía
+    const description = membershipLabel
+      ? `Membresía ${membershipLabel}${durationMonths ? ` × ${durationMonths} mes${durationMonths > 1 ? "es" : ""}` : ""}${note ? ` · ${note}` : ""}`
+      : note || null
+
     const { data: giftCard, error } = await supabase
       .from("gift_cards")
       .insert({
         code,
         amount: amountCents,
         original_amount: amountCents,
-        status: "active", // Admin crea activas directamente
+        status: "active",
         recipient_email: recipientEmail || null,
         recipient_name: recipientName || null,
         expires_at: expiresAt.toISOString(),
+        ...(description ? { notes: description } : {}),
       })
       .select()
       .single()
