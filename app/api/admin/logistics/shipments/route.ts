@@ -351,6 +351,8 @@ export async function POST(request: NextRequest) {
     } = body
 
     let correosTrackingNumber = tracking_number
+    let correosPackageCode: string | null = null
+    let returnPackageCode: string | null = null
     let correosResponse: any = null
     let returnTrackingNumber: string | null = null
     let returnCorreosResponse: any = null
@@ -417,6 +419,7 @@ export async function POST(request: NextRequest) {
             observations,
           })
           correosTrackingNumber = correosResponse.codEnvio
+          correosPackageCode = correosResponse.packageCode || null
         } catch (err: any) {
           const msg = err?.message || String(err)
           console.error("[Logistics API] Error creating outbound Correos shipment:", msg)
@@ -436,6 +439,7 @@ export async function POST(request: NextRequest) {
             observations: "Devolucion bolso",
           })
           returnTrackingNumber = returnCorreosResponse.codEnvio
+          returnPackageCode = returnCorreosResponse.packageCode || null
         } catch (err: any) {
           const msg = err?.message || String(err)
           console.error("[Logistics API] Error creating return Correos shipment:", msg)
@@ -455,7 +459,9 @@ export async function POST(request: NextRequest) {
         status: "pending",
         carrier,
         tracking_number: correosTrackingNumber || null,
+        package_code: correosPackageCode || null,
         return_tracking_number: returnTrackingNumber || null,
+        return_package_code: returnPackageCode || null,
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,

@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+)
 
 /**
  * GET /api/admin/logistics/shipments/label?package_code=XXX
@@ -18,11 +24,35 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
-    // Preferir package_code; caer a tracking_number para envios creados antes
-    // de que se introdujera el campo packageCode.
-    const packageCode = searchParams.get("package_code") || searchParams.get("tracking_number")
-    if (!packageCode) {
+    const rawParam = searchParams.get("package_code") || searchParams.get("tracking_number")
+
+    if (!rawParam) {
       return NextResponse.json({ error: "package_code is required" }, { status: 400 })
+    }
+
+    // Resolver el packageCode real desde la BD.
+    // Si el caller ya pasó un package_code explícito lo usamos directamente.
+    // Si pasó un tracking_number (codEnvio), buscamos el package_code guardado
+    // en la columna dedicada — que puede diferir del tracking_number.
+    let packageCode = rawParam
+    const isExplicitPackageCode = searchParams.has("package_code")
+
+    if (!isExplicitPackageCode) {
+      const { data: shipment } = await supabase
+        .from("shipments")
+        .select("package_code, return_package_code, tracking_number, return_tracking_number")
+        .or(`tracking_number.eq.${rawParam},return_tracking_number.eq.${rawParam}`)
+        .maybeSingle()
+
+      if (shipment) {
+        // Determinar si el tracking_number corresponde al envío de ida o retorno
+        const isReturn = shipment.return_tracking_number === rawParam
+        const resolvedCode = isReturn ? shipment.return_package_code : shipment.package_code
+        if (resolvedCode) {
+          packageCode = resolvedCode
+        }
+        // Si no hay package_code en BD, usamos rawParam como fallback
+      }
     }
 
     if (!isCorreosProxyConfigured()) {
