@@ -2,8 +2,11 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { phone } = await request.json()
 

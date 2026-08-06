@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   const { searchParams } = new URL(request.url)
   const phone = searchParams.get("phone")
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,8 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 }
 
 export async function POST() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   const now = new Date().toISOString()
 
   const { data: pendingEmails, error } = await supabase

@@ -8,8 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Gift, Plus, Copy, Ban, Check, RefreshCw } from "lucide-react"
+import { Gift, Plus, Copy, Ban, Check, RefreshCw, Sparkles } from "lucide-react"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Separator } from "@/components/ui/separator"
 
 interface GiftCard {
   id: string
@@ -32,17 +35,52 @@ interface Stats {
   remainingValue: number
 }
 
+const MEMBERSHIP_PRESETS = [
+  { label: "Personalizado", value: "custom", pricePerMonth: 0 },
+  { label: "Petite — 19,99 €/mes", value: "petite", pricePerMonth: 19.99 },
+  { label: "L'Essentiel — 59 €/mes", value: "essentiel", pricePerMonth: 59 },
+  { label: "Signature — 149 €/mes", value: "signature", pricePerMonth: 149 },
+  { label: "Privé — 149 €/mes", value: "prive", pricePerMonth: 149 },
+] as const
+
+const DURATION_OPTIONS = [
+  { label: "1 mes", value: 1 },
+  { label: "3 meses", value: 3 },
+  { label: "6 meses", value: 6 },
+  { label: "12 meses", value: 12 },
+]
+
 export default function AdminGiftCardsPage() {
   const [giftCards, setGiftCards] = useState<GiftCard[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [membershipPreset, setMembershipPreset] = useState<string>("custom")
+  const [durationMonths, setDurationMonths] = useState<number>(1)
   const [newCard, setNewCard] = useState({
-    amount: 50,
+    amount: 59,
     recipientEmail: "",
     recipientName: "",
+    note: "",
   })
+
+  // Cuando cambia el preset de membresía, actualiza el importe calculado
+  const handlePresetChange = (preset: string) => {
+    setMembershipPreset(preset)
+    const found = MEMBERSHIP_PRESETS.find((p) => p.value === preset)
+    if (found && found.value !== "custom") {
+      setNewCard((c) => ({ ...c, amount: parseFloat((found.pricePerMonth * durationMonths).toFixed(2)) }))
+    }
+  }
+
+  const handleDurationChange = (months: number) => {
+    setDurationMonths(months)
+    const found = MEMBERSHIP_PRESETS.find((p) => p.value === membershipPreset)
+    if (found && found.value !== "custom") {
+      setNewCard((c) => ({ ...c, amount: parseFloat((found.pricePerMonth * months).toFixed(2)) }))
+    }
+  }
 
   const fetchGiftCards = async () => {
     try {
@@ -64,17 +102,26 @@ export default function AdminGiftCardsPage() {
   const createGiftCard = async () => {
     setCreating(true)
     try {
+      const preset = MEMBERSHIP_PRESETS.find((p) => p.value === membershipPreset)
+      const membershipLabel = preset && preset.value !== "custom" ? preset.label.split("—")[0].trim() : undefined
+
       const res = await fetch("/api/admin/gift-cards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newCard),
+        body: JSON.stringify({
+          ...newCard,
+          membershipLabel,
+          durationMonths: membershipPreset !== "custom" ? durationMonths : undefined,
+        }),
       })
 
       if (res.ok) {
         const data = await res.json()
         toast.success(`Gift card creada: ${data.giftCard.code}`)
         setDialogOpen(false)
-        setNewCard({ amount: 50, recipientEmail: "", recipientName: "" })
+        setMembershipPreset("custom")
+        setDurationMonths(1)
+        setNewCard({ amount: 59, recipientEmail: "", recipientName: "", note: "" })
         fetchGiftCards()
       } else {
         toast.error("Error al crear gift card")
@@ -149,31 +196,89 @@ export default function AdminGiftCardsPage() {
               Crear Gift Card
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Crear Nueva Gift Card</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Crear Gift Card
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div>
-                <Label>Valor (€)</Label>
+            <div className="space-y-4 pt-2">
+
+              {/* Preset de membresía */}
+              <div className="space-y-1.5">
+                <Label>Tipo de membresía (preset)</Label>
+                <Select value={membershipPreset} onValueChange={handlePresetChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una membresía..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEMBERSHIP_PRESETS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Duración — solo cuando se elige un preset */}
+              {membershipPreset !== "custom" && (
+                <div className="space-y-1.5">
+                  <Label>Duración del regalo</Label>
+                  <div className="flex gap-2">
+                    {DURATION_OPTIONS.map((d) => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => handleDurationChange(d.value)}
+                        className={`flex-1 rounded-md border py-1.5 text-sm font-medium transition-colors ${
+                          durationMonths === d.value
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-background text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Valor calculado / manual */}
+              <div className="space-y-1.5">
+                <Label>
+                  Valor total (€)
+                  {membershipPreset !== "custom" && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      calculado automáticamente
+                    </span>
+                  )}
+                </Label>
                 <Input
                   type="number"
-                  min={25}
-                  max={500}
+                  min={1}
+                  step={0.01}
                   value={newCard.amount}
                   onChange={(e) => setNewCard({ ...newCard, amount: Number(e.target.value) })}
+                  readOnly={membershipPreset !== "custom"}
+                  className={membershipPreset !== "custom" ? "bg-muted" : ""}
                 />
               </div>
-              <div>
-                <Label>Nombre destinatario (opcional)</Label>
+
+              <Separator />
+
+              {/* Destinatario */}
+              <div className="space-y-1.5">
+                <Label>Nombre del destinatario</Label>
                 <Input
                   value={newCard.recipientName}
                   onChange={(e) => setNewCard({ ...newCard, recipientName: e.target.value })}
                   placeholder="María García"
                 />
               </div>
-              <div>
-                <Label>Email destinatario (opcional)</Label>
+              <div className="space-y-1.5">
+                <Label>Email del destinatario (opcional)</Label>
                 <Input
                   type="email"
                   value={newCard.recipientEmail}
@@ -181,8 +286,18 @@ export default function AdminGiftCardsPage() {
                   placeholder="maria@ejemplo.com"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Mensaje personal (opcional)</Label>
+                <Textarea
+                  value={newCard.note}
+                  onChange={(e) => setNewCard({ ...newCard, note: e.target.value })}
+                  placeholder="Con todo el cariño del mundo..."
+                  rows={2}
+                />
+              </div>
+
               <Button onClick={createGiftCard} disabled={creating} className="w-full">
-                {creating ? "Creando..." : "Crear Gift Card"}
+                {creating ? "Generando código..." : "Crear Gift Card"}
               </Button>
             </div>
           </DialogContent>

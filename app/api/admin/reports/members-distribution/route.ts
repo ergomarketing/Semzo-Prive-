@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 // Categoria A - Miembro activo comercial (revenue / MRR / distribucion)
 const CATEGORY_A_STATES = ["active", "cancelled_active", "past_due"]
@@ -13,6 +14,8 @@ const MEMBERSHIP_PRICES_CENTS: Record<string, number> = {
 }
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },

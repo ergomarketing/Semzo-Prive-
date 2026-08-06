@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -8,6 +9,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
  * Obtener configuración de transportistas
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     const carrier_name = searchParams.get("carrier_name")
@@ -51,6 +54,8 @@ export async function GET(request: NextRequest) {
  * Crear nueva configuración de transportista
  */
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const {
@@ -125,6 +130,8 @@ export async function POST(request: NextRequest) {
  * Actualizar configuración de transportista
  */
 export async function PATCH(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const {
@@ -192,6 +199,8 @@ export async function PATCH(request: NextRequest) {
  * Eliminar configuración de transportista
  */
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get("id")

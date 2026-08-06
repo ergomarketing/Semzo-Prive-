@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
@@ -15,6 +16,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
  * etc. La pagina filtra/segmenta visualmente.
  */
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabaseUrl =
       process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL ||

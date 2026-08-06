@@ -36,9 +36,37 @@ interface EnrollOptions {
   referral_code?: string
 }
 
+/**
+ * Alta idempotente en newsletter_subscriptions. Se llama en el momento del
+ * registro para que el contacto aparezca en la lista de newsletter de inmediato,
+ * sin esperar a completar la secuencia de 5 emails.
+ */
+async function subscribeToNewsletter(email: string, name?: string | null, phone?: string | null) {
+  const supabase = getServiceClient()
+  try {
+    await supabase.from("newsletter_subscriptions").upsert(
+      {
+        email,
+        name: name || null,
+        phone: phone || null,
+        status: "active",
+        subscribed_at: new Date().toISOString(),
+        preferences: { newArrivals: true, exclusiveOffers: true, styleGuides: true, events: false, membershipUpdates: true },
+      },
+      { onConflict: "email", ignoreDuplicates: false }
+    )
+  } catch (e) {
+    console.error("[enrollLead] Error en alta de newsletter:", e)
+    // No bloquear el flujo de registro si falla el alta de newsletter
+  }
+}
+
 export async function enrollLead(opts: EnrollOptions): Promise<{ ok: boolean; leadId?: string; reason?: string }> {
   const supabase = getServiceClient()
   const email = opts.email.toLowerCase().trim()
+
+  // Alta inmediata en newsletter (idempotente) — ocurre en TODO registro.
+  await subscribeToNewsletter(email, opts.name, opts.phone)
 
   // 1. Upsert en tabla leads (si ya existe no duplicar, solo actualizar source si era desconocido)
   const { data: existing } = await supabase

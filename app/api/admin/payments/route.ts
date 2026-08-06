@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
 
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     // Obtener los últimos 100 cobros desde Stripe
     const chargesResponse = await stripe.charges.list({

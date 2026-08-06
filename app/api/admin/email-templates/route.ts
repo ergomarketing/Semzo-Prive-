@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const adminSupabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,8 @@ async function isAdmin() {
 }
 
 export async function GET(req: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   // Permitir acceso desde el panel admin (mismo origen) sin sesión en preview
   const referer = req.headers.get("referer") || ""
   const isAdminPanel = referer.includes("/admin")
@@ -47,6 +50,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   const referer = req.headers.get("referer") || ""
   const isAdminPanel = referer.includes("/admin")
   if (!isAdminPanel && !(await isAdmin())) {

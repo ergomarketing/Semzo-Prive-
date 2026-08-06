@@ -169,14 +169,137 @@ interface PtresPreregisterPayload {
   shipments: PtresShipment[]
 }
 
+// ---------------------------------------------------------------------------
+// Interfaces tipadas para las respuestas de la API de Correos (via proxy).
+// ---------------------------------------------------------------------------
+
+/** Paquete individual dentro de la respuesta del preregister. */
+interface PackageResponse {
+  packageCode?: string
+  shippingCode?: string
+  codEnvio?: string
+  shipmentCode?: string
+  [key: string]: unknown
+}
+
+/** Envio individual dentro de la respuesta del preregister. */
+interface ShipmentResponse {
+  shippingCode?: string
+  codEnvio?: string
+  shipmentCode?: string
+  packages?: PackageResponse[]
+  [key: string]: unknown
+}
+
+/** Respuesta completa del endpoint preregister. */
+interface PreregisterResponse {
+  shipments?: ShipmentResponse[]
+  shippingCode?: string
+  codEnvio?: string
+  shipmentCode?: string
+  labellerCode?: string
+  codEtiquetador?: string
+  responseDate?: string
+  fechaRespuesta?: string
+  result?: string
+  resultado?: string
+  shipmentId?: string
+  idEnvio?: string
+  resultData?: string
+  datosResultado?: string
+  preregistros?: Array<{ codEnvio?: string; shippingCode?: string }>
+  [key: string]: unknown
+}
+
+/** Respuesta del endpoint Labels. El API devuelve { "pdf": "<base64>" }. */
+interface LabelResponse {
+  pdf?: string
+  label?: string
+  content?: string
+  labels?: Array<{ label?: string; content?: string }>
+  [key: string]: unknown
+}
+
 interface CorreosShipmentResponse {
+  /** Codigo de envio Correos (shippingCode/codEnvio). */
   codEnvio: string
+  /**
+   * Codigo de PAQUETE Correos. Es el identificador correcto para la Labels API.
+   * Puede diferir de codEnvio en envios con varios paquetes.
+   */
+  packageCode: string
   codEtiquetador: string
   fechaRespuesta?: string
   resultado?: string
   idEnvio?: string
   datosResultado?: string
-  raw?: any
+  raw?: PreregisterResponse
+}
+
+// ---------------------------------------------------------------------------
+// Funciones de parseo centralizadas — toda la interpretacion del JSON aqui.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extrae shipmentCode y packageCode de la respuesta cruda del preregister.
+ * Estructura real confirmada en produccion (PTRES PRE):
+ *   { shipments: [{ packages: [{ packageCode, shippingCode }], shippingCode }] }
+ */
+function parsePreregisterResponse(data: PreregisterResponse): {
+  shipmentCode: string
+  packageCode: string
+} {
+  const firstShipment = data.shipments?.[0]
+  const firstPackage = firstShipment?.packages?.[0]
+
+  const packageCode = String(
+    firstPackage?.packageCode ||
+    firstPackage?.shippingCode ||
+    firstPackage?.codEnvio ||
+    firstPackage?.shipmentCode ||
+    firstShipment?.shippingCode ||
+    firstShipment?.codEnvio ||
+    firstShipment?.shipmentCode ||
+    data.shippingCode ||
+    data.codEnvio ||
+    data.shipmentCode ||
+    data.preregistros?.[0]?.codEnvio ||
+    data.preregistros?.[0]?.shippingCode ||
+    "",
+  )
+
+  const shipmentCode = String(
+    firstShipment?.shippingCode ||
+    firstShipment?.codEnvio ||
+    firstShipment?.shipmentCode ||
+    firstPackage?.shippingCode ||
+    firstPackage?.codEnvio ||
+    firstPackage?.shipmentCode ||
+    data.shippingCode ||
+    data.codEnvio ||
+    data.shipmentCode ||
+    data.preregistros?.[0]?.shippingCode ||
+    data.preregistros?.[0]?.codEnvio ||
+    packageCode,
+  )
+
+  return { shipmentCode, packageCode }
+}
+
+/**
+ * Extrae el PDF en base64 de la respuesta cruda del endpoint Labels.
+ * El API devuelve: { "pdf": "<base64>" }
+ * Se soportan aliases como fallback.
+ */
+function parseLabelResponse(data: LabelResponse): string {
+  return (
+    data.pdf ||
+    data.label ||
+    data.labels?.[0]?.label ||
+    data.labels?.[0]?.content ||
+    data.content ||
+    ""
+  )
 }
 
 interface CorreosTrackingResponse {
@@ -203,20 +326,23 @@ export const CORREOS_PRODUCTS = {
   CORREOS_EXPRESS: "P",
 }
 
+/** Limpia un valor de variable de entorno (trim + quita comillas accidentales). */
+function cleanEnv(v?: string): string {
+  return v ? v.trim().replace(/^["']|["']$/g, "") : ""
+}
+
 /**
- * Lee la URL y la API key del proxy de Correos desde las variables de entorno.
- * Acepta nombres alternativos y limpia espacios/comillas accidentales.
- * Devuelve null si falta cualquiera de las dos (sin lanzar).
+ * Lee la configuracion del proxy sin lanzar. Devuelve null si faltan vars.
+ * Acepta CORREOS_PROXY_KEY como alias de CORREOS_PROXY_API_KEY.
  */
 function readProxyConfig(): { url: string; key: string } | null {
-  const clean = (v?: string | null) => (v ? v.trim().replace(/^["']|["']$/g, "") : "")
-  const url = clean(process.env.CORREOS_PROXY_URL || process.env.NEXT_PUBLIC_CORREOS_PROXY_URL)
-  const key = clean(process.env.CORREOS_PROXY_API_KEY || process.env.CORREOS_PROXY_KEY)
+  const url = cleanEnv(process.env.CORREOS_PROXY_URL)
+  const key = cleanEnv(process.env.CORREOS_PROXY_API_KEY || process.env.CORREOS_PROXY_KEY)
   if (!url || !key) return null
   return { url: url.replace(/\/$/, ""), key }
 }
 
-/** True si el proxy de Correos tiene URL y API key configuradas. */
+/** Devuelve true si las variables de entorno del proxy estan definidas. */
 export function isCorreosProxyConfigured(): boolean {
   return readProxyConfig() !== null
 }
@@ -413,52 +539,34 @@ class CorreosAPI {
       method: "POST",
       body: JSON.stringify(payload),
     })
-    const data = await res.json().catch(() => ({}))
+    const data: PreregisterResponse = await res.json().catch(() => ({}))
     if (!res.ok) {
       throw new Error(
         `Correos preregister fallo (${res.status}): ${JSON.stringify(data)}`,
       )
     }
-    // Normalizar respuesta. El endpoint REST v1 de Correos devuelve el tracking
-    // dentro de shipments[]. Exploramos todas las rutas conocidas en orden de
-    // prioridad (v1 REST primero, luego legado, luego raiz).
-    const firstShipment = data?.shipments?.[0]
-    const firstPackage = firstShipment?.packages?.[0]
-    const codEnvio =
-      // REST v1: nivel paquete
-      firstPackage?.shippingCode ||
-      firstPackage?.codEnvio ||
-      firstPackage?.shipmentCode ||
-      // REST v1: nivel shipment
-      firstShipment?.shippingCode ||
-      firstShipment?.codEnvio ||
-      firstShipment?.shipmentCode ||
-      // Raiz (legado / respuestas planas)
-      data.shippingCode ||
-      data.codEnvio ||
-      data.shipmentCode ||
-      data.code ||
-      data?.preregistros?.[0]?.codEnvio ||
-      data?.preregistros?.[0]?.shippingCode ||
-      ""
 
-    // Log para depuracion: estructura completa de la respuesta del proxy.
-    console.log("[v0] Correos preregister raw response:", JSON.stringify(data, null, 2))
-    console.log("[v0] codEnvio resuelto:", codEnvio || "(vacio — revisar estructura de respuesta)")
+    const { shipmentCode, packageCode } = parsePreregisterResponse(data)
 
-    if (!codEnvio) {
+    if (!packageCode) {
       throw new Error(
-        `Correos devolvio HTTP 200 pero sin codigo de envio. Respuesta: ${JSON.stringify(data)}`
+        `Correos respondio correctamente pero no devolvio packageCode. Respuesta: ${JSON.stringify(data)}`,
+      )
+    }
+    if (!shipmentCode) {
+      throw new Error(
+        `Correos respondio correctamente pero no devolvio shipmentCode. Respuesta: ${JSON.stringify(data)}`,
       )
     }
 
     return {
-      codEnvio,
-      codEtiquetador: data.labellerCode || data.codEtiquetador || "",
-      fechaRespuesta: data.responseDate || data.fechaRespuesta,
-      resultado: data.result || data.resultado,
-      idEnvio: data.shipmentId || data.idEnvio,
-      datosResultado: data.resultData || data.datosResultado,
+      codEnvio: shipmentCode,
+      packageCode,
+      codEtiquetador: String(data.labellerCode ?? data.codEtiquetador ?? ""),
+      fechaRespuesta: String(data.responseDate ?? data.fechaRespuesta ?? ""),
+      resultado: String(data.result ?? data.resultado ?? ""),
+      idEnvio: String(data.shipmentId ?? data.idEnvio ?? ""),
+      datosResultado: String(data.resultData ?? data.datosResultado ?? ""),
       raw: data,
     }
   }
@@ -542,4 +650,8 @@ export type {
   PtresPackage,
   PtresShipment,
   PtresPreregisterPayload,
+  PreregisterResponse,
+  ShipmentResponse,
+  PackageResponse,
+  LabelResponse,
 }

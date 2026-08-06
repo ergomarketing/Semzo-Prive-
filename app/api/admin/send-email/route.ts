@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const data = await request.json()
     const to = data.to

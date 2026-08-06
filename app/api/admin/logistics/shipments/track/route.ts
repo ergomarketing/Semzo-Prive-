@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { createClient } from "@supabase/supabase-js"
 import { adminNotifications } from "@/lib/admin-notifications"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,8 @@ const supabase = createClient(
  * Cuando se anada, este handler funcionara automaticamente.
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const trackingNumber = request.nextUrl.searchParams.get("tracking_number")
     if (!trackingNumber) {
@@ -25,8 +28,7 @@ export async function GET(request: NextRequest) {
     if (!isCorreosProxyConfigured()) {
       return NextResponse.json(
         {
-          error:
-            "La integracion con Correos no esta configurada. Anade las variables CORREOS_PROXY_URL y CORREOS_PROXY_API_KEY en el proyecto.",
+          error: "La integracion con Correos no esta configurada. Anade CORREOS_PROXY_URL y CORREOS_PROXY_API_KEY en las variables de entorno del proyecto.",
           code: "CORREOS_PROXY_NOT_CONFIGURED",
         },
         { status: 503 },

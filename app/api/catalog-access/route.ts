@@ -47,6 +47,21 @@ export async function POST(request: Request) {
       console.error("[catalog-access] error guardando lead:", error)
     }
 
+    // Meter en el embudo de leads + alta inmediata en newsletter (best-effort)
+    try {
+      const { enrollLead } = await import("@/lib/leads/enroll")
+      await enrollLead({
+        email: email.toLowerCase().trim(),
+        name: full_name?.trim() || undefined,
+        phone: whatsapp?.trim() || undefined,
+        source: "organic_web",
+        utm_campaign: utm_campaign || undefined,
+        utm_medium: utm_medium || undefined,
+      })
+    } catch (e) {
+      console.error("[catalog-access] enrollLead error:", e)
+    }
+
     // Set cookie de acceso
     const cookieStore = await cookies()
     cookieStore.set(COOKIE_NAME, "1", {

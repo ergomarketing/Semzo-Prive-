@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -104,6 +105,8 @@ async function cancelStripeSubscriptionsForUser(supabaseAdmin: any, targetUserId
  * Maneja todas las foreign key constraints en el orden correcto
  */
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     console.log("[DELETE-USER] === INICIO ELIMINACIÓN SEGURA ===")
 

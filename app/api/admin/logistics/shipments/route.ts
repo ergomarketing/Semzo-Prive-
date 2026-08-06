@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, CORREOS_PRODUCTS, type CorreosParty } from "@/lib/correos-api"
 import { sanitizeRecipient, type RecipientInput } from "@/lib/correos-sanitize"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -263,6 +264,8 @@ async function resolveRecipient(
  * GET /api/admin/logistics/shipments
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status")
@@ -328,6 +331,8 @@ export async function GET(request: NextRequest) {
  * Crear envio integrado con Correos (ida + retorno prepagado).
  */
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const {
@@ -346,6 +351,8 @@ export async function POST(request: NextRequest) {
     } = body
 
     let correosTrackingNumber = tracking_number
+    let correosPackageCode: string | null = null
+    let returnPackageCode: string | null = null
     let correosResponse: any = null
     let returnTrackingNumber: string | null = null
     let returnCorreosResponse: any = null
@@ -412,6 +419,7 @@ export async function POST(request: NextRequest) {
             observations,
           })
           correosTrackingNumber = correosResponse.codEnvio
+          correosPackageCode = correosResponse.packageCode || null
         } catch (err: any) {
           const msg = err?.message || String(err)
           console.error("[Logistics API] Error creating outbound Correos shipment:", msg)
@@ -431,6 +439,7 @@ export async function POST(request: NextRequest) {
             observations: "Devolucion bolso",
           })
           returnTrackingNumber = returnCorreosResponse.codEnvio
+          returnPackageCode = returnCorreosResponse.packageCode || null
         } catch (err: any) {
           const msg = err?.message || String(err)
           console.error("[Logistics API] Error creating return Correos shipment:", msg)
@@ -450,7 +459,9 @@ export async function POST(request: NextRequest) {
         status: "pending",
         carrier,
         tracking_number: correosTrackingNumber || null,
+        package_code: correosPackageCode || null,
         return_tracking_number: returnTrackingNumber || null,
+        return_package_code: returnPackageCode || null,
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,
@@ -534,6 +545,8 @@ export async function POST(request: NextRequest) {
  * PATCH /api/admin/logistics/shipments
  */
 export async function PATCH(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { id, status, carrier, tracking_number, estimated_delivery, cost, notes } = body
@@ -586,6 +599,8 @@ export async function PATCH(request: NextRequest) {
  * DELETE /api/admin/logistics/shipments
  */
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get("id")

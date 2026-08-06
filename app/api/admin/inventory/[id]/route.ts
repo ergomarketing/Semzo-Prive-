@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
@@ -9,6 +10,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 })
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const bagId = params.id
     const body = await request.json()
@@ -105,6 +108,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const bagId = params.id
 

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +14,8 @@ const supabase = createClient(
  * que apuntan a auth.users en lugar de profiles.
  */
 export async function GET() {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     // 1. Reservation IDs que ya tienen shipment (excluir)
     const { data: existingShipments } = await supabase

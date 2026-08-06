@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -9,6 +10,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
  * Obtener lista de devoluciones
  */
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status")
@@ -84,6 +87,8 @@ export async function GET(request: NextRequest) {
  * Crear una nueva devolución
  */
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { shipment_id, reason, notes, return_carrier, return_tracking, refund_amount } = body
@@ -157,6 +162,8 @@ export async function POST(request: NextRequest) {
  * Actualizar una devolución
  */
 export async function PATCH(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { id, status, return_tracking, return_carrier, refund_amount, notes } = body

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -19,6 +20,8 @@ const CATEGORY_C_STATES = [
 const CATEGORY_A_STATES = ["active", "cancelled_active", "past_due"]
 
 export async function GET(_request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -127,6 +130,8 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const { searchParams } = new URL(request.url)

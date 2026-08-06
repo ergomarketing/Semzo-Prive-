@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export async function POST(request: Request) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { code, amount, intentId } = await request.json()
 
