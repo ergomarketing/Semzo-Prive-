@@ -7,6 +7,7 @@
  */
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { logEmail } from "@/lib/email-logger"
 
 function getServiceClient() {
   return createClient(
@@ -169,7 +170,30 @@ async function sendEmailNow(leadId: string, email: string, name: string) {
   const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
   const fromEmail = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
-  await resend.emails.send({ from: fromEmail, to: email, subject, html: bodyHtml })
+  try {
+    const { data: sendData, error: sendError } = await resend.emails.send({ from: fromEmail, to: email, subject, html: bodyHtml })
+    await logEmail({
+      recipientEmail: email,
+      recipientName: name,
+      subject,
+      emailType: "lead_sequence_1",
+      status: sendError ? "failed" : "sent",
+      errorMessage: sendError ? String(sendError.message || sendError) : null,
+      resendId: sendData?.id ?? null,
+      metadata: { leadId, email_number: 1 },
+    })
+  } catch (e: any) {
+    await logEmail({
+      recipientEmail: email,
+      recipientName: name,
+      subject,
+      emailType: "lead_sequence_1",
+      status: "failed",
+      errorMessage: String(e?.message || e),
+      metadata: { leadId, email_number: 1 },
+    })
+    throw e
+  }
 
   // Marcar como enviado
   await supabase

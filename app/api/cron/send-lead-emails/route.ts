@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { logEmail } from "@/lib/email-logger"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,6 +126,15 @@ export async function GET(req: NextRequest) {
           .from("email_sequence_log")
           .update({ status: "failed", error_message: JSON.stringify(resendError) })
           .eq("id", row.id)
+        await logEmail({
+          recipientEmail: lead.email,
+          recipientName: lead.name || null,
+          subject,
+          emailType: `lead_sequence_${row.email_number}`,
+          status: "failed",
+          errorMessage: JSON.stringify(resendError),
+          metadata: { leadId: lead.id, email_number: row.email_number },
+        })
         failed++
         continue
       }
@@ -135,6 +145,16 @@ export async function GET(req: NextRequest) {
         .from("email_sequence_log")
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", row.id)
+
+      await logEmail({
+        recipientEmail: lead.email,
+        recipientName: lead.name || null,
+        subject,
+        emailType: `lead_sequence_${row.email_number}`,
+        status: "sent",
+        resendId: resendData?.id ?? null,
+        metadata: { leadId: lead.id, email_number: row.email_number },
+      })
 
       // Si es el Email 5 (último), migrar automáticamente a newsletter
       if (row.email_number === 5) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { logEmail } from "@/lib/email-logger"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -96,7 +97,7 @@ export async function POST() {
 </html>`
 
     try {
-      await resend.emails.send({
+      const { data: sendData } = await resend.emails.send({
         from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",
         to: [lead.email],
         subject,
@@ -107,6 +108,16 @@ export async function POST() {
         .from("email_sequence_log")
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", row.id)
+
+      await logEmail({
+        recipientEmail: lead.email,
+        recipientName: lead.name || null,
+        subject,
+        emailType: `lead_sequence_${row.email_number}`,
+        status: "sent",
+        resendId: sendData?.id ?? null,
+        metadata: { leadId: lead.id, email_number: row.email_number, manual_trigger: true },
+      })
 
       if (row.email_number === 5) {
         await supabase

@@ -6,6 +6,7 @@ import {
   generateDunningE3HTML,
   generateDunningAdminHTML,
 } from "@/lib/email-templates-membership"
+import { logEmail } from "@/lib/email-logger"
 
 export const dynamic = "force-dynamic"
 
@@ -118,8 +119,26 @@ export async function GET(request: NextRequest) {
 
     if (sendErr) {
       console.error(`[dunning-cron] Error enviando E${step} a:`, profile.email, sendErr)
+      await logEmail({
+        recipientEmail: profile.email,
+        recipientName: userName,
+        subject,
+        emailType: `dunning_e${step}`,
+        status: "failed",
+        errorMessage: String((sendErr as any)?.message || sendErr),
+        metadata: { membershipId: membership.id, step },
+      })
       continue
     }
+
+    await logEmail({
+      recipientEmail: profile.email,
+      recipientName: userName,
+      subject,
+      emailType: `dunning_e${step}`,
+      status: "sent",
+      metadata: { membershipId: membership.id, step },
+    })
 
     // Notificar al admin
     const adminHtml = generateDunningAdminHTML({

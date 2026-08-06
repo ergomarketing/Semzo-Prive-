@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { Email1Bienvenida } from "@/emails/leads/email-1-bienvenida"
+import { logEmail } from "@/lib/email-logger"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,10 +78,11 @@ export async function POST(req: NextRequest) {
         const trackingPixelUrl = `${process.env.APP_URL}/api/track/open?lid=${lead.id}&eid=${email1Row.id}`
         const ctaBaseUrl = `${process.env.APP_URL}/api/track/click?lid=${lead.id}&eid=${email1Row.id}&url=`
 
-        await resend.emails.send({
+        const subject1 = `Bienvenida a algo diferente, ${name || ""}`.trim()
+        const { data: send1Data } = await resend.emails.send({
           from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",
           to: [lead.email],
-          subject: `Bienvenida a algo diferente, ${name || ""}`.trim(),
+          subject: subject1,
           react: Email1Bienvenida({
             name: name || "",
             trackingPixelUrl,
@@ -93,12 +95,31 @@ export async function POST(req: NextRequest) {
           .from("email_sequence_log")
           .update({ status: "sent", sent_at: new Date().toISOString() })
           .eq("id", email1Row.id)
+
+        await logEmail({
+          recipientEmail: lead.email,
+          recipientName: name || null,
+          subject: subject1,
+          emailType: "lead_sequence_1",
+          status: "sent",
+          resendId: send1Data?.id ?? null,
+          metadata: { leadId: lead.id, email_number: 1 },
+        })
       } catch (emailErr) {
         console.error("[leads/register] Error enviando email 1:", emailErr)
         await supabase
           .from("email_sequence_log")
           .update({ status: "failed", error_message: String(emailErr) })
           .eq("id", email1Row.id)
+        await logEmail({
+          recipientEmail: lead.email,
+          recipientName: name || null,
+          subject: `Bienvenida a algo diferente, ${name || ""}`.trim(),
+          emailType: "lead_sequence_1",
+          status: "failed",
+          errorMessage: String(emailErr),
+          metadata: { leadId: lead.id, email_number: 1 },
+        })
       }
     }
 
