@@ -49,37 +49,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setIsAdmin(false)
       return
     }
-    const token = localStorage.getItem("admin_session_token")
-    const email = localStorage.getItem("admin_email")
-    if (token === "valid_admin_token" && email) {
-      setIsAdmin(true)
-      setAdminEmail(email)
-    } else {
-      setIsAdmin(false)
-      setAdminEmail(null)
+    let cancelled = false
+    // Verificar la sesión contra la cookie httpOnly vía API (fuente de verdad).
+    fetch("/api/admin/verify", { credentials: "include", cache: "no-store" })
+      .then((res) => {
+        if (cancelled) return
+        if (res.ok) {
+          setIsAdmin(true)
+          setAdminEmail(localStorage.getItem("admin_email"))
+        } else {
+          setIsAdmin(false)
+          setAdminEmail(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsAdmin(false)
+          setAdminEmail(null)
+        }
+      })
+    return () => {
+      cancelled = true
     }
   }, [pathname])
 
-  useEffect(() => {
-    const handleStorage = () => {
-      const token = localStorage.getItem("admin_session_token")
-      const email = localStorage.getItem("admin_email")
-      if (token === "valid_admin_token" && email) {
-        setIsAdmin(true)
-        setAdminEmail(email)
-      } else {
-        setIsAdmin(false)
-        setAdminEmail(null)
-      }
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" })
+    } catch {
+      // continuar con el cierre local aunque falle la petición
     }
-    window.addEventListener("storage", handleStorage)
-    return () => window.removeEventListener("storage", handleStorage)
-  }, [])
-
-  const handleSignOut = () => {
-    localStorage.removeItem("admin_session_token")
     localStorage.removeItem("admin_email")
-    localStorage.removeItem("admin_login_time")
     setIsAdmin(false)
     setAdminEmail(null)
     window.location.href = "/admin/login"
