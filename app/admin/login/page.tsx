@@ -29,7 +29,10 @@ export default function AdminLogin() {
 
       if (res.ok && data.success) {
         // La cookie httpOnly admin_session ya fue seteada por el servidor.
-        // Redirigimos al panel.
+        // Guardamos el email solo para mostrarlo en el sidebar (no es auth).
+        try {
+          localStorage.setItem("admin_email", email.trim())
+        } catch {}
         window.location.replace("/admin")
       } else {
         setError(data.message || "Usuario o contraseña incorrectos")
