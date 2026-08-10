@@ -27,6 +27,28 @@ function safeTimestamp(epoch: number | null | undefined): string {
   return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
+// Stripe movió current_period_start/end del objeto Subscription a nivel raíz
+// hacia subscription.items.data[].current_period_end en versiones recientes
+// de la API. Leemos primero el item (fuente actual) y caemos al campo raíz
+// como fallback por compatibilidad con integraciones/tipos antiguos.
+// Nota: los tipos del SDK de Stripe (npm "stripe") todavía no declaran
+// current_period_end/start en SubscriptionItem aunque la API sí los devuelve
+// en runtime (verificado contra la API real). Se castea a "any" solo para
+// leer estos dos campos puntuales.
+function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as unknown as { current_period_end?: number } | undefined;
+  if (typeof item?.current_period_end === "number") return item.current_period_end;
+  const rootPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end;
+  return typeof rootPeriodEnd === "number" ? rootPeriodEnd : null;
+}
+
+function getSubscriptionPeriodStart(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as unknown as { current_period_start?: number } | undefined;
+  if (typeof item?.current_period_start === "number") return item.current_period_start;
+  const rootPeriodStart = (subscription as unknown as { current_period_start?: number }).current_period_start;
+  return typeof rootPeriodStart === "number" ? rootPeriodStart : null;
+}
+
 /**
  * ============================================================
  * WEBHOOK
@@ -340,10 +362,10 @@ export async function POST(req: NextRequest) {
           .eq("id", userId);
 
         // Crear/actualizar user_memberships (FUENTE DE VERDAD para estado de membresia)
-        const startDate = new Date(subscription.current_period_start * 1000);
+        const startDate = new Date(safeTimestamp(getSubscriptionPeriodStart(subscription)));
         // Siempre usar current_period_end real de Stripe. Petite es mensual en Stripe
         // aunque maneje pases semanales internamente.
-        const endDate = new Date(subscription.current_period_end * 1000);
+        const endDate = new Date(safeTimestamp(getSubscriptionPeriodEnd(subscription)));
 
         // REGLA DE ORO: Identity → SEPA → Active.
         // NO marcar "active" aqui aunque Stripe diga subscription.status="active".
@@ -655,11 +677,11 @@ export async function POST(req: NextRequest) {
           membership?.billing_cycle ||
           (membership?.membership_type === "petite" ? "weekly" : "monthly");
 
-        const renewalStart = new Date(subscription.current_period_start * 1000);
+        const renewalStart = new Date(safeTimestamp(getSubscriptionPeriodStart(subscription)));
         const renewalEnd =
           renewalBillingCycle === "weekly"
             ? new Date(renewalStart.getTime() + 7 * 24 * 60 * 60 * 1000)
-            : new Date(subscription.current_period_end * 1000);
+            : new Date(safeTimestamp(getSubscriptionPeriodEnd(subscription)));
 
         // REGLA DE ORO: NO promover a "active" desde aqui.
         // Este branch es renovacion: solo actualizar datos de facturacion.
@@ -792,8 +814,9 @@ export async function POST(req: NextRequest) {
         const stripeCanceledAt = subscription.canceled_at
           ? new Date(subscription.canceled_at * 1000).toISOString()
           : null;
-        const stripeCurrentPeriodEnd = subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
+        const stripeCurrentPeriodEndEpoch = getSubscriptionPeriodEnd(subscription);
+        const stripeCurrentPeriodEnd = stripeCurrentPeriodEndEpoch
+          ? new Date(stripeCurrentPeriodEndEpoch * 1000).toISOString()
           : null;
 
         const updatePayload: Record<string, unknown> = {
@@ -1198,18 +1221,25 @@ export async function POST(req: NextRequest) {
         // Buscar membresia y usuario por stripe_customer_id
         const { data: failedMembership } = await supabase
           .from("user_memberships")
-          .select("user_id, failed_payment_count, membership_type")
+          .select("user_id, failed_payment_count, membership_type, dunning_status")
           .eq("stripe_customer_id", customerId)
           .single();
 
         if (failedMembership) {
           // Incrementar contador de pagos fallidos en user_memberships
           const failedCount = (failedMembership.failed_payment_count || 0) + 1;
+          // Vocabulario unificado con el cron de seguimiento (send-dunning-emails):
+          // e1_sent -> e2_sent -> e3_sent. Si ya está en curso una secuencia
+          // (e1_sent/e2_sent/e3_sent), NO la reiniciamos con cada reintento
+          // automático de Stripe: el cron es quien avanza los pasos por fecha.
+          const isFirstFailure = !failedMembership.dunning_status;
+          const newDunningStatus = isFirstFailure ? "e1_sent" : failedMembership.dunning_status;
+
           await supabase
             .from("user_memberships")
             .update({
               failed_payment_count: failedCount,
-              dunning_status: failedCount >= 3 ? "critical" : "warning",
+              dunning_status: newDunningStatus,
               updated_at: now,
             })
             .eq("user_id", failedMembership.user_id);
@@ -1226,16 +1256,20 @@ export async function POST(req: NextRequest) {
               `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
               "Cliente";
 
-          // Enviar email de pago fallido
-          const emailService = EmailServiceProduction.getInstance();
-          await emailService.sendPaymentFailedEmail({
-            userEmail: profile.email,
-            userName: customerName,
-            amount: amountDue,
-            reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
-          });
+          // Enviar email de pago fallido (E1) SOLO en el primer fallo de este ciclo.
+          // Los reintentos automáticos de Stripe no deben re-disparar el E1;
+          // el seguimiento posterior (E2/E3) lo gestiona el cron de dunning.
+          if (isFirstFailure) {
+            const emailService = EmailServiceProduction.getInstance();
+            await emailService.sendPaymentFailedEmail({
+              userEmail: profile.email,
+              userName: customerName,
+              amount: amountDue,
+              reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
+            });
+          }
 
-          // AVISO ADMIN: pago fallido
+          // AVISO ADMIN: pago fallido (en cada intento, para visibilidad)
           await adminNotifications
             .notifyPaymentFailed({
               userName: customerName,
@@ -1246,7 +1280,7 @@ export async function POST(req: NextRequest) {
             })
             .catch(() => {});
 
-          console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}`);
+          console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}, dunning_status=${newDunningStatus}`);
           }
         }
         break;
@@ -1260,17 +1294,22 @@ export async function POST(req: NextRequest) {
           // Actualizar failed_payment_count en user_memberships
           const { data: piMembership } = await supabase
             .from("user_memberships")
-            .select("failed_payment_count")
+            .select("failed_payment_count, dunning_status")
             .eq("user_id", piUserId)
             .single();
 
+          let piIsFirstFailure = false;
           if (piMembership) {
             const piFailedCount = (piMembership.failed_payment_count || 0) + 1;
+            // Mismo vocabulario que el cron de seguimiento (e1_sent/e2_sent/e3_sent).
+            // No reiniciar una secuencia de dunning ya en curso.
+            piIsFirstFailure = !piMembership.dunning_status;
+            const piNewDunningStatus = piIsFirstFailure ? "e1_sent" : piMembership.dunning_status;
             await supabase
               .from("user_memberships")
               .update({
                 failed_payment_count: piFailedCount,
-                dunning_status: piFailedCount >= 3 ? "critical" : "warning",
+                dunning_status: piNewDunningStatus,
                 updated_at: now,
               })
               .eq("user_id", piUserId);
@@ -1283,7 +1322,9 @@ export async function POST(req: NextRequest) {
             .eq("id", piUserId)
             .single();
 
-          if (piProfile) {
+          // Enviar E1 solo en el primer fallo de este ciclo (evita duplicar
+          // el email en cada reintento automático de Stripe).
+          if (piProfile && piIsFirstFailure) {
             const piCustomerName = piProfile.full_name || 
               `${piProfile.first_name || ""} ${piProfile.last_name || ""}`.trim() || 
               "Cliente";

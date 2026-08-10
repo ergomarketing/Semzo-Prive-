@@ -22,18 +22,38 @@ interface EmailData {
 
 import { emailQueue } from "./email-queue"
 
+// Descarta valores placeholder/inválidos (p.ej. "re_xxxxx") y devuelve la primera clave de Resend
+// realmente utilizable entre las variables de entorno disponibles.
+function isValidResendKey(key: string | undefined): key is string {
+  if (!key) return false
+  const trimmed = key.trim()
+  if (!trimmed.startsWith("re_")) return false
+  if (/^re_x+$/i.test(trimmed)) return false // placeholder tipo "re_xxxxx"
+  if (trimmed.length < 20) return false
+  return true
+}
+
+function resolveResendApiKey(): string {
+  const candidates = [process.env.RESEND_API_KEY, process.env.EMAIL_API_KEY]
+  for (const candidate of candidates) {
+    if (isValidResendKey(candidate)) return candidate
+  }
+  return ""
+}
+
 export class EmailServiceProduction {
   private static instance: EmailServiceProduction
   private config: EmailConfig
   private adminEmail = "mailbox@semzoprive.com" // Added admin email
 
   constructor() {
-    const hasResend = !!(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+    const resendKey = resolveResendApiKey()
+    const hasResend = !!resendKey
     const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
 
     this.config = {
       provider: hasResend ? "resend" : hasSmtp ? "smtp" : "resend",
-      apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
+      apiKey: resendKey,
       fromEmail: process.env.SMTP_USER || "noreply@semzoprive.com", // Use SMTP user if available, otherwise default
       fromName: "Semzo Privé",
     }
@@ -57,7 +77,7 @@ export class EmailServiceProduction {
   async sendWithResend(data: EmailData): Promise<boolean> {
     return emailQueue.add(async () => {
       try {
-        const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || ""
+        const apiKey = resolveResendApiKey()
 
         if (!apiKey) {
           console.error("❌ No hay API key de Resend disponible")
