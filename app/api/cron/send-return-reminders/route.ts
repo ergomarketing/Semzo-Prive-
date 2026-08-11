@@ -13,6 +13,7 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { generateReturnReminderHTML } from "@/lib/email-templates-membership"
+import { logEmail } from "@/lib/email-logger"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -140,6 +141,15 @@ export async function GET(request: NextRequest) {
 
     if (sendErr) {
       console.error("[return-reminder] Error enviando a:", profile.email, sendErr)
+      await logEmail({
+        recipientEmail: profile.email,
+        recipientName: userName,
+        subject,
+        emailType: "return_reminder",
+        status: "failed",
+        errorMessage: String((sendErr as any)?.message || sendErr),
+        metadata: { reservationId: res.id, bag: `${bagBrand} ${bagName}` },
+      })
       continue
     }
 
@@ -148,6 +158,15 @@ export async function GET(request: NextRequest) {
       .from("reservations")
       .update({ reminder_2d_sent_at: new Date().toISOString() })
       .eq("id", res.id)
+
+    await logEmail({
+      recipientEmail: profile.email,
+      recipientName: userName,
+      subject,
+      emailType: "return_reminder",
+      status: "sent",
+      metadata: { reservationId: res.id, bag: `${bagBrand} ${bagName}` },
+    })
 
     sent++
     console.log(`[return-reminder] Recordatorio enviado a ${profile.email} | bolso: ${bagBrand} ${bagName}`)

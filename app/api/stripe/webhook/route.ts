@@ -6,6 +6,7 @@ import {
   generateDunningE1HTML,
   generateDunningAdminHTML,
 } from "@/lib/email-templates-membership"
+import { logEmail } from "@/lib/email-logger"
 
 export const dynamic = "force-dynamic"
 
@@ -132,11 +133,23 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     updatePaymentUrl,
   })
 
-  await resend.emails.send({
+  const e1Subject = "Un pequeño recordatorio sobre tu pago — Semzo Privé"
+  const { data: e1Data, error: e1Err } = await resend.emails.send({
     from: `Semzo Privé <${FROM_EMAIL}>`,
     to: profile.email,
-    subject: "Un pequeño recordatorio sobre tu pago — Semzo Privé",
+    subject: e1Subject,
     html: e1Html,
+  })
+
+  await logEmail({
+    recipientEmail: profile.email,
+    recipientName: userName,
+    subject: e1Subject,
+    emailType: "dunning_e1",
+    status: e1Err ? "failed" : "sent",
+    errorMessage: e1Err ? String((e1Err as any).message || e1Err) : null,
+    resendId: e1Data?.id ?? null,
+    metadata: { membershipId: membership.id, step: 1 },
   })
 
   // 6. Notificar al admin
@@ -149,11 +162,23 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     dunningStep: 1,
   })
 
-  await resend.emails.send({
+  const adminSubject = `[Semzo Admin] Pago fallido — ${userName}`
+  const { data: admData, error: admErr } = await resend.emails.send({
     from: `Semzo Privé <${FROM_EMAIL}>`,
     to: ADMIN_EMAIL,
-    subject: `[Semzo Admin] Pago fallido — ${userName}`,
+    subject: adminSubject,
     html: adminHtml,
+  })
+
+  await logEmail({
+    recipientEmail: ADMIN_EMAIL,
+    recipientName: "Admin",
+    subject: adminSubject,
+    emailType: "dunning_admin_alert",
+    status: admErr ? "failed" : "sent",
+    errorMessage: admErr ? String((admErr as any).message || admErr) : null,
+    resendId: admData?.id ?? null,
+    metadata: { membershipId: membership.id, step: 1, userEmail: profile.email },
   })
 
   // 7. Actualizar estado dunning en BD

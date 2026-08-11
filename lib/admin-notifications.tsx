@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { logEmail } from "@/lib/email-logger"
 
 const ADMIN_EMAIL = "mailbox@semzoprive.com"
 
@@ -22,6 +23,17 @@ class AdminNotifications {
         to: ADMIN_EMAIL,
         subject: `[Semzo Admin] ${subject}`,
         html,
+      })
+
+      await logEmail({
+        recipientEmail: ADMIN_EMAIL,
+        recipientName: "Admin",
+        subject: `[Semzo Admin] ${subject}`,
+        emailType,
+        status: error ? "failed" : "sent",
+        errorMessage: error ? String((error as any).message || error) : null,
+        resendId: data?.id ?? null,
+        metadata: metadata ?? null,
       })
 
       if (error) {

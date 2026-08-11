@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { logEmail } from "@/lib/email-logger"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
 </body>
 </html>`
 
-        const { error } = await resend.emails.send({
+        const { data: sendData, error } = await resend.emails.send({
           from:    fromEmail,
           to:      [recipient.email],
           subject,
@@ -135,6 +136,17 @@ export async function POST(request: Request) {
         } else {
           sent++
         }
+
+        await logEmail({
+          recipientEmail: recipient.email,
+          recipientName: personalName || null,
+          subject,
+          emailType: "newsletter_campaign",
+          status: error ? "failed" : "sent",
+          errorMessage: error ? String(error.message || error) : null,
+          resendId: sendData?.id ?? null,
+          metadata: { audience },
+        })
       } catch (err) {
         console.error(`[newsletter/send] Exception sending to ${recipient.email}:`, err)
         failed++
