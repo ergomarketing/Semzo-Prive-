@@ -11,7 +11,18 @@ import { Info, Tag, Gift, Loader2, X, Check, Trash2, ArrowLeft, ShoppingBag, Shi
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { Checkbox } from "@/components/ui/checkbox"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
-import { toast } from "react-toastify"
+import { toast as showToast } from "@/hooks/use-toast"
+
+// react-toastify no esta montado en el layout (su <ToastContainer/> nunca se
+// renderiza), por lo que toast.error/success/info se disparaban pero no se
+// veian nunca en pantalla. Este wrapper usa el sistema de toasts que si esta
+// conectado a <Toaster/> en app/layout.tsx.
+const toast = {
+  success: (message: string) => showToast({ description: message }),
+  error: (message: string) => showToast({ description: message, variant: "destructive" as const }),
+  info: (message: string) => showToast({ description: message }),
+  warning: (message: string) => showToast({ description: message, variant: "destructive" as const }),
+}
 import { useRouter, useSearchParams } from "next/navigation"
 import SMSAuthModal from "@/app/components/sms-auth-modal"
 import { LoginModal } from "@/app/components/login-modal"
