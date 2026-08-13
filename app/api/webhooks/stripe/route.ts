@@ -866,10 +866,18 @@ export async function POST(req: NextRequest) {
         // sobrescribe el local (protege el flujo de onboarding).
         if (internalStatus) {
           updatePayload.status = internalStatus;
-          // Si Stripe dice canceled o expired, retiramos el permiso de
-          // crear nuevas reservas. El acceso (end_date) se mantiene segun
-          // current_period_end para no cortar de golpe.
-          if (internalStatus === "cancelled" || internalStatus === "expired") {
+          // Si Stripe dice canceled, expired o past_due (moroso), retiramos el
+          // permiso de crear nuevas reservas. can_make_reservations=false es
+          // DEFENSA EN PROFUNDIDAD: canCreateReservations() ya bloquea por
+          // status (hard block), pero si algun codigo futuro/legacy consulta
+          // solo el flag sin pasar por esa funcion, debe reflejar la realidad.
+          // El acceso (end_date) se mantiene segun current_period_end para
+          // no cortar de golpe.
+          if (
+            internalStatus === "cancelled" ||
+            internalStatus === "expired" ||
+            internalStatus === "past_due"
+          ) {
             updatePayload.can_make_reservations = false;
           }
           // Recuperacion de morosidad: limpiar contadores de dunning y
