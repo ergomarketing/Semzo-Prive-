@@ -873,11 +873,18 @@ export async function POST(req: NextRequest) {
             updatePayload.can_make_reservations = false;
           }
           // Recuperacion de morosidad: limpiar contadores de dunning y
-          // restaurar el permiso de reservar.
+          // restaurar el permiso de reservar. IMPORTANTE: tambien hay que
+          // sincronizar end_date con current_period_end aqui, porque
+          // canCreateReservations() valida contra end_date (no contra
+          // current_period_end). Si no se sincroniza, la socia queda con
+          // status=active pero bloqueada por una end_date vieja.
           if (wasRecoveringFromDelinquency) {
             updatePayload.failed_payment_count = 0;
             updatePayload.dunning_status = null;
             updatePayload.can_make_reservations = true;
+            if (stripeCurrentPeriodEnd) {
+              updatePayload.end_date = stripeCurrentPeriodEnd;
+            }
           }
         }
 
