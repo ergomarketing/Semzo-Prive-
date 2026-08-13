@@ -658,7 +658,7 @@ export async function POST(req: NextRequest) {
         // 🔒 Resolver user_id desde DB (NO desde metadata)
         const { data: membership } = await supabase
           .from("user_memberships")
-          .select("user_id, billing_cycle, membership_type")
+          .select("user_id, billing_cycle, membership_type, status")
           .eq("stripe_subscription_id", subscriptionId)
           .single();
 
@@ -666,6 +666,15 @@ export async function POST(req: NextRequest) {
           console.error("❌ Membership not found for renewal");
           break;
         }
+
+        // RECUPERACION DE MOROSIDAD: si la membresia estaba en past_due/unpaid
+        // (ya habia superado onboarding en su momento) y ahora llega un pago
+        // exitoso, se reactiva a "active". Esto NO viola la REGLA DE ORO de
+        // no promover a "active" desde Stripe durante el onboarding inicial:
+        // past_due/unpaid solo ocurre DESPUES de haber estado activa, nunca
+        // durante paid_pending_verification/pending_sepa/initiated.
+        const isRecoveringFromDelinquency =
+          membership.status === "past_due" || membership.status === "unpaid";
 
         const subscription = await stripe.subscriptions.retrieve(
           subscriptionId
@@ -683,21 +692,32 @@ export async function POST(req: NextRequest) {
             ? new Date(renewalStart.getTime() + 7 * 24 * 60 * 60 * 1000)
             : new Date(safeTimestamp(getSubscriptionPeriodEnd(subscription)));
 
-        // REGLA DE ORO: NO promover a "active" desde aqui.
-        // Este branch es renovacion: solo actualizar datos de facturacion.
-        // El status "active" SOLO se otorga en: resume-onboarding, membership/activate, orchestrator.
-        // Si la membresia esta "active" se mantiene; si esta en otro estado, se respeta.
+        // REGLA DE ORO: NO promover a "active" desde aqui EXCEPTO recuperacion
+        // de morosidad (ver isRecoveringFromDelinquency arriba). Para cualquier
+        // otro estado (paused, cancelling, cancelled, pending_*, initiated) se
+        // respeta el estado actual: el status "active" inicial SOLO se otorga
+        // en resume-onboarding, membership/activate u orchestrator.
+        const renewalUpdatePayload: Record<string, unknown> = {
+          billing_cycle: renewalBillingCycle,
+          start_date: renewalStart.toISOString(),
+          end_date: renewalEnd.toISOString(),
+          failed_payment_count: 0,
+          dunning_status: null,
+          updated_at: now,
+        };
+        if (isRecoveringFromDelinquency) {
+          renewalUpdatePayload.status = "active";
+          renewalUpdatePayload.can_make_reservations = true;
+        }
+
         await supabase
           .from("user_memberships")
-          .update({
-            billing_cycle: renewalBillingCycle,
-            start_date: renewalStart.toISOString(),
-            end_date: renewalEnd.toISOString(),
-            failed_payment_count: 0,
-            dunning_status: null,
-            updated_at: now,
-          })
+          .update(renewalUpdatePayload)
           .eq("stripe_subscription_id", subscriptionId);
+
+        if (isRecoveringFromDelinquency) {
+          console.log("✅ Membership RECOVERED from delinquency to active:", membership.user_id);
+        }
 
         await supabase
           .from("payment_history")
@@ -796,15 +816,27 @@ export async function POST(req: NextRequest) {
 
         if (!membership?.user_id) break;
 
-        // REGLA DE ORO: NUNCA promover a "active" desde un webhook.
-        // Stripe puede mandar subscription.status="active" inmediatamente tras pago,
-        // antes de que el usuario haya completado Identity/SEPA. Si propagamos
-        // ese status, sobrescribimos "paid_pending_verification" y se rompe el flujo.
+        // REGLA DE ORO: NUNCA promover a "active" desde un webhook durante el
+        // ONBOARDING. Stripe puede mandar subscription.status="active" inmediatamente
+        // tras el primer pago, antes de que el usuario haya completado Identity/SEPA.
+        // Si propagamos ese status ahi, sobrescribimos "paid_pending_verification" y
+        // se rompe el flujo.
         //
-        // Solo propagamos estados de degradacion / cancelacion reales via
-        // mapStripeStatusToInternal (vocabulario interno unificado).
+        // EXCEPCION ACOTADA — recuperacion de morosidad: si la membresia YA estaba
+        // "active" en algun momento y cayo a past_due/unpaid por un pago fallido,
+        // y Stripe ahora confirma status="active" (pago regularizado), SI se propaga.
+        // Esto nunca puede colisionar con el caso de onboarding porque past_due/unpaid
+        // solo ocurre despues de haber estado activa.
+        //
+        // Para cualquier otro caso, solo propagamos estados de degradacion / cancelacion
+        // reales via mapStripeStatusToInternal (vocabulario interno unificado).
         const stripeStatus = subscription.status;
-        const internalStatus = mapStripeStatusToInternal(stripeStatus);
+        const wasRecoveringFromDelinquency =
+          stripeStatus === "active" &&
+          (membership.status === "past_due" || membership.status === "unpaid");
+        const internalStatus = wasRecoveringFromDelinquency
+          ? "active"
+          : mapStripeStatusToInternal(stripeStatus);
 
         // SIEMPRE persistir las banderas de cancelacion de Stripe (espejo).
         // No son fuente de verdad para eligibilidad, pero si para auditoria
@@ -828,8 +860,10 @@ export async function POST(req: NextRequest) {
           updated_at: now,
         };
 
-        // Solo propagar status si es un estado de degradacion legitimo.
-        // active de Stripe -> internalStatus=null -> no se sobrescribe el local.
+        // Solo propagar status si es un estado de degradacion legitimo,
+        // o si es la excepcion acotada de recuperacion de morosidad.
+        // active de Stripe fuera de esos casos -> internalStatus=null -> no se
+        // sobrescribe el local (protege el flujo de onboarding).
         if (internalStatus) {
           updatePayload.status = internalStatus;
           // Si Stripe dice canceled o expired, retiramos el permiso de
@@ -837,6 +871,13 @@ export async function POST(req: NextRequest) {
           // current_period_end para no cortar de golpe.
           if (internalStatus === "cancelled" || internalStatus === "expired") {
             updatePayload.can_make_reservations = false;
+          }
+          // Recuperacion de morosidad: limpiar contadores de dunning y
+          // restaurar el permiso de reservar.
+          if (wasRecoveringFromDelinquency) {
+            updatePayload.failed_payment_count = 0;
+            updatePayload.dunning_status = null;
+            updatePayload.can_make_reservations = true;
           }
         }
 
