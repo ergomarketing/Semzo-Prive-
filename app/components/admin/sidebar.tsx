@@ -16,6 +16,7 @@ import {
   Mail,
   MessageSquare,
   FileText,
+  Handshake,
 } from "lucide-react"
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/members", label: "Miembros", icon: Users },
   { href: "/admin/payments", label: "Pagos", icon: CreditCard },
   { href: "/admin/subscriptions", label: "Suscripciones", icon: Receipt },
+  { href: "/admin/partners", label: "Partners", icon: Handshake },
   { href: "/admin/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/admin/shipping", label: "Envíos", icon: Truck },
   { href: "/admin/logistics", label: "Logística", icon: BoxIcon },

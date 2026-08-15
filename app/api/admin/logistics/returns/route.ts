@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { reconcileRentalCommission } from "@/lib/partners"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -221,6 +222,8 @@ export async function PATCH(request: NextRequest) {
                   id,
                   bag_id,
                   status,
+                  user_id,
+                  total_amount,
                   profiles!reservations_user_id_fkey ( email, full_name, first_name, last_name ),
                   bags!reservations_bag_id_fkey ( name, brand )
                 )
@@ -252,6 +255,16 @@ export async function PATCH(request: NextRequest) {
               old_values: { status: reservation.status },
               new_values: { status: "completed", trigger: `return_${status}` },
             })
+
+            // Sistema de partners: devolucion OK sin incidencias -> comision
+            // liquidable si el cliente aplico un codigo de partner. Idempotente.
+            if (reservation.user_id) {
+              await reconcileRentalCommission({
+                reservationId: reservation.id,
+                userId: reservation.user_id,
+                baseAmount: Number(reservation.total_amount) || 0,
+              }).catch((err) => console.error("[Logistics API] Error reconciliando comision partner:", err))
+            }
           }
 
           if (profile?.email) {
