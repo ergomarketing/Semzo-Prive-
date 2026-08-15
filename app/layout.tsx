@@ -7,6 +7,7 @@ import "./globals.css"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
 import CookieConsent from "./components/cookie-consent"
+import PartnerCapture from "./components/partner-capture"
 import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
 import { Toaster } from "@/components/ui/toaster"
@@ -269,6 +270,7 @@ export default function RootLayout({
               {children}
               <Footer />
               <CookieConsent />
+              <PartnerCapture />
               <Toaster />
             </CartProvider>
           </AuthProvider>
