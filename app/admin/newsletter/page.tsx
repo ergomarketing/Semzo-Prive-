@@ -78,13 +78,6 @@ function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;border-collapse:collapse;">
 
-        <!-- Header -->
-        <tr>
-          <td style="background:${btnBg};padding:28px 40px;text-align:center;">
-            <span style="color:${SEMZO_GOLD};font-family:Georgia,serif;font-size:20px;letter-spacing:5px;font-weight:400;">SEMZO PRIVÉ</span>
-          </td>
-        </tr>
-
         <!-- Headline -->
         <tr>
           <td style="padding:40px 40px 0 40px;">
