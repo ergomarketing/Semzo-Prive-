@@ -73,8 +73,8 @@ function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{
   <title>${block.headline}</title>
   ${block.preheader ? `<div style="display:none;font-size:1px;color:#fef;max-height:0;overflow:hidden;">${block.preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
 </head>
-<body style="margin:0;padding:0;background:#f9f6f1;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f6f1;padding:0 0 40px 0;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:0;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;border-collapse:collapse;">
 
