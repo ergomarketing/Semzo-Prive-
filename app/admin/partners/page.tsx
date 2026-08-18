@@ -33,6 +33,8 @@ import {
   Pencil,
   CheckCircle2,
   Building2,
+  Link2,
+  Check,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -104,6 +106,24 @@ export default function AdminPartnersPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+
+  const buildPartnerLink = (code: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : ""
+    return `${origin}/?partner=${code}`
+  }
+
+  const handleCopyLink = async (code: string) => {
+    const link = buildPartnerLink(code)
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedCode(code)
+      toast({ description: "Enlace copiado. Ya puedes enviárselo al partner." })
+      setTimeout(() => setCopiedCode(null), 2000)
+    } catch {
+      toast({ description: link, variant: "destructive" })
+    }
+  }
 
   useEffect(() => {
     fetchAll()
@@ -361,9 +381,23 @@ export default function AdminPartnersPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
-                              <Pencil className="h-3 w-3" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyLink(p.code)}
+                                title="Copiar enlace para el partner"
+                              >
+                                {copiedCode === p.code ? (
+                                  <Check className="h-3 w-3" style={{ color: "#065f46" }} />
+                                ) : (
+                                  <Link2 className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
