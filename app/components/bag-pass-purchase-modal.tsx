@@ -40,9 +40,12 @@ export default function BagPassPurchaseModal({
 }: BagPassPurchaseModalProps) {
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
+  const [hasActiveReservation, setHasActiveReservation] = useState(false)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
 
   const handlePurchase = async () => {
     setIsPurchasing(true)
+    setPurchaseError(null)
 
     try {
       const response = await fetch("/api/bag-passes/purchase", {
@@ -58,6 +61,10 @@ export default function BagPassPurchaseModal({
       const data = await response.json()
 
       if (!response.ok) {
+        if (data.code === "ACTIVE_RESERVATION") {
+          setHasActiveReservation(true)
+          return
+        }
         throw new Error(data.error || "Error al comprar el pase")
       }
 
@@ -69,7 +76,7 @@ export default function BagPassPurchaseModal({
       }, 2000)
     } catch (error) {
       console.error("[v0] Error purchasing pass:", error)
-      alert(error instanceof Error ? error.message : "Error al comprar el pase")
+      setPurchaseError(error instanceof Error ? error.message : "Error al comprar el pase")
     } finally {
       setIsPurchasing(false)
     }
