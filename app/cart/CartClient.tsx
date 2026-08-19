@@ -10,6 +10,13 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { Info, Tag, Gift, Loader2, X, Check, Trash2, ArrowLeft, ShoppingBag, Shield } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase-browser"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { toast as showToast } from "@/hooks/use-toast"
 
@@ -164,6 +171,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
   } = useRequireAuth()
 
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+ const [activeReservationDialogOpen, setActiveReservationDialogOpen] = useState(false)
 
   const refetchUserProfile = async () => {
     const supabase = getSupabaseBrowser()
@@ -1186,6 +1194,11 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       stack: data.stack,
       fullBody: data,
     })
+    if (data.code === "ACTIVE_RESERVATION") {
+      setCheckoutLoading(false)
+      setActiveReservationDialogOpen(true)
+      return
+    }
     throw new Error(data.details || data.error || "Error al crear checkout")
   }
   
@@ -1267,6 +1280,24 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           }}
           onClose={() => setShowLoginModal(false)}
         />
+
+        {/* Dialog: bolso ya en posesion (mismo estilo que catalog-section) */}
+        <Dialog open={activeReservationDialogOpen} onOpenChange={setActiveReservationDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-serif text-xl">Ya tienes un bolso en curso</DialogTitle>
+              <DialogDescription className="pt-2 leading-relaxed text-foreground/80">
+                Para reservar uno nuevo, primero completa la devolución del bolso actual desde tu dashboard.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setActiveReservationDialogOpen(false)}>
+                Entendido
+              </Button>
+              <Button onClick={() => router.push("/dashboard")}>Ir a mi dashboard</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
