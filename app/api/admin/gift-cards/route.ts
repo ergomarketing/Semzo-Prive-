@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         recipient_email: recipientEmail || null,
         recipient_name: recipientName || null,
         expires_at: expiresAt.toISOString(),
-        ...(description ? { notes: description } : {}),
+        ...(description ? { personal_message: description } : {}),
       })
       .select()
       .single()
