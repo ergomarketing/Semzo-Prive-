@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { ReturnBagDialog } from "@/app/components/return-bag-dialog"
 
 interface Bag {
   id: string
@@ -108,6 +109,7 @@ export default function ReservationDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false)
 
   const reservationId = params?.id as string
   const supabase = getSupabaseBrowser()
@@ -311,6 +313,7 @@ export default function ReservationDetailsPage() {
 
   const status = statusConfig[reservation.status] || statusConfig.pending
   const canCancel = ["pending", "confirmed"].includes(reservation.status)
+  const canReturn = ["active", "shipped", "delivered", "in_use", "overdue"].includes(reservation.status)
   const priceInfo = getMembershipPrice()
 
   const membershipType = reservation.membership_type || reservation.profiles?.membership_type || "free"
@@ -456,6 +459,24 @@ export default function ReservationDetailsPage() {
           </Card>
 
           {/* Acciones */}
+          {canReturn && (
+            <Card>
+              <CardContent className="py-4">
+                <Button
+                  className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
+                  onClick={() => setReturnDialogOpen(true)}
+                >
+                  <Truck className="h-4 w-4 mr-2" />
+                  Solicitar devolución del bolso
+                </Button>
+                <p className="mt-2 text-center text-xs text-slate-500">
+                  Elige recogida a domicilio o entrega en punto de mensajería. Avisaremos a nuestro equipo de
+                  logística al instante.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {canCancel && (
             <Card>
               <CardContent className="py-4">
@@ -537,6 +558,12 @@ export default function ReservationDetailsPage() {
           </Card>
         </div>
       </div>
+
+      <ReturnBagDialog
+        open={returnDialogOpen}
+        onOpenChange={setReturnDialogOpen}
+        onDone={() => window.location.reload()}
+      />
     </div>
   )
 }
