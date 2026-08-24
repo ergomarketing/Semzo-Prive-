@@ -20,7 +20,8 @@ export const CORREOS_MAX_LENGTHS = {
   viaType: 5,
   viaName: 50,
   number: 5,
-  portal: 10,
+  // Correos rechaza (errorCode 1039) cualquier portal de mas de 2 caracteres
+  portal: 2,
   floor: 10,
   door: 10,
   city: 50,
@@ -247,11 +248,13 @@ export interface SanitizedRecipient {
 // Alias retrocompatible: el endpoint usa el nombre RecipientInput
 export type RecipientInput = RawRecipient
 
-export interface SanitizationResult {
+  export interface SanitizationResult {
   data: SanitizedRecipient
   errors: string[]
   valid: boolean
-}
+  /** Portal descartado por exceder los 2 caracteres que admite Correos */
+  droppedPortal?: string
+  }
 
 export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
   const errors: string[] = []
@@ -273,7 +276,14 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
   if (!viaName) errors.push("Nombre de la via obligatorio")
 
   const number = normalizeText(raw.number || "", CORREOS_MAX_LENGTHS.number)
-  const portal = normalizeText(raw.portal || "", CORREOS_MAX_LENGTHS.portal)
+  // Correos solo acepta 2 caracteres en portal (errorCode 1039). Si la socia
+  // escribio texto libre ("Gym Da Vinci", "Urbanizacion X"), truncarlo dejaria
+  // basura en la etiqueta: se descarta del portal y se devuelve en droppedPortal
+  // para adjuntarlo a las observaciones del envio.
+  const rawPortal = normalizeText(raw.portal || "", 100)
+  const portalFits = rawPortal.length <= CORREOS_MAX_LENGTHS.portal
+  const portal = portalFits ? rawPortal : ""
+  const droppedPortal = portalFits ? "" : rawPortal
   const floor = normalizeText(raw.floor || "", CORREOS_MAX_LENGTHS.floor)
 
   const door = normalizeText(raw.door, CORREOS_MAX_LENGTHS.door)
@@ -332,7 +342,8 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
       phone,
       email,
     },
-    errors,
-    valid: errors.length === 0,
+  errors,
+  valid: errors.length === 0,
+  droppedPortal,
   }
 }
