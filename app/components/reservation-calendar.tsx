@@ -14,7 +14,7 @@ interface CalendarReservation {
   customerName: string
   startDate: Date
   endDate: Date
-  status: "confirmed" | "pending" | "active" | "completed" | "cancelled"
+  status: "confirmed" | "pending" | "active" | "overdue" | "completed" | "cancelled"
   membershipType?: string
 }
 
@@ -64,7 +64,7 @@ export default function ReservationCalendar({ userId, adminMode = false }: Reser
               membership_type
             )
           `)
-          .in("status", ["active", "confirmed", "pending"])
+          .in("status", ["active", "confirmed", "pending", "overdue"])
 
         // Si no es modo admin y hay userId, filtrar por usuario
         if (!adminMode && userId) {
@@ -181,6 +181,8 @@ export default function ReservationCalendar({ userId, adminMode = false }: Reser
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800"
+      case "overdue":
+        return "bg-red-100 text-red-800"
       case "confirmed":
         return "bg-blue-100 text-blue-800"
       case "pending":
@@ -188,7 +190,7 @@ export default function ReservationCalendar({ userId, adminMode = false }: Reser
       case "completed":
         return "bg-slate-100 text-slate-800"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-orange-100 text-orange-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -429,6 +431,10 @@ export default function ReservationCalendar({ userId, adminMode = false }: Reser
                 <div className="flex items-center">
                   <Badge className="bg-yellow-100 text-yellow-800 mr-2">Pendiente</Badge>
                   <span className="text-sm">Esperando confirmación</span>
+                </div>
+                <div className="flex items-center">
+                  <Badge className="bg-red-100 text-red-800 mr-2">Vencida</Badge>
+                  <span className="text-sm">Devolución fuera de plazo</span>
                 </div>
               </div>
             </div>
