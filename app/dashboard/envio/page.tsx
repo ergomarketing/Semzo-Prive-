@@ -332,6 +332,8 @@ export default function EnvioPage() {
                 <Label htmlFor="portal">{t("portal")}</Label>
                 <Input
                   id="portal"
+                  placeholder="A"
+                  maxLength={2}
                   value={form.shipping_portal}
                   onChange={(e) => update("shipping_portal", e.target.value)}
                   className={fieldClass("shipping_portal")}

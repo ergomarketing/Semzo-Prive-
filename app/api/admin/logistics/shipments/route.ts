@@ -379,6 +379,12 @@ export async function POST(request: NextRequest) {
       }
       const recipientParty: CorreosParty = sanitized.data
 
+      // Si el portal no cabia en los 2 caracteres de Correos, se adjunta como
+      // referencia en las observaciones para que el repartidor lo vea.
+      const effectiveObservations = sanitized.droppedPortal
+        ? [observations, `Ref: ${sanitized.droppedPortal}`].filter(Boolean).join(" - ").slice(0, 200)
+        : observations
+
       // 3. Cargar datos del remitente y verificar que la integracion esta activa.
       //    Las credenciales OAuth y datos de cliente Correos los gestiona el
       //    proxy en VPS (variables de entorno CORREOS_PROXY_URL / CORREOS_PROXY_API_KEY).
@@ -416,7 +422,7 @@ export async function POST(request: NextRequest) {
             weight,
             productCode,
             reference: reservation_id ? `IDA-${reservation_id}` : `IDA-${Date.now()}`,
-            observations,
+            observations: effectiveObservations,
           })
           correosTrackingNumber = correosResponse.codEnvio
           correosPackageCode = correosResponse.packageCode || null
