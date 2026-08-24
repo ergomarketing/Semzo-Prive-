@@ -405,7 +405,10 @@ function toPtresParty(p: CorreosParty): PtresParty {
     addressType: p.viaType || "",
     address: p.viaName,
     number: p.number || "",
-    portal: p.portal || "",
+    // Correos rechaza el envio (errorCode 1039) si portal tiene mas de 2
+    // caracteres. Ultimo candado: si no cabe, se descarta en lugar de truncarlo
+    // (truncar "Gym Da Vinci" a "GY" dejaria basura en la etiqueta).
+    portal: (p.portal || "").trim().length <= 2 ? (p.portal || "").trim() : "",
     block: "",
     staircase: "",
     floor: p.floor || "",
