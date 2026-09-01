@@ -26,6 +26,7 @@ interface Stats {
   active: number
   completed: number
   cancelled: number
+  overdue: number
 }
 
 const colors = {
@@ -36,7 +37,14 @@ const colors = {
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
-  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, active: 0, completed: 0, cancelled: 0 })
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    active: 0,
+    completed: 0,
+    cancelled: 0,
+    overdue: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [updating, setUpdating] = useState<string | null>(null)
@@ -51,7 +59,9 @@ export default function ReservationsPage() {
       const response = await fetch("/api/admin/reservations")
       const data = await response.json()
       setReservations(data.reservations || [])
-      setStats(data.stats || { total: 0, pending: 0, active: 0, completed: 0, cancelled: 0 })
+      setStats(
+        data.stats || { total: 0, pending: 0, active: 0, completed: 0, cancelled: 0, overdue: 0 },
+      )
     } catch (error) {
       console.error("Error fetching reservations:", error)
     } finally {
@@ -107,13 +117,16 @@ export default function ReservationsPage() {
       active: "Activa",
       completed: "Completada",
       cancelled: "Cancelada",
+      overdue: "Devolución vencida",
     }
+    const isCancelled = status === "cancelled"
+    const isOverdue = status === "overdue"
     return (
       <Badge
         className="text-xs"
         style={{
-          backgroundColor: status === "cancelled" ? colors.accent : colors.primary,
-          color: status === "cancelled" ? colors.primary : "white",
+          backgroundColor: isOverdue ? "#dc2626" : isCancelled ? colors.accent : colors.primary,
+          color: isOverdue ? "white" : isCancelled ? colors.primary : "white",
         }}
       >
         {labels[status] || status}
@@ -144,25 +157,26 @@ export default function ReservationsPage() {
       </div>
 
       {/* Stats Cards - colores minimalistas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: "Total", value: stats.total, icon: Package },
-          { label: "Pendientes", value: stats.pending, icon: Calendar },
-          { label: "Activas", value: stats.active, icon: CreditCard },
-          { label: "Completadas", value: stats.completed, icon: User },
-          { label: "Canceladas", value: stats.cancelled, icon: Package },
+          { label: "Total", value: stats.total, icon: Package, alert: false },
+          { label: "Pendientes", value: stats.pending, icon: Calendar, alert: false },
+          { label: "Activas", value: stats.active, icon: CreditCard, alert: false },
+          { label: "Vencidas", value: stats.overdue, icon: Calendar, alert: true },
+          { label: "Completadas", value: stats.completed, icon: User, alert: false },
+          { label: "Canceladas", value: stats.cancelled, icon: Package, alert: false },
         ].map((stat, i) => (
           <Card key={i} className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: colors.accent }}
+                  style={{ backgroundColor: stat.alert ? "#fee2e2" : colors.accent }}
                 >
-                  <stat.icon className="h-5 w-5" style={{ color: colors.primary }} />
+                  <stat.icon className="h-5 w-5" style={{ color: stat.alert ? "#dc2626" : colors.primary }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold" style={{ color: colors.primary }}>
+                  <p className="text-2xl font-bold" style={{ color: stat.alert ? "#dc2626" : colors.primary }}>
                     {stat.value}
                   </p>
                   <p className="text-xs" style={{ color: "#888" }}>
@@ -187,6 +201,7 @@ export default function ReservationsPage() {
               <SelectItem value="pending">Pendientes</SelectItem>
               <SelectItem value="confirmed">Confirmadas</SelectItem>
               <SelectItem value="active">Activas</SelectItem>
+              <SelectItem value="overdue">Devolución vencida</SelectItem>
               <SelectItem value="completed">Completadas</SelectItem>
               <SelectItem value="cancelled">Canceladas</SelectItem>
             </SelectContent>
@@ -262,6 +277,7 @@ export default function ReservationsPage() {
                           <SelectItem value="pending">Pendiente</SelectItem>
                           <SelectItem value="confirmed">Confirmada</SelectItem>
                           <SelectItem value="active">Activa</SelectItem>
+                          <SelectItem value="overdue">Devolución vencida</SelectItem>
                           <SelectItem value="completed">Completada</SelectItem>
                           <SelectItem value="cancelled">Cancelada</SelectItem>
                         </SelectContent>

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching reservations:", reservationsError)
       return NextResponse.json({
         reservations: [],
-        stats: { total: 0, active: 0, pending: 0, completed: 0, cancelled: 0 },
+        stats: { total: 0, active: 0, pending: 0, completed: 0, cancelled: 0, overdue: 0 },
       })
     }
 
@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
       confirmed: processedReservations.filter((r) => r.status === "confirmed").length,
       completed: processedReservations.filter((r) => r.status === "completed").length,
       cancelled: processedReservations.filter((r) => r.status === "cancelled").length,
+      overdue: processedReservations.filter((r) => r.status === "overdue").length,
     }
 
     console.log("[v0] Processed reservations:", processedReservations.length, "Stats:", stats)
