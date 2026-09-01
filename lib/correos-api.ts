@@ -603,11 +603,34 @@ class CorreosAPI {
     return Buffer.from(b64, "base64")
   }
 
-  async trackShipment(_trackingNumber: string): Promise<CorreosTrackingResponse> {
-    // El proxy aun no expone tracking. Cuando lo anadamos, llamara aqui.
-    throw new Error(
-      "Tracking via proxy aun no implementado. Anadir endpoint /api/correos/track al proxy.",
+  /**
+   * Consulta el estado de seguimiento de un envio al proxy /api/correos/track.
+   *
+   * El proxy recibe: GET /api/correos/track?trackingNumber=<trackingNumber>
+   * El API de Correos devuelve algo del tipo:
+   *   { eventos: [...], fechaEntrega?: string, estadoEnvio: string }
+   */
+  async trackShipment(trackingNumber: string): Promise<CorreosTrackingResponse> {
+    const res = await proxyFetch(
+      `/api/correos/track?trackingNumber=${encodeURIComponent(trackingNumber)}`,
+      { method: "GET" },
     )
+    if (res.status === 404) {
+      throw new Error(
+        "El proxy de Correos aun no expone el endpoint /api/correos/track. " +
+          "Hay que implementarlo en el servidor proxy (VPS) antes de poder consultar el estado automaticamente.",
+      )
+    }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "")
+      throw new Error(`Correos track fallo (${res.status}): ${errText}`)
+    }
+    const data = await res.json().catch(() => ({}))
+    return {
+      eventos: Array.isArray(data.eventos) ? data.eventos : [],
+      fechaEntrega: data.fechaEntrega,
+      estadoEnvio: String(data.estadoEnvio ?? data.estado ?? ""),
+    }
   }
 
   async calculateRates(

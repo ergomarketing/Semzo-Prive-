@@ -32,6 +32,7 @@ import {
   ExternalLink,
   MapPin,
   Trash2,
+  RefreshCw,
 } from "lucide-react"
 
 interface Shipment {
@@ -322,6 +323,7 @@ export default function LogisticsPage() {
   const [creatingShipment, setCreatingShipment] = useState(false)
   const [pendingReservations, setPendingReservations] = useState<PendingReservation[]>([])
   const [selectedReservationId, setSelectedReservationId] = useState<string>("")
+  const [trackingShipmentId, setTrackingShipmentId] = useState<string | null>(null)
   const [newShipment, setNewShipment] = useState({
     reservation_id: "" as string | "",
     recipient_name: "",
@@ -356,6 +358,34 @@ export default function LogisticsPage() {
     } catch (err) {
       console.error("[v0] Error eliminando envio:", err)
       alert("Error al eliminar el envio")
+    }
+  }
+
+  const handleTrackShipment = async (shipmentId: string, trackingNumber: string, clientName: string) => {
+    setTrackingShipmentId(shipmentId)
+    try {
+      const res = await fetch(
+        `/api/admin/logistics/shipments/track?tracking_number=${encodeURIComponent(trackingNumber)}`,
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.code === "CORREOS_TRACK_NOT_IMPLEMENTED") {
+          alert(
+            "La verificacion automatica de estado aun no esta disponible: falta implementar el endpoint " +
+              "/api/correos/track en el servidor proxy de Correos. Contacta con soporte tecnico para activarlo.",
+          )
+        } else {
+          alert(`No se pudo verificar el estado de ${clientName}: ${data.error || "Error desconocido"}`)
+        }
+        return
+      }
+      alert(`Estado actualizado para ${clientName}: ${data.status || "Sin cambios"}`)
+      loadLogisticsData()
+    } catch (err) {
+      console.error("[v0] Error verificando tracking:", err)
+      alert(`Error de conexion al verificar el estado de ${clientName}`)
+    } finally {
+      setTrackingShipmentId(null)
     }
   }
 
@@ -710,6 +740,21 @@ export default function LogisticsPage() {
                               >
                                 <Download className="h-3 w-3 mr-1" />
                                 Etiqueta Retorno
+                              </Button>
+                            )}
+                            {shipment.tracking_number && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={trackingShipmentId === shipment.id}
+                                title={`Verificar estado real en Correos para ${shipment.reservations?.profiles?.full_name || "cliente sin nombre"}`}
+                                onClick={() => {
+                                  const clientName = shipment.reservations?.profiles?.full_name || "Sin nombre"
+                                  handleTrackShipment(shipment.id, shipment.tracking_number!, clientName)
+                                }}
+                              >
+                                <RefreshCw className={`h-3 w-3 mr-1 ${trackingShipmentId === shipment.id ? "animate-spin" : ""}`} />
+                                Verificar estado
                               </Button>
                             )}
                             <Button
