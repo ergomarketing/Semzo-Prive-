@@ -685,7 +685,12 @@ export default function LogisticsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${shipment.tracking_number}`, "_blank")}
+                                title={`Etiqueta de ida para ${shipment.reservations?.profiles?.full_name || "cliente sin nombre"}`}
+                                onClick={() => {
+                                  const clientName = shipment.reservations?.profiles?.full_name || "Sin nombre"
+                                  if (!confirm(`¿Descargar etiqueta de IDA para ${clientName}?\n\nTracking: ${shipment.tracking_number}`)) return
+                                  window.open(`/api/admin/logistics/shipments/label?tracking_number=${shipment.tracking_number}`, "_blank")
+                                }}
                               >
                                 <Download className="h-3 w-3 mr-1" />
                                 Etiqueta Ida
@@ -695,7 +700,13 @@ export default function LogisticsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => window.open(`/api/admin/logistics/shipments/label?tracking_number=${(shipment as { return_tracking_number?: string }).return_tracking_number}`, "_blank")}
+                                title={`Etiqueta de retorno para ${shipment.reservations?.profiles?.full_name || "cliente sin nombre"}`}
+                                onClick={() => {
+                                  const clientName = shipment.reservations?.profiles?.full_name || "Sin nombre"
+                                  const returnTracking = (shipment as { return_tracking_number?: string }).return_tracking_number
+                                  if (!confirm(`¿Descargar etiqueta de RETORNO para ${clientName}?\n\nTracking: ${returnTracking}`)) return
+                                  window.open(`/api/admin/logistics/shipments/label?tracking_number=${returnTracking}`, "_blank")
+                                }}
                               >
                                 <Download className="h-3 w-3 mr-1" />
                                 Etiqueta Retorno
