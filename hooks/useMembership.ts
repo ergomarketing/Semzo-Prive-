@@ -92,39 +92,6 @@ export function useMembership() {
     [user],
   )
 
-  const activateMembership = useCallback(
-    async (planId: string) => {
-      if (!user) return false
-
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const token = session?.access_token
-
-        if (!token) return false
-
-        const response = await fetch("/api/user/activate-membership", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ planId }),
-        })
-
-        if (response.ok) {
-          await fetchMembershipState() // Refresh state
-          return true
-        }
-      } catch (error) {
-        console.error("[useMembership] Error activating membership:", error)
-      }
-      return false
-    },
-    [user, fetchMembershipState],
-  )
-
   useEffect(() => {
     fetchMembershipState()
   }, [fetchMembershipState])
@@ -132,7 +99,6 @@ export function useMembership() {
   return {
     ...membershipState,
     storePendingPlan,
-    activateMembership,
     refreshState: fetchMembershipState,
   }
 }
