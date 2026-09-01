@@ -69,7 +69,7 @@ export async function sendSepaPreExecutionEmail({
     
     <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
       <p style="margin: 0; font-weight: bold;">
-        Plazo máximo para resolución: 72 horas desde la recepción de este aviso
+        Plazo máximo para resolución: 14 días naturales desde la recepción de este aviso
       </p>
     </div>
     
@@ -82,11 +82,11 @@ export async function sendSepaPreExecutionEmail({
     
     <div style="background: #fff7ed; border: 1px solid #f59e0b; padding: 15px; margin: 25px 0; border-radius: 6px;">
       <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400e;">
-        ⚡ Consecuencias si no se resuelve en 72 horas:
+        ⚡ Consecuencias si no se resuelve en 14 días naturales:
       </p>
       <p style="margin: 0; color: #92400e;">
         Se procederá a ejecutar el mandato SEPA Direct Debit autorizado en el momento de la contratación, 
-        por un importe de <strong>${amountDue.toFixed(2)}€</strong>, correspondiente al valor del bolso 
+        por un importe de <strong>${amountDue.toFixed(2)}€</strong>, correspondiente al valor real del bolso 
         no devuelto, conforme a lo establecido en la cláusula 8.2 de nuestros Términos y Condiciones.
       </p>
     </div>
