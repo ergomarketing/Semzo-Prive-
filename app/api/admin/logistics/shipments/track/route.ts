@@ -12,9 +12,6 @@ const supabase = createClient(
 /**
  * GET /api/admin/logistics/shipments/track?tracking_number=XXX
  * Obtener estado de tracking de un envio (via proxy Correos).
- *
- * Nota: el endpoint /api/correos/track aun no esta expuesto en el proxy.
- * Cuando se anada, este handler funcionara automaticamente.
  */
 export async function GET(request: NextRequest) {
   const authError = await requireAdminAuth()
@@ -108,9 +105,14 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("[Logistics API] Error tracking shipment:", error)
+    const message = error instanceof Error ? error.message : "Error al rastrear envio"
+    const isProxyNotReady = message.includes("aun no expone el endpoint /api/correos/track")
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error al rastrear envio" },
-      { status: 500 },
+      {
+        error: message,
+        code: isProxyNotReady ? "CORREOS_TRACK_NOT_IMPLEMENTED" : undefined,
+      },
+      { status: isProxyNotReady ? 503 : 500 },
     )
   }
 }
