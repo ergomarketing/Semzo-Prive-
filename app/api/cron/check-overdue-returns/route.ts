@@ -48,11 +48,11 @@ export async function GET(request: NextRequest) {
         user_id,
         bag_id,
         end_date,
-        total_price,
+        total_amount,
         status,
         sepa_pre_notice_sent_at,
         profiles!inner(id, email, full_name, first_name, last_name),
-        bags!inner(id, name, brand)
+        bags!inner(id, name, brand, retail_price)
       `,
       )
       .in("status", ["overdue"])
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           customerName,
           bagName,
           rentalEndDate: endDateFormatted,
-          amountDue: reservation.total_price || 500, // Usar precio de reserva o valor default
+          amountDue: bag.retail_price || reservation.total_amount || 500, // Valor real del bolso; fallback al precio de alquiler o 500€
           reservationId: reservation.id,
         })
 
@@ -121,7 +121,6 @@ export async function GET(request: NextRequest) {
             .from("reservations")
             .update({
               sepa_pre_notice_sent_at: new Date().toISOString(),
-              email_provider: "resend",
               status: "overdue", // Cambiar a overdue si estaba en active
             })
             .eq("id", reservation.id)
