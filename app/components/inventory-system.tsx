@@ -437,8 +437,13 @@ export default function InventorySystem() {
         }
 
         toast({
-          title: "Error de Validación NFC",
-          description: result.message,
+          title: nfcAction === "assign" ? "No se pudo asignar el NFC" : "Error de Validación NFC",
+          description:
+            result.error ||
+            result.message ||
+            (response.status === 401
+              ? "Sesión de administrador caducada. Recarga la página e inicia sesión de nuevo."
+              : `Error ${response.status} al procesar la acción NFC`),
           variant: "destructive",
         })
       }
