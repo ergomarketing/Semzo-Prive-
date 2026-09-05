@@ -267,6 +267,8 @@ export async function POST(req: NextRequest) {
                     p_pass_id: insertedPass.id,
                     p_start_date: startDate.toISOString(),
                     p_end_date: endDate.toISOString(),
+                    p_membership_type: "petite",
+                    p_rental_days: 7,
                   }
                 );
 

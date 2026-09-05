@@ -427,7 +427,7 @@ export async function POST(request: NextRequest) {
     let passToUse: any = null
 
     if (userMembershipPlan === "petite") {
-      // 1. Verificar que la membresía Petite esté vigente (30 días desde started_at)
+      // 1. Verificar que la membresía Petite esté vigente (30 d��as desde started_at)
       // Se usa membership.start_date (ya disponible en el scope): es la fuente
       // de verdad de cuando comenzo la membresia activa del usuario.
       const membershipStartDate = (membership as any).start_date || null
@@ -624,6 +624,8 @@ export async function POST(request: NextRequest) {
       p_pass_id: passIdToConsume || null,
       p_start_date: startDate.toISOString(),
       p_end_date: endDate.toISOString(),
+      p_membership_type: userMembershipPlan,
+      p_rental_days: rentalDays,
     })
 
     if (rpcError) {
