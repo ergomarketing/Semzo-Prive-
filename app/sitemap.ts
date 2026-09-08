@@ -160,6 +160,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       images: [`${baseUrl}/images/hero-luxury-bags.jpeg`],
     },
     {
+      url: `${baseUrl}/membresias`,
+      lastModified: STATIC_PAGES_LASTMOD,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      images: [`${baseUrl}/images/hero-luxury-bags.jpeg`],
+    },
+    {
       url: `${baseUrl}/proceso`,
       lastModified: STATIC_PAGES_LASTMOD,
       changeFrequency: "monthly",

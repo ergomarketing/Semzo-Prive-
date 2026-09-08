@@ -134,7 +134,7 @@ export default function TwoModesSection() {
         {/* CTA único + nota */}
         <div className="mt-14 text-center">
           <Link
-            href="#membresias"
+            href="/membresias"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-medium tracking-wide transition-all hover:gap-3"
             style={{ backgroundColor: "#1a1a4b" }}
           >

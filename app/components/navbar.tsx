@@ -101,12 +101,7 @@ export default function Navbar() {
           <div className="flex-1 mx-4 sm:mx-8">
             <nav className="hidden md:flex items-center justify-center space-x-6 lg:space-x-10">
               <NavLink href="/catalog">{t("collection")}</NavLink>
-              <button
-                onClick={() => scrollToSection("membresias")}
-                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
-              >
-                {t("memberships")}
-              </button>
+              <NavLink href="/membresias">{t("memberships")}</NavLink>
             <Link
               href="/proceso"
               className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
@@ -222,7 +217,7 @@ export default function Navbar() {
               {t("collection")}
             </Link>
             <Link
-              href="/#membresias"
+              href="/membresias"
               className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
               onClick={() => setMobileMenuOpen(false)}
             >

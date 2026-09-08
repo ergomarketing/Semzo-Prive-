@@ -40,12 +40,21 @@ export default function ClientHomePage() {
     }
   }, [router])
 
-  // Scroll al ancla (#membresias, #coleccion, etc.) tras montar el contenido.
+  // Redirect de compatibilidad: /#membresias paso a ser pagina propia
+  // (/membresias). El fragmento #... no llega al servidor, asi que el salto
+  // se hace aqui en el cliente para enlaces antiguos, marcadores y emails.
+  useEffect(() => {
+    if (window.location.hash === "#membresias") {
+      router.replace("/membresias")
+    }
+  }, [router])
+
+  // Scroll al ancla (#coleccion, #como-funciona, etc.) tras montar el contenido.
   // El scroll nativo del navegador falla porque las imagenes del hero cargan
   // despues y desplazan el layout, dejando al usuario arriba.
   useEffect(() => {
     const hash = window.location.hash?.replace("#", "")
-    if (!hash) return
+    if (!hash || hash === "membresias") return
 
     const scrollToHash = () => {
       const element = document.getElementById(hash)

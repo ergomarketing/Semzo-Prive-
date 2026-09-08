@@ -260,7 +260,7 @@ export default function SavingsCalculator() {
                   </div>
 
                   {/* CTA */}
-                  <Link href="/#membresias">
+                  <Link href="/membresias">
                     <Button className="w-full bg-indigo-dark hover:bg-indigo-dark/90 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
                       {t("cta")}
                     </Button>

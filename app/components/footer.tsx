@@ -24,7 +24,7 @@ import { useTranslations } from "next-intl"
 // Los labels usan tildes y enes correctas para SEO y respeto a la lengua.
 
 // Links moved inside components to support i18n (labels resolved via useTranslations)
-const COMPANY_HREFS = ["/#nuestra-vision","/#membresias","/catalog","/proceso","/blog","/gift-cards"]
+const COMPANY_HREFS = ["/#nuestra-vision","/membresias","/catalog","/proceso","/blog","/gift-cards"]
 const CUSTOMER_HREFS = ["/support","/support#faq","/support#envios","/legal/terms","/legal/privacy","/legal/cookies"]
 
 const SOCIAL_LINKS = [

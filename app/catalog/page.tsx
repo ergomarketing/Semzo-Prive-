@@ -43,9 +43,12 @@ async function fetchInitialBags() {
 }
 
 export const metadata: Metadata = {
-  title: "Alquiler de Bolsos de Lujo desde 59€/mes | Chanel y Dior",
+  title: {
+    absolute:
+      "Catálogo de Bolsos de Lujo en Alquiler | Chanel, Dior, Louis Vuitton | SEMZO PRIVÉ",
+  },
   description:
-    "Alquila bolsos originales de Chanel, Dior, Louis Vuitton, Fendi, Prada, Gucci y mas desde 59€/mes. Envio gratis, seguro incluido y autenticidad garantizada en Semzo Prive.",
+    "Explora nuestra colección exclusiva. Chanel, Louis Vuitton, Dior, Fendi, YSL y más. Disponibles ahora. Entrega en 24-48h en toda España.",
   keywords: [
     "alquiler bolsos lujo",
     "alquilar bolso chanel",
@@ -63,9 +66,10 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_ES",
     siteName: "Semzo Prive",
-    title: "Alquiler de Bolsos de Lujo desde 59€/mes | Semzo Prive",
+    title:
+      "Catálogo de Bolsos de Lujo en Alquiler | Chanel, Dior, Louis Vuitton | SEMZO PRIVÉ",
     description:
-      "Chanel, Dior, Louis Vuitton, Fendi, Prada y mas. Alquila bolsos originales con envio gratis y seguro incluido desde 59€/mes.",
+      "Explora nuestra colección exclusiva. Chanel, Louis Vuitton, Dior, Fendi, YSL y más. Disponibles ahora. Entrega en 24-48h en toda España.",
     images: [
       {
         url: "/images/hero-luxury-bags.jpeg",
@@ -78,8 +82,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Alquiler de Bolsos de Lujo desde 59€/mes | Semzo Prive",
-    description: "Chanel, Dior, Louis Vuitton y mas. Alquila bolsos originales con envio gratis y seguro incluido.",
+    title:
+      "Catálogo de Bolsos de Lujo en Alquiler | Chanel, Dior, Louis Vuitton | SEMZO PRIVÉ",
+    description:
+      "Explora nuestra colección exclusiva. Chanel, Louis Vuitton, Dior, Fendi, YSL y más. Disponibles ahora. Entrega en 24-48h en toda España.",
     images: ["/images/hero-luxury-bags.jpeg"],
   },
   alternates: {
