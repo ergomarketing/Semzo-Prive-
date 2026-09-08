@@ -12,10 +12,9 @@ import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
 import { Toaster } from "@/components/ui/toaster"
 import IntlProvider from "@/providers/IntlProvider"
+// Solo el idioma por defecto (es) entra en el bundle inicial. El inglés se
+// carga bajo demanda dentro de IntlProvider (import() -> chunk aparte).
 import esMessages from "@/messages/es.json"
-import enMessages from "@/messages/en.json"
-
-const intlMessages = { es: esMessages, en: enMessages }
 
 /*
  * Fuentes:
@@ -276,7 +275,7 @@ export default function RootLayout({
           />
         </noscript>
 
-        <IntlProvider messages={intlMessages}>
+        <IntlProvider defaultMessages={esMessages}>
           <AuthProvider>
             <CartProvider>
               <Navbar />
