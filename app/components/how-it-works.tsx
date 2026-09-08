@@ -52,6 +52,8 @@ export default function HowItWorks() {
                 src="/images/chanel-woc-step1.jpeg"
                 alt="Chanel WOC - Selecciona tu membresía"
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading="lazy"
                 className="object-cover"
               />
             </div>
@@ -81,6 +83,8 @@ export default function HowItWorks() {
                 src="/images/prada-street-step2.jpeg"
                 alt="Prada - Explora nuestra colección"
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading="lazy"
                 className="object-cover scale-125 object-[center_35%]"
               />
             </div>
@@ -110,6 +114,8 @@ export default function HowItWorks() {
                 src="/images/ysl-step3.jpg"
                 alt="YSL - Recibe y disfruta"
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading="lazy"
                 className="object-cover object-[center_60%]"
               />
             </div>

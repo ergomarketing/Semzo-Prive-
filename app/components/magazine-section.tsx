@@ -75,6 +75,9 @@ export default function MagazineSection() {
   }, [posts])
 
   if (loading) {
+    // CLS FIX: el skeleton replica la estructura del estado cargado (mismo
+    // header con subtitulo) y reserva ~600px para el carrusel, de modo que
+    // cuando llegan los posts el contenido de abajo (footer) no se desplaza.
     return (
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
@@ -83,8 +86,11 @@ export default function MagazineSection() {
             <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-light leading-tight text-slate-900 mb-6">
               {t("title")}
             </h2>
+            <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light max-w-3xl mx-auto mb-8">
+              {t("subtitle")}
+            </p>
           </div>
-          <div className="text-center py-12">
+          <div className="flex items-center justify-center min-h-[600px]">
             <p className="text-gray-500">{t("loading")}</p>
           </div>
         </div>
@@ -106,12 +112,12 @@ export default function MagazineSection() {
         </div>
 
         {posts.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="flex flex-col items-center justify-center text-center min-h-[600px]">
             <p className="text-gray-500">{t("emptyTitle")}</p>
             <p className="text-sm text-gray-400 mt-2">{t("emptyHint")}</p>
           </div>
         ) : (
-          <div className="relative group">
+          <div className="relative group min-h-[600px]">
             {/* Left Arrow */}
             {canScrollLeft && (
               <button
@@ -150,11 +156,19 @@ export default function MagazineSection() {
                        * (vertical) y se ve completa. Unificamos al mismo ratio para
                        * consistencia visual entre homepage y blog.
                        */}
+                      {/*
+                       * width/height explicitos (ratio 3:4) -> Lighthouse no marca
+                       * "unsized image" y el navegador reserva el hueco antes de
+                       * descargar. El contenedor aspect-[3/4] + el CSS (inset-0,
+                       * w-full/h-full) controlan el tamano real de render.
+                       */}
                       <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={post.image_url || "/placeholder.svg?height=400&width=300"}
                           alt={post.title}
+                          width={600}
+                          height={800}
                           loading="lazy"
                           decoding="async"
                           className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"

@@ -26,13 +26,16 @@ export default function CTASection() {
           {/* aspect ratio mas horizontal (16/9 en vez de 3/2) para que la
            * imagen ocupe menos altura sin perder presencia visual. */}
           <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-xl">
+            {/* PERF: sin priority — esta seccion es la ultima de la home.
+             * priority forzaba un <link rel=preload> que competia con el
+             * LCP real (imagen del hero). fill sin priority = carga lazy. */}
             <Image
               src="/images/fendi-white-cta.jpeg"
               alt="Bolso Fendi blanco de lujo - Semzo Prive"
               fill
               className="object-cover object-[center_20%]"
               sizes="(max-width: 768px) 100vw, 55vw"
-              priority
+              loading="lazy"
             />
           </div>
           
@@ -112,7 +115,7 @@ export default function CTASection() {
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 50vw"
-              priority
+              loading="lazy"
             />
           </div>
         </div>

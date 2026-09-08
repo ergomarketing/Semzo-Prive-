@@ -2,7 +2,7 @@
 
 // Marker para invalidar cache SSR tras cambios en cta-section: 2026-05-11T14:45
 import { useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import HeroSection from "./components/hero-section"
 import CollectionSection from "./components/collection-section"
 import MembershipSection from "./components/membership-section"
@@ -16,24 +16,29 @@ import MarqueeBanner from "./components/marquee-banner"
 
 export default function ClientHomePage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
+  // PERF: NO usar useSearchParams() aqui. Sin un <Suspense> por encima, ese hook
+  // fuerza a Next.js a renderizar TODA la home en el cliente (CSR bailout): el
+  // HTML llega vacio y el JS reconstruye la pagina entera -> CLS y TBT altos.
+  // Leemos los query params desde window en un efecto (solo cliente) y asi la
+  // home vuelve a pre-renderizarse estaticamente (ISR).
   useEffect(() => {
-    const type = searchParams.get("type")
-    const accessToken = searchParams.get("access_token")
-    const refreshToken = searchParams.get("refresh_token")
+    const params = new URLSearchParams(window.location.search)
+    const type = params.get("type")
+    const accessToken = params.get("access_token")
+    const refreshToken = params.get("refresh_token")
 
     // Si hay tokens de recovery en la URL, redirigir a /auth/reset
     if (type === "recovery" && accessToken) {
       console.log("[v0] Recovery tokens detected, redirecting to /auth/reset")
-      const params = new URLSearchParams()
-      params.set("access_token", accessToken)
-      if (refreshToken) params.set("refresh_token", refreshToken)
-      params.set("type", type)
+      const next = new URLSearchParams()
+      next.set("access_token", accessToken)
+      if (refreshToken) next.set("refresh_token", refreshToken)
+      next.set("type", type)
 
-      router.push(`/auth/reset?${params.toString()}`)
+      router.push(`/auth/reset?${next.toString()}`)
     }
-  }, [searchParams, router])
+  }, [router])
 
   // Scroll al ancla (#membresias, #coleccion, etc.) tras montar el contenido.
   // El scroll nativo del navegador falla porque las imagenes del hero cargan

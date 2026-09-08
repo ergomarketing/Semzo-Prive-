@@ -4,19 +4,26 @@ import ClientHomePage from "./client-page"
 // ISR: Revalidate every 10 minutes (600 seconds) - reduces function invocations
 export const revalidate = 600
 
+// `title.absolute` evita que se aplique el template "%s | Semzo Privé" del
+// layout (el title ya termina en "SEMZO PRIVÉ").
+const HOME_TITLE =
+  "Alquiler de Bolsos de Lujo en España | Chanel, Louis Vuitton, Dior | SEMZO PRIVÉ"
+const HOME_DESCRIPTION =
+  "Accede a bolsos Chanel, Louis Vuitton, Dior, Prada y Loewe desde 59,99€/mes. Club privado de membresía. Envío gratuito en 24h. Sin permanencia."
+
 export const metadata: Metadata = {
-  title: "SEMZO PRIVÉ | Club de bolsos de diseñador por suscripción",
-  description:
-    "Accede a bolsos de diseñador icónicos mediante una membresía exclusiva. Lujo consciente, rotación inteligente y estilo europeo.",
+  title: {
+    absolute: HOME_TITLE,
+  },
+  description: HOME_DESCRIPTION,
   alternates: {
     canonical: "https://semzoprive.com",
   },
   openGraph: {
     type: "website",
     locale: "es_ES",
-    title: "SEMZO PRIVÉ | Club de bolsos de diseñador por suscripción",
-    description:
-      "Accede a bolsos de diseñador icónicos mediante una membresía exclusiva. Lujo consciente, rotación inteligente y estilo europeo.",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     url: "https://semzoprive.com",
     siteName: "Semzo Privé",
     images: [
@@ -30,9 +37,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SEMZO PRIVÉ | Club de bolsos de diseñador por suscripción",
-    description:
-      "Accede a bolsos de diseñador icónicos mediante una membresía exclusiva. Lujo consciente, rotación inteligente y estilo europeo.",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     images: ["https://semzoprive.com/images/hero-luxury-bags.jpeg"],
   },
 }

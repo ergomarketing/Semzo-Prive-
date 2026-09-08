@@ -195,7 +195,15 @@ export default function RootLayout({
         <link rel="preconnect" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-        {/* Google Tag Manager */}
+        {/*
+         * Google Tag Manager: strategy="afterInteractive" (por defecto de next/script).
+         * NO usar beforeInteractive — bloquearía el render. next/script inyecta el
+         * snippet tras la hidratación, no de forma síncrona.
+         *
+         * Si el TBT sigue alto tras este cambio, la siguiente palanca es pasar
+         * este Script a strategy="lazyOnload" (GTM carga en idle tras el evento
+         * load); coste: GA4/Ads registran el page_view ~1-2s más tarde.
+         */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -220,12 +228,17 @@ export default function RootLayout({
          * tras HMR rebuilds, produciendo errores "factory is undefined".
          * El head es el lugar canonico para los pixeles de tracking.
          */}
+        {/*
+         * Pixel de TikTok: strategy="lazyOnload" — es marketing no crítico, no
+         * necesita ejecutarse durante la hidratación. Cargarlo tras el evento
+         * load (en idle) lo saca de la ventana del Total Blocking Time.
+         */}
         <Script
           id="tiktok-pixel"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=D4A7JSJC77U1BLONR900&lib=ttq"
         />
-        <Script id="tiktok-pixel-init" strategy="afterInteractive">
+        <Script id="tiktok-pixel-init" strategy="lazyOnload">
           {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
         </Script>
 
