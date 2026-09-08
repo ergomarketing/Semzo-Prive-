@@ -1,7 +1,7 @@
 // SSR cache invalidation: 2026-05-11T14:52 (footer restructure)
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Playfair_Display } from "next/font/google"
+import { Playfair_Display } from "next/font/google"
 import Script from "next/script"
 import "./globals.css"
 import Navbar from "./components/navbar"
@@ -17,18 +17,27 @@ import enMessages from "@/messages/en.json"
 
 const intlMessages = { es: esMessages, en: enMessages }
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-  preload: true,
-})
-
+/*
+ * Fuentes:
+ * - next/font/google auto-hospeda los archivos en /_next/static/media (NO hace
+ *   petición a fonts.googleapis.com), inyecta el @font-face inline y añade
+ *   <link rel="preload"> — nunca bloquea el render.
+ * - display: "swap" -> el texto se pinta ya con la fuente fallback y cambia a
+ *   Playfair cuando carga (sin FOIT).
+ * - adjustFontFallback + fallback: ajustan las métricas de la fuente de sistema
+ *   para minimizar el salto (CLS) al intercambiar.
+ * - Inter se eliminó: --font-inter no se referenciaba en ningún sitio (el body
+ *   usa font-sans = stack del sistema). Era una descarga y un preload inútiles.
+ * - Playfair solo se usa en el wordmark del navbar; el resto de titulares
+ *   (.font-serif) ya usan Georgia por decisión de diseño en globals.css.
+ */
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   display: "swap",
   preload: true,
+  adjustFontFallback: true,
+  fallback: ["Georgia", "Times New Roman", "serif"],
 })
 
 export const metadata: Metadata = {
@@ -256,7 +265,7 @@ export default function RootLayout({
 
       </head>
 
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${playfair.variable} font-sans antialiased`}>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe
