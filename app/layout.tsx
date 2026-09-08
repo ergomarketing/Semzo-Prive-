@@ -195,6 +195,17 @@ export default function RootLayout({
         <link rel="preconnect" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
+        {/* Google Tag Manager */}
+        <Script id="google-tag-manager" strategy="afterInteractive">
+          {`
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','GTM-K3C577WM');
+          `}
+        </Script>
+
         {/*
          * Structured Data (JSON-LD) movido al final del <body> para evitar
          * conflicto de hidratacion con el script de sandbox de v0 que se
@@ -218,51 +229,31 @@ export default function RootLayout({
           {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
         </Script>
 
-        {/* Google Analytics */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-0BMNYQLWLZ"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-0BMNYQLWLZ', {
-              anonymize_ip: true,
-              send_page_view: true
-            });
-          `}
-        </Script>
-
-        {/* Google Ads */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=AW-17660150279"
-          strategy="afterInteractive"
-        />
-        <Script id="google-ads" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'AW-17660150279');
-          `}
-        </Script>
-
-        {/* Google Ads — Conversión: Envío de formulario clientes potenciales */}
-        <Script id="google-ads-conversion" strategy="afterInteractive">
-          {`
-            gtag('event', 'conversion', {
-              'send_to': 'AW-17660150279/_FLwCMPl4K4bEIeEguVB',
-              'value': 1.0,
-              'currency': 'EUR'
-            });
-          `}
-        </Script>
+        {/*
+         * Google Analytics (G-0BMNYQLWLZ) y Google Ads (AW-17660150279) migrados
+         * a Google Tag Manager (GTM-K3C577WM). Configurar dentro del contenedor GTM:
+         *   - Etiqueta "Google Tag" / GA4 Configuration con ID G-0BMNYQLWLZ
+         *     (equivalente al antiguo gtag config: anonymize_ip + page_view en All Pages)
+         *   - Etiqueta de conversión de Google Ads con ID de conversión AW-17660150279
+         *     y "Conversion Linker" en All Pages
+         *   - Conversión "Envío de formulario clientes potenciales":
+         *     send_to AW-17660150279/_FLwCMPl4K4bEIeEguVB, value 1.0, currency EUR,
+         *     con un trigger de envío de formulario real (antes se disparaba en cada carga).
+         */}
 
       </head>
 
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-K3C577WM"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+
         <IntlProvider messages={intlMessages}>
           <AuthProvider>
             <CartProvider>
