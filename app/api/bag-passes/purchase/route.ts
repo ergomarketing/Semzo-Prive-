@@ -341,6 +341,8 @@ export async function POST(request: Request) {
             p_pass_id: firstPass.id,
             p_start_date: startDate.toISOString(),
             p_end_date: endDate.toISOString(),
+            p_membership_type: "petite",
+            p_rental_days: 7,
           }
         )
 
