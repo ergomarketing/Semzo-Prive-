@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Semzo Privé <noreply@semzoprive.com>",
+        from: "Semzo Privé <hola@semzoprive.com>",
         to: [to],
         subject,
         html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

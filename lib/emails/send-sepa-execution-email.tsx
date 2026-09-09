@@ -32,7 +32,7 @@ async function sendResendEmail(params: {
     return { success: false, error: "EMAIL_API_KEY no configurada" }
   }
 
-  const emailFrom = process.env.EMAIL_FROM || "SEMZO PRIVÉ <soporte@semzoprive.com>"
+  const emailFrom = process.env.FROM_EMAIL || "SEMZO PRIVÉ <hola@semzoprive.com>"
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

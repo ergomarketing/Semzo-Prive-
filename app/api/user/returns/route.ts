@@ -247,7 +247,7 @@ async function notifyLogistics(args: {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Semzo Privé <mailbox@semzoprive.com>",
+      from: "Semzo Privé <hola@semzoprive.com>",
       to: [to],
       reply_to: args.user.email || "soporte@semzoprive.com",
       subject,

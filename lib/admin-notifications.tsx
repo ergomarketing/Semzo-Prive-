@@ -19,7 +19,7 @@ class AdminNotifications {
     try {
       console.log("[v0] 📧 Enviando notificación administrativa:", subject)
       const { data, error } = await this.resend.emails.send({
-        from: "Semzo Privé <notifications@semzoprive.com>",
+        from: "Semzo Privé <hola@semzoprive.com>",
         to: ADMIN_EMAIL,
         subject: `[Semzo Admin] ${subject}`,
         html,

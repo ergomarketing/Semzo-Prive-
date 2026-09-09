@@ -39,7 +39,7 @@ export async function sendSepaPreExecutionEmail({
       }
     }
 
-    const emailFrom = process.env.EMAIL_FROM || "SEMZO PRIVÉ <soporte@semzoprive.com>"
+    const emailFrom = process.env.FROM_EMAIL || "SEMZO PRIVÉ <hola@semzoprive.com>"
 
     const htmlContent = `
 <!DOCTYPE html>
