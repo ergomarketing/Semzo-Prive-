@@ -72,17 +72,6 @@ export async function POST(request: Request) {
       path: "/",
     })
 
-    // Email de bienvenida (best-effort, no bloquea)
-    try {
-      const { sendCatalogAccessEmail } = await import("@/app/lib/email-service")
-      // @ts-ignore — opcional, si la funcion no existe falla en silencio
-      if (typeof sendCatalogAccessEmail === "function") {
-        await sendCatalogAccessEmail({ to: email, name: full_name })
-      }
-    } catch (e) {
-      // silencioso
-    }
-
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[catalog-access] error:", err)

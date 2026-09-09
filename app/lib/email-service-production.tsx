@@ -20,8 +20,13 @@ interface EmailData {
   reservationId?: string
 }
 
+import { render } from "@react-email/components"
 import { emailQueue } from "./email-queue"
 import { renderBrandEmail, renderAdminEmail, emailInfoBox, emailDetailList, BRAND } from "./email-layout"
+import WelcomeEmail from "@/emails/templates/welcome"
+import DunningEmail from "@/emails/templates/dunning"
+import ReturnReminderEmail from "@/emails/templates/return-reminder"
+import { getMessages } from "@/emails/messages"
 
 // Descarta valores placeholder/inválidos (p.ej. "re_xxxxx") y devuelve la primera clave de Resend
 // realmente utilizable entre las variables de entorno disponibles.
@@ -147,11 +152,12 @@ export class EmailServiceProduction {
     return this.sendWithResend(emailData)
   }
 
-  async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string): Promise<boolean> {
+  async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string, locale: "es" | "en" = "es"): Promise<boolean> {
+    const t = getMessages(locale)
     const emailData: EmailData = {
       to: email,
-      subject: "¡Bienvenida a Semzo Privé! Confirma tu cuenta",
-      html: this.generateWelcomeHTML(customerName, confirmationUrl),
+      subject: t.welcome.subject,
+      html: await render(<WelcomeEmail name={customerName} confirmationUrl={confirmationUrl} locale={locale} />),
       text: this.generateWelcomeText(customerName, confirmationUrl),
       customerName,
       confirmationUrl,
@@ -375,29 +381,6 @@ export class EmailServiceProduction {
   // ==========================================================================
   // PLANTILLAS DE MARCA (todas usan renderBrandEmail / renderAdminEmail)
   // ==========================================================================
-
-  private generateWelcomeHTML(customerName: string, confirmationUrl: string): string {
-    return renderBrandEmail({
-      preheader: "Confirma tu cuenta y accede a la colección exclusiva de Semzo Privé.",
-      eyebrow: "Bienvenida",
-      heading: `Bienvenida al club, ${customerName?.split(" ")[0] || ""}`,
-      bodyHtml: `
-        <p style="margin:0 0 16px 0;">Nos alegra darte la bienvenida a nuestra comunidad exclusiva. En Semzo Privé encontrarás una selección cuidadosamente curada de los bolsos de lujo más deseados.</p>
-        <p style="margin:0 0 8px 0;">Para comenzar tu experiencia, confirma tu dirección de correo:</p>
-        ${emailInfoBox(
-          `<strong style="color:${BRAND.navy};">Con tu cuenta confirmada tendrás acceso a:</strong>
-           <ul style="margin:12px 0 0 0;padding-left:18px;">
-             <li>Colecciones privadas</li>
-             <li>Ofertas exclusivas para socias</li>
-             <li>Eventos y lanzamientos anticipados</li>
-             <li>Asesoramiento personalizado</li>
-           </ul>`,
-        )}
-      `,
-      cta: { label: "Confirmar mi cuenta", url: confirmationUrl, accent: "gold" },
-      footerNote: "Si no creaste esta cuenta, puedes ignorar este correo de forma segura.",
-    })
-  }
 
   private generateWelcomeText(customerName: string, confirmationUrl: string): string {
     return `
@@ -794,28 +777,25 @@ export class EmailServiceProduction {
     userEmail: string
     userName: string
     bagName: string
+    bagBrand?: string
+    bagImageUrl?: string | null
     returnDate: string
     daysRemaining: number
   }): Promise<boolean> {
     const userEmailData: EmailData = {
       to: data.userEmail,
       subject: `Recordatorio: devolución de ${data.bagName} en ${data.daysRemaining} días`,
-      html: renderBrandEmail({
-        preheader: `La devolución de ${data.bagName} se acerca.`,
-        eyebrow: "Recordatorio de devolución",
-        heading: "Tu devolución se acerca",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, te recordamos que la devolución de tu bolso está próxima.</p>
-          ${emailInfoBox(
-            `<strong style="color:${BRAND.navy};">Bolso:</strong> ${data.bagName}<br>
-             <strong style="color:${BRAND.navy};">Fecha de devolución:</strong> ${esDate(data.returnDate)}<br>
-             <strong style="color:${BRAND.navy};">Días restantes:</strong> ${data.daysRemaining}`,
-            "warning",
-          )}
-          <p style="margin:0;">Prepara el bolso para su devolución. Te facilitaremos una etiqueta de envío prepagada.</p>
-        `,
-        cta: { label: "Ver mis reservas", url: `${BRAND.site}/dashboard/mis-reservas` },
-      }),
+      html: await render(
+        <ReturnReminderEmail
+          name={data.userName}
+          bagBrand={data.bagBrand || ""}
+          bagName={data.bagName}
+          bagImageUrl={data.bagImageUrl}
+          returnByDate={esDate(data.returnDate)}
+          isPetite={false}
+          dashboardUrl={`${BRAND.site}/dashboard/mis-reservas`}
+        />,
+      ),
     }
 
     return await this.sendWithResend(userEmailData)
@@ -902,24 +882,22 @@ export class EmailServiceProduction {
     userName: string
     amount?: string
     reason?: string
+    membershipType?: string
+    bagName?: string
   }): Promise<boolean> {
+    const t = getMessages("es")
     const userEmailData: EmailData = {
       to: data.userEmail,
-      subject: "Problema con tu pago - Semzo Privé",
-      html: renderBrandEmail({
-        preheader: "No hemos podido procesar tu pago.",
-        eyebrow: "Pago pendiente",
-        heading: "Problema con tu pago",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, no hemos podido procesar tu pago${data.amount ? ` de €${data.amount}` : ""}.</p>
-          ${emailInfoBox(
-            `${data.reason ? `<strong style="color:${BRAND.navy};">Motivo:</strong> ${data.reason}<br>` : ""}Verifica tu método de pago y vuelve a intentarlo.`,
-            "warning",
-          )}
-          <p style="margin:0;">Si tienes cualquier duda, escríbenos a <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.navy};">${BRAND.supportEmail}</a>.</p>
-        `,
-        cta: { label: "Actualizar método de pago", url: `${BRAND.site}/dashboard/membresia` },
-      }),
+      subject: t.dunning.e1.subject,
+      html: await render(
+        <DunningEmail
+          step={1}
+          name={data.userName}
+          membershipLabel={data.membershipType || "Semzo Privé"}
+          bagName={data.bagName}
+          updatePaymentUrl={`${BRAND.site}/dashboard/membresia`}
+        />,
+      ),
     }
 
     const adminEmailData: EmailData = {

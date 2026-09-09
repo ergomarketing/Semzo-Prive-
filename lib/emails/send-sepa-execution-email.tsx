@@ -11,6 +11,10 @@
  * - Guarda auditoría en DB: sepa_charged_at, sepa_charge_payment_intent_id
  */
 
+import { render } from "@react-email/components"
+import SepaExecutionEmail from "@/emails/templates/sepa-execution"
+import AdminNotificationEmail from "@/emails/templates/admin-notification"
+
 interface SendSepaExecutionEmailParams {
   to: string
   customerName: string
@@ -67,71 +71,16 @@ export async function sendSepaExecutionEmail({
   reservationId,
   paymentIntentId,
 }: SendSepaExecutionEmailParams): Promise<{ success: boolean; emailId?: string; error?: string }> {
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirmación de Cargo SEPA</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: #1a1a4b; padding: 20px; text-align: center;">
-    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">SEMZO PRIVÉ</h1>
-  </div>
-
-  <div style="padding: 30px 20px; background: #ffffff;">
-    <h2 style="color: #dc2626; margin-bottom: 20px;">
-      Confirmación de Ejecución de Mandato SEPA
-    </h2>
-
-    <p>Estimada ${customerName},</p>
-
-    <p>
-      Le confirmamos que, transcurrido el plazo de 14 días naturales desde el aviso previo enviado
-      sin haberse producido la devolución del bolso <strong>${bagName}</strong> (reserva #${reservationId}),
-      se ha ejecutado el mandato SEPA Direct Debit autorizado en el momento de la contratación.
-    </p>
-
-    <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold;">
-        Importe cargado: ${amountCharged.toFixed(2)}€
-      </p>
-      <p style="margin: 8px 0 0 0; font-size: 13px; color: #666;">
-        Referencia de pago: ${paymentIntentId}
-      </p>
-    </div>
-
-    <p>
-      Este importe corresponde al valor real de reposición del artículo no devuelto, conforme a lo
-      establecido en la cláusula 8.2 de nuestros
-      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/legal/terms" style="color: #1a1a4b;">Términos y Condiciones</a>
-      aceptados en el momento de la contratación.
-    </p>
-
-    <p style="font-size: 14px; color: #666;">
-      Si considera que este cargo se ha realizado por error o el bolso ya ha sido devuelto, contacte
-      de inmediato con nuestro equipo en
-      <a href="mailto:soporte@semzoprive.com" style="color: #1a1a4b;">soporte@semzoprive.com</a>.
-    </p>
-
-    <p style="margin-top: 30px;">
-      Atentamente,<br>
-      <strong>Equipo de Semzo Privé</strong>
-    </p>
-  </div>
-
-  <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280;">
-    <p style="margin: 0 0 10px 0;">
-      Este es un email transaccional legal. Por favor no responda directamente a este correo.
-    </p>
-    <p style="margin: 0;">
-      Para consultas: <a href="mailto:soporte@semzoprive.com" style="color: #1a1a4b;">soporte@semzoprive.com</a>
-    </p>
-  </div>
-</body>
-</html>
-  `
+  const htmlContent = await render(
+    <SepaExecutionEmail
+      customerName={customerName}
+      bagName={bagName}
+      amountCharged={amountCharged}
+      reservationId={reservationId}
+      paymentIntentId={paymentIntentId}
+      termsUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/legal/terms`}
+    />,
+  )
 
   return sendResendEmail({
     to,
@@ -161,16 +110,18 @@ export async function sendSepaExecutionAdminEmail({
 }): Promise<{ success: boolean; emailId?: string; error?: string }> {
   const adminEmail = process.env.ADMIN_EMAIL || "mailbox@semzoprive.com"
 
-  const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #1a1a4b;">Cargo SEPA ejecutado por no devolución</h2>
-      <p><strong>Socia:</strong> ${customerName} (${customerEmail})</p>
-      <p><strong>Reserva:</strong> ${reservationId}</p>
-      <p><strong>Bolso:</strong> ${bagName}</p>
-      <p><strong>Importe cargado:</strong> ${amountCharged.toFixed(2)}€</p>
-      <p><strong>Payment Intent:</strong> ${paymentIntentId}</p>
-    </div>
-  `
+  const htmlContent = await render(
+    <AdminNotificationEmail
+      title="Cargo SEPA ejecutado por no devolución"
+      rows={[
+        { label: "Socia", value: `${customerName} (${customerEmail})` },
+        { label: "Reserva", value: reservationId },
+        { label: "Bolso", value: bagName },
+        { label: "Importe cargado", value: `${amountCharged.toFixed(2)}€` },
+        { label: "Payment Intent", value: paymentIntentId },
+      ]}
+    />,
+  )
 
   return sendResendEmail({
     to: adminEmail,

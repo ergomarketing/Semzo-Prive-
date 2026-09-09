@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { render } from "@react-email/components";
 import { EmailServiceProduction } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
+import MembershipActivatedEmail from "@/emails/templates/membership-activated";
+import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
+import OwnershipCompletedEmail from "@/emails/templates/ownership-completed";
+import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
+import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
 export const dynamic = "force-dynamic";
 
@@ -511,23 +517,13 @@ export async function POST(req: NextRequest) {
           await emailService.sendWithResend({
             to: userProfile.email,
             subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
-            html: `
-              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                <h1 style="color: #1a1a4b; font-size: 24px; margin-bottom: 8px;">¡Bienvenida, ${userProfile.full_name || ""}!</h1>
-                <p style="color: #444; line-height: 1.6;">Tu pago ha sido confirmado y tu membresía <strong>${membershipLabel}</strong> está activa.</p>
-                <div style="background: #f8f6f2; border-left: 4px solid #1a1a4b; padding: 20px; margin: 24px 0; border-radius: 4px;">
-                  <p style="margin: 0; color: #1a1a4b; font-size: 15px;"><strong>Próximo paso:</strong> Completa la verificación de identidad para desbloquear el acceso completo al catálogo.</p>
-                </div>
-                <p style="color: #444; line-height: 1.6;">La verificación es rápida y solo toma unos minutos. Una vez completada, podrás reservar cualquier bolso de nuestra colección exclusiva.</p>
-                <div style="margin: 32px 0;">
-                  <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                    IR A MI DASHBOARD
-                  </a>
-                </div>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
-              </div>
-            `,
+            html: await render(
+              <MembershipActivatedEmail
+                name={userProfile.full_name || ""}
+                membershipLabel={membershipLabel}
+                dashboardUrl={`${siteUrl}/dashboard`}
+              />,
+            ),
           })
             .then((sent) =>
               logEmail({
@@ -546,16 +542,18 @@ export async function POST(req: NextRequest) {
             .sendWithResend({
               to: "mailbox@semzoprive.com",
               subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
-              html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a1a4b;">Nueva membresía activada</h2>
-                <p><strong>Nombre:</strong> ${userProfile.full_name || "N/A"}</p>
-                <p><strong>Email:</strong> ${userProfile.email}</p>
-                <p><strong>Plan:</strong> ${membershipLabel}</p>
-                <p><strong>Suscripción Stripe:</strong> ${subscription.id}</p>
-                <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-              </div>
-            `,
+              html: await render(
+                <AdminNotificationEmail
+                  title="Nueva membresía activada"
+                  rows={[
+                    { label: "Nombre", value: userProfile.full_name || "N/A" },
+                    { label: "Email", value: userProfile.email },
+                    { label: "Plan", value: membershipLabel },
+                    { label: "Suscripción Stripe", value: subscription.id },
+                    { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+                  ]}
+                />,
+              ),
             })
             .then((sent) =>
               logEmail({
@@ -647,19 +645,13 @@ export async function POST(req: NextRequest) {
                     await emailService.sendWithResend({
                       to: profile.email,
                       subject: "Tu bolso ya es tuyo — Semzo Privé",
-                      html: `
-                        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                          <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Felicidades, ${profile.full_name || ""}</h1>
-                          <p style="color: #444; line-height: 1.6;">Has completado el precio de tu bolso. Solo te queda un último paso simbólico para que sea oficialmente tuyo.</p>
-                          <div style="margin: 32px 0;">
-                            <a href="${siteUrl}/dashboard" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px;">
-                              FINALIZAR LA COMPRA
-                            </a>
-                          </div>
-                          <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                          <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
-                        </div>
-                      `,
+                      html: await render(
+                        <OwnershipCompletedEmail
+                          name={profile.full_name || ""}
+                          ctaUrl={`${siteUrl}/dashboard`}
+                          ctaLabel="Finalizar la compra"
+                        />,
+                      ),
                     })
                       .then((sent) =>
                         logEmail({
@@ -791,32 +783,15 @@ export async function POST(req: NextRequest) {
           await emailService.sendWithResend({
             to: renewProfile.email,
             subject: `Tu factura de Semzo Privé${invoiceNumber ? ` · ${invoiceNumber}` : ""}`,
-            html: `
-              <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fff;">
-                <h1 style="color: #1a1a4b; font-size: 22px; margin-bottom: 8px;">Renovación confirmada</h1>
-                <p style="color: #444; line-height: 1.6;">Hola ${renewProfile.full_name || ""}, tu membresía ha sido renovada correctamente y se ha emitido una nueva factura.</p>
-                <div style="background: #f8f6f2; padding: 20px; border-radius: 4px; margin: 24px 0;">
-                  <p style="margin: 0 0 8px 0; color: #1a1a4b;"><strong>Importe cobrado:</strong> ${amount}€</p>
-                  ${invoiceNumber ? `<p style="margin: 0; color: #1a1a4b;"><strong>N&uacute;mero de factura:</strong> ${invoiceNumber}</p>` : ""}
-                </div>
-                ${
-                  invoiceUrl
-                    ? `<div style="margin: 32px 0;">
-                        <a href="${invoiceUrl}" style="background: #1a1a4b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 14px; letter-spacing: 1px; margin-right: 8px;">
-                          DESCARGAR FACTURA
-                        </a>
-                      </div>`
-                    : ""
-                }
-                <div style="margin: 32px 0;">
-                  <a href="${siteUrl}/dashboard" style="color: #1a1a4b; font-size: 14px; letter-spacing: 1px;">
-                    VER MI CUENTA &rarr;
-                  </a>
-                </div>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #999; font-size: 12px;">Semzo Priv&eacute; &middot; <a href="mailto:soporte@semzoprive.com" style="color: #999;">soporte@semzoprive.com</a></p>
-              </div>
-            `,
+            html: await render(
+              <MembershipRenewedEmail
+                name={renewProfile.full_name || ""}
+                amount={amount}
+                invoiceNumber={invoiceNumber}
+                invoiceUrl={invoiceUrl || undefined}
+                dashboardUrl={`${siteUrl}/dashboard`}
+              />,
+            ),
           })
             .then((sent) =>
               logEmail({
@@ -1088,87 +1063,15 @@ export async function POST(req: NextRequest) {
               await emailService.sendWithResend({
                 to: finalRecipientEmail,
                 subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
-                html: `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gift Card Semzo Prive</title>
-</head>
-<body style="font-family: Arial, sans-serif; background-color: #f5f5f5; color: #111; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-    
-    <!-- Header -->
-    <div style="background-color: #1a1a4b; padding: 30px 20px; text-align: center;">
-      <img src="https://www.semzoprive.com/images/logo-20semzo-20prive.png" alt="Semzo Prive" style="max-width: 200px; height: auto;" />
-      <p style="color: rgba(255,255,255,0.7); margin: 10px 0 0; font-size: 14px;">Acceso exclusivo al lujo</p>
-    </div>
-    
-    <!-- Content -->
-    <div style="padding: 40px 30px; text-align: center; background-color: white;">
-      <h2 style="color: #1a1a4b; margin-top: 0; font-size: 24px;">Has recibido una Gift Card</h2>
-      
-      <p style="color: #444; line-height: 1.6; font-size: 16px;">
-        Hola${finalRecipientName ? ` ${finalRecipientName}` : ""},
-      </p>
-      
-      <p style="color: #444; line-height: 1.6; font-size: 16px;">
-        Alguien especial te ha regalado acceso al mundo del lujo con una Gift Card de <strong style="color: #1a1a4b;">${amountEuros}€</strong>.
-      </p>
-      
-      <!-- Imagen Gift Card -->
-      <div style="margin: 30px 0;">
-        <img src="https://www.semzoprive.com/images/gift-card-semzo.jpg" alt="Gift Card Semzo Prive" style="max-width: 100%; height: auto; border-radius: 12px;" />
-      </div>
-      
-      ${giftCard.personal_message ? `
-      <!-- Mensaje Personal -->
-      <div style="background-color: rgba(244, 196, 204, 0.15); border-left: 4px solid #f4c4cc; padding: 15px; margin: 25px 0; border-radius: 0 8px 8px 0; text-align: left;">
-        <p style="color: #444; margin: 0; font-style: italic; line-height: 1.6;">"${giftCard.personal_message}"</p>
-      </div>
-      ` : ""}
-      
-      <!-- Codigo -->
-      <div style="background-color: #1a1a4b; color: white; padding: 25px; border-radius: 10px; margin: 30px 0;">
-        <p style="margin: 0 0 10px 0; font-size: 12px; letter-spacing: 2px; opacity: 0.8; text-transform: uppercase;">Tu codigo de Gift Card</p>
-        <p style="margin: 0; font-size: 28px; font-weight: bold; letter-spacing: 4px;">${giftCard.code}</p>
-      </div>
-      
-      <p style="color: #444; line-height: 1.6; font-size: 16px;">
-        Usa este codigo en el checkout para aplicar tu credito a cualquier membresia o reserva de bolso.
-      </p>
-      
-      <!-- Boton CTA -->
-      <div style="margin: 30px 0;">
-        <a href="${siteUrl}/membresias" style="display: inline-block; background-color: #f3c3cc; color: #1a1a4b; padding: 14px 35px; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 16px;">
-          Explorar Membresias
-        </a>
-      </div>
-      
-      <!-- Info Box -->
-      <div style="background-color: rgba(244, 196, 204, 0.15); border-left: 4px solid #f4c4cc; padding: 15px; margin: 25px 0; border-radius: 0 8px 8px 0; text-align: left;">
-        <strong style="color: #1a1a4b;">Informacion importante:</strong>
-        <ul style="color: #444; margin: 10px 0 0; padding-left: 20px;">
-          <li>Tu Gift Card tiene una validez de <strong>2 anos</strong></li>
-          <li>Puedes usarla en cualquier membresia o reserva</li>
-          <li>El saldo restante queda disponible para futuras compras</li>
-        </ul>
-      </div>
-    </div>
-    
-    <!-- Footer -->
-    <div style="background-color: #1a1a4b; padding: 20px; text-align: center;">
-      <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">
-        © ${new Date().getFullYear()} Semzo Prive. Todos los derechos reservados.<br />
-        <a href="mailto:contacto@semzoprive.com" style="color: rgba(255,255,255,0.7);">contacto@semzoprive.com</a>
-      </p>
-    </div>
-    
-  </div>
-</body>
-</html>
-                `,
+                html: await render(
+                  <GiftCardRecipientEmail
+                    recipientName={finalRecipientName || undefined}
+                    personalMessage={giftCard.personal_message || undefined}
+                    code={giftCard.code}
+                    amountEuros={amountEuros}
+                    redeemUrl={`${siteUrl}/membresias`}
+                  />,
+                ),
               })
                 .then((sent) =>
                   logEmail({
@@ -1190,15 +1093,17 @@ export async function POST(req: NextRequest) {
               .sendWithResend({
                 to: "mailbox@semzoprive.com",
                 subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
-                html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
-                  <h2 style="color: #1a1a4b;">Nueva Gift Card vendida</h2>
-                  <p><strong>Codigo:</strong> ${giftCard.code}</p>
-                  <p><strong>Monto:</strong> ${amountEurosAdmin}€</p>
-                  <p><strong>Destinatario:</strong> ${finalRecipientName || "N/A"} (${finalRecipientEmail || "N/A"})</p>
-                  <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-                </div>
-              `,
+                html: await render(
+                  <AdminNotificationEmail
+                    title="Nueva Gift Card vendida"
+                    rows={[
+                      { label: "Codigo", value: giftCard.code },
+                      { label: "Monto", value: `${amountEurosAdmin}€` },
+                      { label: "Destinatario", value: `${finalRecipientName || "N/A"} (${finalRecipientEmail || "N/A"})` },
+                      { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+                    ]}
+                  />,
+                ),
               })
               .then((sent) =>
                 logEmail({
@@ -1293,7 +1198,8 @@ export async function POST(req: NextRequest) {
               userEmail: profile.email,
               userName: customerName,
               amount: amountDue,
-              reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado"
+              reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado",
+              membershipType: failedMembership.membership_type || undefined,
             });
           }
 

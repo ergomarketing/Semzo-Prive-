@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { render } from "@react-email/components"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { logEmail } from "@/lib/email-logger"
+import NewsletterEmail from "@/emails/templates/newsletter"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -92,38 +94,16 @@ export async function POST(request: Request) {
     for (const recipient of recipients) {
       try {
         const personalName = recipient.name || ""
-
-        // Si el caller envió HTML completo (raw_html=true), solo sustituir variables de personalización.
-        // Si no, envolver el content en un layout genérico básico.
-        const html = raw_html
-          ? content
-              .replace(/\{\{name\}\}/g, personalName)
-              .replace(/\{\{unsubscribe_url\}\}/g, `${appUrl}/api/webhooks/unsubscribe?email=${encodeURIComponent(recipient.email)}`)
-          : `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f9f6f1;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f6f1;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;max-width:600px;width:100%;">
-        <tr><td style="background:#1a1f3a;padding:24px 40px;text-align:center;">
-          <span style="color:#c9a96e;font-family:Georgia,serif;font-size:18px;letter-spacing:4px;">SEMZO PRIVÉ</span>
-        </td></tr>
-        <tr><td style="padding:40px;color:#1a1f3a;font-size:16px;line-height:1.7;">
-          ${personalName ? `<p>Hola ${personalName},</p>` : ""}
-          ${content}
-        </td></tr>
-        <tr><td style="background:#f9f6f1;padding:24px 40px;text-align:center;font-size:12px;color:#999;">
-          © SEMZO Privé ·
-          <a href="${appUrl}/api/webhooks/unsubscribe?email=${encodeURIComponent(recipient.email)}" style="color:#999;">Darse de baja</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
-
         const recipientUnsubscribeUrl = `${appUrl}/api/webhooks/unsubscribe?email=${encodeURIComponent(recipient.email)}`
+
+        // Si el caller envió HTML completo (raw_html=true), solo sustituir variables de
+        // personalización y enviar tal cual (ya trae su propia estructura de documento).
+        // Si no, el content es cuerpo editorial y se envuelve con el layout de marca compartido.
+        const html = raw_html
+          ? content.replace(/\{\{name\}\}/g, personalName).replace(/\{\{unsubscribe_url\}\}/g, recipientUnsubscribeUrl)
+          : await render(
+              <NewsletterEmail recipientName={personalName || undefined} bodyHtml={content} unsubscribeUrl={recipientUnsubscribeUrl} />,
+            )
 
         const { data: sendData, error } = await resend.emails.send({
           from:    fromEmail,

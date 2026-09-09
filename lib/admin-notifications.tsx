@@ -1,7 +1,11 @@
 import { Resend } from "resend"
+import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
+import AdminNotificationEmail from "@/emails/templates/admin-notification"
 
 const ADMIN_EMAIL = "mailbox@semzoprive.com"
+
+type Row = { label: string; value: string }
 
 class AdminNotifications {
   private resend: Resend
@@ -11,24 +15,26 @@ class AdminNotifications {
   }
 
   private async sendAdminEmail(
-    subject: string,
-    html: string,
+    title: string,
+    rows: Row[],
     emailType: string,
     metadata?: Record<string, any>,
+    intro?: string,
   ): Promise<boolean> {
     try {
-      console.log("[v0] 📧 Enviando notificación administrativa:", subject)
+      console.log("[v0] Enviando notificación administrativa:", title)
+      const html = await render(<AdminNotificationEmail title={title} intro={intro} rows={rows} />)
       const { data, error } = await this.resend.emails.send({
         from: "Semzo Privé <hola@semzoprive.com>",
         to: ADMIN_EMAIL,
-        subject: `[Semzo Admin] ${subject}`,
+        subject: `[Semzo Admin] ${title}`,
         html,
       })
 
       await logEmail({
         recipientEmail: ADMIN_EMAIL,
         recipientName: "Admin",
-        subject: `[Semzo Admin] ${subject}`,
+        subject: `[Semzo Admin] ${title}`,
         emailType,
         status: error ? "failed" : "sent",
         errorMessage: error ? String((error as any).message || error) : null,
@@ -37,14 +43,14 @@ class AdminNotifications {
       })
 
       if (error) {
-        console.error("[v0] ❌ Error Resend:", error)
+        console.error("[v0] Error Resend:", error)
         return false
       }
 
-      console.log("[v0] ✅ Notificación administrativa enviada:", subject)
+      console.log("[v0] Notificación administrativa enviada:", title)
       return true
     } catch (error) {
-      console.error("[v0] ❌ Error enviando notificación administrativa:", error)
+      console.error("[v0] Error enviando notificación administrativa:", error)
       return false
     }
   }
@@ -59,76 +65,33 @@ class AdminNotifications {
   }) {
     return this.sendAdminEmail(
       `Nueva Consulta: ${data.subject}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa;">
-        <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <h2 style="color: #1a1a4b; margin-top: 0; border-bottom: 3px solid #E8B4CB; padding-bottom: 15px;">
-            📬 Nueva Consulta de Cliente
-          </h2>
-          
-          <div style="background: #fff5f8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #E8B4CB;">
-            <p style="margin: 0 0 10px 0;"><strong style="color: #1a1a4b;">Ticket ID:</strong> ${data.ticketId}</p>
-            <p style="margin: 0 0 10px 0;"><strong style="color: #1a1a4b;">Prioridad:</strong> 
-              <span style="background: ${data.priority === "Alta" ? "#dc2626" : data.priority === "Media" ? "#f59e0b" : "#10b981"}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px;">
-                ${data.priority}
-              </span>
-            </p>
-          </div>
-
-          <div style="margin: 25px 0;">
-            <h3 style="color: #1a1a4b; font-size: 16px; margin-bottom: 10px;">Información del Cliente</h3>
-            <p style="margin: 5px 0;"><strong>Nombre:</strong> ${data.name}</p>
-            <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${data.email}" style="color: #1a1a4b;">${data.email}</a></p>
-          </div>
-
-          <div style="margin: 25px 0;">
-            <h3 style="color: #1a1a4b; font-size: 16px; margin-bottom: 10px;">Asunto</h3>
-            <p style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 0;">${data.subject}</p>
-          </div>
-
-          <div style="margin: 25px 0;">
-            <h3 style="color: #1a1a4b; font-size: 16px; margin-bottom: 10px;">Mensaje</h3>
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; line-height: 1.6;">
-              ${data.message.replace(/\n/g, "<br>")}
-            </div>
-          </div>
-
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-              Responde a esta consulta antes de 24 horas
-            </p>
-            <a href="mailto:${data.email}" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Responder Cliente
-            </a>
-          </div>
-        </div>
-      </div>
-      `,
+      [
+        { label: "Ticket ID", value: data.ticketId },
+        { label: "Prioridad", value: data.priority },
+        { label: "Nombre", value: data.name },
+        { label: "Email", value: data.email },
+        { label: "Asunto", value: data.subject },
+        { label: "Mensaje", value: data.message },
+      ],
       "contact_form",
       { ticketId: data.ticketId, priority: data.priority, customerEmail: data.email },
+      "Responde a esta consulta antes de 24 horas.",
     )
   }
 
   async notifyNewNewsletterSubscription(data: { email: string; name?: string; preferences?: any }) {
+    const rows: Row[] = [{ label: "Email", value: data.email }]
+    if (data.name) rows.push({ label: "Nombre", value: data.name })
+    rows.push({ label: "Fecha", value: new Date().toLocaleString("es-ES") })
+    if (data.preferences) {
+      rows.push({
+        label: "Preferencias",
+        value: Object.keys(data.preferences).filter((k) => data.preferences[k]).join(", "),
+      })
+    }
     return this.sendAdminEmail(
       `Nueva Suscripción Newsletter: ${data.name || data.email}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">📰 Nueva Suscripción al Newsletter</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Email:</strong> ${data.email}</p>
-          ${data.name ? `<p><strong>Nombre:</strong> ${data.name}</p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-          ${
-            data.preferences
-              ? `<p><strong>Preferencias:</strong> ${Object.keys(data.preferences)
-                  .filter((k) => data.preferences[k])
-                  .join(", ")}</p>`
-              : ""
-          }
-        </div>
-      </div>
-      `,
+      rows,
       "newsletter_subscription",
       { subscriberEmail: data.email, preferences: data.preferences },
     )
@@ -137,46 +100,27 @@ class AdminNotifications {
   async notifyNewBagAdded(data: { bagName: string; brand: string; membershipType: string; addedBy: string }) {
     return this.sendAdminEmail(
       `Nuevo Bolso Agregado: ${data.brand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">👜 Nuevo Bolso en Inventario</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Marca:</strong> ${data.brand}</p>
-          <p><strong>Nombre:</strong> ${data.bagName}</p>
-          <p><strong>Colección:</strong> <span style="text-transform: uppercase; background: #1a1a4b; color: white; padding: 4px 12px; border-radius: 4px;">${data.membershipType}</span></p>
-          <p><strong>Agregado por:</strong> ${data.addedBy}</p>
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/inventory" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver Inventario</a>
-      </div>
-      `,
+      [
+        { label: "Marca", value: data.brand },
+        { label: "Nombre", value: data.bagName },
+        { label: "Colección", value: data.membershipType },
+        { label: "Agregado por", value: data.addedBy },
+        { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+      ],
       "bag_added",
       { bagName: data.bagName, brand: data.brand, membershipType: data.membershipType, addedBy: data.addedBy },
     )
   }
 
-  async notifyBagUpdated(data: {
-    bagName: string
-    brand: string
-    changes: string[]
-    updatedBy: string
-  }) {
+  async notifyBagUpdated(data: { bagName: string; brand: string; changes: string[]; updatedBy: string }) {
     return this.sendAdminEmail(
       `Bolso Actualizado: ${data.brand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">✏️ Bolso Actualizado</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Bolso:</strong> ${data.brand} ${data.bagName}</p>
-          <p><strong>Cambios realizados:</strong></p>
-          <ul>
-            ${data.changes.map((change) => `<li>${change}</li>`).join("")}
-          </ul>
-          <p><strong>Actualizado por:</strong> ${data.updatedBy}</p>
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-      </div>
-      `,
+      [
+        { label: "Bolso", value: `${data.brand} ${data.bagName}` },
+        { label: "Cambios", value: data.changes.join(", ") },
+        { label: "Actualizado por", value: data.updatedBy },
+        { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+      ],
       "bag_updated",
       { bagName: data.bagName, brand: data.brand, changes: data.changes, updatedBy: data.updatedBy },
     )
@@ -185,36 +129,26 @@ class AdminNotifications {
   async notifyBagDeleted(data: { bagName: string; brand: string; deletedBy: string }) {
     return this.sendAdminEmail(
       `Bolso Eliminado: ${data.brand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #dc2626;">🗑️ Bolso Eliminado del Inventario</h2>
-        <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-          <p><strong>Bolso:</strong> ${data.brand} ${data.bagName}</p>
-          <p><strong>Eliminado por:</strong> ${data.deletedBy}</p>
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-      </div>
-      `,
+      [
+        { label: "Bolso", value: `${data.brand} ${data.bagName}` },
+        { label: "Eliminado por", value: data.deletedBy },
+        { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+      ],
       "bag_deleted",
       { bagName: data.bagName, brand: data.brand, deletedBy: data.deletedBy },
     )
   }
 
   async notifyNewUserRegistration(data: { userName: string; userEmail: string; membershipPlan?: string }) {
+    const rows: Row[] = [
+      { label: "Nombre", value: data.userName },
+      { label: "Email", value: data.userEmail },
+    ]
+    if (data.membershipPlan) rows.push({ label: "Plan Seleccionado", value: data.membershipPlan })
+    rows.push({ label: "Fecha", value: new Date().toLocaleString("es-ES") })
     return this.sendAdminEmail(
       `Nuevo Usuario Registrado: ${data.userName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">👤 Nuevo Usuario Registrado</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Nombre:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          ${data.membershipPlan ? `<p><strong>Plan Seleccionado:</strong> <span style="text-transform: uppercase; background: #1a1a4b; color: white; padding: 4px 12px; border-radius: 4px;">${data.membershipPlan}</span></p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/members" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver Todos los Miembros</a>
-      </div>
-      `,
+      rows,
       "user_registration",
       { userEmail: data.userEmail, membershipPlan: data.membershipPlan },
     )
@@ -232,26 +166,14 @@ class AdminNotifications {
   }) {
     return this.sendAdminEmail(
       `Reserva Cancelada - ${data.bagBrand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #dc2626;">❌ Reserva Cancelada</h2>
-        <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-          <h3 style="color: #1a1a4b; margin-top: 0;">Información del Cliente</h3>
-          <p><strong>Nombre:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          
-          <h3 style="color: #1a1a4b;">Detalles de la Reserva</h3>
-          <p><strong>ID Reserva:</strong> ${data.reservationId}</p>
-          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
-          <p><strong>Fechas:</strong> ${new Date(data.startDate).toLocaleDateString("es-ES")} - ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
-          <p><strong>Cancelado por:</strong> <span style="text-transform: capitalize;">${data.cancelledBy === "user" ? "Cliente" : "Administrador"}</span></p>
-          <p><strong>Fecha de cancelación:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver Todas las Reservas</a>
-        </div>
-      </div>
-      `,
+      [
+        { label: "Nombre", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "Fechas", value: `${new Date(data.startDate).toLocaleDateString("es-ES")} - ${new Date(data.endDate).toLocaleDateString("es-ES")}` },
+        { label: "Cancelado por", value: data.cancelledBy === "user" ? "Cliente" : "Administrador" },
+      ],
       "reservation_cancelled",
       { reservationId: data.reservationId, userEmail: data.userEmail, cancelledBy: data.cancelledBy },
     )
@@ -268,14 +190,6 @@ class AdminNotifications {
     startDate: string
     endDate: string
   }) {
-    const statusColors: Record<string, string> = {
-      pending: "#f59e0b",
-      confirmed: "#10b981",
-      active: "#3b82f6",
-      completed: "#6b7280",
-      cancelled: "#dc2626",
-    }
-
     const statusLabels: Record<string, string> = {
       pending: "Pendiente",
       confirmed: "Confirmada",
@@ -286,39 +200,15 @@ class AdminNotifications {
 
     return this.sendAdminEmail(
       `Cambio de Estado: ${data.bagBrand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">🔄 Cambio de Estado de Reserva</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #1a1a4b; margin-top: 0;">Información del Cliente</h3>
-          <p><strong>Nombre:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          
-          <h3 style="color: #1a1a4b;">Detalles de la Reserva</h3>
-          <p><strong>ID Reserva:</strong> ${data.reservationId}</p>
-          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
-          <p><strong>Fechas:</strong> ${new Date(data.startDate).toLocaleDateString("es-ES")} - ${new Date(data.endDate).toLocaleDateString("es-ES")}</p>
-          
-          <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 6px;">
-            <p style="margin: 0;"><strong>Estado anterior:</strong> 
-              <span style="background: ${statusColors[data.oldStatus] || "#6b7280"}; color: white; padding: 4px 12px; border-radius: 4px; text-transform: capitalize;">
-                ${statusLabels[data.oldStatus] || data.oldStatus}
-              </span>
-            </p>
-            <p style="margin: 15px 0 0 0;"><strong>Estado nuevo:</strong> 
-              <span style="background: ${statusColors[data.newStatus] || "#6b7280"}; color: white; padding: 4px 12px; border-radius: 4px; text-transform: capitalize;">
-                ${statusLabels[data.newStatus] || data.newStatus}
-              </span>
-            </p>
-          </div>
-          
-          <p><strong>Fecha del cambio:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/reservations" style="background: #1a1a4b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Ver en Panel Admin</a>
-        </div>
-      </div>
-      `,
+      [
+        { label: "Nombre", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "Fechas", value: `${new Date(data.startDate).toLocaleDateString("es-ES")} - ${new Date(data.endDate).toLocaleDateString("es-ES")}` },
+        { label: "Estado anterior", value: statusLabels[data.oldStatus] || data.oldStatus },
+        { label: "Estado nuevo", value: statusLabels[data.newStatus] || data.newStatus },
+      ],
       "reservation_status_change",
       {
         reservationId: data.reservationId,
@@ -336,21 +226,16 @@ class AdminNotifications {
     amount: number
     invoiceNumber?: string
   }) {
+    const rows: Row[] = [
+      { label: "Socia", value: data.userName },
+      { label: "Email", value: data.userEmail },
+      { label: "Membresía", value: data.membershipType },
+      { label: "Importe", value: `€${data.amount.toFixed(2)}` },
+    ]
+    if (data.invoiceNumber) rows.push({ label: "Factura", value: data.invoiceNumber })
     return this.sendAdminEmail(
       `Renovación de Membresía: ${data.userName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #10b981;">🔁 Renovación Mensual Cobrada</h2>
-        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-          <p><strong>Socia:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          <p><strong>Membresía:</strong> <span style="text-transform: uppercase;">${data.membershipType}</span></p>
-          <p><strong>Importe:</strong> €${data.amount.toFixed(2)}</p>
-          ${data.invoiceNumber ? `<p><strong>Factura:</strong> ${data.invoiceNumber}</p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-      </div>
-      `,
+      rows,
       "membership_renewed",
       { userEmail: data.userEmail, membershipType: data.membershipType, amount: data.amount },
     )
@@ -363,46 +248,32 @@ class AdminNotifications {
     amount: number
     attemptCount?: number
   }) {
+    const rows: Row[] = [
+      { label: "Socia", value: data.userName },
+      { label: "Email", value: data.userEmail },
+      { label: "Membresía", value: data.membershipType },
+      { label: "Importe", value: `€${data.amount.toFixed(2)}` },
+    ]
+    if (data.attemptCount) rows.push({ label: "Intento nº", value: String(data.attemptCount) })
     return this.sendAdminEmail(
-      `⚠️ Pago Fallido: ${data.userName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #dc2626;">⚠️ Pago Fallido</h2>
-        <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-          <p><strong>Socia:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          <p><strong>Membresía:</strong> <span style="text-transform: uppercase;">${data.membershipType}</span></p>
-          <p><strong>Importe:</strong> €${data.amount.toFixed(2)}</p>
-          ${data.attemptCount ? `<p><strong>Intento nº:</strong> ${data.attemptCount}</p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <p style="color:#666;font-size:14px;">Stripe reintentará el cobro automáticamente. Revisa si requiere acción manual.</p>
-      </div>
-      `,
+      `Pago Fallido: ${data.userName}`,
+      rows,
       "payment_failed",
       { userEmail: data.userEmail, membershipType: data.membershipType, amount: data.amount },
+      "Stripe reintentará el cobro automáticamente. Revisa si requiere acción manual.",
     )
   }
 
-  async notifyIdentityVerified(data: {
-    userName: string
-    userEmail: string
-  }) {
+  async notifyIdentityVerified(data: { userName: string; userEmail: string }) {
     return this.sendAdminEmail(
       `Identidad Verificada: ${data.userName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #10b981;">✅ Identidad Verificada</h2>
-        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-          <p><strong>Socia:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-        <p style="color:#666;font-size:14px;">La socia ya tiene acceso desbloqueado.</p>
-      </div>
-      `,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+      ],
       "identity_verified",
       { userEmail: data.userEmail },
+      "La socia ya tiene acceso desbloqueado.",
     )
   }
 
@@ -419,25 +290,15 @@ class AdminNotifications {
       received: "Devolución Recibida",
       completed: "Devolución Completada",
     }
-    const statusColors: Record<string, string> = {
-      initiated: "#f59e0b",
-      received: "#3b82f6",
-      completed: "#10b981",
-    }
+    const rows: Row[] = [
+      { label: "Socia", value: data.userName },
+      { label: "Email", value: data.userEmail },
+      { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+    ]
+    if (data.reservationId) rows.push({ label: "ID Reserva", value: data.reservationId })
     return this.sendAdminEmail(
       `${statusLabels[data.status]}: ${data.bagBrand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: ${statusColors[data.status]};">📦 ${statusLabels[data.status]}</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColors[data.status]};">
-          <p><strong>Socia:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
-          ${data.reservationId ? `<p><strong>ID Reserva:</strong> ${data.reservationId}</p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-      </div>
-      `,
+      rows,
       "return_status",
       { userEmail: data.userEmail, status: data.status, reservationId: data.reservationId },
     )
@@ -455,24 +316,15 @@ class AdminNotifications {
       created: "Envío Creado",
       delivered: "Envío Entregado",
     }
-    const statusColors: Record<string, string> = {
-      created: "#3b82f6",
-      delivered: "#10b981",
-    }
+    const rows: Row[] = [
+      { label: "Socia", value: data.userName },
+      { label: "Email", value: data.userEmail },
+      { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+    ]
+    if (data.trackingNumber) rows.push({ label: "Tracking", value: data.trackingNumber })
     return this.sendAdminEmail(
       `${statusLabels[data.status]}: ${data.bagBrand} ${data.bagName}`,
-      `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: ${statusColors[data.status]};">🚚 ${statusLabels[data.status]}</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColors[data.status]};">
-          <p><strong>Socia:</strong> ${data.userName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
-          <p><strong>Bolso:</strong> ${data.bagBrand} - ${data.bagName}</p>
-          ${data.trackingNumber ? `<p><strong>Tracking:</strong> ${data.trackingNumber}</p>` : ""}
-          <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
-        </div>
-      </div>
-      `,
+      rows,
       "shipment_status",
       { userEmail: data.userEmail, status: data.status, trackingNumber: data.trackingNumber },
     )

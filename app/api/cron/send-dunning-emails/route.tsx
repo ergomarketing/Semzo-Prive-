@@ -1,11 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
-import {
-  generateDunningE2HTML,
-  generateDunningE3HTML,
-  generateDunningAdminHTML,
-} from "@/lib/email-templates-membership"
+import { render } from "@react-email/components"
+import DunningEmail from "@/emails/templates/dunning"
+import AdminNotificationEmail from "@/emails/templates/admin-notification"
 import { logEmail } from "@/lib/email-logger"
 
 export const dynamic = "force-dynamic"
@@ -22,11 +20,14 @@ const SITE_URL =
       : "http://localhost:3000")
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  })
+}
+
+function capitalize(s: string): string {
+  if (!s) return ""
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 }
 
 /**
@@ -35,7 +36,6 @@ function getSupabase() {
  * Guard de deduplicación: no reenvía si ya se envió el paso correspondiente.
  */
 export async function GET(request: NextRequest) {
-  // Seguridad: solo Vercel Cron o llamada interna con secret
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabase()
   const now = new Date()
 
-  // Socias con pago fallido pendiente de follow-up (e1_sent o e2_sent)
   const { data: memberships, error } = await supabase
     .from("user_memberships")
     .select("id, user_id, membership_type, status, dunning_status, failed_payment_count, updated_at")
@@ -65,16 +64,14 @@ export async function GET(request: NextRequest) {
     const dunningStart = new Date(membership.updated_at)
     const daysSince = Math.floor((now.getTime() - dunningStart.getTime()) / (1000 * 60 * 60 * 24))
 
-    // E2 a los 3 días, E3 a los 7 días
     const shouldSendE2 = membership.dunning_status === "e1_sent" && daysSince >= 3
-    const shouldSendE3 = membership.dunning_status === "e2_sent" && daysSince >= 4 // 4 más desde E2 = 7 total
+    const shouldSendE3 = membership.dunning_status === "e2_sent" && daysSince >= 4
 
     if (!shouldSendE2 && !shouldSendE3) {
       skipped++
       continue
     }
 
-    // Datos de la socia
     const { data: profile } = await supabase
       .from("profiles")
       .select("first_name, last_name, email")
@@ -85,7 +82,6 @@ export async function GET(request: NextRequest) {
 
     const userName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "socia"
 
-    // Bolso activo en posesión
     const { data: activeReservation } = await supabase
       .from("reservations")
       .select("bags(name, brand)")
@@ -95,21 +91,21 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle()
 
-    const bag = (activeReservation?.bags as any)
+    const bag = activeReservation?.bags as any
     const bagName = bag ? `${bag.brand} ${bag.name}` : undefined
     const updatePaymentUrl = `${SITE_URL}/dashboard/membresia`
     const step = shouldSendE2 ? 2 : 3
+    const membershipLabel = capitalize(membership.membership_type)
 
-    // Generar HTML
-    const userHtml = shouldSendE2
-      ? generateDunningE2HTML({ userName, membershipType: membership.membership_type, bagName, updatePaymentUrl })
-      : generateDunningE3HTML({ userName, membershipType: membership.membership_type, bagName, updatePaymentUrl })
+    const userHtml = await render(
+      <DunningEmail step={step as 2 | 3} name={userName} membershipLabel={membershipLabel} bagName={bagName} updatePaymentUrl={updatePaymentUrl} />,
+    )
 
-    const subject = shouldSendE2
-      ? "¿Actualizamos juntas tu método de pago? — Semzo Privé"
-      : "Seguimos aquí para ayudarte con tu membresía — Semzo Privé"
+    const subject =
+      step === 2
+        ? "¿Actualizamos juntas tu método de pago? — Semzo Privé"
+        : "Seguimos aquí para ayudarte con tu membresía — Semzo Privé"
 
-    // Enviar a socia
     const { error: sendErr } = await resend.emails.send({
       from: `Semzo Privé <${FROM_EMAIL}>`,
       to: profile.email,
@@ -140,15 +136,22 @@ export async function GET(request: NextRequest) {
       metadata: { membershipId: membership.id, step },
     })
 
-    // Notificar al admin
-    const adminHtml = generateDunningAdminHTML({
-      userName,
-      userEmail: profile.email,
-      membershipType: membership.membership_type,
-      bagName,
-      failedAt: new Date(membership.updated_at).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
-      dunningStep: step,
-    })
+    const adminHtml = await render(
+      <AdminNotificationEmail
+        title={`Seguimiento pago pendiente (paso ${step}) — ${userName}`}
+        rows={[
+          { label: "Socia", value: userName },
+          { label: "Email", value: profile.email },
+          { label: "Membresía", value: membershipLabel },
+          ...(bagName ? [{ label: "Bolso en posesión", value: bagName }] : []),
+          {
+            label: "Fallo detectado",
+            value: new Date(membership.updated_at).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" }),
+          },
+          { label: "Email enviado a socia", value: `Paso ${step} de 3` },
+        ]}
+      />,
+    )
 
     await resend.emails.send({
       from: `Semzo Privé <${FROM_EMAIL}>`,
@@ -157,14 +160,14 @@ export async function GET(request: NextRequest) {
       html: adminHtml,
     })
 
-    // Actualizar dunning_status
     const newStatus = shouldSendE2 ? "e2_sent" : "e3_sent"
     await supabase
       .from("user_memberships")
       .update({ dunning_status: newStatus, updated_at: new Date().toISOString() })
       .eq("id", membership.id)
 
-    if (shouldSendE2) e2Sent++; else e3Sent++
+    if (shouldSendE2) e2Sent++
+    else e3Sent++
     console.log(`[dunning-cron] E${step} enviado a:`, profile.email)
   }
 

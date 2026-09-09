@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
+import LeadSequenceEmail from "@/emails/templates/lead-sequence"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
-  return Object.entries(vars).reduce(
-    (str, [key, value]) => str.replaceAll(`{{${key}}}`, value),
-    template
-  )
+  return Object.entries(vars).reduce((str, [key, value]) => str.replaceAll(`{{${key}}}`, value), template)
 }
 
 export async function GET(req: NextRequest) {
@@ -24,7 +20,6 @@ export async function GET(req: NextRequest) {
 
   const now = new Date().toISOString()
 
-  // Emails pendientes cuya scheduled_for ya pasó
   const { data: pendingEmails, error } = await supabase
     .from("email_sequence_log")
     .select("*, leads(*)")
@@ -41,7 +36,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, sent: 0, message: "Nada pendiente" })
   }
 
-  // Cargar todos los templates activos de Supabase
   const { data: templates, error: tplError } = await supabase
     .from("email_templates")
     .select("id, subject, body_html")
@@ -60,9 +54,6 @@ export async function GET(req: NextRequest) {
   for (const row of pendingEmails) {
     const lead = row.leads as any
 
-    // Saltar solo si el lead se dio de baja explícitamente.
-    // "subscribed" significa que completó la secuencia pero puede tener emails
-    // pendientes de envíos anteriores que sí deben enviarse.
     if (!lead || lead.status === "unsubscribed") {
       await supabase.from("email_sequence_log").update({ status: "skipped" }).eq("id", row.id)
       skipped++
@@ -86,31 +77,9 @@ export async function GET(req: NextRequest) {
     }
 
     const subject = renderTemplate(template.subject, vars)
-    const bodyHtml = renderTemplate(template.body_html, vars)
+    const bodyHtml = renderTemplate(template.body_html, vars) + vars.tracking_pixel
 
-    // Envolver en el layout base
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f9f6f1;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f6f1;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;max-width:600px;width:100%;">
-        <tr><td style="background:#1a1f3a;padding:24px 40px;text-align:center;">
-          <span style="color:#c9a96e;font-family:Georgia,serif;font-size:18px;letter-spacing:4px;">SEMZO PRIVÉ</span>
-        </td></tr>
-        <tr><td style="padding:40px;color:#1a1f3a;font-size:16px;line-height:1.7;">
-          ${bodyHtml}
-          ${vars.tracking_pixel}
-        </td></tr>
-        <tr><td style="background:#f9f6f1;padding:24px 40px;text-align:center;font-size:12px;color:#999;">
-          © SEMZO Privé · <a href="${vars.unsubscribe_url}" style="color:#999;">Darse de baja</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+    const html = await render(<LeadSequenceEmail bodyHtml={bodyHtml} unsubscribeUrl={vars.unsubscribe_url} />)
 
     try {
       const { data: resendData, error: resendError } = await resend.emails.send({
@@ -160,28 +129,24 @@ export async function GET(req: NextRequest) {
         metadata: { leadId: lead.id, email_number: row.email_number },
       })
 
-      // Si es el Email 5 (último), migrar automáticamente a newsletter
       if (row.email_number === 5) {
         await supabase
           .from("leads")
           .update({ status: "subscribed", subscribed_at: new Date().toISOString() })
           .eq("id", lead.id)
-          .eq("status", "lead") // solo si no se dio de baja durante la secuencia
+          .eq("status", "lead")
 
-        // Insertar también en newsletter_subscriptions para unificar la base
-        await supabase
-          .from("newsletter_subscriptions")
-          .upsert(
-            {
-              email: lead.email,
-              name: lead.name || null,
-              phone: lead.phone || null,
-              status: "active",
-              subscribed_at: new Date().toISOString(),
-              preferences: { newArrivals: true, exclusiveOffers: true, styleGuides: true, events: false, membershipUpdates: true },
-            },
-            { onConflict: "email", ignoreDuplicates: false }
-          )
+        await supabase.from("newsletter_subscriptions").upsert(
+          {
+            email: lead.email,
+            name: lead.name || null,
+            phone: lead.phone || null,
+            status: "active",
+            subscribed_at: new Date().toISOString(),
+            preferences: { newArrivals: true, exclusiveOffers: true, styleGuides: true, events: false, membershipUpdates: true },
+          },
+          { onConflict: "email", ignoreDuplicates: false },
+        )
       }
 
       sent++
