@@ -51,6 +51,14 @@
     {
       "path": "/api/cron/send-dunning-emails",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/check-lifecycle-triggers",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/send-lifecycle-emails",
+      "schedule": "0 8,14,20 * * *"
     }
   ],
   "git": {

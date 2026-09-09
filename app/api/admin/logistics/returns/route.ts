@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { reconcileRentalCommission } from "@/lib/partners"
+import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -246,6 +247,37 @@ export async function PATCH(request: NextRequest) {
 
             if (reservation.bag_id) {
               await supabase.from("bags").update({ status: "available" }).eq("id", reservation.bag_id)
+
+              // Fase 3 — Back-in-stock: notificar a quien tenga este bolso en
+              // su wishlist. Best-effort, nunca bloquea el cierre de la devolucion.
+              try {
+                const { data: wishlistEntries } = await supabase
+                  .from("wishlists")
+                  .select("user_id")
+                  .eq("bag_id", reservation.bag_id)
+
+                for (const entry of wishlistEntries || []) {
+                  const { data: wishlistProfile } = await supabase
+                    .from("profiles")
+                    .select("email, full_name, first_name")
+                    .eq("id", entry.user_id)
+                    .maybeSingle()
+
+                  if (!wishlistProfile?.email) continue
+
+                  await enrollLifecycleSequence({
+                    sequenceKey: "back_in_stock",
+                    entityType: "wishlist_item",
+                    entityId: `${reservation.bag_id}-${entry.user_id}`,
+                    userId: entry.user_id,
+                    email: wishlistProfile.email,
+                    name: wishlistProfile.full_name || wishlistProfile.first_name || "",
+                    vars: { bag_name: bag ? `${bag.brand} ${bag.name}`.trim() : "" },
+                  })
+                }
+              } catch (wishlistErr) {
+                console.error("[Logistics API] Error notificando back-in-stock:", wishlistErr)
+              }
             }
 
             await supabase.from("logistics_audit_log").insert({

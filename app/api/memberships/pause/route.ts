@@ -29,9 +29,10 @@ export async function POST(req: Request) {
   }
 
   // Siempre actualizar Supabase
+  // paused_at alimenta el cron de reactivación de pausa (Fase 3, 15/30 días).
   await supabase
     .from("user_memberships")
-    .update({ status: "paused", updated_at: new Date().toISOString() })
+    .update({ status: "paused", paused_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("user_id", user.id)
 
   return NextResponse.json({ success: true })
