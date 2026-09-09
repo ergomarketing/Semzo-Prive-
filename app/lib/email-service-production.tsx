@@ -63,7 +63,7 @@ export class EmailServiceProduction {
     this.config = {
       provider: hasResend ? "resend" : hasSmtp ? "smtp" : "resend",
       apiKey: resendKey,
-      fromEmail: process.env.SMTP_USER || "noreply@semzoprive.com", // Use SMTP user if available, otherwise default
+      fromEmail: process.env.FROM_EMAIL || "hola@semzoprive.com",
       fromName: "Semzo Privé",
     }
 
@@ -93,6 +93,8 @@ export class EmailServiceProduction {
           return false
         }
 
+        const unsubscribeUrl = `${BRAND.site}/api/webhooks/unsubscribe?email=${encodeURIComponent(data.to)}`
+
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -106,6 +108,10 @@ export class EmailServiceProduction {
             subject: data.subject,
             html: data.html,
             text: data.text || data.subject,
+            headers: {
+              "List-Unsubscribe": `<${unsubscribeUrl}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
           }),
         })
 

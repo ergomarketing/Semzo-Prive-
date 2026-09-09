@@ -118,6 +118,10 @@ export async function GET(req: NextRequest) {
         to: [lead.email],
         subject,
         html,
+        headers: {
+          "List-Unsubscribe": `<${vars.unsubscribe_url}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       })
 
       if (resendError) {

@@ -6,16 +6,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// GET: baja desde el enlace del email (lid = lead_id en la URL)
+// GET: baja desde el enlace del email (lid = lead_id, o email, en la URL)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const lid = searchParams.get("lid")
+  const email = searchParams.get("email")
 
-  if (!lid) {
+  if (!lid && !email) {
     return new NextResponse("Enlace inválido", { status: 400 })
   }
 
-  await processUnsubscribe(lid)
+  await processUnsubscribeRequest({ lid, email })
 
   return new NextResponse(
     `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Baja confirmada</title>
@@ -28,30 +29,56 @@ export async function GET(req: NextRequest) {
   )
 }
 
-// POST: baja programática (desde Resend webhook o API propia)
+// POST: baja programática (API propia) y baja "One-Click" (RFC 8058) que los
+// clientes de correo disparan directamente sobre la URL del header List-Unsubscribe,
+// identificando al lead solo por query params, sin depender del body.
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const lid = body.lead_id
-    const email = body.email
+    const { searchParams } = new URL(req.url)
+    let lid = searchParams.get("lid")
+    let email = searchParams.get("email")
 
-    if (lid) {
-      await processUnsubscribe(lid)
-    } else if (email) {
-      const { data: lead } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("email", email.toLowerCase().trim())
-        .single()
-      if (lead) await processUnsubscribe(lead.id)
-    } else {
+    if (!lid && !email) {
+      const body = await req.json().catch(() => ({}))
+      lid = body.lead_id || null
+      email = body.email || null
+    }
+
+    if (!lid && !email) {
       return NextResponse.json({ error: "lead_id o email requerido" }, { status: 400 })
     }
+
+    await processUnsubscribeRequest({ lid, email })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[unsubscribe]", err)
     return NextResponse.json({ error: "Error interno" }, { status: 500 })
+  }
+}
+
+async function processUnsubscribeRequest({ lid, email }: { lid?: string | null; email?: string | null }) {
+  let leadId = lid || null
+
+  if (!leadId && email) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("email", email.toLowerCase().trim())
+      .maybeSingle()
+    leadId = lead?.id ?? null
+  }
+
+  if (leadId) {
+    await processUnsubscribe(leadId)
+  }
+
+  // Baja también de la newsletter si el email coincide, aunque no haya lead asociado.
+  if (email) {
+    await supabase
+      .from("newsletter_subscriptions")
+      .update({ status: "unsubscribed" })
+      .eq("email", email.toLowerCase().trim())
   }
 }
 
