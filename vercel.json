@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/track-shipments",
-      "schedule": "0 8-20/3 * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/execute-sepa-charges",
