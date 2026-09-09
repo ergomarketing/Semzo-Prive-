@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No hay destinatarios para la audiencia seleccionada", sent: 0 }, { status: 400 })
     }
 
-    const resendApiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY
+    const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
     if (!resendApiKey) {
       // Modo simulación (entorno sin API key)
       return NextResponse.json({
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         sent: recipients.length,
         failed: 0,
         simulated: true,
-        message: `Simulado: ${recipients.length} destinatarios (EMAIL_API_KEY no configurada)`,
+        message: `Simulado: ${recipients.length} destinatarios (RESEND_API_KEY no configurada)`,
       })
     }
 
@@ -123,11 +123,17 @@ export async function POST(request: Request) {
 </body>
 </html>`
 
+        const recipientUnsubscribeUrl = `${appUrl}/api/webhooks/unsubscribe?email=${encodeURIComponent(recipient.email)}`
+
         const { data: sendData, error } = await resend.emails.send({
           from:    fromEmail,
           to:      [recipient.email],
           subject,
           html,
+          headers: {
+            "List-Unsubscribe": `<${recipientUnsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
         })
 
         if (error) {

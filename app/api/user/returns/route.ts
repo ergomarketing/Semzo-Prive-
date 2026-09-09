@@ -219,7 +219,7 @@ async function notifyLogistics(args: {
   notes: string
   returnId: string
 }) {
-  const apiKey = process.env.EMAIL_API_KEY
+  const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
   if (!apiKey) return
 
   const to = process.env.LOGISTICS_EMAIL || "mailbox@semzoprive.com"

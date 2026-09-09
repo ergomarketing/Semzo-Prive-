@@ -29,13 +29,13 @@ export async function sendSepaPreExecutionEmail({
   reservationId,
 }: SendSepaPreExecutionEmailParams): Promise<{ success: boolean; emailId?: string; error?: string }> {
   try {
-    const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY
+    const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
 
     if (!apiKey) {
       console.error("[SEPA EMAIL] API key no configurada")
       return {
         success: false,
-        error: "EMAIL_API_KEY no configurada",
+        error: "RESEND_API_KEY no configurada",
       }
     }
 
@@ -124,7 +124,7 @@ export async function sendSepaPreExecutionEmail({
       Para consultas: <a href="mailto:soporte@semzoprive.com" style="color: #1a1a4b;">soporte@semzoprive.com</a>
     </p>
     <p style="margin: 10px 0 0 0;">
-      © 2024 SEMZO PRIVÉ. Todos los derechos reservados.
+      © ${new Date().getFullYear()} SEMZO PRIVÉ. Todos los derechos reservados.
     </p>
   </div>
 </body>

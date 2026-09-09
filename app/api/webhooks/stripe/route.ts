@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { EmailServiceProduction } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { adminNotifications } from "@/lib/admin-notifications";
+import { logEmail } from "@/lib/email-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -527,13 +528,25 @@ export async function POST(req: NextRequest) {
                 <p style="color: #999; font-size: 12px;">Semzo Privé · Av. Bulevar Príncipe Alfonso de Hohenlohe, s/n, Marbella · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
               </div>
             `,
-          }).catch(() => {}); // No bloquear el webhook si falla el email
+          })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: userProfile.email,
+                recipientName: userProfile.full_name || null,
+                subject: "Tu membresía está activa — Semzo Privé",
+                emailType: "membership_activated",
+                status: sent ? "sent" : "failed",
+                metadata: { subscriptionId: subscription.id },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error enviando email de membresía activada:", err)); // No bloquear el webhook si falla el email
 
           // Notificar al admin de nueva membresía activada
-          await emailService.sendWithResend({
-            to: "mailbox@semzoprive.com",
-            subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
-            html: `
+          await emailService
+            .sendWithResend({
+              to: "mailbox@semzoprive.com",
+              subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
+              html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <h2 style="color: #1a1a4b;">Nueva membresía activada</h2>
                 <p><strong>Nombre:</strong> ${userProfile.full_name || "N/A"}</p>
@@ -543,7 +556,18 @@ export async function POST(req: NextRequest) {
                 <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
               </div>
             `,
-          }).catch(() => {});
+            })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: "mailbox@semzoprive.com",
+                recipientName: "Admin",
+                subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
+                emailType: "admin_membership_activated",
+                status: sent ? "sent" : "failed",
+                metadata: { subscriptionId: subscription.id },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error notificando membresía activada al admin:", err));
         }
 
         console.log("✅ Membership ACTIVATED:", userId);
@@ -636,7 +660,17 @@ export async function POST(req: NextRequest) {
                           <p style="color: #999; font-size: 12px;">Semzo Privé · <a href="mailto:info@semzoprive.com" style="color: #999;">info@semzoprive.com</a></p>
                         </div>
                       `,
-                    }).catch(() => {});
+                    })
+                      .then((sent) =>
+                        logEmail({
+                          recipientEmail: profile.email,
+                          recipientName: profile.full_name || null,
+                          subject: "Tu bolso ya es tuyo — Semzo Privé",
+                          emailType: "ownership_completed",
+                          status: sent ? "sent" : "failed",
+                        }),
+                      )
+                      .catch((err) => console.error("[stripe-webhook] Error enviando email de bolso completado:", err));
                   }
                 }
               }
@@ -783,7 +817,18 @@ export async function POST(req: NextRequest) {
                 <p style="color: #999; font-size: 12px;">Semzo Priv&eacute; &middot; <a href="mailto:soporte@semzoprive.com" style="color: #999;">soporte@semzoprive.com</a></p>
               </div>
             `,
-          }).catch(() => {});
+          })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: renewProfile.email,
+                recipientName: renewProfile.full_name || null,
+                subject: "Renovación confirmada — Semzo Privé",
+                emailType: "membership_renewed",
+                status: sent ? "sent" : "failed",
+                metadata: { invoiceNumber },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error enviando email de renovación:", err));
         }
 
         // AVISO ADMIN: renovación cobrada
@@ -796,7 +841,7 @@ export async function POST(req: NextRequest) {
               amount: invoice.amount_paid ? invoice.amount_paid / 100 : 0,
               invoiceNumber: invoice.number || undefined,
             })
-            .catch(() => {});
+            .catch((err) => console.error("[stripe-webhook] Error notificando renovación al admin:", err));
         }
 
         console.log("✅ Membership RENEWED:", membership.user_id);
@@ -1115,7 +1160,7 @@ export async function POST(req: NextRequest) {
     <!-- Footer -->
     <div style="background-color: #1a1a4b; padding: 20px; text-align: center;">
       <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">
-        © 2024 Semzo Prive. Todos los derechos reservados.<br />
+        © ${new Date().getFullYear()} Semzo Prive. Todos los derechos reservados.<br />
         <a href="mailto:contacto@semzoprive.com" style="color: rgba(255,255,255,0.7);">contacto@semzoprive.com</a>
       </p>
     </div>
@@ -1124,16 +1169,28 @@ export async function POST(req: NextRequest) {
 </body>
 </html>
                 `,
-              }).catch(() => {});
+              })
+                .then((sent) =>
+                  logEmail({
+                    recipientEmail: finalRecipientEmail,
+                    recipientName: finalRecipientName || null,
+                    subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
+                    emailType: "gift_card_recipient",
+                    status: sent ? "sent" : "failed",
+                    metadata: { code: giftCard.code },
+                  }),
+                )
+                .catch((err) => console.error("[stripe-webhook] Error enviando email de gift card:", err));
             }
 
             // Notificar al admin
             const adminEmailService = EmailServiceProduction.getInstance();
             const amountEurosAdmin = (giftCard.amount / 100).toFixed(0);
-            await adminEmailService.sendWithResend({
-              to: "mailbox@semzoprive.com",
-              subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
-              html: `
+            await adminEmailService
+              .sendWithResend({
+                to: "mailbox@semzoprive.com",
+                subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
+                html: `
                 <div style="font-family: Arial, sans-serif; padding: 20px;">
                   <h2 style="color: #1a1a4b;">Nueva Gift Card vendida</h2>
                   <p><strong>Codigo:</strong> ${giftCard.code}</p>
@@ -1142,7 +1199,18 @@ export async function POST(req: NextRequest) {
                   <p><strong>Fecha:</strong> ${new Date().toLocaleString("es-ES")}</p>
                 </div>
               `,
-            }).catch(() => {});
+              })
+              .then((sent) =>
+                logEmail({
+                  recipientEmail: "mailbox@semzoprive.com",
+                  recipientName: "Admin",
+                  subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
+                  emailType: "admin_gift_card_sold",
+                  status: sent ? "sent" : "failed",
+                  metadata: { code: giftCard.code },
+                }),
+              )
+              .catch((err) => console.error("[stripe-webhook] Error notificando gift card al admin:", err));
 
           }
           break;
@@ -1238,7 +1306,7 @@ export async function POST(req: NextRequest) {
               amount: invoice.amount_due ? invoice.amount_due / 100 : 0,
               attemptCount: failedCount,
             })
-            .catch(() => {});
+            .catch((err) => console.error("[stripe-webhook] Error notificando pago fallido al admin:", err));
 
           console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}, dunning_status=${newDunningStatus}`);
           }

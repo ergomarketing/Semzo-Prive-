@@ -18,7 +18,7 @@ import { logEmail } from "@/lib/email-logger"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
 const FROM_EMAIL = "hola@semzoprive.com"
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||

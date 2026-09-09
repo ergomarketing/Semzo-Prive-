@@ -8,10 +8,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    const emailApiKey = process.env.EMAIL_API_KEY
+    const emailApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
 
     if (!emailApiKey) {
-      console.error("EMAIL_API_KEY no configurada")
+      console.error("RESEND_API_KEY no configurada")
       return NextResponse.json({ error: "Servicio de email no configurado" }, { status: 500 })
     }
 

@@ -7,7 +7,7 @@ class AdminNotifications {
   private resend: Resend
 
   constructor() {
-    this.resend = new Resend(process.env.EMAIL_API_KEY)
+    this.resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
   }
 
   private async sendAdminEmail(

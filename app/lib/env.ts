@@ -29,7 +29,7 @@ export const env = {
     if (typeof window !== "undefined") {
       return ""
     }
-    return process.env.EMAIL_API_KEY || ""
+    return process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || ""
   },
 
   // Stripe

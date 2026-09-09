@@ -26,10 +26,10 @@ async function sendResendEmail(params: {
   html: string
   tags: { name: string; value: string }[]
 }) {
-  const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY
+  const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
   if (!apiKey) {
     console.error("[SEPA EXECUTION EMAIL] API key no configurada")
-    return { success: false, error: "EMAIL_API_KEY no configurada" }
+    return { success: false, error: "RESEND_API_KEY no configurada" }
   }
 
   const emailFrom = process.env.FROM_EMAIL || "SEMZO PRIVÉ <hola@semzoprive.com>"
