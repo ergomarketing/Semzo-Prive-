@@ -44,9 +44,17 @@ async function checkCheckoutAbandoned() {
     .lt("initiated_at", cutoff)
     .limit(200)
 
+  const appUrl = process.env.APP_URL || "https://semzoprive.com"
+
   for (const intent of intents || []) {
     const recipient = await getRecipient(intent.user_id)
     if (!recipient) continue
+
+    // resume_url lleva al punto exacto donde se quedó: el plan que estaba
+    // eligiendo, no la home genérica.
+    const resumeUrl = intent.membership_type
+      ? `${appUrl}/membresias?plan=${intent.membership_type}`
+      : `${appUrl}/membresias`
 
     const result = await enrollLifecycleSequence({
       sequenceKey: "checkout_abandoned",
@@ -55,7 +63,7 @@ async function checkCheckoutAbandoned() {
       userId: intent.user_id,
       email: recipient.email,
       name: recipient.name,
-      vars: { membership_type: intent.membership_type || "" },
+      vars: { membership_type: intent.membership_type || "", resume_url: resumeUrl },
     })
     if (result.ok) enrolled += result.enrolled
   }

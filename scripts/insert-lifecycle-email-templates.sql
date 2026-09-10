@@ -15,12 +15,27 @@ delete from lifecycle_email_templates where sequence_key in (
 insert into lifecycle_email_templates (sequence_key, step_number, name, subject, delay_hours, body_html) values
 
 -- ===== CHECKOUT ABANDONADO =====
-('checkout_abandoned', 1, 'Checkout abandonado — Recordatorio suave', '¿Terminamos tu membresía, {{name}}?', 0, '
-<p style="margin:0 0 20px;">Empezaste tu membresía SEMZO Privé y te quedaste a un paso. Tu selección sigue reservada, pero solo por unas horas más.</p>
-<p style="margin:0 0 28px;">Termina el proceso ahora y accede hoy mismo a la colección completa.</p>
-<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
-<a href="{{app_url}}/membresias" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Completar mi membresía</a>
-</td></tr></table>'),
+-- Email 1: copy literal del cliente. Timing real: se enrola 60 min después
+-- del abandono (ver checkCheckoutAbandoned en check-lifecycle-triggers),
+-- delay_hours=0 aquí porque el retraso ya lo aplica el cron de detección.
+-- resume_url = link directo al plan exacto que estaba eligiendo (vars,
+-- inyectado por el cron), no a la home. Sin {{name}} en el saludo: el copy
+-- del cliente no personaliza el saludo ("Hola," genérico).
+('checkout_abandoned', 1, 'Checkout abandonado — Recordatorio suave (60 min)', 'Hace un momento estuviste a punto de entrar', 0, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Tu selección sigue reservada</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">Hace un momento<br>estuviste a punto de entrar.</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">No sé qué pasó — quizás te interrumpieron, quizás surgió algo. Pero tu selección sigue aquí, reservada para ti.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Completar tu membresía SEMZO PRIVÉ toma menos de tres minutos. Y lo que viene después — ese primer bolso llegando a tu puerta, la sensación de abrirlo — eso no tiene prisa, pero sí tiene fecha.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Las plazas de nuestra colección son limitadas. No por marketing. Porque cada pieza que entra al club pasa por un proceso de selección y autenticación que nos toma tiempo y cuidado.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Tu lugar sigue disponible. Por ahora.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Retoma tu membresía →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
 
 ('checkout_abandoned', 2, 'Checkout abandonado — Última llamada', 'Tu reserva expira pronto, {{name}}', 23, '
 <p style="margin:0 0 20px;">Última oportunidad: tu solicitud de membresía expira en breve y tendrás que empezar de nuevo.</p>
