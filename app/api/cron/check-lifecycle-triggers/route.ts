@@ -46,15 +46,18 @@ async function checkCheckoutAbandoned() {
 
   const appUrl = process.env.APP_URL || "https://semzoprive.com"
 
+  // resume_url SIEMPRE apunta a /dashboard: es el punto de entrada canónico
+  // que ya usa el resto de la app (verify-identity, post-checkout, webhook de
+  // Stripe) — al cargar, /dashboard llama a POST /api/resume-onboarding, que
+  // resuelve el estado real del intent (pago pendiente, identidad pendiente,
+  // SEPA pendiente o ya activa) y redirige exactamente al paso donde se
+  // quedó. Un enlace a /#membresias solo haría scroll a una sección estática,
+  // sin conocer el estado real del intent.
+  const resumeUrl = `${appUrl}/dashboard`
+
   for (const intent of intents || []) {
     const recipient = await getRecipient(intent.user_id)
     if (!recipient) continue
-
-    // resume_url lleva al punto exacto donde se quedó: el plan que estaba
-    // eligiendo, no la home genérica.
-    const resumeUrl = intent.membership_type
-      ? `${appUrl}/membresias?plan=${intent.membership_type}`
-      : `${appUrl}/membresias`
 
     const result = await enrollLifecycleSequence({
       sequenceKey: "checkout_abandoned",
