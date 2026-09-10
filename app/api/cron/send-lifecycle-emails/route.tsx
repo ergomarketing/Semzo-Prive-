@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   const { data: templates, error: tplError } = await supabase
     .from("lifecycle_email_templates")
-    .select("sequence_key, step_number, subject, body_html")
+    .select("sequence_key, step_number, subject, body_html, is_full_document")
     .eq("active", true)
 
   if (tplError || !templates) {
@@ -85,7 +85,10 @@ export async function GET(req: NextRequest) {
     const emailType = `${row.sequence_key}_${row.step_number}`
 
     try {
-      const html = await render(<LifecycleSequenceEmail bodyHtml={bodyHtml} />)
+      // Plantillas "documento completo" (diseño de marca con su propio
+      // <html>/<head>/<body>, logo y tipografías) se envían tal cual, sin
+      // envolverlas en EmailLayout para no duplicar la estructura HTML.
+      const html = template.is_full_document ? bodyHtml : await render(<LifecycleSequenceEmail bodyHtml={bodyHtml} />)
 
       const { data: resendData, error: resendError } = await resend.emails.send({
         from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",

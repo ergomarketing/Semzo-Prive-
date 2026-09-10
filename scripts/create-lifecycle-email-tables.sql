@@ -17,6 +17,10 @@ create table if not exists public.lifecycle_email_templates (
   body_html text not null,
   delay_hours int not null default 0,  -- horas desde el enrolamiento (no desde "ahora")
   active boolean not null default true,
+  -- true = body_html es un documento HTML completo con su propio <html>/<head>/<body>
+  -- (diseño de marca final, con logo/tipografías propias) y se envía tal cual, SIN
+  -- envolverlo en EmailLayout. false = fragmento simple que sí se envuelve (default).
+  is_full_document boolean not null default false,
   updated_at timestamptz not null default now(),
   unique(sequence_key, step_number)
 );
