@@ -37,12 +37,44 @@ insert into lifecycle_email_templates (sequence_key, step_number, name, subject,
 </table>
 <p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
 
-('checkout_abandoned', 2, 'Checkout abandonado — Última llamada', 'Tu reserva expira pronto, {{name}}', 23, '
-<p style="margin:0 0 20px;">Última oportunidad: tu solicitud de membresía expira en breve y tendrás que empezar de nuevo.</p>
-<p style="margin:0 0 28px;">Si tuviste dudas durante el proceso, responde a este email — te ayudamos personalmente.</p>
-<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
-<a href="{{app_url}}/membresias" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Terminar antes de que expire</a>
-</td></tr></table>'),
+-- Email 2 (+24h, encolado como delay_hours=23 igual que el 1): copy literal
+-- del cliente. Tono personal ("responde y te contesto yo") en vez de urgencia
+-- de expiración, ligado a la propuesta de valor real (verificación SEPA/ID).
+('checkout_abandoned', 2, 'Checkout abandonado — Nota personal (+24h)', '¿Pasó algo?', 23, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Una nota personal</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">¿Pasó algo?</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Ayer estuviste a punto de entrar a SEMZO PRIVÉ y algo te lo impidió.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">No sé si fue el momento, una duda, o simplemente la vida interrumpiendo. Pero quería escribirte personalmente porque creo que hay algo que quizás no sabes.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">El proceso de verificación que pedimos — el documento de identidad, el mandato SEPA — no es burocracia. Es la razón por la que nuestras socias reciben un Chanel o un Louis Vuitton en casa sin necesidad de dejar una fianza de miles de euros. Es lo que hace posible que el club funcione con confianza, en los dos sentidos.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Si tienes alguna duda sobre el proceso, responde a este email. Te contesto yo personalmente.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Y si simplemente no era el momento — aquí seguimos.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Retoma tu membresía →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
+
+-- Email 3 (última llamada, +4 días): copy literal del cliente. Cierra la
+-- secuencia sin presión de expiración — tono de despedida elegante.
+('checkout_abandoned', 3, 'Checkout abandonado — Última llamada (4 días)', 'Ya que te escribo más por esto...', 96, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Última nota</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">Te he escrito dos veces esta semana.</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Esta es la última — no quiero ser pesada.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Solo quiero dejarte con un pensamiento.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Hay bolsos en nuestra colección que llevan semanas esperando a alguien que los lleve. Un Chanel 2.55 que no ha salido a ninguna cena. Un Saint Laurent que no ha visto ningún aeropuerto. Un Fendi que todavía no sabe lo que es que alguien lo elija.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Quizás ese alguien eres tú. Quizás no.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Si algún día quieres entrar, la puerta sigue abierta.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Ver la colección →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
 
 -- ===== AVISO DE RENOVACIÓN =====
 ('renewal_reminder', 1, 'Renovación — 7 días antes', 'Tu membresía se renueva en una semana', 0, '
