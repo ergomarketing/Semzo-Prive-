@@ -309,11 +309,12 @@ class AdminNotifications {
     userEmail: string
     bagName: string
     bagBrand: string
-    status: "created" | "delivered"
+    status: "created" | "in_transit" | "delivered"
     trackingNumber?: string
   }) {
     const statusLabels: Record<string, string> = {
       created: "Envío Creado",
+      in_transit: "Envío en Tránsito",
       delivered: "Envío Entregado",
     }
     const rows: Row[] = [

@@ -18,10 +18,14 @@ const CORREOS_STATUS_MAP: Record<string, string> = {
  * GET /api/cron/track-shipments
  *
  * Consulta periodicamente el estado en Correos de todos los envios activos
- * (aun no entregados) y, en la PRIMERA transicion a "delivered":
+ * (aun no entregados) y, en la PRIMERA transicion pending -> "in_transit" o
+ * -> "delivered":
  *   - Actualiza shipments.status/actual_delivery (dispara el trigger de BD
- *     que fija reservations.delivered_at/start_date/end_date/pass_expires_at).
- *   - Envia el correo de confirmacion de entrega a la socia.
+ *     que fija reservations.delivered_at/start_date/end_date/pass_expires_at
+ *     en el caso de "delivered").
+ *   - Envia a la socia el correo correspondiente (envio en camino / entrega
+ *     confirmada), con {{nombre_bolso}} resuelto desde la reserva activa
+ *     vinculada al envio (shipments -> reservations -> bags).
  *   - Envia el aviso interno al admin.
  *
  * Antes, esta deteccion solo ocurria si un admin abria el panel de logistica
@@ -62,6 +66,7 @@ export async function GET(request: NextRequest) {
         if (!trackingInfo.estadoEnvio) continue
 
         const newStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+        const wasPending = shipment.status === "pending"
         const wasDelivered = shipment.status === "delivered"
 
         await supabase
@@ -73,10 +78,14 @@ export async function GET(request: NextRequest) {
           })
           .eq("id", shipment.id)
 
-        // Solo en la PRIMERA transicion a "delivered" (evita duplicar avisos).
-        if (newStatus === "delivered" && !wasDelivered) {
-          delivered++
+        // Solo en la PRIMERA transicion pending -> in_transit o -> delivered
+        // (evita duplicar avisos en cada poll). {{nombre_bolso}} de ambos
+        // emails viene de la reserva activa vinculada al envio (shipments ->
+        // reservations -> bags), nunca de un valor fijo.
+        const justShipped = newStatus === "in_transit" && wasPending
+        const justDelivered = newStatus === "delivered" && !wasDelivered
 
+        if (justShipped || justDelivered) {
           const { data: reservation } = await supabase
             .from("reservations")
             .select(`
@@ -92,25 +101,50 @@ export async function GET(request: NextRequest) {
           const bagName = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : undefined
 
           if (profile?.email) {
-            await emailService
-              .sendShipmentDeliveredEmail({
-                userEmail: profile.email,
-                userName: profile.full_name || profile.email,
-                bagName,
-                membershipEndDate: reservation?.end_date || undefined,
-              })
-              .catch((e) => console.error(`[track-shipments] Error email socia ${profile.email}:`, e))
+            if (justShipped) {
+              await emailService
+                .sendShipmentInTransitEmail({
+                  userEmail: profile.email,
+                  userName: profile.full_name || profile.email,
+                  bagName,
+                })
+                .catch((e) => console.error(`[track-shipments] Error email envio en transito ${profile.email}:`, e))
 
-            await adminNotifications
-              .notifyShipmentStatus({
-                userName: profile.full_name || profile.email,
-                userEmail: profile.email,
-                bagName: bag?.name || "—",
-                bagBrand: bag?.brand || "",
-                status: "delivered",
-                trackingNumber: shipment.tracking_number as string,
-              })
-              .catch((e) => console.error("[track-shipments] Error aviso admin:", e))
+              await adminNotifications
+                .notifyShipmentStatus({
+                  userName: profile.full_name || profile.email,
+                  userEmail: profile.email,
+                  bagName: bag?.name || "—",
+                  bagBrand: bag?.brand || "",
+                  status: "in_transit",
+                  trackingNumber: shipment.tracking_number as string,
+                })
+                .catch((e) => console.error("[track-shipments] Error aviso admin:", e))
+            }
+
+            if (justDelivered) {
+              delivered++
+
+              await emailService
+                .sendShipmentDeliveredEmail({
+                  userEmail: profile.email,
+                  userName: profile.full_name || profile.email,
+                  bagName,
+                  membershipEndDate: reservation?.end_date || undefined,
+                })
+                .catch((e) => console.error(`[track-shipments] Error email socia ${profile.email}:`, e))
+
+              await adminNotifications
+                .notifyShipmentStatus({
+                  userName: profile.full_name || profile.email,
+                  userEmail: profile.email,
+                  bagName: bag?.name || "—",
+                  bagBrand: bag?.brand || "",
+                  status: "delivered",
+                  trackingNumber: shipment.tracking_number as string,
+                })
+                .catch((e) => console.error("[track-shipments] Error aviso admin:", e))
+            }
           }
         }
       } catch (shipmentError) {
