@@ -249,6 +249,13 @@ export async function syncMembershipFromStripe(
 
       if (profile?.email) {
         const name = profile.full_name || profile.first_name || ""
+        const tierLabels: Record<string, string> = {
+          petite: "Petite",
+          essentiel: "L'Essentiel",
+          signature: "Signature",
+          prive: "Privé",
+        }
+        const tier = tierLabels[membershipType] || membershipType
         await enrollLifecycleSequence({
           sequenceKey: "membership_onboarding",
           entityType: "membership",
@@ -256,7 +263,7 @@ export async function syncMembershipFromStripe(
           userId,
           email: profile.email,
           name,
-          vars: { name },
+          vars: { name, tier },
         })
       }
     } catch (err) {
