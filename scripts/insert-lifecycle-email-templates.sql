@@ -1,0 +1,149 @@
+-- Fase 3 — Plantillas de las 7 secuencias de negocio (batch).
+-- El copy de "membership_onboarding" (4 emails) se inserta en un script
+-- aparte (insert-onboarding-email-templates.sql) porque usa el copy literal
+-- proporcionado por el cliente.
+--
+-- IMPORTANTE: body_html aquí es solo el CONTENIDO (el header/footer de marca
+-- ya lo pone EmailLayout / LifecycleSequenceEmail). No incluir <html>, header
+-- ni footer aquí — a diferencia de las plantillas de leads (Secuencia 1, que
+-- NO se toca), que sí llevan su propio header duplicado por diseño histórico.
+
+delete from lifecycle_email_templates where sequence_key in (
+  'checkout_abandoned', 'renewal_reminder', 'card_expiring', 'winback', 'pause_reactivation', 'back_in_stock', 'nps'
+);
+
+insert into lifecycle_email_templates (sequence_key, step_number, name, subject, delay_hours, body_html) values
+
+-- ===== CHECKOUT ABANDONADO =====
+-- Email 1: copy literal del cliente. Timing real: se enrola 60 min después
+-- del abandono (ver checkCheckoutAbandoned en check-lifecycle-triggers),
+-- delay_hours=0 aquí porque el retraso ya lo aplica el cron de detección.
+-- resume_url = link directo al plan exacto que estaba eligiendo (vars,
+-- inyectado por el cron), no a la home. Sin {{name}} en el saludo: el copy
+-- del cliente no personaliza el saludo ("Hola," genérico).
+('checkout_abandoned', 1, 'Checkout abandonado — Recordatorio suave (60 min)', 'Hace un momento estuviste a punto de entrar', 0, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Tu selección sigue reservada</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">Hace un momento<br>estuviste a punto de entrar.</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">No sé qué pasó — quizás te interrumpieron, quizás surgió algo. Pero tu selección sigue aquí, reservada para ti.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Completar tu membresía SEMZO PRIVÉ toma menos de tres minutos. Y lo que viene después — ese primer bolso llegando a tu puerta, la sensación de abrirlo — eso no tiene prisa, pero sí tiene fecha.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Las plazas de nuestra colección son limitadas. No por marketing. Porque cada pieza que entra al club pasa por un proceso de selección y autenticación que nos toma tiempo y cuidado.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Tu lugar sigue disponible. Por ahora.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Retoma tu membresía →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
+
+-- Email 2 (+24h, encolado como delay_hours=23 igual que el 1): copy literal
+-- del cliente. Tono personal ("responde y te contesto yo") en vez de urgencia
+-- de expiración, ligado a la propuesta de valor real (verificación SEPA/ID).
+('checkout_abandoned', 2, 'Checkout abandonado — Nota personal (+24h)', '¿Pasó algo?', 23, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Una nota personal</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">¿Pasó algo?</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Ayer estuviste a punto de entrar a SEMZO PRIVÉ y algo te lo impidió.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">No sé si fue el momento, una duda, o simplemente la vida interrumpiendo. Pero quería escribirte personalmente porque creo que hay algo que quizás no sabes.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">El proceso de verificación que pedimos — el documento de identidad, el mandato SEPA — no es burocracia. Es la razón por la que nuestras socias reciben un Chanel o un Louis Vuitton en casa sin necesidad de dejar una fianza de miles de euros. Es lo que hace posible que el club funcione con confianza, en los dos sentidos.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Si tienes alguna duda sobre el proceso, responde a este email. Te contesto yo personalmente.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Y si simplemente no era el momento — aquí seguimos.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Retoma tu membresía →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
+
+-- Email 3 (última llamada, +4 días): copy literal del cliente. Cierra la
+-- secuencia sin presión de expiración — tono de despedida elegante.
+('checkout_abandoned', 3, 'Checkout abandonado — Última llamada (4 días)', 'Ya que te escribo más por esto...', 96, '
+<p style="margin:0 0 8px;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;font-family:Georgia,serif;">Última nota</p>
+<h2 style="margin:0 0 28px;font-size:26px;color:#1a1a2e;font-family:Georgia,serif;font-weight:normal;line-height:1.3;">Te he escrito dos veces esta semana.</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Esta es la última — no quiero ser pesada.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Solo quiero dejarte con un pensamiento.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Hay bolsos en nuestra colección que llevan semanas esperando a alguien que los lleve. Un Chanel 2.55 que no ha salido a ninguna cena. Un Saint Laurent que no ha visto ningún aeropuerto. Un Fendi que todavía no sabe lo que es que alguien lo elija.</p>
+<p style="margin:0 0 20px;font-size:16px;color:#333350;line-height:1.7;font-family:Georgia,serif;">Quizás ese alguien eres tú. Quizás no.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#1a1a2e;font-family:Georgia,serif;line-height:1.7;font-style:italic;">Si algún día quieres entrar, la puerta sigue abierta.</p>
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="background:#1a1a2e;padding:16px 40px;">
+      <a href="{{resume_url}}" style="color:#c9a96e;font-family:Georgia,serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;text-decoration:none;">Ver la colección →</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:40px 0 0;font-size:15px;color:#333350;line-height:1.7;font-family:Georgia,serif;font-style:italic;">Con cariño,<br>Erika<br>Fundadora, SEMZO PRIVÉ</p>'),
+
+-- ===== AVISO DE RENOVACIÓN =====
+('renewal_reminder', 1, 'Renovación — 7 días antes', 'Tu membresía se renueva en una semana', 0, '
+<p style="margin:0 0 20px;">Hola {{name}}, tu membresía SEMZO Privé se renueva automáticamente en 7 días.</p>
+<p style="margin:0 0 28px;">Si todo está en orden, no necesitas hacer nada. Si quieres revisar tu plan o método de pago, puedes hacerlo desde tu panel.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/dashboard" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Ver mi membresía</a>
+</td></tr></table>'),
+
+('renewal_reminder', 2, 'Renovación — 3 días antes', 'Tu renovación es en 3 días', 0, '
+<p style="margin:0 0 20px;">{{name}}, en 3 días se procesará la renovación de tu membresía.</p>
+<p style="margin:0 0 28px;">Cualquier cambio de plan o método de pago debe hacerse antes de esa fecha.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/dashboard" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Revisar antes de renovar</a>
+</td></tr></table>'),
+
+-- ===== TARJETA POR CADUCAR =====
+('card_expiring', 1, 'Tarjeta por caducar', 'Tu tarjeta caduca pronto — actualízala para no perder acceso', 0, '
+<p style="margin:0 0 20px;">Hola {{name}}, hemos detectado que tu tarjeta {{card_brand}} terminada en {{card_last4}} caduca antes de tu próxima renovación.</p>
+<p style="margin:0 0 28px;">Actualiza tu método de pago para que tu membresía no se vea interrumpida.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/dashboard" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Actualizar método de pago</a>
+</td></tr></table>'),
+
+-- ===== WIN-BACK =====
+('winback', 1, 'Win-back — 15 días', 'Te echamos de menos, {{name}}', 0, '
+<p style="margin:0 0 20px;">Han pasado 15 días desde que dejaste SEMZO Privé. La colección sigue creciendo — y tú sigues teniendo tu lugar aquí.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/membresias" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Volver a la colección</a>
+</td></tr></table>'),
+
+('winback', 2, 'Win-back — 30 días', 'Ha llegado algo que te va a interesar', 0, '
+<p style="margin:0 0 20px;">{{name}}, hemos incorporado nuevas piezas desde que te fuiste. Merece la pena echar un vistazo.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/catalog" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Ver la colección actual</a>
+</td></tr></table>'),
+
+('winback', 3, 'Win-back — 60 días', 'Una última invitación, {{name}}', 0, '
+<p style="margin:0 0 20px;">No queremos insistir más de la cuenta, pero sí queríamos dejarte esta puerta abierta una última vez.</p>
+<p style="margin:0 0 28px;">Cuando quieras volver, aquí estaremos.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/membresias" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Reactivar mi membresía</a>
+</td></tr></table>'),
+
+-- ===== REACTIVACIÓN DE PAUSA =====
+('pause_reactivation', 1, 'Reactivación de pausa — 15 días', '¿Lista para volver, {{name}}?', 0, '
+<p style="margin:0 0 20px;">Tu membresía sigue pausada. Reactivarla te devuelve acceso inmediato a toda la colección.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/dashboard" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Reactivar ahora</a>
+</td></tr></table>'),
+
+('pause_reactivation', 2, 'Reactivación de pausa — 30 días', 'Tu pausa lleva un mes, {{name}}', 0, '
+<p style="margin:0 0 20px;">Han pasado 30 días desde que pausaste tu membresía. Si quieres seguir disfrutando de SEMZO Privé, reactivarla toma un minuto.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/dashboard" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Reactivar mi membresía</a>
+</td></tr></table>'),
+
+-- ===== BACK IN STOCK =====
+('back_in_stock', 1, 'Back in stock', '{{bag_name}} ya está disponible', 0, '
+<p style="margin:0 0 20px;">Buenas noticias, {{name}}: el bolso que tenías en tu lista de deseos, {{bag_name}}, ya está disponible.</p>
+<p style="margin:0 0 28px;">La disponibilidad es limitada — te recomendamos reservarlo cuanto antes.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/catalog" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Reservar ahora</a>
+</td></tr></table>'),
+
+-- ===== NPS =====
+('nps', 1, 'NPS post-reserva', '{{name}}, ¿cómo fue tu experiencia?', 0, '
+<p style="margin:0 0 20px;">Nos encantaría saber qué te pareció tu última experiencia con SEMZO Privé.</p>
+<p style="margin:0 0 28px;">¿Qué probabilidad hay de que nos recomiendes a una amiga? Solo te llevará un momento.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#1a1a4b;padding:14px 32px;">
+<a href="{{app_url}}/feedback" style="color:#c6a15b;font-family:Georgia,serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">Dejar mi opinión</a>
+</td></tr></table>');

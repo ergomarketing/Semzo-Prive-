@@ -1,0 +1,1290 @@
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
+import { render } from "@react-email/components";
+import { EmailServiceProduction } from "@/app/lib/email-service-production";
+import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
+import { adminNotifications } from "@/lib/admin-notifications";
+import { logEmail } from "@/lib/email-logger";
+import MembershipActivatedEmail from "@/emails/templates/membership-activated";
+import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
+import OwnershipCompletedEmail from "@/emails/templates/ownership-completed";
+import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
+import AdminNotificationEmail from "@/emails/templates/admin-notification";
+
+export const dynamic = "force-dynamic";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  // Version fijada intencionalmente; el paquete "stripe" solo declara el tipo
+  // literal de la version mas reciente, por eso se castea aqui.
+  apiVersion: "2024-12-18.acacia" as Stripe.LatestApiVersion,
+});
+
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Protege contra epoch null/undefined devuelto por Stripe
+function safeTimestamp(epoch: number | null | undefined): string {
+  if (epoch === null || epoch === undefined || isNaN(epoch)) {
+    return new Date().toISOString();
+  }
+  const d = new Date(epoch * 1000);
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+// Stripe movió current_period_start/end del objeto Subscription a nivel raíz
+// hacia subscription.items.data[].current_period_end en versiones recientes
+// de la API. Leemos primero el item (fuente actual) y caemos al campo raíz
+// como fallback por compatibilidad con integraciones/tipos antiguos.
+// Nota: los tipos del SDK de Stripe (npm "stripe") todavía no declaran
+// current_period_end/start en SubscriptionItem aunque la API sí los devuelve
+// en runtime (verificado contra la API real). Se castea a "any" solo para
+// leer estos dos campos puntuales.
+function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as unknown as { current_period_end?: number } | undefined;
+  if (typeof item?.current_period_end === "number") return item.current_period_end;
+  const rootPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end;
+  return typeof rootPeriodEnd === "number" ? rootPeriodEnd : null;
+}
+
+function getSubscriptionPeriodStart(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as unknown as { current_period_start?: number } | undefined;
+  if (typeof item?.current_period_start === "number") return item.current_period_start;
+  const rootPeriodStart = (subscription as unknown as { current_period_start?: number }).current_period_start;
+  return typeof rootPeriodStart === "number" ? rootPeriodStart : null;
+}
+
+/**
+ * ============================================================
+ * WEBHOOK
+ * ============================================================
+ */
+export async function POST(req: NextRequest) {
+  let event: Stripe.Event;
+
+  try {
+    const body = await req.text();
+    const signature = req.headers.get("stripe-signature")!;
+    event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
+  } catch (err: any) {
+    console.error("❌ Invalid signature:", err.message);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  const now = new Date().toISOString();
+
+  // IDEMPOTENCIA: si este evento ya fue procesado, ignorar
+  const { data: alreadyProcessed } = await supabase
+    .from("stripe_processed_events")
+    .select("event_id")
+    .eq("event_id", event.id)
+    .maybeSingle();
+
+  if (alreadyProcessed) {
+    return NextResponse.json({ received: true, skipped: "already_processed" });
+  }
+
+  // Registrar el evento ANTES de procesarlo para evitar doble ejecución en retries simultáneos
+  await supabase.from("stripe_processed_events").insert({
+    event_id: event.id,
+    event_type: event.type,
+  }).throwOnError();
+
+  try {
+    switch (event.type) {
+
+      /**
+       * ============================================================
+       * 1️⃣ ACTIVACIÓN INICIAL — ÚNICO PUNTO DE CREACIÓN
+       * ============================================================
+       */
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+
+        // --- PASE DE BOLSO (mode: payment) ---
+        if (session.mode === "payment" && session.payment_status === "paid") {
+          const giftCardId = session.metadata?.gift_card_id;
+          const userId = session.metadata?.user_id;
+          const intentId = session.metadata?.intent_id;
+
+          console.log("[v0] [bag_pass_webhook] checkout.session.completed received", {
+            session_id: session.id,
+            user_id: userId,
+            intent_id: intentId,
+            amount_total: session.amount_total,
+            gift_card_id: giftCardId,
+          });
+
+          // Consumir gift card si había una aplicada parcialmente
+          // Fuente de verdad: membership_intents.gift_card_applied_cents
+          // (no usar listLineItems — el unit_amount es el precio ya descontado, no el original)
+          if (giftCardId && userId && intentId) {
+            const { data: intent } = await supabase
+              .from("membership_intents")
+              .select("gift_card_applied_cents")
+              .eq("id", intentId)
+              .maybeSingle();
+
+            const giftCardConsumedCents = intent?.gift_card_applied_cents || 0;
+
+            if (giftCardConsumedCents > 0) {
+              const { data: rpcResult } = await supabase.rpc("consume_gift_card_atomic", {
+                p_gift_card_id: giftCardId,
+                p_amount: giftCardConsumedCents,  // EN CENTAVOS
+                p_user_id: userId,
+                p_reference_id: session.id,       // cs_xxx — idempotencia
+                p_reference_type: "bag_pass",
+              });
+              console.log("[v0] [bag_pass_webhook] gift card consumed:", { giftCardConsumedCents, rpcResult });
+            }
+          }
+
+          // CREACION DEL PASE EN bag_passes (lo que faltaba)
+          if (userId) {
+            // Idempotencia por session.id: si ya existe un pase comprado en esta sesión, no duplicar
+            const { data: existingPass } = await supabase
+              .from("bag_passes")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("stripe_session_id", session.id)
+              .maybeSingle();
+
+            if (existingPass) {
+              console.log("[v0] [bag_pass_webhook] duplicate detected, skipping insert", {
+                session_id: session.id,
+                existing_pass_id: existingPass.id,
+              });
+              break;
+            }
+
+            // Resolver pass_tier: fuente principal = membership_intents.membership_type
+            let passTierRaw: string | null = null;
+            if (intentId) {
+              const { data: intent } = await supabase
+                .from("membership_intents")
+                .select("membership_type")
+                .eq("id", intentId)
+                .maybeSingle();
+              if (intent?.membership_type) {
+                passTierRaw = intent.membership_type;
+                console.log("[v0] [bag_pass_webhook] tier from membership_intents", { intent_id: intentId, tier: passTierRaw });
+              }
+            }
+
+            // Fallback por amount_total
+            const amountCents = session.amount_total || 0;
+            if (!passTierRaw) {
+              if (amountCents === 5200) passTierRaw = "lessentiel";
+              else if (amountCents === 9900) passTierRaw = "signature";
+              else if (amountCents === 14900) passTierRaw = "prive";
+              console.log("[v0] [bag_pass_webhook] tier from amount fallback", { amount_cents: amountCents, tier: passTierRaw });
+            }
+
+            if (!passTierRaw) {
+              console.error("[v0] [bag_pass_webhook] could not resolve pass_tier, aborting insert", {
+                session_id: session.id,
+                amount_cents: amountCents,
+                intent_id: intentId,
+              });
+              break;
+            }
+
+            // Normalizar a valores aceptados por la columna pass_tier
+            const normalizedTier = passTierRaw.toLowerCase().replace(/^l'/, "").replace("'", "");
+            const dbTier = normalizedTier === "essentiel" ? "lessentiel" : normalizedTier;
+
+            const price = amountCents / 100;
+
+            // INSERT del pase (la idempotencia ya se chequeo arriba con break)
+            let insertedPass: { id: string; used_for_reservation_id?: string | null } | null = null;
+
+            const { data: newPass, error: insertError } = await supabase
+              .from("bag_passes")
+              .insert({
+                user_id: userId,
+                pass_tier: dbTier,
+                status: "available",
+                price,
+                purchased_at: now,
+                expires_at: null,
+                stripe_session_id: session.id,
+              })
+              .select("id")
+              .single();
+
+            if (insertError) {
+              console.error("[v0] [bag_pass_webhook] insert bag_passes FAILED", {
+                session_id: session.id,
+                user_id: userId,
+                pass_tier: dbTier,
+                error: insertError.message,
+                code: insertError.code,
+              });
+            } else {
+              insertedPass = newPass;
+              console.log("[v0] [bag_pass_webhook] bag_pass created OK", {
+                session_id: session.id,
+                user_id: userId,
+                pass_id: newPass?.id,
+                pass_tier: dbTier,
+                price,
+              });
+
+              // Notificar admin (mismo patron que /api/bag-passes/purchase)
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name")
+                .eq("id", userId)
+                .maybeSingle();
+
+              await supabase.from("admin_notifications").insert({
+                type: "bag_pass_purchase",
+                priority: "normal",
+                title: `Compra de Pase - ${dbTier.toUpperCase()}`,
+                message: `${profile?.full_name || profile?.email || userId} compró 1 pase ${dbTier} (Stripe)`,
+                metadata: {
+                  user_id: userId,
+                  email: profile?.email,
+                  pass_tier: dbTier,
+                  quantity: 1,
+                  total_price: price,
+                  payment_method: "stripe",
+                  stripe_session_id: session.id,
+                  bag_pass_id: newPass?.id,
+                },
+              });
+            }
+
+            // RESERVA AUTOMATICA: si la compra incluyo bagId, crear reserva
+            // vinculando el pase recien creado al bolso elegido.
+            const bagId = (session.metadata as any)?.bag_id;
+            if (bagId && insertedPass?.id && !insertedPass.used_for_reservation_id) {
+              try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + 7); // 1 pase = 1 semana
+
+                const { data: reservationId, error: rpcError } = await supabase.rpc(
+                  "create_reservation_atomic",
+                  {
+                    p_user_id: userId,
+                    p_bag_id: bagId,
+                    p_pass_id: insertedPass.id,
+                    p_start_date: startDate.toISOString(),
+                    p_end_date: endDate.toISOString(),
+                    p_membership_type: "petite",
+                    p_rental_days: 7,
+                  }
+                );
+
+                if (rpcError) {
+                  // PASS_NOT_AVAILABLE = ya se uso (webhook reenviado) → idempotente, NO-OP
+                  if (rpcError.message?.includes("PASS_NOT_AVAILABLE")) {
+                    console.log("[v0] [bag_pass_webhook] reserva ya creada previamente (NO-OP)", {
+                      session_id: session.id,
+                      pass_id: insertedPass.id,
+                    });
+                  } else {
+                    console.error("[v0] [bag_pass_webhook] RPC reserva FAILED", {
+                      session_id: session.id,
+                      bag_id: bagId,
+                      pass_id: insertedPass.id,
+                      error: rpcError.message,
+                    });
+                  }
+                } else {
+                  console.log("[v0] [bag_pass_webhook] reserva auto creada OK", {
+                    session_id: session.id,
+                    reservation_id: reservationId,
+                    bag_id: bagId,
+                    pass_id: insertedPass.id,
+                  });
+                }
+              } catch (resvErr: any) {
+                console.error("[v0] [bag_pass_webhook] reserva auto exception (continua, webhook 200)", {
+                  session_id: session.id,
+                  error: resvErr?.message,
+                });
+              }
+            }
+          } else {
+            console.error("[v0] [bag_pass_webhook] missing user_id in session metadata", {
+              session_id: session.id,
+            });
+          }
+
+          break;
+        }
+
+        if (
+          session.mode !== "subscription" ||
+          session.payment_status !== "paid" ||
+          !session.subscription
+        ) {
+          break;
+        }
+
+        const subscription = await stripe.subscriptions.retrieve(
+          session.subscription as string
+        );
+
+        // gift_card_id puede estar en subscription.metadata o en session.metadata
+        const giftCardId =
+          subscription.metadata?.gift_card_id ||
+          session.metadata?.gift_card_id;
+
+        // user_id puede estar en subscription.metadata o en session.metadata
+        let userId: string | undefined =
+          subscription.metadata?.user_id ||
+          session.metadata?.user_id;
+        const membershipType =
+          subscription.metadata?.membership_type ||
+          session.metadata?.membership_type ||
+          "essentiel";
+
+        if (!userId) {
+          console.error("❌ Missing user_id in subscription/session metadata — fallback to customer metadata");
+          const customerId = session.customer as string;
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer.deleted) { break; }
+          const supabaseUserId = (customer as Stripe.Customer).metadata?.supabase_user_id;
+          if (!supabaseUserId) { break; }
+          userId = supabaseUserId;
+        }
+
+        // Derivar billing_cycle desde metadatos o desde el precio de Stripe
+        const billingCycle: string =
+          subscription.metadata?.billing_cycle ||
+          session.metadata?.billing_cycle ||
+          (membershipType === "petite" ? "weekly" : "monthly");
+
+        // Guardar stripe_customer_id en profiles (dato basico, no estado de negocio)
+        const customerId = session.customer as string;
+        await supabase
+          .from("profiles")
+          .update({
+            stripe_customer_id: customerId,
+            updated_at: now,
+          })
+          .eq("id", userId);
+
+        // Crear/actualizar user_memberships (FUENTE DE VERDAD para estado de membresia)
+        const startDate = new Date(safeTimestamp(getSubscriptionPeriodStart(subscription)));
+        // Siempre usar current_period_end real de Stripe. Petite es mensual en Stripe
+        // aunque maneje pases semanales internamente.
+        const endDate = new Date(safeTimestamp(getSubscriptionPeriodEnd(subscription)));
+
+        // REGLA DE ORO: Identity → SEPA → Active.
+        // NO marcar "active" aqui aunque Stripe diga subscription.status="active".
+        // El estado correcto tras pago es "paid_pending_verification".
+        // resume-onboarding promueve a "active" solo cuando Identity + SEPA estan OK.
+        await supabase
+          .from("user_memberships")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscription.id,
+              membership_type: membershipType,
+              billing_cycle: billingCycle,
+              status: "paid_pending_verification",
+              start_date: startDate.toISOString(),
+              end_date: endDate.toISOString(),
+              failed_payment_count: 0,
+              dunning_status: null,
+              updated_at: now,
+            },
+            { onConflict: "user_id" }
+          );
+
+        // Consumir gift card si habia una aplicada.
+        // FUENTE DE VERDAD: membership_intents.gift_card_applied_cents
+        // (calculado en create-intent cuando el usuario pulsó Pagar).
+        // Si gift_card_id no vino en los metadatos de Stripe (flujo mixto),
+        // lo buscamos en el intent de BD como fallback.
+        let resolvedGiftCardId = giftCardId;
+        let resolvedIntentId: string | null = null;
+
+        const { data: activeIntent } = await supabase
+          .from("membership_intents")
+          .select("id, gift_card_code, gift_card_applied_cents")
+          .eq("user_id", userId)
+          .gt("gift_card_applied_cents", 0)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        resolvedIntentId = activeIntent?.id || null;
+
+        // Si el webhook no trajo gift_card_id en metadata, buscar en BD por código
+        if (!resolvedGiftCardId && activeIntent?.gift_card_code) {
+          const { data: cardByCode } = await supabase
+            .from("gift_cards")
+            .select("id")
+            .ilike("code", activeIntent.gift_card_code)
+            .limit(1)
+            .maybeSingle();
+          resolvedGiftCardId = cardByCode?.id || null;
+        }
+
+        if (resolvedGiftCardId && (activeIntent?.gift_card_applied_cents ?? 0) > 0) {
+          const giftCardConsumedCents = activeIntent!.gift_card_applied_cents;
+          const { error: consumeError } = await supabase.rpc("consume_gift_card_atomic", {
+            p_gift_card_id: resolvedGiftCardId,
+            p_amount: giftCardConsumedCents,  // EN CENTAVOS
+            p_user_id: userId,
+            p_reference_id: session.id,
+            p_reference_type: "membership",
+          });
+
+          if (!consumeError && resolvedIntentId) {
+            // Marcar el intent con gift_card_consumed_at para trazabilidad
+            await supabase
+              .from("membership_intents")
+              .update({
+                gift_card_consumed_at: now,
+                updated_at: now,
+              })
+              .eq("id", resolvedIntentId);
+          }
+
+          if (consumeError) {
+            console.error("[WEBHOOK] consume_gift_card_atomic failed:", consumeError.message);
+          }
+        }
+
+        // Marcar el intent como paid_pending_verification
+        // para que identity/create-session pueda encontrarlo
+        // Si no existe intent previo, crear uno ahora
+        const { data: existingIntent } = await supabase
+          .from("membership_intents")
+          .select("id")
+          .eq("user_id", userId)
+          .in("status", ["initiated", "pending_payment", "pending", "created"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingIntent?.id) {
+          await supabase
+            .from("membership_intents")
+            .update({
+              status: "paid_pending_verification",
+              stripe_subscription_id: subscription.id,
+              paid_at: now,
+              updated_at: now,
+            })
+            .eq("id", existingIntent.id);
+        } else {
+          // Crear intent si no existía — incluir todos los campos NOT NULL
+          await supabase.from("membership_intents").insert({
+            user_id: userId,
+            membership_type: membershipType,
+            billing_cycle: "monthly",
+            amount_cents: 0,
+            original_amount_cents: 0,
+            status: "paid_pending_verification",
+            stripe_subscription_id: subscription.id,
+            initiated_at: now,
+            paid_at: now,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+
+        // EMAIL AL USUARIO: Membresía activada — pago confirmado
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", userId)
+          .single();
+
+        const membershipLabels: Record<string, string> = {
+          petite: "Petite",
+          essentiel: "L'Essentiel",
+          signature: "Signature",
+          prive: "Privé",
+        };
+        const membershipLabel = membershipLabels[membershipType] || membershipType;
+
+        if (userProfile?.email) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+          const emailService = EmailServiceProduction.getInstance();
+          await emailService.sendWithResend({
+            to: userProfile.email,
+            subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
+            html: await render(
+              <MembershipActivatedEmail
+                name={userProfile.full_name || ""}
+                membershipLabel={membershipLabel}
+                dashboardUrl={`${siteUrl}/dashboard`}
+              />,
+            ),
+          })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: userProfile.email,
+                recipientName: userProfile.full_name || null,
+                subject: "Tu membresía está activa — Semzo Privé",
+                emailType: "membership_activated",
+                status: sent ? "sent" : "failed",
+                metadata: { subscriptionId: subscription.id },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error enviando email de membresía activada:", err)); // No bloquear el webhook si falla el email
+
+          // Notificar al admin de nueva membresía activada
+          await emailService
+            .sendWithResend({
+              to: "mailbox@semzoprive.com",
+              subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
+              html: await render(
+                <AdminNotificationEmail
+                  title="Nueva membresía activada"
+                  rows={[
+                    { label: "Nombre", value: userProfile.full_name || "N/A" },
+                    { label: "Email", value: userProfile.email },
+                    { label: "Plan", value: membershipLabel },
+                    { label: "Suscripción Stripe", value: subscription.id },
+                    { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+                  ]}
+                />,
+              ),
+            })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: "mailbox@semzoprive.com",
+                recipientName: "Admin",
+                subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
+                emailType: "admin_membership_activated",
+                status: sent ? "sent" : "failed",
+                metadata: { subscriptionId: subscription.id },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error notificando membresía activada al admin:", err));
+        }
+
+        console.log("✅ Membership ACTIVATED:", userId);
+        break;
+      }
+
+      /**
+       * ============================================================
+       * 2️⃣ RENOVACIÓN EXITOSA — NO CREA, SOLO ACTUALIZA
+       * ============================================================
+       */
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+
+        // ============================================================
+        // MODO COLECCIONA — Acumular credito hacia la compra del bolso
+        // ============================================================
+        // Se ejecuta SIEMPRE que haya pago exitoso (incluida 1a cuota).
+        // No bloquea ni interfiere con el flujo de renovacion de abajo.
+        try {
+          if (invoice.subscription && invoice.amount_paid && invoice.amount_paid > 0) {
+            const subId = invoice.subscription as string;
+
+            const { data: mem } = await supabase
+              .from("user_memberships")
+              .select("user_id")
+              .eq("stripe_subscription_id", subId)
+              .single();
+
+            if (mem?.user_id) {
+              // Buscar ownership_progress activo en modo collect (solo uno por user)
+              const { data: progress } = await supabase
+                .from("ownership_progress")
+                .select("id, accumulated, purchase_price, bag_id")
+                .eq("user_id", mem.user_id)
+                .eq("mode", "collect")
+                .eq("status", "active")
+                .order("started_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (progress?.id && progress.purchase_price != null) {
+                const paidEuros = invoice.amount_paid / 100;
+                const newAccumulated = Number(progress.accumulated || 0) + paidEuros;
+                const target = Number(progress.purchase_price);
+                const isCompleted = newAccumulated >= target;
+
+                await supabase
+                  .from("ownership_progress")
+                  .update({
+                    accumulated: isCompleted ? target : newAccumulated,
+                    status: isCompleted ? "completed" : "active",
+                    completed_at: isCompleted ? now : null,
+                    updated_at: now,
+                  })
+                  .eq("id", progress.id);
+
+                console.log("[v0] ownership_progress credit:", {
+                  user_id: mem.user_id,
+                  bag_id: progress.bag_id,
+                  added: paidEuros,
+                  total: isCompleted ? target : newAccumulated,
+                  completed: isCompleted,
+                });
+
+                // Si se completa, notificar a la socia
+                if (isCompleted) {
+                  const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("full_name, email")
+                    .eq("id", mem.user_id)
+                    .single();
+
+                  if (profile?.email) {
+                    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+                    const emailService = EmailServiceProduction.getInstance();
+                    await emailService.sendWithResend({
+                      to: profile.email,
+                      subject: "Tu bolso ya es tuyo — Semzo Privé",
+                      html: await render(
+                        <OwnershipCompletedEmail
+                          name={profile.full_name || ""}
+                          ctaUrl={`${siteUrl}/dashboard`}
+                          ctaLabel="Finalizar la compra"
+                        />,
+                      ),
+                    })
+                      .then((sent) =>
+                        logEmail({
+                          recipientEmail: profile.email,
+                          recipientName: profile.full_name || null,
+                          subject: "Tu bolso ya es tuyo — Semzo Privé",
+                          emailType: "ownership_completed",
+                          status: sent ? "sent" : "failed",
+                        }),
+                      )
+                      .catch((err) => console.error("[stripe-webhook] Error enviando email de bolso completado:", err));
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          // Nunca bloquear el webhook por la acumulación. Solo log.
+          console.error("[v0] ownership_progress accumulation error:", err);
+        }
+        // ============================================================
+        // FIN MODO COLECCIONA
+        // ============================================================
+
+        if (
+          invoice.billing_reason === "subscription_create" ||
+          !invoice.subscription
+        ) {
+          break;
+        }
+
+        const subscriptionId = invoice.subscription as string;
+
+        // 🔒 Resolver user_id desde DB (NO desde metadata)
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("user_id, billing_cycle, membership_type, status")
+          .eq("stripe_subscription_id", subscriptionId)
+          .single();
+
+        if (!membership?.user_id) {
+          console.error("❌ Membership not found for renewal");
+          break;
+        }
+
+        // RECUPERACION DE MOROSIDAD: si la membresia estaba en past_due/unpaid
+        // (ya habia superado onboarding en su momento) y ahora llega un pago
+        // exitoso, se reactiva a "active". Esto NO viola la REGLA DE ORO de
+        // no promover a "active" desde Stripe durante el onboarding inicial:
+        // past_due/unpaid solo ocurre DESPUES de haber estado activa, nunca
+        // durante paid_pending_verification/pending_sepa/initiated.
+        const isRecoveringFromDelinquency =
+          membership.status === "past_due" || membership.status === "unpaid";
+
+        const subscription = await stripe.subscriptions.retrieve(
+          subscriptionId
+        );
+
+        // Recalcular end_date según billing_cycle guardado
+        const renewalBillingCycle: string =
+          subscription.metadata?.billing_cycle ||
+          membership?.billing_cycle ||
+          (membership?.membership_type === "petite" ? "weekly" : "monthly");
+
+        const renewalStart = new Date(safeTimestamp(getSubscriptionPeriodStart(subscription)));
+        const renewalEnd =
+          renewalBillingCycle === "weekly"
+            ? new Date(renewalStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+            : new Date(safeTimestamp(getSubscriptionPeriodEnd(subscription)));
+
+        // REGLA DE ORO: NO promover a "active" desde aqui EXCEPTO recuperacion
+        // de morosidad (ver isRecoveringFromDelinquency arriba). Para cualquier
+        // otro estado (paused, cancelling, cancelled, pending_*, initiated) se
+        // respeta el estado actual: el status "active" inicial SOLO se otorga
+        // en resume-onboarding, membership/activate u orchestrator.
+        const renewalUpdatePayload: Record<string, unknown> = {
+          billing_cycle: renewalBillingCycle,
+          start_date: renewalStart.toISOString(),
+          end_date: renewalEnd.toISOString(),
+          failed_payment_count: 0,
+          dunning_status: null,
+          updated_at: now,
+        };
+        if (isRecoveringFromDelinquency) {
+          renewalUpdatePayload.status = "active";
+          renewalUpdatePayload.can_make_reservations = true;
+        }
+
+        await supabase
+          .from("user_memberships")
+          .update(renewalUpdatePayload)
+          .eq("stripe_subscription_id", subscriptionId);
+
+        if (isRecoveringFromDelinquency) {
+          console.log("✅ Membership RECOVERED from delinquency to active:", membership.user_id);
+        }
+
+        await supabase
+          .from("payment_history")
+          .upsert(
+            {
+              user_id: membership.user_id,
+              stripe_invoice_id: invoice.id,
+              stripe_subscription_id: subscriptionId,
+              amount: invoice.amount_paid
+                ? invoice.amount_paid / 100
+                : 0,
+              currency: invoice.currency,
+              status: "paid",
+              payment_date: now,
+              created_at: now,
+            },
+            { onConflict: "stripe_invoice_id" }
+          );
+
+        // EMAIL AL USUARIO: Renovación confirmada
+        const { data: renewProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", membership.user_id)
+          .single();
+
+        if (renewProfile?.email) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+          const amount = invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : "—";
+          const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || "";
+          const invoiceNumber = invoice.number || "";
+          const emailService = EmailServiceProduction.getInstance();
+          await emailService.sendWithResend({
+            to: renewProfile.email,
+            subject: `Tu factura de Semzo Privé${invoiceNumber ? ` · ${invoiceNumber}` : ""}`,
+            html: await render(
+              <MembershipRenewedEmail
+                name={renewProfile.full_name || ""}
+                amount={amount}
+                invoiceNumber={invoiceNumber}
+                invoiceUrl={invoiceUrl || undefined}
+                dashboardUrl={`${siteUrl}/dashboard`}
+              />,
+            ),
+          })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: renewProfile.email,
+                recipientName: renewProfile.full_name || null,
+                subject: "Renovación confirmada — Semzo Privé",
+                emailType: "membership_renewed",
+                status: sent ? "sent" : "failed",
+                metadata: { invoiceNumber },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error enviando email de renovación:", err));
+        }
+
+        // AVISO ADMIN: renovación cobrada
+        if (renewProfile?.email) {
+          await adminNotifications
+            .notifyMembershipRenewed({
+              userName: renewProfile.full_name || renewProfile.email,
+              userEmail: renewProfile.email,
+              membershipType: membership.membership_type || "—",
+              amount: invoice.amount_paid ? invoice.amount_paid / 100 : 0,
+              invoiceNumber: invoice.number || undefined,
+            })
+            .catch((err) => console.error("[stripe-webhook] Error notificando renovación al admin:", err));
+        }
+
+        console.log("✅ Membership RENEWED:", membership.user_id);
+        break;
+      }
+
+      /**
+       * ============================================================
+       * 3️⃣ CAMBIO DE ESTADO / CANCELACIÓN
+       * ============================================================
+       */
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("user_id, status")
+          .eq("stripe_subscription_id", subscription.id)
+          .single();
+
+        if (!membership?.user_id) break;
+
+        // REGLA DE ORO: NUNCA promover a "active" desde un webhook durante el
+        // ONBOARDING. Stripe puede mandar subscription.status="active" inmediatamente
+        // tras el primer pago, antes de que el usuario haya completado Identity/SEPA.
+        // Si propagamos ese status ahi, sobrescribimos "paid_pending_verification" y
+        // se rompe el flujo.
+        //
+        // EXCEPCION ACOTADA — recuperacion de morosidad: si la membresia YA estaba
+        // "active" en algun momento y cayo a past_due/unpaid por un pago fallido,
+        // y Stripe ahora confirma status="active" (pago regularizado), SI se propaga.
+        // Esto nunca puede colisionar con el caso de onboarding porque past_due/unpaid
+        // solo ocurre despues de haber estado activa.
+        //
+        // Para cualquier otro caso, solo propagamos estados de degradacion / cancelacion
+        // reales via mapStripeStatusToInternal (vocabulario interno unificado).
+        const stripeStatus = subscription.status;
+        const wasRecoveringFromDelinquency =
+          stripeStatus === "active" &&
+          (membership.status === "past_due" || membership.status === "unpaid");
+        const internalStatus = wasRecoveringFromDelinquency
+          ? "active"
+          : mapStripeStatusToInternal(stripeStatus);
+
+        // SIEMPRE persistir las banderas de cancelacion de Stripe (espejo).
+        // No son fuente de verdad para eligibilidad, pero si para auditoria
+        // y para que admin vea exactamente que dice Stripe sin tener que ir
+        // al dashboard.
+        const stripeCancelAtPeriodEnd = subscription.cancel_at_period_end === true;
+        const stripeCanceledAt = subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000).toISOString()
+          : null;
+        const stripeCurrentPeriodEndEpoch = getSubscriptionPeriodEnd(subscription);
+        const stripeCurrentPeriodEnd = stripeCurrentPeriodEndEpoch
+          ? new Date(stripeCurrentPeriodEndEpoch * 1000).toISOString()
+          : null;
+
+        const updatePayload: Record<string, unknown> = {
+          membership_type:
+            subscription.metadata?.membership_type || "petite",
+          cancel_at_period_end: stripeCancelAtPeriodEnd,
+          canceled_at: stripeCanceledAt,
+          current_period_end: stripeCurrentPeriodEnd,
+          updated_at: now,
+        };
+
+        // Solo propagar status si es un estado de degradacion legitimo,
+        // o si es la excepcion acotada de recuperacion de morosidad.
+        // active de Stripe fuera de esos casos -> internalStatus=null -> no se
+        // sobrescribe el local (protege el flujo de onboarding).
+        if (internalStatus) {
+          updatePayload.status = internalStatus;
+          // Si Stripe dice canceled, expired o past_due (moroso), retiramos el
+          // permiso de crear nuevas reservas. can_make_reservations=false es
+          // DEFENSA EN PROFUNDIDAD: canCreateReservations() ya bloquea por
+          // status (hard block), pero si algun codigo futuro/legacy consulta
+          // solo el flag sin pasar por esa funcion, debe reflejar la realidad.
+          // El acceso (end_date) se mantiene segun current_period_end para
+          // no cortar de golpe.
+          if (
+            internalStatus === "cancelled" ||
+            internalStatus === "expired" ||
+            internalStatus === "past_due"
+          ) {
+            updatePayload.can_make_reservations = false;
+          }
+          // Recuperacion de morosidad: limpiar contadores de dunning y
+          // restaurar el permiso de reservar. IMPORTANTE: tambien hay que
+          // sincronizar end_date con current_period_end aqui, porque
+          // canCreateReservations() valida contra end_date (no contra
+          // current_period_end). Si no se sincroniza, la socia queda con
+          // status=active pero bloqueada por una end_date vieja.
+          if (wasRecoveringFromDelinquency) {
+            updatePayload.failed_payment_count = 0;
+            updatePayload.dunning_status = null;
+            updatePayload.can_make_reservations = true;
+            if (stripeCurrentPeriodEnd) {
+              updatePayload.end_date = stripeCurrentPeriodEnd;
+            }
+          }
+        }
+
+        await supabase
+          .from("user_memberships")
+          .update(updatePayload)
+          .eq("stripe_subscription_id", subscription.id);
+
+        console.log("ℹ️ Subscription updated:", {
+          user_id: membership.user_id,
+          stripe_status: stripeStatus,
+          internal_status_applied: internalStatus,
+          cancel_at_period_end: stripeCancelAtPeriodEnd,
+          local_status_kept: !internalStatus ? membership.status : null,
+        });
+
+        // ============================================================
+        // EMAIL DE CANCELACION
+        // Disparar SOLO si:
+        // - El evento es customer.subscription.deleted (cancelacion efectiva), O
+        // - cancel_at_period_end paso de false a true (cancelacion programada)
+        // Evitamos envios duplicados consultando user_memberships.cancel_at_period_end previo.
+        // ============================================================
+        try {
+          const isHardCancel = event.type === "customer.subscription.deleted";
+          const isScheduledCancel =
+            event.type === "customer.subscription.updated" && stripeCancelAtPeriodEnd === true;
+
+          if (isHardCancel || isScheduledCancel) {
+            // Verificar idempotencia: solo enviar si no se ha enviado ya para esta cancelacion
+            const { data: memData } = await supabase
+              .from("user_memberships")
+              .select("membership_type, cancellation_email_sent_at")
+              .eq("stripe_subscription_id", subscription.id)
+              .single();
+
+            if (memData && !memData.cancellation_email_sent_at) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email, full_name, first_name, last_name")
+                .eq("id", membership.user_id)
+                .single();
+
+              if (profile?.email) {
+                const userName =
+                  profile.full_name ||
+                  `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+                  "Cliente";
+
+                const endDate = stripeCurrentPeriodEnd
+                  ? new Date(stripeCurrentPeriodEnd).toLocaleDateString("es-ES", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "fin del periodo actual";
+
+                const emailService = EmailServiceProduction.getInstance();
+                await emailService
+                  .sendMembershipCancelledEmail({
+                    userName,
+                    userEmail: profile.email,
+                    membershipType: memData.membership_type || "membresia",
+                    endDate,
+                  })
+                  .catch((err) =>
+                    console.error("[v0] Error enviando email cancelacion:", err),
+                  );
+
+                // Marcar enviado para idempotencia
+                await supabase
+                  .from("user_memberships")
+                  .update({ cancellation_email_sent_at: now })
+                  .eq("stripe_subscription_id", subscription.id);
+
+                console.log("[v0] Email de cancelacion enviado a:", profile.email);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[v0] Error en bloque email cancelacion:", err);
+        }
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+
+        // --- GIFT CARD PURCHASE ---
+        if (pi.metadata?.type === "gift_card") {
+          const purchaserId = pi.metadata?.user_id;
+
+          // Buscar la gift card por stripe_payment_intent_id (forma más precisa)
+          // o por purchased_by + status + amount como fallback
+          let giftCard = null;
+          
+          // Primero buscar por payment_intent_id (método preferido)
+          const { data: giftCardByPI } = await supabase
+            .from("gift_cards")
+            .select("id, code, amount, personal_message, recipient_email, recipient_name")
+            .eq("stripe_payment_intent_id", pi.id)
+            .eq("status", "pending")
+            .maybeSingle();
+          
+          if (giftCardByPI) {
+            giftCard = giftCardByPI;
+          } else {
+            // Fallback: buscar por purchased_by + amount (para gift cards antiguas)
+            const amountCents = pi.amount;
+            const { data: giftCardByAmount } = await supabase
+              .from("gift_cards")
+              .select("id, code, amount, personal_message, recipient_email, recipient_name")
+              .eq("purchased_by", purchaserId)
+              .eq("status", "pending")
+              .eq("amount", amountCents)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            giftCard = giftCardByAmount;
+          }
+
+          if (giftCard) {
+            // Activar la gift card
+            await supabase
+              .from("gift_cards")
+              .update({
+                status: "active",
+                stripe_payment_intent_id: pi.id,
+                activated_at: now,
+                updated_at: now,
+              })
+              .eq("id", giftCard.id);
+
+            // Enviar email al destinatario (usar datos del gift card, no de metadata)
+            const finalRecipientEmail = giftCard.recipient_email || pi.metadata?.recipient_email;
+            const finalRecipientName = giftCard.recipient_name || pi.metadata?.recipient_name;
+            
+            if (finalRecipientEmail) {
+              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
+              const amountEuros = (giftCard.amount / 100).toFixed(0);
+              const emailService = EmailServiceProduction.getInstance();
+
+              await emailService.sendWithResend({
+                to: finalRecipientEmail,
+                subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
+                html: await render(
+                  <GiftCardRecipientEmail
+                    recipientName={finalRecipientName || undefined}
+                    personalMessage={giftCard.personal_message || undefined}
+                    code={giftCard.code}
+                    amountEuros={amountEuros}
+                    redeemUrl={`${siteUrl}/membresias`}
+                  />,
+                ),
+              })
+                .then((sent) =>
+                  logEmail({
+                    recipientEmail: finalRecipientEmail,
+                    recipientName: finalRecipientName || null,
+                    subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
+                    emailType: "gift_card_recipient",
+                    status: sent ? "sent" : "failed",
+                    metadata: { code: giftCard.code },
+                  }),
+                )
+                .catch((err) => console.error("[stripe-webhook] Error enviando email de gift card:", err));
+            }
+
+            // Notificar al admin
+            const adminEmailService = EmailServiceProduction.getInstance();
+            const amountEurosAdmin = (giftCard.amount / 100).toFixed(0);
+            await adminEmailService
+              .sendWithResend({
+                to: "mailbox@semzoprive.com",
+                subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
+                html: await render(
+                  <AdminNotificationEmail
+                    title="Nueva Gift Card vendida"
+                    rows={[
+                      { label: "Codigo", value: giftCard.code },
+                      { label: "Monto", value: `${amountEurosAdmin}€` },
+                      { label: "Destinatario", value: `${finalRecipientName || "N/A"} (${finalRecipientEmail || "N/A"})` },
+                      { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+                    ]}
+                  />,
+                ),
+              })
+              .then((sent) =>
+                logEmail({
+                  recipientEmail: "mailbox@semzoprive.com",
+                  recipientName: "Admin",
+                  subject: `[Admin] Nueva Gift Card vendida - ${amountEurosAdmin}€`,
+                  emailType: "admin_gift_card_sold",
+                  status: sent ? "sent" : "failed",
+                  metadata: { code: giftCard.code },
+                }),
+              )
+              .catch((err) => console.error("[stripe-webhook] Error notificando gift card al admin:", err));
+
+          }
+          break;
+        }
+
+        // --- REGULAR PAYMENT --- (no escribir estado en profiles)
+        break;
+      }
+
+      case "payment_intent.processing": {
+        // Estado de pago se refleja en user_memberships, no en profiles
+        break;
+      }
+
+      // identity.verification_session.* events are handled exclusively
+      // by /api/webhooks/stripe-identity to avoid duplicate processing
+      case "identity.verification_session.verified":
+      case "identity.verification_session.requires_input":
+      case "identity.verification_session.canceled":
+      case "identity.verification_session.processing":
+        console.log("ℹ️ Identity event delegated to stripe-identity webhook:", event.type);
+        break;
+
+      // Bloques duplicados de payment_intent eliminados (ya manejados arriba)
+
+      /**
+       * ============================================================
+       * PAGO FALLIDO - Notificar al usuario
+       * ============================================================
+       */
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const amountDue = invoice.amount_due ? (invoice.amount_due / 100).toFixed(2) : undefined;
+
+        // Buscar membresia y usuario por stripe_customer_id
+        const { data: failedMembership } = await supabase
+          .from("user_memberships")
+          .select("user_id, failed_payment_count, membership_type, dunning_status")
+          .eq("stripe_customer_id", customerId)
+          .single();
+
+        if (failedMembership) {
+          // Incrementar contador de pagos fallidos en user_memberships
+          const failedCount = (failedMembership.failed_payment_count || 0) + 1;
+          // Vocabulario unificado con el cron de seguimiento (send-dunning-emails):
+          // e1_sent -> e2_sent -> e3_sent. Si ya está en curso una secuencia
+          // (e1_sent/e2_sent/e3_sent), NO la reiniciamos con cada reintento
+          // automático de Stripe: el cron es quien avanza los pasos por fecha.
+          const isFirstFailure = !failedMembership.dunning_status;
+          const newDunningStatus = isFirstFailure ? "e1_sent" : failedMembership.dunning_status;
+
+          await supabase
+            .from("user_memberships")
+            .update({
+              failed_payment_count: failedCount,
+              dunning_status: newDunningStatus,
+              updated_at: now,
+            })
+            .eq("user_id", failedMembership.user_id);
+
+          // Obtener datos de contacto del perfil (solo lectura de datos basicos)
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", failedMembership.user_id)
+            .single();
+
+          if (profile) {
+            const customerName = profile.full_name || 
+              `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || 
+              "Cliente";
+
+          // Enviar email de pago fallido (E1) SOLO en el primer fallo de este ciclo.
+          // Los reintentos automáticos de Stripe no deben re-disparar el E1;
+          // el seguimiento posterior (E2/E3) lo gestiona el cron de dunning.
+          if (isFirstFailure) {
+            const emailService = EmailServiceProduction.getInstance();
+            await emailService.sendPaymentFailedEmail({
+              userEmail: profile.email,
+              userName: customerName,
+              amount: amountDue,
+              reason: invoice.last_finalization_error?.message || "Metodo de pago rechazado",
+              membershipType: failedMembership.membership_type || undefined,
+            });
+          }
+
+          // AVISO ADMIN: pago fallido (en cada intento, para visibilidad)
+          await adminNotifications
+            .notifyPaymentFailed({
+              userName: customerName,
+              userEmail: profile.email,
+              membershipType: failedMembership.membership_type || "—",
+              amount: invoice.amount_due ? invoice.amount_due / 100 : 0,
+              attemptCount: failedCount,
+            })
+            .catch((err) => console.error("[stripe-webhook] Error notificando pago fallido al admin:", err));
+
+          console.log(`[Stripe Webhook] Pago fallido para usuario ${failedMembership.user_id}, intento #${failedCount}, dunning_status=${newDunningStatus}`);
+          }
+        }
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const piUserId = pi.metadata?.user_id;
+
+        if (piUserId) {
+          // Actualizar failed_payment_count en user_memberships
+          const { data: piMembership } = await supabase
+            .from("user_memberships")
+            .select("failed_payment_count, dunning_status")
+            .eq("user_id", piUserId)
+            .single();
+
+          let piIsFirstFailure = false;
+          if (piMembership) {
+            const piFailedCount = (piMembership.failed_payment_count || 0) + 1;
+            // Mismo vocabulario que el cron de seguimiento (e1_sent/e2_sent/e3_sent).
+            // No reiniciar una secuencia de dunning ya en curso.
+            piIsFirstFailure = !piMembership.dunning_status;
+            const piNewDunningStatus = piIsFirstFailure ? "e1_sent" : piMembership.dunning_status;
+            await supabase
+              .from("user_memberships")
+              .update({
+                failed_payment_count: piFailedCount,
+                dunning_status: piNewDunningStatus,
+                updated_at: now,
+              })
+              .eq("user_id", piUserId);
+          }
+
+          // Leer datos basicos del perfil para enviar email
+          const { data: piProfile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", piUserId)
+            .single();
+
+          // Enviar E1 solo en el primer fallo de este ciclo (evita duplicar
+          // el email en cada reintento automático de Stripe).
+          if (piProfile && piIsFirstFailure) {
+            const piCustomerName = piProfile.full_name || 
+              `${piProfile.first_name || ""} ${piProfile.last_name || ""}`.trim() || 
+              "Cliente";
+            const emailService = EmailServiceProduction.getInstance();
+            await emailService.sendPaymentFailedEmail({
+              userEmail: piProfile.email,
+              userName: piCustomerName,
+              amount: pi.amount ? (pi.amount / 100).toFixed(2) : undefined,
+              reason: pi.last_payment_error?.message || "Pago rechazado"
+            });
+          }
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    return NextResponse.json({ received: true });
+
+  } catch (error) {
+    console.error("❌ Webhook processing error:", error);
+    return NextResponse.json(
+      { error: "Webhook handler failed" },
+      { status: 500 }
+    );
+  }
+}

@@ -1,5 +1,6 @@
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -204,6 +205,23 @@ export async function syncMembershipFromStripe(
     if (pm.brand) upsertPayload.payment_method_brand = pm.brand
   }
 
+  // Guard de idempotencia para el onboarding post-activacion (Fase 3): solo
+  // se enrola la PRIMERA vez que la membresia llega a "active". Se lee ANTES
+  // del upsert para saber si ya se habia enrolado en una activacion anterior.
+  let shouldStartOnboarding = false
+  if (allConditionsMet) {
+    const { data: existingMembership } = await supabase
+      .from("user_memberships")
+      .select("onboarding_sequence_started_at")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (!existingMembership?.onboarding_sequence_started_at) {
+      shouldStartOnboarding = true
+      upsertPayload.onboarding_sequence_started_at = new Date().toISOString()
+    }
+  }
+
   // onConflict: user_id es la UNIQUE key real de la tabla (un usuario = una
   // membresia). Asi un usuario que recontrata con una NUEVA suscripcion Stripe
   // actualiza su fila existente en vez de chocar con la unique de user_id.
@@ -217,6 +235,40 @@ export async function syncMembershipFromStripe(
 
   if (allConditionsMet) {
     console.log("[ORCHESTRATOR] Membresia ACTIVA (pago + identidad + SEPA) para userId:", userId)
+  }
+
+  // Onboarding post-activacion (Secuencia 2, Fase 3): best-effort, nunca
+  // bloquea la activacion si falla el enrolamiento.
+  if (shouldStartOnboarding) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, full_name, first_name")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (profile?.email) {
+        const name = profile.full_name || profile.first_name || ""
+        const tierLabels: Record<string, string> = {
+          petite: "Petite",
+          essentiel: "L'Essentiel",
+          signature: "Signature",
+          prive: "Privé",
+        }
+        const tier = tierLabels[membershipType] || membershipType
+        await enrollLifecycleSequence({
+          sequenceKey: "membership_onboarding",
+          entityType: "membership",
+          entityId: userId,
+          userId,
+          email: profile.email,
+          name,
+          vars: { name, tier },
+        })
+      }
+    } catch (err) {
+      console.error("[ORCHESTRATOR] Error enrolando onboarding post-activacion:", err)
+    }
   }
 
   return { success: true }

@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { Resend } from "resend"
-import { Email1Bienvenida } from "@/emails/leads/email-1-bienvenida"
-import { logEmail } from "@/lib/email-logger"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY)
 
 // Delays en horas para cada email de la secuencia
 const EMAIL_DELAYS_HOURS = [0, 48, 96, 144, 168]
@@ -71,58 +67,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: seqError.message }, { status: 500 })
     }
 
-    // Enviar Email 1 inmediatamente
-    const email1Row = seqRows.find((r) => r.email_number === 1)
-    if (email1Row) {
-      try {
-        const trackingPixelUrl = `${process.env.APP_URL}/api/track/open?lid=${lead.id}&eid=${email1Row.id}`
-        const ctaBaseUrl = `${process.env.APP_URL}/api/track/click?lid=${lead.id}&eid=${email1Row.id}&url=`
-
-        const subject1 = `Bienvenida a algo diferente, ${name || ""}`.trim()
-        const { data: send1Data } = await resend.emails.send({
-          from: process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>",
-          to: [lead.email],
-          subject: subject1,
-          react: Email1Bienvenida({
-            name: name || "",
-            trackingPixelUrl,
-            ctaUrl: ctaBaseUrl + encodeURIComponent(`${process.env.APP_URL}/catalog`),
-            unsubscribeUrl: `${process.env.APP_URL}/api/webhooks/unsubscribe?lid=${lead.id}`,
-          }),
-        })
-
-        await supabase
-          .from("email_sequence_log")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .eq("id", email1Row.id)
-
-        await logEmail({
-          recipientEmail: lead.email,
-          recipientName: name || null,
-          subject: subject1,
-          emailType: "lead_sequence_1",
-          status: "sent",
-          resendId: send1Data?.id ?? null,
-          metadata: { leadId: lead.id, email_number: 1 },
-        })
-      } catch (emailErr) {
-        console.error("[leads/register] Error enviando email 1:", emailErr)
-        await supabase
-          .from("email_sequence_log")
-          .update({ status: "failed", error_message: String(emailErr) })
-          .eq("id", email1Row.id)
-        await logEmail({
-          recipientEmail: lead.email,
-          recipientName: name || null,
-          subject: `Bienvenida a algo diferente, ${name || ""}`.trim(),
-          emailType: "lead_sequence_1",
-          status: "failed",
-          errorMessage: String(emailErr),
-          metadata: { leadId: lead.id, email_number: 1 },
-        })
-      }
-    }
-
+    // El Email 1 (delay 0h) queda con scheduled_for = ahora, igual que el resto
+    // de la secuencia: lo recoge el cron send-lead-emails en su próxima ejecución,
+    // que renderiza el copy desde la tabla email_templates (fuente única de verdad).
     return NextResponse.json({ ok: true, lead_id: lead.id })
   } catch (err) {
     console.error("[leads/register] Error inesperado:", err)

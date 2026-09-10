@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos (to, subject, body/message)" }, { status: 400 })
     }
 
-    const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY
+    const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
 
     if (!apiKey) {
       console.log("[EMAIL] Resend API key no configurada")
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Semzo Privé <noreply@semzoprive.com>",
+        from: "Semzo Privé <hola@semzoprive.com>",
         to: [to],
         subject,
         html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
