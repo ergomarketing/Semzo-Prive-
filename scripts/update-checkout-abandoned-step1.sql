@@ -120,7 +120,7 @@ set
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
             <td align="center" style="padding:10px 20px 12px 20px;">
-              <a href="https://semzoprive.com/subscribe" style="display:inline-block;background-color:#1a1a4b;color:#ffffff;font-size:16px;font-weight:500;text-decoration:none;padding:18px 64px;letter-spacing:2px;text-transform:uppercase;border:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-width:220px;text-align:center;box-shadow:0 4px 12px rgba(26,26,75,0.2);">
+              <a href="https://semzoprive.com/#membresias" style="display:inline-block;background-color:#1a1a4b;color:#ffffff;font-size:16px;font-weight:500;text-decoration:none;padding:18px 64px;letter-spacing:2px;text-transform:uppercase;border:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-width:220px;text-align:center;box-shadow:0 4px 12px rgba(26,26,75,0.2);">
                 Retomar mi membresía
               </a>
             </td>
