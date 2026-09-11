@@ -12,8 +12,13 @@ import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
  *
  * AISLADO de la Secuencia 1 (leads/newsletter): lee de lifecycle_email_log /
  * lifecycle_email_templates, nunca de email_sequence_log / email_templates.
- * Se ejecuta varias veces al día (ver vercel.json) para que los delays
- * cortos (0h, 24h) no esperen a un cron diario.
+ *
+ * Corre 1x/día (ver vercel.json) — el plan Hobby de Vercel no permite crons
+ * con más de una ejecución diaria (un schedule "0 8,14,20 * * *" aquí
+ * bloqueaba TODO el deploy del sitio). Efecto: los delays cortos (0h, 1h)
+ * de checkout abandonado pueden tardar hasta ~24h en salir en vez de
+ * llegar casi en tiempo real. Si se necesita más granularidad, subir a
+ * Vercel Pro (hasta 40 crons, sin límite de frecuencia) es el camino.
  */
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
