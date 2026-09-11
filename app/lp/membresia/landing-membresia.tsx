@@ -58,19 +58,29 @@ const memberships = [
 const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opcion de adquisicion"]
 
 const steps = [
-  { n: "1", title: "Elige tu plan", text: "4 niveles, sin permanencia." },
-  { n: "2", title: "Recibe tu bolso", text: "En 24-48h en tu casa." },
-  { n: "3", title: "Cambia o adquiere", text: "Cuando quieras, sin compromiso." },
+  { n: "1", title: "Elige tu plan", text: "Sin permanencia. Sin letra pequeña. Cancela cuando quieras." },
+  { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta en 24-48 horas." },
+  { n: "3", title: "Cambia o quédate con él", text: "Cuando sientas que quieres otro, lo cambiamos. Si te enamoras, es tuyo." },
 ]
 
 const testimonials = [
   {
-    quote: "Llevo seis meses y ya he disfrutado tres bolsos distintos. Una experiencia increible.",
-    author: "LUCIA M., MADRID",
+    quote:
+      "Llevaba años queriendo un Chanel y nunca me decidía por el precio. Con SEMZO PRIVÉ lo llevé a una boda en junio y a una cena de trabajo en julio. Sin gastarlo todo de golpe.",
+    author: "Lucía M., Madrid",
+    detail: "Socia desde enero 2026",
   },
   {
-    quote: "El acceso a marcas que nunca compraria, sin compromiso. Es justo lo que buscaba.",
-    author: "ANA P., BARCELONA",
+    quote:
+      "Lo que más me sorprendió fue la calidad del embalaje y lo rápido que llegó. En menos de 24 horas tenía mi Dior en casa. Lo repetí tres veces en dos meses.",
+    author: "Ana P., Barcelona",
+    detail: "Plan Signature",
+  },
+  {
+    quote:
+      "Nunca pensé que podría llevar un Louis Vuitton a diario. Ahora lo cambio cada mes y mis amigas me preguntan dónde los compro.",
+    author: "Carmen R., Madrid",
+    detail: "Socia desde marzo 2026",
   },
 ]
 
@@ -97,18 +107,11 @@ export default function LandingMembresia() {
 
   return (
     <main className="min-h-screen bg-rose-nude font-serif text-indigo-dark">
-      {/* Header minimo */}
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-6 py-5 md:px-10">
-        <Link href="/" className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">
-          SEMZO PRIVE
-        </Link>
-        <Link
-          href="#membresias"
-          onClick={() => trackEvent("cta_header_click")}
-          className="hidden text-xs tracking-[0.25em] text-white/90 underline-offset-4 drop-shadow-md hover:underline md:inline"
-        >
-          VER MEMBRESIAS
-        </Link>
+      {/* Header minimo: solo el logo, sin links ni navegacion.
+          Pagina de conversion para Google Ads — cero distracciones que saquen
+          a la visitante del embudo antes del CTA. */}
+      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:px-10">
+        <span className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">SEMZO PRIVE</span>
       </header>
 
       {/* HERO - imagen a ancho completo (object-cover), sin desenfoque.
@@ -137,13 +140,14 @@ export default function LandingMembresia() {
               </p>
 
               <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
-                Bolsos iconicos.
+                El armario de lujo que siempre quisiste.
                 <br />
-                <span className="italic text-rose-pastel">Sin comprarlos.</span>
+                <span className="italic text-rose-pastel">Sin comprarlo.</span>
               </h1>
 
               <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Membresia mensual desde 59€. Cambialos cuando quieras. Hazlos tuyos si te enamoras.
+                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
+                enamoras.
               </p>
 
               <a
@@ -151,7 +155,7 @@ export default function LandingMembresia() {
                 onClick={() => trackEvent("cta_hero_click")}
                 className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
               >
-                ACCEDER A LAS MEMBRESIAS
+                ELEGIR MI MEMBRESÍA
                 <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
               </a>
             </div>
@@ -177,7 +181,7 @@ export default function LandingMembresia() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              Tres pasos hasta tu <span className="italic">primer bolso</span>.
+              De la duda a tu primer bolso en <span className="italic">48 horas</span>.
             </h2>
           </div>
 
@@ -210,8 +214,11 @@ export default function LandingMembresia() {
             <p className="mb-3 text-[10px] tracking-[0.4em] text-indigo-dark/60 md:text-xs">
               OFERTA DE BIENVENIDA
             </p>
-            <p className="mb-4 font-serif text-2xl leading-tight md:text-3xl">
-              <span className="italic">50% de descuento</span> en tu primera mensualidad
+            <p className="mb-3 font-serif text-2xl leading-tight md:text-3xl">
+              Tu primera mensualidad al <span className="italic">50%</span> con el código PRIVE50
+            </p>
+            <p className="mb-4 text-sm text-indigo-dark/70">
+              No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Válido esta semana.
             </p>
             <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
               <span className="flex-1 border border-dashed border-indigo-dark/40 bg-rose-nude px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">
@@ -226,9 +233,7 @@ export default function LandingMembresia() {
                 {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
               </button>
             </div>
-            <p className="mt-4 text-xs text-indigo-dark/60">
-              Introduce el código durante el proceso de pago. Válido solo para nuevas socias.
-            </p>
+            <p className="mt-4 text-xs text-indigo-dark/60">Introduce el código durante el proceso de pago.</p>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -282,21 +287,23 @@ export default function LandingMembresia() {
         </div>
       </section>
 
-      {/* CTA FINAL con 2 testimonios integrados */}
+      {/* CTA FINAL con 3 testimonios integrados */}
       <section className="relative overflow-hidden bg-indigo-dark py-16 text-white md:py-20">
         <div className="absolute inset-0 opacity-15">
           <Image src="/images/luxury-closet-hero.jpg" alt="" fill sizes="100vw" className="object-cover" />
         </div>
         <div className="absolute inset-0 bg-indigo-dark/60" />
 
-        <div className="relative z-10 mx-auto max-w-5xl px-6 text-center md:px-10">
-          <div className="mb-10 grid gap-6 md:mb-12 md:grid-cols-2 md:gap-10">
+        <div className="relative z-10 mx-auto max-w-6xl px-6 text-center md:px-10">
+          <div className="mb-10 grid gap-8 md:mb-12 md:grid-cols-3 md:gap-8">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
                 <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
                   &ldquo;{t.quote}&rdquo;
                 </p>
-                <footer className="mt-3 text-[10px] tracking-[0.3em] text-white/70">— {t.author}</footer>
+                <footer className="mt-3 text-[10px] uppercase tracking-[0.25em] text-white/70">
+                  — {t.author} · {t.detail}
+                </footer>
               </blockquote>
             ))}
           </div>
@@ -304,10 +311,10 @@ export default function LandingMembresia() {
           <div className="mx-auto mb-10 h-px w-16 bg-white/30" />
 
           <h2 className="text-balance font-serif text-3xl leading-tight md:text-4xl">
-            Empieza tu acceso al <span className="italic">lujo</span>.
+            El lujo no es lo que posees. <span className="italic">Es lo que experimentas.</span>
           </h2>
           <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-white/80 md:text-base">
-            Sin permanencia. Cancela cuando quieras.
+            Sin permanencia. Sin riesgo. Solo tú y el bolso que siempre quisiste llevar.
           </p>
 
           <a
@@ -315,25 +322,17 @@ export default function LandingMembresia() {
             onClick={() => trackEvent("cta_final_click")}
             className="group mt-8 inline-flex items-center gap-2 bg-white px-12 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
           >
-            ELEGIR MI MEMBRESIA
+            COMENZAR AHORA — PRIMER MES AL 50%
             <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
           </a>
         </div>
       </section>
 
-      {/* Footer minimo: solo enlaces legales, sin copyright (el footer global ya lo incluye) */}
-      <footer className="border-t border-indigo-dark/10 bg-rose-nude px-6 py-5 md:px-10">
-        <div className="mx-auto flex max-w-6xl items-center justify-center gap-5 text-xs text-indigo-dark/60">
-          <Link href="/legal/privacy" className="hover:text-indigo-dark">
-            Privacidad
-          </Link>
-          <Link href="/legal/terms" className="hover:text-indigo-dark">
-            Términos
-          </Link>
-          <Link href="/support" className="hover:text-indigo-dark">
-            Contacto
-          </Link>
-        </div>
+      {/* Footer minimo: una sola linea de copyright, sin navegacion.
+          El footer global (con su nav y el marquee de autoridad) no se
+          renderiza en esta ruta — ver app/components/footer.tsx. */}
+      <footer className="border-t border-indigo-dark/10 bg-rose-nude px-6 py-5 text-center md:px-10">
+        <p className="text-xs text-indigo-dark/60">© {new Date().getFullYear()} Semzo Privé. Todos los derechos reservados.</p>
       </footer>
     </main>
   )

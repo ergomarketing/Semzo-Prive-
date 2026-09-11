@@ -16,6 +16,7 @@
  */
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Instagram, Facebook, ArrowRight, Check } from "lucide-react"
 import { useState, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
@@ -178,6 +179,14 @@ function FooterMarquee() {
 
 export default function Footer() {
   const t = useTranslations("footer")
+  const pathname = usePathname()
+
+  // Landing de Google Ads: sin footer global (nav + marquee). La propia
+  // pagina renderiza su unica linea de copyright, sin distracciones.
+  if (pathname?.startsWith("/lp/membresia")) {
+    return null
+  }
+
   const companyLinks = [
     t("links.company.about"), t("links.company.memberships"), t("links.company.collection"),
     t("links.company.howItWorks"), t("links.company.magazine"), t("links.company.giftCards"),

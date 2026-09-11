@@ -21,6 +21,8 @@ export default function Navbar() {
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith("/admin")
   const isDashboardRoute = pathname?.startsWith("/dashboard")
+  // Landing de Google Ads: sin menu global, solo el logo minimo que trae la propia pagina.
+  const isLpMembresiaRoute = pathname?.startsWith("/lp/membresia")
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,7 +59,7 @@ export default function Navbar() {
     window.location.href = "/"
   }
 
-  if (isAdminRoute || isDashboardRoute) {
+  if (isAdminRoute || isDashboardRoute || isLpMembresiaRoute) {
     return null
   }
 
