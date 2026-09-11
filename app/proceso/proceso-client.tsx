@@ -50,20 +50,18 @@ export default function ProcesoClient() {
           }}
         >
           <div className="container mx-auto px-4">
-            {/* Encabezado editorial */}
-            <div className="grid md:grid-cols-12 gap-8 mb-20">
-              <div className="md:col-span-4">
-                <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-                  {t("eyebrow")}
-                </p>
-                <h1 className="font-serif text-4xl md:text-5xl font-light leading-tight" style={{ color: "#1a1a4b" }}>
-                  {t("heroTitle")}
-                </h1>
-              </div>
-              <div className="md:col-span-1"></div>
-              <div className="md:col-span-7">
-                <p className="text-slate-600 text-lg leading-relaxed font-light">{t("heroSubtitle")}</p>
-              </div>
+            {/* Encabezado editorial: una sola columna izquierda, todo apilado
+             * (eyebrow, titulo, subtitulo) — antes el subtitulo vivia en una
+             * columna aparte (col-span-7) del grid de 12, quedando flotando
+             * a la derecha y desalineado del titulo. */}
+            <div className="max-w-3xl mb-20">
+              <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
+                {t("eyebrow")}
+              </p>
+              <h1 className="font-serif text-4xl md:text-5xl font-light leading-tight mb-6" style={{ color: "#1a1a4b" }}>
+                {t("heroTitle")}
+              </h1>
+              <p className="text-slate-600 text-lg leading-relaxed font-light">{t("heroSubtitle")}</p>
             </div>
 
             {/* Pasos en formato editorial - 4 tarjetas */}
