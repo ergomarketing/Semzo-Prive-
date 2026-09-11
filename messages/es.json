@@ -673,6 +673,23 @@
       "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos."
     }
   },
+  "colecciona": {
+    "eyebrow": "Más que una membresía",
+    "title": "Accede hoy.",
+    "titleItalic": "Hazlo tuyo cuando estés segura.",
+    "body1": "Cada mes que formas parte de SEMZO PRIVÉ, una parte de tu cuota se acumula como crédito hacia la compra de cualquier pieza de nuestra colección.",
+    "body2": "No tienes que decidir nada ahora. No hay plazos. No hay presión.",
+    "body3": "Pero si un día llevas un bolso y sientes que no quieres devolverlo — que es tuyo — el crédito está ahí esperándote.",
+    "body4": "Es la forma más inteligente de acceder al lujo: probar antes de comprometerte, y comprometerte solo cuando estás segura.",
+    "pillar1Label": "Prueba primero",
+    "pillar1Text": "Llévalo. Vívelo. Decide después.",
+    "pillar2Label": "Crédito acumulado",
+    "pillar2Text": "Tu cuota mensual trabaja para ti.",
+    "pillar3Label": "Tuyo cuando quieras",
+    "pillar3Text": "Sin plazos. Sin presión. Solo cuando lo sientas.",
+    "ctaQuestion": "¿Quieres saber más sobre Colecciona?",
+    "ctaLink": "Descubrir cómo funciona"
+  },
   "footer": {
     "brand": {
       "desc": "Accede a bolsos de lujo autenticados con la membresía de Semzo Privé. Hermès, Chanel, Louis Vuitton y más marcas exclusivas, sin compromiso de compra. Tu armario de ensueño, a un solo paso."

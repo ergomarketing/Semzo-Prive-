@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import MembershipSection from "../components/membership-section"
+import ColeccionaSection from "../components/colecciona-section"
 import HowItWorks from "../components/how-it-works"
 
 // ISR: contenido casi estatico (planes). Revalida cada hora.
@@ -48,6 +49,7 @@ export default function MembresiasPage() {
   return (
     <main className="min-h-screen pt-20">
       <MembershipSection />
+      <ColeccionaSection />
       <HowItWorks />
     </main>
   )
