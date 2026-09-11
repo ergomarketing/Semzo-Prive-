@@ -140,37 +140,17 @@ function NewsletterForm() {
   )
 }
 
-// ---- Sub-componente: Marquee de autoridad --------------------------------
-// Banda deslizante en la zona inferior del footer. Reemplaza a los logos de
-// metodos de pago que rompian la estetica luxe. Reutiliza la clase global
-// .marquee-track de globals.css que ya pausa al hover y respeta
-// prefers-reduced-motion.
+// ---- Sub-componente: Linea de autoridad (copyright) ----------------------
+// Antes era un marquee deslizante que, para el loop continuo, duplicaba el
+// mismo texto 6 veces en el DOM (1 visible + 5 aria-hidden) — en pantallas
+// anchas se veian varias copias a la vez, leyendose como un bug de contenido
+// repetido. Reemplazado por una sola linea estatica y centrada.
 
 function FooterMarquee() {
-  // El texto del copyright aparece UNA sola vez en el DOM accesible.
-  // Las 5 copias adicionales necesarias para el scroll continuo se marcan
-  // con aria-hidden para que lectores de pantalla y SEO solo vean una instancia.
   const phrase = MARQUEE_PHRASES[0]
   return (
-    <div
-      className="overflow-hidden bg-[#f5f4f2] py-4 border-t border-slate-200"
-    >
-      <div className="marquee-track">
-        {/* Primera instancia: visible para accesibilidad y SEO */}
-        <span className="text-xs text-slate-500 font-light px-12 whitespace-nowrap">
-          {phrase}
-        </span>
-        {/* Copias decorativas para el efecto scroll — ocultas a lectores de pantalla */}
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span
-            key={i}
-            aria-hidden="true"
-            className="text-xs text-slate-500 font-light px-12 whitespace-nowrap"
-          >
-            {phrase}
-          </span>
-        ))}
-      </div>
+    <div className="bg-[#f5f4f2] py-4 border-t border-slate-200 px-6 text-center">
+      <span className="text-xs text-slate-500 font-light">{phrase}</span>
     </div>
   )
 }

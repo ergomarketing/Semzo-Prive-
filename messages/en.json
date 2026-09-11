@@ -808,48 +808,40 @@
   },
   "proceso": {
     "eyebrow": "The process",
-    "heroTitle": "Simplicity and elegance at every step",
-    "heroSubtitle": "We have designed an intuitive process that lets you enjoy luxury bags with no hassle. From selection to delivery, every detail has been carefully considered.",
+    "heroTitle": "Your first luxury bag, home in 48 hours.",
+    "heroSubtitle": "This is how SEMZO PRIVÉ works — no hassle, no fine print, no commitment.",
     "stepLabel": "Step",
     "steps": [
       {
-        "title": "Choose your bag",
-        "desc": "Explore our exclusive collection and select the perfect bag for your style and occasion. Access iconic brands such as Chanel, Hermès, Louis Vuitton and Dior from your very first membership.",
+        "title": "Choose the piece you always wanted to carry.",
+        "desc": "Explore our collection of Chanel, Louis Vuitton, Dior, Prada and Loewe. Filter by brand, occasion or availability. When you see it, you'll know.",
         "features": [
-          "Catalogue updated monthly with the latest collections",
-          "Filter by brand, colour, occasion and real-time availability",
-          "Each bag includes a detailed description, professional photos and verified condition"
+          "Catalogue updated with authenticated pieces",
+          "Professional photos and verified condition on every piece"
         ]
       },
       {
-        "title": "Enjoy it with complete peace of mind",
-        "desc": "Use your bag with total confidence. It is fully insured throughout the rental period, protecting you against accidental damage and normal wear.",
+        "title": "Wear it. It's insured and yours for as long as you have it.",
+        "desc": "Every bag leaves our hands perfectly prepared. Express shipping in 24–48h, insurance included, direct support if you need it.",
         "features": [
-          "Full insurance included in every membership at no extra cost",
-          "Protection against accidental damage, stains and everyday wear",
-          "Free express shipping in 24–48 hours with premium packaging and real-time tracking",
-          "Dedicated 24/7 support for any query or incident"
+          "Full cover against accidental damage included",
+          "Free shipping with real-time tracking"
         ]
       },
       {
-        "title": "Swap whenever you like",
-        "desc": "Flexibility is at the heart of Semzo Privé. Swap your bag for another from the collection whenever you wish, with no additional costs or long-term commitments.",
+        "title": "Want a different one? We swap it.",
+        "desc": "No extra costs. No minimum terms. Request the swap from your private area and we coordinate pickup and delivery.",
         "features": [
-          "Unlimited swaps according to your membership plan (monthly or every 3 months)",
-          "No additional costs: round-trip shipping is included",
-          "Simple process: request the swap, return your current bag and receive the new one within days",
-          "Constantly refresh your style without needing to buy or accumulate"
+          "Round-trip shipping always included",
+          "New bag at home within 24–48h after the return"
         ]
       },
       {
-        "title": "A conscious, circular luxury model",
-        "desc": "Semzo Privé reimagines luxury for today's world. Instead of accumulating, we share. Instead of discarding, we care. Our circular model maximises the use of each bag, reducing environmental impact while democratising access to exclusive pieces.",
+        "title": "Make it yours if you fall in love.",
+        "desc": "With Colecciona mode, part of your monthly fee builds up as credit toward buying any piece from the collection. You don't have to decide now. But if the day comes when you don't want to give it back — the credit is there.",
         "features": [
-          "Circular economy: each bag is used by multiple members, extending its lifespan",
-          "Conscious consumption: enjoy luxury without needing to own or accumulate",
-          "Democratised accessibility: access €3,000–10,000 bags for a fraction of their price",
-          "Professional curation: each piece is authenticated, cleaned and restored by experts",
-          "Smart luxury community: join thousands of women who choose elegance without excess"
+          "Your fee works for you every month",
+          "Buy when you're sure, no pressure or deadlines"
         ]
       }
     ],

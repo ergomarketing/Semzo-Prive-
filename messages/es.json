@@ -808,48 +808,40 @@
   },
   "proceso": {
     "eyebrow": "El proceso",
-    "heroTitle": "Simplicidad y elegancia en cada paso",
-    "heroSubtitle": "Hemos diseñado un proceso intuitivo que te permite disfrutar de bolsos de lujo sin complicaciones. Desde la selección hasta la entrega, cada detalle ha sido cuidadosamente considerado.",
+    "heroTitle": "Tu primer bolso de lujo en casa en 48 horas.",
+    "heroSubtitle": "Así funciona SEMZO PRIVÉ — sin complicaciones, sin letra pequeña, sin compromisos.",
     "stepLabel": "Paso",
     "steps": [
       {
-        "title": "Elige tu bolso",
-        "desc": "Explora nuestra colección exclusiva y selecciona el bolso perfecto para tu estilo y ocasión. Accede a marcas icónicas como Chanel, Hermès, Louis Vuitton y Dior desde tu primera membresía.",
+        "title": "Elige la pieza que siempre quisiste llevar.",
+        "desc": "Explora nuestra colección de Chanel, Louis Vuitton, Dior, Prada y Loewe. Filtra por marca, ocasión o disponibilidad. Cuando lo veas, lo sabrás.",
         "features": [
-          "Catálogo actualizado mensualmente con las últimas colecciones",
-          "Filtros por marca, color, ocasión y disponibilidad en tiempo real",
-          "Cada bolso incluye descripción detallada, fotos profesionales y condición verificada"
+          "Catálogo actualizado con piezas autenticadas",
+          "Fotos profesionales y condición verificada en cada pieza"
         ]
       },
       {
-        "title": "Disfrútalo con total tranquilidad",
-        "desc": "Usa tu bolso con total confianza. Está completamente asegurado durante todo el período de alquiler, protegiéndote contra daños accidentales y desgaste normal.",
+        "title": "Úsalo. Está asegurado y es tuyo mientras lo tengas.",
+        "desc": "Cada bolso sale de nuestras manos perfectamente preparado. Envío express en 24-48h, seguro incluido, soporte directo si lo necesitas.",
         "features": [
-          "Seguro completo incluido en todas las membresías sin costo adicional",
-          "Protección contra daños accidentales, manchas y desgaste del uso cotidiano",
-          "Envío express gratuito en 24-48 horas con empaquetado premium y seguimiento en tiempo real",
-          "Soporte dedicado 24/7 para cualquier consulta o incidencia"
+          "Seguro completo contra daños accidentales incluido",
+          "Envío gratuito con seguimiento en tiempo real"
         ]
       },
       {
-        "title": "Intercambia cuando quieras",
-        "desc": "La flexibilidad es el corazón de Semzo Privé. Intercambia tu bolso por otro de la colección siempre que desees, sin costos adicionales ni compromisos a largo plazo.",
+        "title": "Cuando quieras otro, lo cambiamos.",
+        "desc": "Sin costes adicionales. Sin plazos mínimos. Solicita el cambio desde tu área privada y coordinamos la recogida y entrega.",
         "features": [
-          "Intercambios ilimitados según tu plan de membresía (mensual o cada 3 meses)",
-          "Sin costos adicionales: el envío de ida y vuelta está incluido",
-          "Proceso simple: solicita el cambio, devuelve el bolso actual y recibe el nuevo en días",
-          "Renueva tu estilo constantemente sin la necesidad de comprar ni acumular"
+          "Envío de ida y vuelta siempre incluido",
+          "Nuevo bolso en casa en 24-48h tras la devolución"
         ]
       },
       {
-        "title": "Un modelo de lujo consciente y circular",
-        "desc": "Semzo Privé reimagina el lujo para el mundo actual. En lugar de acumular, compartimos. En lugar de desechar, cuidamos. Nuestro modelo circular maximiza el uso de cada bolso, reduciendo el impacto ambiental mientras democratizamos el acceso a piezas exclusivas.",
+        "title": "Hazlo tuyo si te enamoras.",
+        "desc": "Con el modo Colecciona, parte de tu cuota mensual se acumula como crédito hacia la compra de cualquier pieza de la colección. No tienes que decidir ahora. Pero si llega el día en que no quieres devolverlo — el crédito está ahí.",
         "features": [
-          "Economía circular: cada bolso es utilizado por múltiples clientas, extendiendo su vida útil",
-          "Consumo consciente: disfruta del lujo sin la necesidad de poseer ni acumular",
-          "Accesibilidad democratizada: accede a bolsos de 3.000-10.000€ por una fracción de su precio",
-          "Curación profesional: cada pieza es autenticada, limpiada y restaurada por expertos",
-          "Comunidad de lujo inteligente: únete a miles de mujeres que eligen elegancia sin exceso"
+          "Tu cuota trabaja para ti cada mes",
+          "Compra cuando estés segura, sin presión ni plazos"
         ]
       }
     ],

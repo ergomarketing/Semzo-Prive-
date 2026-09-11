@@ -9,7 +9,11 @@ const STEP_IMAGES = [
   { src: "/images/chanel-woc-step1.jpeg", className: "object-cover" },
   { src: "/images/prada-street-step2.jpeg", className: "object-cover scale-125 object-[center_35%]" },
   { src: "/images/ysl-step3.jpg", className: "object-cover object-[center_60%]" },
-  { src: "/images/hero-luxury-bags.jpeg", className: "object-cover" },
+  {
+    // Fendi burdeos — misma imagen que la seccion Colecciona de /membresias.
+    src: "https://h0ayghjex33jktep.public.blob.vercel-storage.com/blog-images/fendi%20baguette%20colecciona.jpeg",
+    className: "object-cover",
+  },
 ]
 
 const BRANDS = [
