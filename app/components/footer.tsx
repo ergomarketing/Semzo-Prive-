@@ -181,9 +181,9 @@ export default function Footer() {
   const t = useTranslations("footer")
   const pathname = usePathname()
 
-  // Landing de Google Ads: sin footer global (nav + marquee). La propia
-  // pagina renderiza su unica linea de copyright, sin distracciones.
-  if (pathname?.startsWith("/lp/membresia")) {
+  // Landings de Google Ads (/lp/*): sin footer global (nav + marquee). Cada
+  // pagina renderiza su propia linea de copyright, sin distracciones.
+  if (pathname?.startsWith("/lp/")) {
     return null
   }
 
