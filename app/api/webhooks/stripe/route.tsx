@@ -974,12 +974,27 @@ export async function POST(req: NextRequest) {
                     })
                   : "fin del periodo actual";
 
+                // Mismo mapeo de etiquetas legibles que el resto de la app
+                // (ver app/api/membership/activate/orchestrator.ts) para
+                // que {{tier}} en el email de cancelacion no muestre el
+                // slug interno (ej. "essentiel") sino el nombre de marca.
+                const tierLabels: Record<string, string> = {
+                  petite: "Petite",
+                  essentiel: "L'Essentiel",
+                  signature: "Signature",
+                  prive: "Privé",
+                };
+                const tier =
+                  tierLabels[memData.membership_type || ""] ||
+                  memData.membership_type ||
+                  "membresia";
+
                 const emailService = EmailServiceProduction.getInstance();
                 await emailService
                   .sendMembershipCancelledEmail({
                     userName,
                     userEmail: profile.email,
-                    membershipType: memData.membership_type || "membresia",
+                    membershipType: tier,
                     endDate,
                   })
                   .catch((err) =>

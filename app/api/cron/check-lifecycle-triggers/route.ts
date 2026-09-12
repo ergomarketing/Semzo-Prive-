@@ -14,6 +14,19 @@ import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2024-06-20" })
 
+// Mismo mapeo de etiquetas legibles que usa el resto de la app (ver
+// app/api/membership/activate/orchestrator.ts) para {{tier}} en emails.
+const TIER_LABELS: Record<string, string> = {
+  petite: "Petite",
+  essentiel: "L'Essentiel",
+  signature: "Signature",
+  prive: "Privé",
+}
+
+function formatDateEs(iso: string) {
+  return new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+}
+
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 }
@@ -78,7 +91,7 @@ async function checkRenewalReminders() {
 
   const { data: memberships } = await supabase
     .from("user_memberships")
-    .select("id, user_id, current_period_end")
+    .select("id, user_id, current_period_end, membership_type, stripe_subscription_id")
     .eq("status", "active")
     .not("current_period_end", "is", null)
     .gte("current_period_end", new Date().toISOString())
@@ -92,6 +105,25 @@ async function checkRenewalReminders() {
     if (!recipient) continue
 
     const entityId = `${m.id}:${dateOnly(m.current_period_end)}`
+    const tier = TIER_LABELS[m.membership_type || ""] || m.membership_type || ""
+
+    // {{precio}} viene siempre del importe REAL de la suscripcion en Stripe
+    // (nunca de una tabla de precios local que podria desincronizarse de un
+    // descuento, promo o cambio de precio aplicado directamente en Stripe).
+    let precio = ""
+    if (m.stripe_subscription_id) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(m.stripe_subscription_id)
+        const item = sub.items.data[0]
+        if (item?.price?.unit_amount != null) {
+          precio = `${(item.price.unit_amount / 100).toFixed(2).replace(/\.00$/, "")}€`
+        }
+      } catch (err) {
+        console.error(`[check-lifecycle-triggers] Error consultando precio Stripe de membership ${m.id}:`, err)
+      }
+    }
+
+    const vars = { tier, precio, fecha_renovacion: formatDateEs(m.current_period_end) }
 
     if (daysUntil <= 8 && daysUntil > 4) {
       const result = await enrollLifecycleSequence({
@@ -103,6 +135,7 @@ async function checkRenewalReminders() {
         name: recipient.name,
         stepNumbers: [1],
         scheduledForOverrides: { 1: new Date().toISOString() },
+        vars,
       })
       if (result.ok) enrolled += result.enrolled
     } else if (daysUntil <= 4 && daysUntil >= 0) {
@@ -115,6 +148,7 @@ async function checkRenewalReminders() {
         name: recipient.name,
         stepNumbers: [2],
         scheduledForOverrides: { 2: new Date().toISOString() },
+        vars,
       })
       if (result.ok) enrolled += result.enrolled
     }

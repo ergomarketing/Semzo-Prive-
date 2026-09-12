@@ -653,18 +653,144 @@ export class EmailServiceProduction {
     })
   }
 
+  // Documento de marca completo (no renderBrandEmail): dispara el webhook de
+  // Stripe en customer.subscription.deleted (cancelacion efectiva) o en la
+  // primera transicion cancel_at_period_end false->true (cancelacion
+  // programada), ver app/api/webhooks/stripe/route.tsx. {{tier}} llega ya
+  // resuelto a su nombre legible (Petite/L'Essentiel/Signature/Prive) desde
+  // el webhook. El CTA de volver lleva UTM de atribucion para poder medir
+  // esta campaña de winback especifica frente al resto de trafico.
   private generateMembershipCancelledHTML(data: { userName: string; membershipType: string; endDate: string }): string {
-    return renderBrandEmail({
-      preheader: "Confirmación de cancelación de tu membresía.",
-      eyebrow: "Cancelación",
-      heading: `Hola ${data.userName?.split(" ")[0] || ""}`,
-      bodyHtml: `
-        <p style="margin:0 0 8px 0;">Tu membresía <strong>${data.membershipType}</strong> ha sido cancelada según tu solicitud.</p>
-        ${emailInfoBox(`<strong style="color:${BRAND.navy};">Tendrás acceso hasta:</strong> ${esDate(data.endDate)}`)}
-        <p style="margin:0;">Después de esa fecha no podrás reservar bolsos. Si cambias de opinión, puedes reactivar tu membresía en cualquier momento.</p>
-      `,
-      cta: { label: "Reactivar membresía", url: `${BRAND.site}/membresias` },
-    })
+    const firstName = data.userName?.split(" ")[0] || ""
+    const winbackUrl = `${BRAND.site}/membresias?utm_source=email&utm_campaign=winback-cancelacion`
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEMZO PRIVÉ · Confirmación de cancelación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Great+Vibes&display=swap" rel="stylesheet" />
+</head>
+<body style="margin:0;padding:0;background-color:#f9f8f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;margin:0 auto;border-collapse:collapse;">
+    <tr>
+      <td style="padding:0;background-color:#ffffff;">
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:12px 20px 6px 20px;">
+              <img src="https://semzoprive.com/images/logo-semzo-prive.png" alt="" width="200" style="display:block;height:auto;max-width:200px;border:0;" />
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:32px 30px 8px 30px;">
+              <h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:400;font-size:28px;line-height:1.3;color:#1a1a4b;letter-spacing:-0.3px;">
+                Tu membresía ${data.membershipType} ha sido cancelada
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:12px 0 20px 0;">
+              <div style="width:40px;height:2px;background-color:#c9a96e;margin:0 auto;"></div>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:0 20px 0 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
+                <tr>
+                  <td style="color:#1a1a4b;font-size:16px;line-height:1.8;padding:0;">
+                    <p style="margin:0 0 20px 0;">Hola ${firstName},</p>
+                    <p style="margin:0 0 20px 0;">Confirmamos que tu membresía <strong>${data.membershipType}</strong> ha quedado cancelada según tu solicitud.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:#fff0f3;margin-top:8px;">
+          <tr>
+            <td align="center" style="padding:24px 30px;">
+              <p style="margin:0;font-size:15px;color:#1a1a4b;text-align:center;line-height:1.6;">
+                Tendrás acceso hasta<br />
+                <strong style="font-family:'Playfair Display',Georgia,serif;font-size:20px;">${esDate(data.endDate)}</strong>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:24px 20px 0 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
+                <tr>
+                  <td style="color:#1a1a4b;font-size:16px;line-height:1.8;padding:0;">
+                    <p style="margin:0;">Después de esa fecha no podrás hacer nuevas reservas. Si cambias de opinión, puedes reactivar tu membresía cuando quieras — nada de lo que has vivido con nosotras se pierde.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:28px 20px 20px 20px;">
+              <div style="width:60px;height:1px;background-color:#c9a96e;margin:0 auto 24px auto;"></div>
+              <p style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:26px;line-height:1.35;font-weight:500;color:#1a1a4b;letter-spacing:-0.4px;text-align:center;">
+                La puerta sigue abierta<br />cuando quieras volver.
+              </p>
+              <div style="width:60px;height:1px;background-color:#c9a96e;margin:24px auto 0 auto;"></div>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:10px 20px 36px 20px;">
+              <a href="${winbackUrl}" style="display:inline-block;background-color:#1a1a4b;color:#ffffff;font-size:16px;font-weight:500;text-decoration:none;padding:18px 64px;letter-spacing:2px;text-transform:uppercase;border:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-width:220px;text-align:center;box-shadow:0 4px 12px rgba(26,26,75,0.2);">
+                Reactivar membresía
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;padding-top:10px;">
+          <tr>
+            <td align="center" style="padding:0 20px 30px 20px;">
+              <p style="margin:0 0 0 0;font-family:'Great Vibes',cursive;font-size:42px;color:#1a1a4b;text-align:center;letter-spacing:1px;line-height:1.2;">Erika</p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:#7a7a94;letter-spacing:0.5px;text-align:center;">Fundadora de SEMZO PRIVÉ</p>
+              <div style="width:30px;height:1px;background-color:#c9a96e;margin:20px auto 18px auto;"></div>
+              <p style="margin:0 0 2px 0;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a4b;letter-spacing:0.5px;text-align:center;">SEMZO PRIVÉ</p>
+              <p style="margin:0 0 0 0;font-family:'Playfair Display',Georgia,serif;font-size:14px;font-style:italic;color:#7a7a94;text-align:center;letter-spacing:0.3px;">Tu puerta de acceso al armario de tus sueños</p>
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:0 20px 14px 20px;font-size:9px;color:#d0d0d0;letter-spacing:0.3px;">
+              <span>© 2026 SEMZO PRIVÉ · </span><a href="#" style="color:#d0d0d0;text-decoration:none;">Darse de baja</a>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`
   }
 
   private generateMembershipCancelledAdminHTML(data: {
