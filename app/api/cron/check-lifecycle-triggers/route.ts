@@ -110,13 +110,14 @@ async function checkRenewalReminders() {
     // {{precio}} viene siempre del importe REAL de la suscripcion en Stripe
     // (nunca de una tabla de precios local que podria desincronizarse de un
     // descuento, promo o cambio de precio aplicado directamente en Stripe).
+    // Solo el numero: el propio HTML de la plantilla añade el "€" en el texto.
     let precio = ""
     if (m.stripe_subscription_id) {
       try {
         const sub = await stripe.subscriptions.retrieve(m.stripe_subscription_id)
         const item = sub.items.data[0]
         if (item?.price?.unit_amount != null) {
-          precio = `${(item.price.unit_amount / 100).toFixed(2).replace(/\.00$/, "")}€`
+          precio = (item.price.unit_amount / 100).toFixed(2).replace(/\.00$/, "")
         }
       } catch (err) {
         console.error(`[check-lifecycle-triggers] Error consultando precio Stripe de membership ${m.id}:`, err)
