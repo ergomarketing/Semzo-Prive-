@@ -12,22 +12,14 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
-import { render } from "@react-email/components"
-import ReturnReminderEmail from "@/emails/templates/return-reminder"
 import { logEmail } from "@/lib/email-logger"
+import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
 const FROM_EMAIL = "hola@semzoprive.com"
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_ENV === "production"
-    ? "https://semzoprive.com"
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000")
 
 function getSupabase() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -111,22 +103,18 @@ export async function GET(request: NextRequest) {
     const userName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "socia"
     const bagName = bag.name
     const bagBrand = bag.brand
+    const fullBagName = `${bagBrand} ${bagName}`.trim()
 
-    const html = await render(
-      <ReturnReminderEmail
-        name={userName}
-        bagBrand={bagBrand}
-        bagName={bagName}
-        bagImageUrl={bag.image_url}
-        returnByDate={returnByFormatted}
-        isPetite={isPetite}
-        dashboardUrl={`${SITE_URL}/dashboard`}
-      />,
-    )
+    // Documento de marca completo (mismo diseño que el resto de emails de
+    // lifecycle): {{nombre}}, {{nombre_bolso}} y {{fecha_devolucion}} vienen
+    // siempre de esta reserva concreta, nunca de un valor fijo.
+    const html = renderReturnReminderBrandEmail({
+      name: userName.split(" ")[0] || userName,
+      bagName: fullBagName,
+      returnDate: returnByFormatted,
+    })
 
-    const subject = isPetite
-      ? `Tu bolso ${bagBrand} ${bagName} regresa pronto — Semzo Privé`
-      : `Recordatorio: devolución de tu bolso en 2 días — Semzo Privé`
+    const subject = `Tu ${fullBagName} vuelve en 2 días`
 
     const { error: sendErr } = await resend.emails.send({
       from: `Semzo Privé <${FROM_EMAIL}>`,
