@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import NewsletterEmail from "@/emails/templates/newsletter"
 
 export const runtime = "nodejs"
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No hay destinatarios para la audiencia seleccionada", sent: 0 }, { status: 400 })
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+    const resendApiKey = getResendApiKey()
     if (!resendApiKey) {
       // Modo simulación (entorno sin API key)
       return NextResponse.json({

@@ -12,6 +12,7 @@
  */
 
 import { render } from "@react-email/components"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 
@@ -30,7 +31,7 @@ async function sendResendEmail(params: {
   html: string
   tags: { name: string; value: string }[]
 }) {
-  const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+  const apiKey = getResendApiKey()
   if (!apiKey) {
     console.error("[SEPA EXECUTION EMAIL] API key no configurada")
     return { success: false, error: "RESEND_API_KEY no configurada" }

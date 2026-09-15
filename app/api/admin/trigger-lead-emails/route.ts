@@ -3,12 +3,13 @@ import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+const resend = new Resend(getResendApiKey())
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce(

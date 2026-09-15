@@ -5,10 +5,11 @@ import { render } from "@react-email/components"
 import DunningEmail from "@/emails/templates/dunning"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 export const dynamic = "force-dynamic"
 
-const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+const resend = new Resend(getResendApiKey())
 const ADMIN_EMAIL = "mailbox@semzoprive.com"
 const FROM_EMAIL = "hola@semzoprive.com"
 const SITE_URL =

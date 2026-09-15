@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos (to, subject, body/message)" }, { status: 400 })
     }
 
-    const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+    const apiKey = getResendApiKey()
 
     if (!apiKey) {
       console.log("[EMAIL] Resend API key no configurada")

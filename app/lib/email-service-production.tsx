@@ -28,23 +28,10 @@ import DunningEmail from "@/emails/templates/dunning"
 import ReturnReminderEmail from "@/emails/templates/return-reminder"
 import { getMessages } from "@/emails/messages"
 
-// Descarta valores placeholder/inválidos (p.ej. "re_xxxxx") y devuelve la primera clave de Resend
-// realmente utilizable entre las variables de entorno disponibles.
-function isValidResendKey(key: string | undefined): key is string {
-  if (!key) return false
-  const trimmed = key.trim()
-  if (!trimmed.startsWith("re_")) return false
-  if (/^re_x+$/i.test(trimmed)) return false // placeholder tipo "re_xxxxx"
-  if (trimmed.length < 20) return false
-  return true
-}
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 function resolveResendApiKey(): string {
-  const candidates = [process.env.RESEND_API_KEY, process.env.EMAIL_API_KEY]
-  for (const candidate of candidates) {
-    if (isValidResendKey(candidate)) return candidate
-  }
-  return ""
+  return getResendApiKey()
 }
 
 const DASHBOARD_URL = `${BRAND.site}/dashboard`

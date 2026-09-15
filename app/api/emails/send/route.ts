@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    const emailApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+    const emailApiKey = getResendApiKey()
 
     if (!emailApiKey) {
       console.error("RESEND_API_KEY no configurada")
