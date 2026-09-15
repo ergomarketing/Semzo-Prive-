@@ -88,7 +88,7 @@ function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{
         <!-- Body -->
         <tr>
           <td style="padding:24px 40px;color:#333333;font-size:16px;line-height:1.75;font-family:Georgia,serif;">
-            ${block.body.replace("{{name}}", previewName)}
+            ${block.body.replace(/\{\{\s*name\s*\}\}/gi, previewName).replace(/\{\{\s*nombre\s*\}\}/gi, previewName)}
           </td>
         </tr>
 
@@ -196,7 +196,7 @@ export default function NewsletterPage() {
     }
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────��──
 
   const activeSubscribers = subscribers.filter((s) => s.status === "active")
   const audienceCount =
@@ -312,7 +312,7 @@ export default function NewsletterPage() {
             </Field>
 
             {/* Body */}
-            <Field label="Cuerpo del email (HTML)" hint="Puedes usar {{name}} para personalizar el nombre">
+            <Field label="Cuerpo del email (HTML)" hint="Puedes usar {{name}} o {{nombre}} para personalizar el nombre">
               <Textarea
                 value={block.body}
                 onChange={(e) => setBlock({ ...block, body: e.target.value })}
