@@ -3,7 +3,7 @@
  *
  * Logica por tipo de membresia:
  *  - Petite: delivered_at + 5 dias (aviso 2 dias antes de los 7 que tiene)
- *  - Essentiel / Signature / Prive: pass_expires_at - 2 dias
+ *  - Essentiel / Signature / Prive: end_date - 2 dias (1 bolso incluido por ciclo)
  *
  * Guard de deduplicacion: columna reminder_2d_sent_at en reservations.
  * Frecuencia: diaria (08:00 UTC en vercel.json)
@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
       user_id,
       membership_type,
       delivered_at,
+      end_date,
       pass_expires_at,
       reminder_2d_sent_at,
       bags!inner(name, brand, image_url),
-      profiles!inner(email, first_name, last_name)
+      profiles!inner(email, first_name, last_name, membership_type)
     `)
     .not("status", "in", "(completed,cancelled,canceled)")
     .is("reminder_2d_sent_at", null)
@@ -69,14 +70,26 @@ export async function GET(request: NextRequest) {
     }
 
     const delivered = new Date(res.delivered_at!)
-    const membershipType: string = res.membership_type || "petite"
+    // La membresía vive en profiles/user_memberships; membership_type de la
+    // reserva puede ser NULL en reservas antiguas. Nunca asumir Petite porque
+    // eso convierte una membresía mensual Privé en un pase semanal.
+    const profileMembershipType = String(profile.membership_type || "").toLowerCase()
+    const membershipType = String(res.membership_type || profileMembershipType).toLowerCase()
+    if (!membershipType) {
+      skipped++
+      continue
+    }
     const isPetite = membershipType === "petite"
 
     let reminderDate: Date
     if (isPetite) {
-      reminderDate = new Date(delivered.getTime() + 5 * 24 * 60 * 60 * 1000)
-    } else if (res.pass_expires_at) {
+      if (!res.pass_expires_at) {
+        skipped++
+        continue
+      }
       reminderDate = new Date(new Date(res.pass_expires_at).getTime() - 2 * 24 * 60 * 60 * 1000)
+    } else if (res.end_date) {
+      reminderDate = new Date(new Date(res.end_date).getTime() - 2 * 24 * 60 * 60 * 1000)
     } else {
       skipped++
       continue
@@ -90,10 +103,9 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    const returnBy = new Date(delivered.getTime() + 7 * 24 * 60 * 60 * 1000)
-    if (!isPetite && res.pass_expires_at) {
-      returnBy.setTime(new Date(res.pass_expires_at).getTime())
-    }
+    const returnBy = isPetite
+      ? new Date(res.pass_expires_at!)
+      : new Date(res.end_date!)
     const returnByFormatted = returnBy.toLocaleDateString("es-ES", {
       weekday: "long",
       day: "numeric",

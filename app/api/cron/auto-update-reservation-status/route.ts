@@ -128,13 +128,15 @@ export async function GET() {
             to: ADMIN_EMAIL,
             subject: `[SEMZO Admin] Devolución vencida — ${customerName} · ${bagName}`,
             html: `
-              <p><strong>Devolución vencida</strong></p>
+              <p><strong>Devolución de bolso vencida</strong></p>
+              <p>Este aviso corresponde exclusivamente a una reserva pendiente de devolución; no indica que la membresía esté vencida.</p>
               <p>Socia: ${customerName} (${profile.email})</p>
               <p>Bolso: ${bagName}</p>
-              <p>Fecha límite: ${endDateFormatted}</p>
+              <p>Fecha límite de devolución: ${endDateFormatted}</p>
               <p>ID reserva: ${reservation.id}</p>
-              <p><a href="${SITE_URL}/admin/reservations/${reservation.id}">Ver en admin</a></p>`,
+              <p><a href="${SITE_URL}/admin/reservations/${reservation.id}">Ver reserva en admin</a></p>`,
           }).catch((e) => console.error(`[overdue-cron] Error email admin:`, e))
+
         }
       }
     }

@@ -351,12 +351,15 @@ export async function POST(request: NextRequest) {
     // - Pase semanal (bag-pass / weekly): 7 dias
     // - Mensual (monthly):               30 dias
     // - Trimestral (quarterly):          90 dias
+    // Solo Petite puede usar un Pase de Bolso y tener una reserva semanal.
+    // Essentiel, Signature y Privé incluyen un bolso por ciclo de membresía;
+    // nunca deben convertirse en una reserva de 7 días por recibir un usePassId.
     const rentalDays =
-      usePassId
+      effectivePlan === "petite" && usePassId
         ? 7
         : billingCycle === "quarterly"
         ? 90
-        : billingCycle === "weekly"
+        : billingCycle === "weekly" && effectivePlan === "petite"
         ? 7
         : 30 // mensual por defecto
 
@@ -427,7 +430,7 @@ export async function POST(request: NextRequest) {
     let passToUse: any = null
 
     if (userMembershipPlan === "petite") {
-      // 1. Verificar que la membresía Petite esté vigente (30 d��as desde started_at)
+      // 1. Verificar que la membresía Petite esté vigente (30 d����as desde started_at)
       // Se usa membership.start_date (ya disponible en el scope): es la fuente
       // de verdad de cuando comenzo la membresia activa del usuario.
       const membershipStartDate = (membership as any).start_date || null
