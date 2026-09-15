@@ -58,7 +58,6 @@ const SEMZO_PINK  = "#f4c4cc"
 const SEMZO_GRAY  = "#7a7a94"
 const SYSTEM_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 const SERIF_FONT  = "'Playfair Display',Georgia,serif"
-const LOGO_URL     = "https://semzoprive.com/images/logo-semzo-prive.png"
 
 const DEFAULT_BLOCK: CampaignBlock = {
   preheader:         "",
@@ -79,7 +78,7 @@ function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{
     s.replace(/\{\{\s*name\s*\}\}/gi, previewName).replace(/\{\{\s*nombre\s*\}\}/gi, previewName)
 
   const eyebrowHtml = block.eyebrow
-    ? `<p style="margin:0 0 16px 0;font-family:${SYSTEM_FONT};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${SEMZO_PINK};text-align:center;">${personalize(block.eyebrow)}</p>`
+    ? `<p style="margin:0 0 16px 0;font-family:${SYSTEM_FONT};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${SEMZO_GOLD};text-align:center;">${personalize(block.eyebrow)}</p>`
     : ""
 
   const headlineHtml = block.headline
@@ -127,20 +126,11 @@ function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{
     <tr>
       <td style="padding:0;background-color:#ffffff;">
 
-        <!-- ═══ HEADER (fijo) ═══ -->
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-          <tr>
-            <td align="center" style="background-color:${SEMZO_NAVY};padding:40px 30px 36px 30px;">
-              ${eyebrowHtml}
-              <img src="${LOGO_URL}" alt="SEMZO PRIVÉ" width="180" style="display:block;height:auto;max-width:180px;border:0;margin:0 auto;" />
-            </td>
-          </tr>
-        </table>
-
         <!-- ═══ CUERPO (variable por campaña) ═══ -->
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
-            <td align="center" style="padding:40px 20px 8px 20px;">
+            <td align="center" style="padding:44px 20px 8px 20px;">
+              ${eyebrowHtml}
               <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
                 <tr>
                   <td style="padding:0;">
@@ -317,7 +307,7 @@ export default function NewsletterPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 py-8">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* ── Header ───────────────────────────────────────────────��─────── */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#1a1f3a]">Email Marketing</h1>
