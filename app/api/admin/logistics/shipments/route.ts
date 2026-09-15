@@ -3,8 +3,10 @@ import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, CORREOS_PRODUCTS, type CorreosParty } from "@/lib/correos-api"
 import { sanitizeRecipient, type RecipientInput } from "@/lib/correos-sanitize"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const emailService = new EmailServiceProduction()
 
 // Mapa de nombres de provincia → codigo de 2 digitos (Correos REST v1 requiere codigo numerico).
 const PROVINCE_CODE_MAP: Record<string, string> = {
@@ -148,24 +150,14 @@ async function activateMembershipOnDelivery(reservationId: string) {
       .eq("id", reservationId)
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/send-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: profile.email,
-          subject: "Tu bolso ha sido entregado. Tu membresia esta activa",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #1a1a4b;">Disfruta tu bolso</h2>
-              <p>Hola ${profile.full_name || ""},</p>
-              <p>Tu bolso ha sido entregado. A partir de ahora, tu membresia esta activa.</p>
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Inicio:</strong> ${now.toLocaleDateString("es-ES")}</p>
-                <p><strong>Valida hasta:</strong> ${endDate.toLocaleDateString("es-ES")}</p>
-              </div>
-            </div>
-          `,
-        }),
+      const bag = (reservation as any)?.bags
+      const bagName = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : undefined
+
+      await emailService.sendShipmentDeliveredEmail({
+        userEmail: profile.email,
+        userName: profile.full_name || profile.email,
+        bagName,
+        membershipEndDate: endDate.toISOString(),
       })
     } catch (emailError) {
       console.error("[Logistics] Error sending delivery email:", emailError)
@@ -504,25 +496,21 @@ export async function POST(request: NextRequest) {
 
     if (correosTrackingNumber && resolvedRecipient?.email) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/admin/send-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: resolvedRecipient.email,
-            subject: "Tu pedido ha sido enviado - Semzo Prive",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a1a4b;">Tu pedido esta en camino</h2>
-                <p>Hola ${resolvedRecipient.firstName},</p>
-                <p>Tu pedido de Semzo Prive ha sido enviado.</p>
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p><strong>Transportista:</strong> Correos</p>
-                  <p><strong>Numero de seguimiento:</strong> ${correosTrackingNumber}</p>
-                  <p><strong>Seguir envio:</strong> <a href="https://www.correos.es/es/es/herramientas/localizador/envios/${correosTrackingNumber}">Ver en Correos</a></p>
-                </div>
-              </div>
-            `,
-          }),
+        let bagName: string | undefined
+        if (reservation_id) {
+          const { data: reservationBag } = await supabase
+            .from("reservations")
+            .select("bags!reservations_bag_id_fkey ( name, brand )")
+            .eq("id", reservation_id)
+            .maybeSingle()
+          const bag = (reservationBag as any)?.bags
+          bagName = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : undefined
+        }
+
+        await emailService.sendShipmentInTransitEmail({
+          userEmail: resolvedRecipient.email,
+          userName: resolvedRecipient.firstName,
+          bagName,
         })
       } catch (emailError) {
         console.error("[Logistics API] Error sending tracking email:", emailError)
