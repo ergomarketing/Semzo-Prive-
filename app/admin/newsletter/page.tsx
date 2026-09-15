@@ -30,13 +30,14 @@ interface Subscriber {
 }
 
 interface CampaignBlock {
-  preheader: string    // texto de previsualización en el cliente de correo
-  headline: string     // título principal del email
-  body: string         // cuerpo principal (soporta HTML básico)
-  ctaLabel: string     // texto del botón CTA
-  ctaUrl: string       // URL del CTA
-  footer: string       // texto del pie (empresa, dirección…)
-  accentColor: string  // color de acento (botón, header)
+  preheader: string          // texto de previsualización en el cliente de correo
+  eyebrow: string            // etiqueta pequeña sobre el logo, dentro del header (opcional)
+  headline: string           // título principal del email (Playfair Display)
+  body: string                // cuerpo principal — admite HTML completo con estilos inline
+  ctaLabel: string            // texto del botón CTA principal
+  ctaUrl: string               // URL del CTA principal
+  ctaSecondaryLabel: string    // texto del enlace CTA secundario (opcional)
+  ctaSecondaryUrl: string      // URL del CTA secundario (opcional)
 }
 
 type Audience = "newsletter" | "leads" | "both"
@@ -47,76 +48,180 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   both:       "Todos (newsletter + leads)",
 }
 
+// Paleta fija de la plantilla de marca — no configurable por campaña,
+// para que todos los envíos mantengan la misma identidad visual.
+// SEMZO_BLUSH (#fff0f3) y bordes #f4c4cc quedan disponibles para que el
+// campo "Cuerpo" pueda usarlos en bloques destacados dentro del HTML pegado.
+const SEMZO_NAVY  = "#1a1a4b"
 const SEMZO_GOLD  = "#c9a96e"
-const SEMZO_NAVY  = "#1a1f3a"
+const SEMZO_PINK  = "#f4c4cc"
+const SEMZO_GRAY  = "#7a7a94"
+const SYSTEM_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+const SERIF_FONT  = "'Playfair Display',Georgia,serif"
+const LOGO_URL     = "https://semzoprive.com/images/logo-semzo-prive.png"
 
 const DEFAULT_BLOCK: CampaignBlock = {
-  preheader:   "",
-  headline:    "Novedades en SEMZO Privé",
-  body:        "<p>Hola {{name}},</p>\n<p>Tenemos algo especial para ti esta semana.</p>",
-  ctaLabel:    "Descúbrelo ahora",
-  ctaUrl:      "https://semzoprive.com/catalog",
-  footer:      "SEMZO Privé · Madrid, España",
-  accentColor: SEMZO_NAVY,
+  preheader:         "",
+  eyebrow:           "",
+  headline:          "Novedades en SEMZO Privé",
+  body:              "<p style=\"margin:0 0 20px 0;\">Hola {{nombre}},</p>\n<p style=\"margin:0 0 20px 0;\">Tenemos algo especial para ti esta semana.</p>",
+  ctaLabel:          "Descúbrelo ahora",
+  ctaUrl:            "https://semzoprive.com/catalog",
+  ctaSecondaryLabel: "",
+  ctaSecondaryUrl:   "",
 }
 
 // ─── HTML builder ────────────────────────────────────────────────────────────
 
 function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{{unsubscribe_url}}"): string {
-  const btnBg   = block.accentColor
+  const year = new Date().getFullYear()
+  const personalize = (s: string) =>
+    s.replace(/\{\{\s*name\s*\}\}/gi, previewName).replace(/\{\{\s*nombre\s*\}\}/gi, previewName)
+
+  const eyebrowHtml = block.eyebrow
+    ? `<p style="margin:0 0 16px 0;font-family:${SYSTEM_FONT};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${SEMZO_PINK};text-align:center;">${personalize(block.eyebrow)}</p>`
+    : ""
+
+  const headlineHtml = block.headline
+    ? `<h1 style="margin:0 0 20px 0;font-family:${SERIF_FONT};font-weight:500;font-size:26px;line-height:1.3;color:${SEMZO_NAVY};text-align:center;letter-spacing:-0.3px;">${personalize(block.headline)}</h1>`
+    : ""
+
+  const ctaHtml = block.ctaLabel && block.ctaUrl
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" style="padding:12px 20px 12px 20px;">
+            <a href="${block.ctaUrl}" style="display:inline-block;background-color:${SEMZO_NAVY};color:#ffffff;font-family:${SYSTEM_FONT};font-size:15px;font-weight:500;text-decoration:none;padding:18px 56px;letter-spacing:2px;text-transform:uppercase;border:none;min-width:220px;text-align:center;box-shadow:0 4px 12px rgba(26,26,75,0.2);">
+              ${block.ctaLabel}
+            </a>
+          </td>
+        </tr>
+      </table>`
+    : ""
+
+  const ctaSecondaryHtml = block.ctaSecondaryLabel && block.ctaSecondaryUrl
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" style="padding:0 20px 32px 20px;">
+            <a href="${block.ctaSecondaryUrl}" style="display:inline-block;color:${SEMZO_NAVY};font-family:${SERIF_FONT};font-style:italic;font-size:15px;text-decoration:underline;text-underline-offset:3px;">
+              ${block.ctaSecondaryLabel}
+            </a>
+          </td>
+        </tr>
+      </table>`
+    : ""
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="x-apple-disable-message-reformatting">
-  <title>${block.headline}</title>
-  ${block.preheader ? `<div style="display:none;font-size:1px;color:#fef;max-height:0;overflow:hidden;">${block.preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
+  <title>${block.headline || "SEMZO PRIVÉ"}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Great+Vibes&display=swap" rel="stylesheet">
+  ${block.preheader ? `<div style="display:none;font-size:1px;color:#fff;max-height:0;overflow:hidden;">${personalize(block.preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
 </head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;border-collapse:collapse;">
+<body style="margin:0;padding:0;background-color:#f9f8f9;font-family:${SYSTEM_FONT};">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;margin:0 auto;border-collapse:collapse;">
+    <tr>
+      <td style="padding:0;background-color:#ffffff;">
 
-        <!-- Headline -->
-        <tr>
-          <td style="padding:40px 40px 0 40px;">
-            <h1 style="margin:0;font-family:Georgia,serif;font-size:26px;font-weight:400;color:${SEMZO_NAVY};line-height:1.3;">${block.headline}</h1>
-          </td>
-        </tr>
+        <!-- ═══ HEADER (fijo) ═══ -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="background-color:${SEMZO_NAVY};padding:40px 30px 36px 30px;">
+              ${eyebrowHtml}
+              <img src="${LOGO_URL}" alt="SEMZO PRIVÉ" width="180" style="display:block;height:auto;max-width:180px;border:0;margin:0 auto;" />
+            </td>
+          </tr>
+        </table>
 
-        <!-- Body -->
-        <tr>
-          <td style="padding:24px 40px;color:#333333;font-size:16px;line-height:1.75;font-family:Georgia,serif;">
-            ${block.body.replace(/\{\{\s*name\s*\}\}/gi, previewName).replace(/\{\{\s*nombre\s*\}\}/gi, previewName)}
-          </td>
-        </tr>
+        <!-- ═══ CUERPO (variable por campaña) ═══ -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:40px 20px 8px 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:0;">
+                    ${headlineHtml}
+                    <div style="color:${SEMZO_NAVY};font-size:16px;line-height:1.8;font-family:${SYSTEM_FONT};">
+                      ${personalize(block.body)}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-        <!-- CTA -->
-        ${block.ctaLabel && block.ctaUrl ? `
-        <tr>
-          <td style="padding:8px 40px 40px 40px;text-align:center;">
-            <a href="${block.ctaUrl}" style="display:inline-block;background:${btnBg};color:#ffffff;font-family:Georgia,serif;font-size:15px;letter-spacing:2px;padding:14px 36px;text-decoration:none;border-radius:2px;">${block.ctaLabel}</a>
-          </td>
-        </tr>` : ""}
+        <!-- ═══ CTA ═══ -->
+        ${ctaHtml}
+        ${ctaSecondaryHtml}
 
-        <!-- Divider -->
-        <tr>
-          <td style="padding:0 40px;">
-            <hr style="border:none;border-top:1px solid #ecdede;margin:0;" />
-          </td>
-        </tr>
+        <!-- ═══ FOOTER (fijo) ═══ -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;padding-top:10px;">
+          <tr>
+            <td align="center" style="padding:28px 20px 30px 20px;">
 
-        <!-- Footer -->
-        <tr>
-          <td style="padding:24px 40px;text-align:center;font-size:12px;color:#999999;font-family:Arial,sans-serif;line-height:1.6;">
-            ${block.footer}<br>
-            <a href="${unsubUrl}" style="color:#c9a96e;text-decoration:underline;font-size:11px;">Darse de baja</a>
-          </td>
-        </tr>
+              <p style="margin:0;font-family:'Great Vibes',cursive;font-size:42px;color:${SEMZO_NAVY};text-align:center;letter-spacing:1px;line-height:1.2;">
+                Erika
+              </p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:${SEMZO_GRAY};letter-spacing:0.5px;text-align:center;">
+                Fundadora de SEMZO PRIVÉ
+              </p>
 
-      </table>
-    </td></tr>
+              <div style="width:30px;height:1px;background-color:${SEMZO_GOLD};margin:20px auto 18px auto;"></div>
+
+              <p style="margin:0;font-family:${SERIF_FONT};font-size:18px;line-height:1.5;font-style:italic;color:${SEMZO_NAVY};text-align:center;letter-spacing:-0.2px;">
+                &quot;El verdadero lujo no consiste en tener más.<br />Consiste en elegir mejor.&quot;
+              </p>
+
+              <div style="width:40px;height:1px;background-color:${SEMZO_GOLD};margin:24px auto 20px auto;"></div>
+
+              <p style="margin:0 0 2px 0;font-family:${SERIF_FONT};font-size:20px;font-weight:600;color:${SEMZO_NAVY};letter-spacing:0.5px;text-align:center;">
+                SEMZO PRIVÉ
+              </p>
+              <p style="margin:0;font-family:${SERIF_FONT};font-size:14px;font-style:italic;color:${SEMZO_GRAY};text-align:center;letter-spacing:0.3px;">
+                Tu puerta de acceso al armario de tus sueños
+              </p>
+
+              <div style="height:18px;"></div>
+
+              <table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto;border-collapse:collapse;">
+                <tr>
+                  <td align="center" style="padding:0 12px;">
+                    <a href="https://instagram.com/semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
+                      <img src="https://cdn.simpleicons.org/instagram/1e1b4b" width="24" height="24" alt="Instagram" style="display:block;border:0;" />
+                    </a>
+                  </td>
+                  <td align="center" style="padding:0 12px;">
+                    <a href="https://pinterest.com/semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
+                      <img src="https://cdn.simpleicons.org/pinterest/1e1b4b" width="24" height="24" alt="Pinterest" style="display:block;border:0;" />
+                    </a>
+                  </td>
+                  <td align="center" style="padding:0 12px;">
+                    <a href="https://tiktok.com/@semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
+                      <img src="https://cdn.simpleicons.org/tiktok/1e1b4b" width="24" height="24" alt="TikTok" style="display:block;border:0;" />
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:0 20px 14px 20px;font-size:9px;color:#d0d0d0;letter-spacing:0.3px;">
+              <span>© ${year} SEMZO PRIVÉ · </span><a href="${unsubUrl}" style="color:#d0d0d0;text-decoration:none;">Darse de baja</a>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
   </table>
 </body>
 </html>`
@@ -196,7 +301,7 @@ export default function NewsletterPage() {
     }
   }
 
-  // ── Derived ───────────────────────────────────────────────────────────��──
+  // ── Derived ────────────────────────────────────��──────────────────────��──
 
   const activeSubscribers = subscribers.filter((s) => s.status === "active")
   const audienceCount =
@@ -283,23 +388,13 @@ export default function NewsletterPage() {
               </div>
             </Field>
 
-            {/* Accent color */}
-            <Field label="Color de acento (header y botón)">
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={block.accentColor}
-                  onChange={(e) => setBlock({ ...block, accentColor: e.target.value })}
-                  className="h-9 w-16 cursor-pointer rounded border border-gray-200"
-                />
-                <span className="font-mono text-sm text-gray-500">{block.accentColor}</span>
-                <button
-                  onClick={() => setBlock({ ...block, accentColor: SEMZO_NAVY })}
-                  className="text-xs text-gray-400 underline hover:text-gray-600"
-                >
-                  Restablecer
-                </button>
-              </div>
+            {/* Eyebrow */}
+            <Field label="Eyebrow (opcional)" hint="Etiqueta pequeña sobre el logo, dentro del header">
+              <Input
+                value={block.eyebrow}
+                onChange={(e) => setBlock({ ...block, eyebrow: e.target.value })}
+                placeholder="Ej: Cinco nuevas incorporaciones en Burdeos"
+              />
             </Field>
 
             {/* Headline */}
@@ -312,7 +407,10 @@ export default function NewsletterPage() {
             </Field>
 
             {/* Body */}
-            <Field label="Cuerpo del email (HTML)" hint="Puedes usar {{name}} o {{nombre}} para personalizar el nombre">
+            <Field
+              label="Cuerpo del email (HTML)"
+              hint="Admite HTML completo con estilos inline (tablas, negritas, listas...). Usa {{name}} o {{nombre}} para personalizar"
+            >
               <Textarea
                 value={block.body}
                 onChange={(e) => setBlock({ ...block, body: e.target.value })}
@@ -340,14 +438,28 @@ export default function NewsletterPage() {
               </Field>
             </div>
 
-            {/* Footer */}
-            <Field label="Pie del email">
-              <Input
-                value={block.footer}
-                onChange={(e) => setBlock({ ...block, footer: e.target.value })}
-                placeholder="SEMZO Privé · Madrid, España"
-              />
-            </Field>
+            {/* CTA secundario */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Texto del enlace secundario (opcional)">
+                <Input
+                  value={block.ctaSecondaryLabel}
+                  onChange={(e) => setBlock({ ...block, ctaSecondaryLabel: e.target.value })}
+                  placeholder="Ej: Saber más sobre Colecciona"
+                />
+              </Field>
+              <Field label="URL del enlace secundario">
+                <Input
+                  value={block.ctaSecondaryUrl}
+                  onChange={(e) => setBlock({ ...block, ctaSecondaryUrl: e.target.value })}
+                  placeholder="https://semzoprive.com/support#faq"
+                />
+              </Field>
+            </div>
+
+            <p className="rounded-md bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-500">
+              El header (logo) y el footer (firma de Erika, frase de marca y redes) son fijos en
+              todas las campañas y siguen el diseño de marca de SEMZO PRIVÉ.
+            </p>
 
             {/* Result */}
             {result && (
