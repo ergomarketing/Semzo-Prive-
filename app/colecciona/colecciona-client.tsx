@@ -11,7 +11,7 @@ const HERO_IMAGE =
 // Mismas imagenes reales usadas en /membresias, para dar memoria visual a cada plan
 const PLAN_IMAGES: Record<string, string> = {
   "L'Essentiel": "/images/membership-essentiel.jpeg",
-  Signature: "/images/membership-signature.jpg",
+  Signature: "/images/membership-signature.svg",
   Privé: "/images/membership-prive.jpg",
 }
 
