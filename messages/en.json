@@ -521,6 +521,7 @@
     "collection": "Collection",
     "memberships": "Memberships",
     "process": "The Process",
+    "colecciona": "Colecciona",
     "magazine": "Magazine",
     "testimonials": "Testimonials",
     "login": "Sign In",
@@ -882,6 +883,55 @@
       { "q": "Do you ship outside mainland Spain?", "a": "We currently operate in mainland Spanish territory. We are working to expand to the Balearic Islands, Canary Islands and the rest of Europe soon. Subscribe to our private list to be among the first to know." }
     ],
     "faqCta": "Read all frequently asked questions"
+  },
+  "coleccionaPage": {
+    "eyebrow": "Colecciona",
+    "heroTitle": "Try before you commit.",
+    "heroTitleItalic": "Commit when you're sure.",
+    "heroSubtitle": "Every month you carry a bag with SEMZO PRIVÉ, your full monthly fee builds up as credit toward buying it. No deadlines. No pressure. Only when it feels right.",
+    "howTitle1": "How it",
+    "howTitle2": "works",
+    "howSteps": [
+      {
+        "title": "Choose your membership and carry it.",
+        "desc": "Subscribe to any of our monthly memberships and receive your bag at home. From day one, you start building credit."
+      },
+      {
+        "title": "Your fee becomes credit.",
+        "desc": "100% of every monthly fee you pay builds up as credit toward buying any piece from the collection — not just the one you're carrying."
+      },
+      {
+        "title": "Decide whenever you're ready.",
+        "desc": "There's no deadline or obligation to buy. If one day you feel you don't want to give it back, use your accumulated credit and make it yours."
+      }
+    ],
+    "creditTitle1": "Your credit,",
+    "creditTitle2": "plan by plan",
+    "creditSubtitle": "Example of accumulated credit after 6 months of active membership. Credit keeps growing every month you continue.",
+    "creditPlans": [
+      { "name": "Petite", "monthly": "€19.99", "credit": "€119.94" },
+      { "name": "L'Essentiel", "monthly": "€59", "credit": "€354" },
+      { "name": "Signature", "monthly": "€149", "credit": "€894" },
+      { "name": "Privé", "monthly": "€279", "credit": "€1,674" }
+    ],
+    "creditPerMonth": "/month",
+    "creditAfter": "credit after 6 months",
+    "creditNote": "Accumulated credit applies toward the sale price of any piece you choose to buy, not just the one you currently have. Check your exact credit balance from your private member area.",
+    "quoteText": "True luxury isn't about having more. It's about choosing better.",
+    "quoteAuthor": "Erika, Founder of SEMZO PRIVÉ",
+    "faqTitle1": "Questions about",
+    "faqTitle2": "Colecciona",
+    "faqs": [
+      { "q": "What portion of my fee becomes credit?", "a": "100% of your monthly fee builds up as credit while your membership stays active. No fine print, no reduced percentages." },
+      { "q": "Can I use the credit on any bag, not just the one I'm carrying?", "a": "Yes. Accumulated credit applies to the sale price of any piece available for purchase in the collection, not only the one currently on loan to you." },
+      { "q": "Does the credit expire if I cancel my membership?", "a": "Credit accumulates while your membership stays active. If you cancel, contact our team to learn about the conditions of your accumulated balance." },
+      { "q": "Do I have to decide at some point whether to buy or not?", "a": "No. Colecciona has no deadlines or purchase obligation. You can keep enjoying your membership indefinitely without using the credit, or make it yours the day you feel ready." },
+      { "q": "Where can I see how much credit I've accumulated?", "a": "Your exact, up-to-date Colecciona credit balance is available in your private member area, inside your account dashboard." }
+    ],
+    "ctaTitle": "Ready to start collecting?",
+    "ctaSubtitle": "Choose your membership and start building credit from your first bag.",
+    "ctaPrimary": "View memberships",
+    "ctaSecondary": "Explore the collection"
   },
   "giftCards": {
     "eyebrow": "The perfect gift",

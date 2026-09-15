@@ -111,6 +111,12 @@ export default function Navbar() {
               {t("process")}
             </Link>
               <Link
+                href="/colecciona"
+                className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
+              >
+                {t("colecciona")}
+              </Link>
+              <Link
                 href="/blog"
                 className="text-xs uppercase tracking-widest font-medium transition-colors hover:opacity-80 text-slate-600 hover:text-slate-900 whitespace-nowrap"
               >
@@ -231,6 +237,13 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
             >
               {t("process")}
+            </Link>
+            <Link
+              href="/colecciona"
+              className="text-sm uppercase tracking-widest font-medium text-slate-700 hover:text-slate-900 py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {t("colecciona")}
             </Link>
             <Link
               href="/blog"

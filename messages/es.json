@@ -521,6 +521,7 @@
     "collection": "Colección",
     "memberships": "Membresías",
     "process": "El Proceso",
+    "colecciona": "Colecciona",
     "magazine": "Magazine",
     "testimonials": "Testimonios",
     "login": "Acceder",
@@ -882,6 +883,55 @@
       { "q": "¿Hacéis envíos fuera de España peninsular?", "a": "Actualmente operamos en territorio peninsular español. Estamos trabajando para ampliar a Baleares, Canarias y resto de Europa próximamente. Suscríbete a nuestra lista privada para ser de las primeras en saberlo." }
     ],
     "faqCta": "Lea todas las preguntas frecuentes"
+  },
+  "coleccionaPage": {
+    "eyebrow": "Colecciona",
+    "heroTitle": "Prueba antes de comprometerte.",
+    "heroTitleItalic": "Compromete cuando estés segura.",
+    "heroSubtitle": "Cada mes que llevas un bolso con SEMZO PRIVÉ, tu cuota mensual completa se acumula como crédito hacia comprarlo. Sin plazos. Sin presión. Solo cuando lo sientas.",
+    "howTitle1": "Cómo",
+    "howTitle2": "funciona",
+    "howSteps": [
+      {
+        "title": "Elige tu membresía y llévalo.",
+        "desc": "Suscríbete a cualquiera de nuestras membresías mensuales y recibe tu bolso en casa. Desde el primer día, empieza a acumular crédito."
+      },
+      {
+        "title": "Tu cuota se convierte en crédito.",
+        "desc": "El 100% de cada cuota mensual que pagas se acumula como crédito hacia la compra de cualquier pieza de la colección — no solo la que llevas."
+      },
+      {
+        "title": "Decide cuando estés lista.",
+        "desc": "No hay plazo límite ni obligación de comprar. Si un día sientes que no quieres devolverlo, usa el crédito acumulado y hazlo tuyo."
+      }
+    ],
+    "creditTitle1": "Tu crédito,",
+    "creditTitle2": "plan a plan",
+    "creditSubtitle": "Ejemplo de crédito acumulado tras 6 meses de membresía activa. El crédito sigue creciendo cada mes que continúas.",
+    "creditPlans": [
+      { "name": "Petite", "monthly": "19,99€", "credit": "119,94€" },
+      { "name": "L'Essentiel", "monthly": "59€", "credit": "354€" },
+      { "name": "Signature", "monthly": "149€", "credit": "894€" },
+      { "name": "Privé", "monthly": "279€", "credit": "1.674€" }
+    ],
+    "creditPerMonth": "/mes",
+    "creditAfter": "crédito tras 6 meses",
+    "creditNote": "El crédito acumulado se aplica sobre el precio de venta de la pieza que elijas comprar, no solo la que tienes en ese momento. Consulta el saldo exacto de tu crédito desde tu área privada de socia.",
+    "quoteText": "El verdadero lujo no consiste en tener más. Consiste en elegir mejor.",
+    "quoteAuthor": "Erika, Fundadora de SEMZO PRIVÉ",
+    "faqTitle1": "Preguntas sobre",
+    "faqTitle2": "Colecciona",
+    "faqs": [
+      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "El 100% de tu cuota mensual se acumula como crédito mientras tu membresía está activa. No hay letra pequeña ni porcentajes reducidos." },
+      { "q": "¿Puedo usar el crédito en cualquier bolso, no solo el que llevo?", "a": "Sí. El crédito acumulado se aplica al precio de venta de cualquier pieza de la colección disponible para compra, no solo a la que tienes en préstamo en ese momento." },
+      { "q": "¿El crédito caduca si cancelo mi membresía?", "a": "El crédito se acumula mientras tu membresía permanece activa. Si cancelas, contacta con nuestro equipo para conocer las condiciones de tu saldo acumulado." },
+      { "q": "¿Tengo que decidir en algún momento si compro o no?", "a": "No. Colecciona no tiene plazos ni obligación de compra. Puedes seguir disfrutando de tu membresía indefinidamente sin usar el crédito, o hacerlo tuyo el día que lo sientas." },
+      { "q": "¿Dónde veo cuánto crédito tengo acumulado?", "a": "El saldo exacto y actualizado de tu crédito Colecciona está disponible en tu área privada de socia, dentro del dashboard de tu cuenta." }
+    ],
+    "ctaTitle": "¿Lista para empezar a coleccionar?",
+    "ctaSubtitle": "Elige tu membresía y empieza a acumular crédito desde tu primer bolso.",
+    "ctaPrimary": "Ver membresías",
+    "ctaSecondary": "Explorar la colección"
   },
   "giftCards": {
     "eyebrow": "El regalo perfecto",

@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl"
  * Seccion "Colecciona" — vive solo en /membresias, entre el bloque de
  * planes y HowItWorks. Presenta el credito de compra acumulado (rent-to-own)
  * sin usar esa jerga tecnica: se explica como una opcion sin presion.
- * CTA apunta a "#" hasta que exista /colecciona.
+ * CTA enlaza a la pagina completa /colecciona.
  */
 export default function ColeccionaSection() {
   const t = useTranslations("colecciona")
@@ -70,7 +70,7 @@ export default function ColeccionaSection() {
         <div className="mt-14 text-center md:mt-16">
           <p className="mb-3 text-sm text-white/70">{t("ctaQuestion")}</p>
           <Link
-            href="#"
+            href="/colecciona"
             className="group inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-rose-pastel transition hover:text-white"
           >
             {t("ctaLink")}
