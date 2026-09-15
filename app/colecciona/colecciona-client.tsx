@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, Diamond } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 const HERO_IMAGE =
@@ -83,47 +83,42 @@ export default function ColeccionaClient() {
           </div>
         </section>
 
-        {/* Credito plan a plan — lista editorial con precio, mismo patron que Pases de Bolso en /proceso */}
-        <section className="py-16 md:py-20" style={{ backgroundColor: "#faf8f5" }}>
+        {/* Credito plan a plan — grid compacto, solo a modo de ejemplo visual */}
+        <section className="py-14 md:py-16" style={{ backgroundColor: "#faf8f5" }}>
           <div className="container mx-auto px-4">
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-2xl">
               <h2
-                className="mb-4 text-center font-serif text-3xl font-light leading-tight tracking-tight md:text-4xl"
+                className="mb-3 text-center font-serif text-2xl font-light leading-tight tracking-tight md:text-3xl"
                 style={{ color: "#1a1a4b" }}
               >
                 <span className="font-medium uppercase tracking-wide">{t("creditTitle1")}</span>{" "}
                 <em className="italic font-light">{t("creditTitle2")}</em>
               </h2>
-              <p className="mx-auto mb-12 max-w-xl text-center font-light leading-relaxed text-slate-600 md:mb-14">
+              <p className="mx-auto mb-8 max-w-md text-center text-sm font-light leading-relaxed text-slate-600">
                 {t("creditSubtitle")}
               </p>
 
-              <ul>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {creditPlans.map((plan) => (
-                  <li
+                  <div
                     key={plan.name}
-                    className="flex items-baseline justify-between gap-6 border-b py-6"
-                    style={{ borderColor: "rgba(26, 26, 75, 0.15)" }}
+                    className="rounded-sm border bg-white px-3 py-4 text-center"
+                    style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}
                   >
-                    <div className="flex-1">
-                      <h3 className="mb-1 font-serif text-xl font-light md:text-2xl" style={{ color: "#1a1a4b" }}>
-                        {plan.name}
-                      </h3>
-                      <p className="text-sm font-light text-slate-600">
-                        {plan.monthly} {t("creditPerMonth")}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <span className="font-serif text-2xl font-light md:text-3xl" style={{ color: "#1a1a4b" }}>
-                        {plan.credit}
-                      </span>
-                      <p className="text-xs font-light text-slate-500">{t("creditAfter")}</p>
-                    </div>
-                  </li>
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide" style={{ color: "#1a1a4b" }}>
+                      {plan.name}
+                    </p>
+                    <p className="font-serif text-lg font-light md:text-xl" style={{ color: "#1a1a4b" }}>
+                      {plan.credit}
+                    </p>
+                    <p className="mt-1 text-[10px] font-light text-slate-500">{t("creditAfter")}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
 
-              <p className="mt-8 text-center text-xs font-light leading-relaxed text-slate-500">{t("creditNote")}</p>
+              <p className="mt-6 text-center text-[11px] font-light leading-relaxed text-slate-500">
+                {t("creditNote")}
+              </p>
             </div>
           </div>
         </section>
@@ -132,11 +127,9 @@ export default function ColeccionaClient() {
         <section className="bg-indigo-dark py-20 md:py-24">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-2xl text-center">
-              <Diamond className="mx-auto mb-6 h-5 w-5 text-rose-pastel" strokeWidth={1.5} />
               <p className="font-serif text-2xl font-light italic leading-relaxed text-white md:text-3xl">
                 &ldquo;{t("quoteText")}&rdquo;
               </p>
-              <p className="mt-6 text-xs uppercase tracking-[0.3em] text-white/60">{t("quoteAuthor")}</p>
             </div>
           </div>
         </section>
