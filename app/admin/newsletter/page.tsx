@@ -30,14 +30,8 @@ interface Subscriber {
 }
 
 interface CampaignBlock {
-  preheader: string          // texto de previsualización en el cliente de correo
-  eyebrow: string            // etiqueta pequeña sobre el logo, dentro del header (opcional)
-  headline: string           // título principal del email (Playfair Display)
-  body: string                // cuerpo principal — admite HTML completo con estilos inline
-  ctaLabel: string            // texto del botón CTA principal
-  ctaUrl: string               // URL del CTA principal
-  ctaSecondaryLabel: string    // texto del enlace CTA secundario (opcional)
-  ctaSecondaryUrl: string      // URL del CTA secundario (opcional)
+  preheader: string  // texto de previsualización en el inbox (opcional, invisible en el email)
+  body: string        // HTML completo del email — se envía EXACTAMENTE tal cual, sin envolver
 }
 
 type Audience = "newsletter" | "leads" | "both"
@@ -48,173 +42,34 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   both:       "Todos (newsletter + leads)",
 }
 
-// Paleta fija de la plantilla de marca — no configurable por campaña,
-// para que todos los envíos mantengan la misma identidad visual.
-// SEMZO_BLUSH (#fff0f3) y bordes #f4c4cc quedan disponibles para que el
-// campo "Cuerpo" pueda usarlos en bloques destacados dentro del HTML pegado.
-const SEMZO_NAVY  = "#1a1a4b"
-const SEMZO_GOLD  = "#c9a96e"
-const SEMZO_PINK  = "#f4c4cc"
-const SEMZO_GRAY  = "#7a7a94"
-const SYSTEM_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-const SERIF_FONT  = "'Playfair Display',Georgia,serif"
-
 const DEFAULT_BLOCK: CampaignBlock = {
-  preheader:         "",
-  eyebrow:           "",
-  headline:          "Novedades en SEMZO Privé",
-  body:              "<p style=\"margin:0 0 20px 0;\">Hola {{nombre}},</p>\n<p style=\"margin:0 0 20px 0;\">Tenemos algo especial para ti esta semana.</p>",
-  ctaLabel:          "Descúbrelo ahora",
-  ctaUrl:            "https://semzoprive.com/catalog",
-  ctaSecondaryLabel: "",
-  ctaSecondaryUrl:   "",
+  preheader: "",
+  body:      "",
 }
 
-// ─── HTML builder ────────────────────────────────────────────────────────────
+// ─── HTML personalization (NO estructura, NO header/footer inyectado) ───────
+//
+// El HTML que se pega en "Cuerpo del email" se envía tal cual. Lo único que
+// se sustituye son placeholders que el propio HTML pegado ya contenga:
+// {{name}} / {{nombre}} y, si se incluye, {{unsubscribe_url}}.
 
-function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{{unsubscribe_url}}"): string {
-  const year = new Date().getFullYear()
-  const personalize = (s: string) =>
-    s.replace(/\{\{\s*name\s*\}\}/gi, previewName).replace(/\{\{\s*nombre\s*\}\}/gi, previewName)
+function personalize(html: string, name: string, unsubUrl: string): string {
+  return html
+    .replace(/\{\{\s*name\s*\}\}/gi, name)
+    .replace(/\{\{\s*nombre\s*\}\}/gi, name)
+    .replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, unsubUrl)
+}
 
-  const eyebrowHtml = block.eyebrow
-    ? `<p style="margin:0 0 16px 0;font-family:${SYSTEM_FONT};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${SEMZO_GOLD};text-align:center;">${personalize(block.eyebrow)}</p>`
-    : ""
-
-  const headlineHtml = block.headline
-    ? `<h1 style="margin:0 0 20px 0;font-family:${SERIF_FONT};font-weight:500;font-size:26px;line-height:1.3;color:${SEMZO_NAVY};text-align:center;letter-spacing:-0.3px;">${personalize(block.headline)}</h1>`
-    : ""
-
-  const ctaHtml = block.ctaLabel && block.ctaUrl
-    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-        <tr>
-          <td align="center" style="padding:12px 20px 12px 20px;">
-            <a href="${block.ctaUrl}" style="display:inline-block;background-color:${SEMZO_NAVY};color:#ffffff;font-family:${SYSTEM_FONT};font-size:15px;font-weight:500;text-decoration:none;padding:18px 56px;letter-spacing:2px;text-transform:uppercase;border:none;min-width:220px;text-align:center;box-shadow:0 4px 12px rgba(26,26,75,0.2);">
-              ${block.ctaLabel}
-            </a>
-          </td>
-        </tr>
-      </table>`
-    : ""
-
-  const ctaSecondaryHtml = block.ctaSecondaryLabel && block.ctaSecondaryUrl
-    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-        <tr>
-          <td align="center" style="padding:0 20px 32px 20px;">
-            <a href="${block.ctaSecondaryUrl}" style="display:inline-block;color:${SEMZO_NAVY};font-family:${SERIF_FONT};font-style:italic;font-size:15px;text-decoration:underline;text-underline-offset:3px;">
-              ${block.ctaSecondaryLabel}
-            </a>
-          </td>
-        </tr>
-      </table>`
-    : ""
-
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="x-apple-disable-message-reformatting">
-  <title>${block.headline || "SEMZO PRIVÉ"}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Great+Vibes&display=swap" rel="stylesheet">
-  ${block.preheader ? `<div style="display:none;font-size:1px;color:#fff;max-height:0;overflow:hidden;">${personalize(block.preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
-</head>
-<body style="margin:0;padding:0;background-color:#f9f8f9;font-family:${SYSTEM_FONT};">
-  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;margin:0 auto;border-collapse:collapse;">
-    <tr>
-      <td style="padding:0;background-color:#ffffff;">
-
-        <!-- ═══ CUERPO (variable por campaña) ═══ -->
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-          <tr>
-            <td align="center" style="padding:44px 20px 8px 20px;">
-              ${eyebrowHtml}
-              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
-                <tr>
-                  <td style="padding:0;">
-                    ${headlineHtml}
-                    <div style="color:${SEMZO_NAVY};font-size:16px;line-height:1.8;font-family:${SYSTEM_FONT};">
-                      ${personalize(block.body)}
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-
-        <!-- ═══ CTA ═══ -->
-        ${ctaHtml}
-        ${ctaSecondaryHtml}
-
-        <!-- ═══ FOOTER (fijo) ═══ -->
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;padding-top:10px;">
-          <tr>
-            <td align="center" style="padding:28px 20px 30px 20px;">
-
-              <p style="margin:0;font-family:'Great Vibes',cursive;font-size:42px;color:${SEMZO_NAVY};text-align:center;letter-spacing:1px;line-height:1.2;">
-                Erika
-              </p>
-              <p style="margin:4px 0 0 0;font-size:14px;color:${SEMZO_GRAY};letter-spacing:0.5px;text-align:center;">
-                Fundadora de SEMZO PRIVÉ
-              </p>
-
-              <div style="width:30px;height:1px;background-color:${SEMZO_GOLD};margin:20px auto 18px auto;"></div>
-
-              <p style="margin:0;font-family:${SERIF_FONT};font-size:18px;line-height:1.5;font-style:italic;color:${SEMZO_NAVY};text-align:center;letter-spacing:-0.2px;">
-                &quot;El verdadero lujo no consiste en tener más.<br />Consiste en elegir mejor.&quot;
-              </p>
-
-              <div style="width:40px;height:1px;background-color:${SEMZO_GOLD};margin:24px auto 20px auto;"></div>
-
-              <p style="margin:0 0 2px 0;font-family:${SERIF_FONT};font-size:20px;font-weight:600;color:${SEMZO_NAVY};letter-spacing:0.5px;text-align:center;">
-                SEMZO PRIVÉ
-              </p>
-              <p style="margin:0;font-family:${SERIF_FONT};font-size:14px;font-style:italic;color:${SEMZO_GRAY};text-align:center;letter-spacing:0.3px;">
-                Tu puerta de acceso al armario de tus sueños
-              </p>
-
-              <div style="height:18px;"></div>
-
-              <table border="0" cellpadding="0" cellspacing="0" style="margin:0 auto;border-collapse:collapse;">
-                <tr>
-                  <td align="center" style="padding:0 12px;">
-                    <a href="https://instagram.com/semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
-                      <img src="https://cdn.simpleicons.org/instagram/1e1b4b" width="24" height="24" alt="Instagram" style="display:block;border:0;" />
-                    </a>
-                  </td>
-                  <td align="center" style="padding:0 12px;">
-                    <a href="https://pinterest.com/semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
-                      <img src="https://cdn.simpleicons.org/pinterest/1e1b4b" width="24" height="24" alt="Pinterest" style="display:block;border:0;" />
-                    </a>
-                  </td>
-                  <td align="center" style="padding:0 12px;">
-                    <a href="https://tiktok.com/@semzoprive" target="_blank" style="display:inline-block;text-decoration:none;background-color:#f6c1c8;border-radius:50%;padding:10px;">
-                      <img src="https://cdn.simpleicons.org/tiktok/1e1b4b" width="24" height="24" alt="TikTok" style="display:block;border:0;" />
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-            </td>
-          </tr>
-        </table>
-
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-          <tr>
-            <td align="center" style="padding:0 20px 14px 20px;font-size:9px;color:#d0d0d0;letter-spacing:0.3px;">
-              <span>© ${year} SEMZO PRIVÉ · </span><a href="${unsubUrl}" style="color:#d0d0d0;text-decoration:none;">Darse de baja</a>
-            </td>
-          </tr>
-        </table>
-
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
+// El preheader es opcional y solo se añade si el campo está relleno — nunca
+// por defecto. Se inserta como texto invisible justo tras <body> (o al
+// principio si el HTML pegado es un fragmento sin <body>).
+function withPreheader(html: string, preheader: string): string {
+  if (!preheader.trim()) return html
+  const hidden = `<div style="display:none;font-size:1px;color:#fff;max-height:0;overflow:hidden;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
+  const bodyTag = html.match(/<body[^>]*>/i)
+  if (!bodyTag) return hidden + html
+  const insertAt = html.indexOf(bodyTag[0]) + bodyTag[0].length
+  return html.slice(0, insertAt) + hidden + html.slice(insertAt)
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -261,8 +116,8 @@ export default function NewsletterPage() {
 
   async function handleSend() {
     if (!subject.trim()) { setResult({ type: "error", message: "El asunto es obligatorio" }); return }
-    if (!block.headline.trim() && !block.body.trim()) {
-      setResult({ type: "error", message: "El email necesita al menos un titular o cuerpo" })
+    if (!block.body.trim()) {
+      setResult({ type: "error", message: "Pega el HTML del email en el campo Cuerpo" })
       return
     }
     setSending(true)
@@ -273,7 +128,7 @@ export default function NewsletterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject,
-          content: buildHtml(block),   // full HTML template
+          content: withPreheader(block.body, block.preheader), // HTML pegado, sin envolver
           audience,
           raw_html: true,              // tell the server the content is already wrapped HTML
         }),
@@ -299,7 +154,7 @@ export default function NewsletterPage() {
     audience === "leads"      ? leadsCount :
     activeSubscribers.length + leadsCount
 
-  const previewHtml = buildHtml(block, "María", "#")
+  const previewHtml = withPreheader(personalize(block.body, "María", "#"), block.preheader)
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -378,78 +233,19 @@ export default function NewsletterPage() {
               </div>
             </Field>
 
-            {/* Eyebrow */}
-            <Field label="Eyebrow (opcional)" hint="Etiqueta pequeña sobre el logo, dentro del header">
-              <Input
-                value={block.eyebrow}
-                onChange={(e) => setBlock({ ...block, eyebrow: e.target.value })}
-                placeholder="Ej: Cinco nuevas incorporaciones en Burdeos"
-              />
-            </Field>
-
-            {/* Headline */}
-            <Field label="Titular">
-              <Input
-                value={block.headline}
-                onChange={(e) => setBlock({ ...block, headline: e.target.value })}
-                placeholder="Ej: Nuevas llegadas de temporada"
-              />
-            </Field>
-
-            {/* Body */}
+            {/* Body — HTML completo, sin envolver */}
             <Field
-              label="Cuerpo del email (HTML)"
-              hint="Admite HTML completo con estilos inline (tablas, negritas, listas...). Usa {{name}} o {{nombre}} para personalizar"
+              label="Cuerpo del email (HTML completo)"
+              hint="Pega aquí el HTML completo de tu plantilla (incluye su propio header y footer). Se envía EXACTAMENTE tal cual, el sistema no añade nada por encima ni por debajo. Usa {{name}} o {{nombre}} para personalizar, y {{unsubscribe_url}} si tu plantilla incluye enlace de baja."
             >
               <Textarea
                 value={block.body}
                 onChange={(e) => setBlock({ ...block, body: e.target.value })}
-                rows={8}
-                className="font-mono text-sm"
-                placeholder="<p>Hola {{name}},</p><p>...</p>"
+                rows={18}
+                className="font-mono text-xs"
+                placeholder="<!DOCTYPE html>&#10;<html>...&#10;  <!-- tu plantilla completa aquí -->&#10;</html>"
               />
             </Field>
-
-            {/* CTA */}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Texto del botón CTA">
-                <Input
-                  value={block.ctaLabel}
-                  onChange={(e) => setBlock({ ...block, ctaLabel: e.target.value })}
-                  placeholder="Ej: Ver colección"
-                />
-              </Field>
-              <Field label="URL del botón">
-                <Input
-                  value={block.ctaUrl}
-                  onChange={(e) => setBlock({ ...block, ctaUrl: e.target.value })}
-                  placeholder="https://semzoprive.com/catalog"
-                />
-              </Field>
-            </div>
-
-            {/* CTA secundario */}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Texto del enlace secundario (opcional)">
-                <Input
-                  value={block.ctaSecondaryLabel}
-                  onChange={(e) => setBlock({ ...block, ctaSecondaryLabel: e.target.value })}
-                  placeholder="Ej: Saber más sobre Colecciona"
-                />
-              </Field>
-              <Field label="URL del enlace secundario">
-                <Input
-                  value={block.ctaSecondaryUrl}
-                  onChange={(e) => setBlock({ ...block, ctaSecondaryUrl: e.target.value })}
-                  placeholder="https://semzoprive.com/support#faq"
-                />
-              </Field>
-            </div>
-
-            <p className="rounded-md bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-500">
-              El header (logo) y el footer (firma de Erika, frase de marca y redes) son fijos en
-              todas las campañas y siguen el diseño de marca de SEMZO PRIVÉ.
-            </p>
 
             {/* Result */}
             {result && (
