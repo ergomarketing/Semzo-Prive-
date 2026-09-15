@@ -909,7 +909,6 @@
     "creditTitle2": "plan a plan",
     "creditSubtitle": "Ejemplo de crédito acumulado tras 6 meses de membresía activa. El crédito sigue creciendo cada mes que continúas.",
     "creditPlans": [
-      { "name": "Petite", "monthly": "19,99€", "credit": "119,94€" },
       { "name": "L'Essentiel", "monthly": "59€", "credit": "354€" },
       { "name": "Signature", "monthly": "149€", "credit": "894€" },
       { "name": "Privé", "monthly": "279€", "credit": "1.674€" }
