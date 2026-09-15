@@ -8,6 +8,13 @@ import { useTranslations } from "next-intl"
 const HERO_IMAGE =
   "https://h0ayghjex33jktep.public.blob.vercel-storage.com/blog-images/fendi%20baguette%20colecciona.jpeg"
 
+// Mismas imagenes reales usadas en /membresias, para dar memoria visual a cada plan
+const PLAN_IMAGES: Record<string, string> = {
+  "L'Essentiel": "/images/membership-essentiel.jpeg",
+  Signature: "/images/membership-signature.svg",
+  Privé: "/images/membership-prive.jpg",
+}
+
 export default function ColeccionaClient() {
   const t = useTranslations("coleccionaPage")
   const howSteps = t.raw("howSteps") as { title: string; desc: string }[]
@@ -98,20 +105,34 @@ export default function ColeccionaClient() {
                 {t("creditSubtitle")}
               </p>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-3 gap-3">
                 {creditPlans.map((plan) => (
                   <div
                     key={plan.name}
-                    className="rounded-sm border bg-white px-3 py-4 text-center"
+                    className="overflow-hidden rounded-sm border bg-white text-center"
                     style={{ borderColor: "rgba(26, 26, 75, 0.12)" }}
                   >
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide" style={{ color: "#1a1a4b" }}>
-                      {plan.name}
-                    </p>
-                    <p className="font-serif text-lg font-light md:text-xl" style={{ color: "#1a1a4b" }}>
-                      {plan.credit}
-                    </p>
-                    <p className="mt-1 text-[10px] font-light text-slate-500">{t("creditAfter")}</p>
+                    <div className="relative aspect-square w-full">
+                      <Image
+                        src={PLAN_IMAGES[plan.name] || "/placeholder.svg"}
+                        alt={`Bolso de referencia — membresía ${plan.name}`}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 200px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="px-2 py-3">
+                      <p
+                        className="mb-1.5 text-[10px] font-medium uppercase tracking-wide md:text-[11px]"
+                        style={{ color: "#1a1a4b" }}
+                      >
+                        {plan.name}
+                      </p>
+                      <p className="font-serif text-base font-light md:text-lg" style={{ color: "#1a1a4b" }}>
+                        {plan.credit}
+                      </p>
+                      <p className="mt-1 text-[9px] font-light text-slate-500">{t("creditAfter")}</p>
+                    </div>
                   </div>
                 ))}
               </div>
