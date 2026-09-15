@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 // Service-role client para escribir en shipments/returns (evita choques con RLS).
 // La propiedad SIEMPRE se valida contra user.id antes de escribir.
@@ -219,7 +220,7 @@ async function notifyLogistics(args: {
   notes: string
   returnId: string
 }) {
-  const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+  const apiKey = getResendApiKey()
   if (!apiKey) return
 
   const to = process.env.LOGISTICS_EMAIL || "mailbox@semzoprive.com"

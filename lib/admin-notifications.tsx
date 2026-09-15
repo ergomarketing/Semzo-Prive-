@@ -1,6 +1,7 @@
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 
 const ADMIN_EMAIL = "mailbox@semzoprive.com"
@@ -11,7 +12,7 @@ class AdminNotifications {
   private resend: Resend
 
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+    this.resend = new Resend(getResendApiKey())
   }
 
   private async sendAdminEmail(

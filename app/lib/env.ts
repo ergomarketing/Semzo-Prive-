@@ -1,3 +1,5 @@
+import { getResendApiKey } from "@/lib/resend-api-key"
+
 function getEnvVar(name: string, fallback = ""): string {
   // Variables privadas (sin NEXT_PUBLIC_) solo disponibles en servidor
   const isPrivateVar = !name.startsWith("NEXT_PUBLIC_")
@@ -29,7 +31,7 @@ export const env = {
     if (typeof window !== "undefined") {
       return ""
     }
-    return process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || ""
+    return getResendApiKey()
   },
 
   // Stripe

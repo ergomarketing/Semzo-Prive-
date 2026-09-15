@@ -1,3 +1,5 @@
+import { getResendApiKey } from "@/lib/resend-api-key"
+
 // Configuración de administración
 export const ADMIN_CONFIG = {
   username: process.env.ADMIN_USERNAME || "admin",
@@ -16,7 +18,7 @@ export const EMAIL_CONFIG = {
       baseUrl: "https://api.resend.com",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || ""}`,
+        Authorization: `Bearer ${getResendApiKey()}`,
       },
     },
   },

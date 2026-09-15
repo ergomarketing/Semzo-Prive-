@@ -8,6 +8,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 
 function getServiceClient() {
   return createClient(
@@ -167,7 +168,7 @@ async function sendEmailNow(leadId: string, email: string, name: string) {
     .replace(/\{\{unsubscribe_url\}\}/g, unsubUrl)
     + trackingPixel
 
-  const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+  const resend = new Resend(getResendApiKey())
   const fromEmail = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
   try {

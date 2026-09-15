@@ -3,10 +3,11 @@ import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import LeadSequenceEmail from "@/emails/templates/lead-sequence"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+const resend = new Resend(getResendApiKey())
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce((str, [key, value]) => str.replaceAll(`{{${key}}}`, value), template)

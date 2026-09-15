@@ -12,6 +12,7 @@
  */
 
 import { render } from "@react-email/components"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 
 interface SendSepaPreExecutionEmailParams {
@@ -32,7 +33,7 @@ export async function sendSepaPreExecutionEmail({
   reservationId,
 }: SendSepaPreExecutionEmailParams): Promise<{ success: boolean; emailId?: string; error?: string }> {
   try {
-    const apiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY
+    const apiKey = getResendApiKey()
 
     if (!apiKey) {
       console.error("[SEPA EMAIL] API key no configurada")

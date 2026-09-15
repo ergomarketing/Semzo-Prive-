@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
@@ -16,7 +17,7 @@ import { renderReturnReminderBrandEmail } from "@/emails/templates/return-remind
  */
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+const resend = new Resend(getResendApiKey())
 const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
 // Emails "de código" (no viven en lifecycle_email_templates).

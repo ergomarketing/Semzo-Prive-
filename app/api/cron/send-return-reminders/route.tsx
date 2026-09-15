@@ -13,12 +13,13 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { logEmail } from "@/lib/email-logger"
+import { getResendApiKey } from "@/lib/resend-api-key"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const resend = new Resend(process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY)
+const resend = new Resend(getResendApiKey())
 const FROM_EMAIL = "hola@semzoprive.com"
 
 function getSupabase() {
