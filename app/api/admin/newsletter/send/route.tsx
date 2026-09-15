@@ -101,7 +101,10 @@ export async function POST(request: Request) {
         // personalización y enviar tal cual (ya trae su propia estructura de documento).
         // Si no, el content es cuerpo editorial y se envuelve con el layout de marca compartido.
         const html = raw_html
-          ? content.replace(/\{\{name\}\}/g, personalName).replace(/\{\{unsubscribe_url\}\}/g, recipientUnsubscribeUrl)
+          ? content
+              .replace(/\{\{\s*name\s*\}\}/gi, personalName)
+              .replace(/\{\{\s*nombre\s*\}\}/gi, personalName)
+              .replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, recipientUnsubscribeUrl)
           : await render(
               <NewsletterEmail recipientName={personalName || undefined} bodyHtml={content} unsubscribeUrl={recipientUnsubscribeUrl} />,
             )

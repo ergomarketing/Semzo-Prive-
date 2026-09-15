@@ -30,13 +30,8 @@ interface Subscriber {
 }
 
 interface CampaignBlock {
-  preheader: string    // texto de previsualización en el cliente de correo
-  headline: string     // título principal del email
-  body: string         // cuerpo principal (soporta HTML básico)
-  ctaLabel: string     // texto del botón CTA
-  ctaUrl: string       // URL del CTA
-  footer: string       // texto del pie (empresa, dirección…)
-  accentColor: string  // color de acento (botón, header)
+  preheader: string  // texto de previsualización en el inbox (opcional, invisible en el email)
+  body: string        // HTML completo del email — se envía EXACTAMENTE tal cual, sin envolver
 }
 
 type Audience = "newsletter" | "leads" | "both"
@@ -47,79 +42,34 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   both:       "Todos (newsletter + leads)",
 }
 
-const SEMZO_GOLD  = "#c9a96e"
-const SEMZO_NAVY  = "#1a1f3a"
-
 const DEFAULT_BLOCK: CampaignBlock = {
-  preheader:   "",
-  headline:    "Novedades en SEMZO Privé",
-  body:        "<p>Hola {{name}},</p>\n<p>Tenemos algo especial para ti esta semana.</p>",
-  ctaLabel:    "Descúbrelo ahora",
-  ctaUrl:      "https://semzoprive.com/catalog",
-  footer:      "SEMZO Privé · Madrid, España",
-  accentColor: SEMZO_NAVY,
+  preheader: "",
+  body:      "",
 }
 
-// ─── HTML builder ────────────────────────────────────────────────────────────
+// ─── HTML personalization (NO estructura, NO header/footer inyectado) ───────
+//
+// El HTML que se pega en "Cuerpo del email" se envía tal cual. Lo único que
+// se sustituye son placeholders que el propio HTML pegado ya contenga:
+// {{name}} / {{nombre}} y, si se incluye, {{unsubscribe_url}}.
 
-function buildHtml(block: CampaignBlock, previewName = "{{name}}", unsubUrl = "{{unsubscribe_url}}"): string {
-  const btnBg   = block.accentColor
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="x-apple-disable-message-reformatting">
-  <title>${block.headline}</title>
-  ${block.preheader ? `<div style="display:none;font-size:1px;color:#fef;max-height:0;overflow:hidden;">${block.preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
-</head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;border-collapse:collapse;">
+function personalize(html: string, name: string, unsubUrl: string): string {
+  return html
+    .replace(/\{\{\s*name\s*\}\}/gi, name)
+    .replace(/\{\{\s*nombre\s*\}\}/gi, name)
+    .replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, unsubUrl)
+}
 
-        <!-- Headline -->
-        <tr>
-          <td style="padding:40px 40px 0 40px;">
-            <h1 style="margin:0;font-family:Georgia,serif;font-size:26px;font-weight:400;color:${SEMZO_NAVY};line-height:1.3;">${block.headline}</h1>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:24px 40px;color:#333333;font-size:16px;line-height:1.75;font-family:Georgia,serif;">
-            ${block.body.replace("{{name}}", previewName)}
-          </td>
-        </tr>
-
-        <!-- CTA -->
-        ${block.ctaLabel && block.ctaUrl ? `
-        <tr>
-          <td style="padding:8px 40px 40px 40px;text-align:center;">
-            <a href="${block.ctaUrl}" style="display:inline-block;background:${btnBg};color:#ffffff;font-family:Georgia,serif;font-size:15px;letter-spacing:2px;padding:14px 36px;text-decoration:none;border-radius:2px;">${block.ctaLabel}</a>
-          </td>
-        </tr>` : ""}
-
-        <!-- Divider -->
-        <tr>
-          <td style="padding:0 40px;">
-            <hr style="border:none;border-top:1px solid #ecdede;margin:0;" />
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:24px 40px;text-align:center;font-size:12px;color:#999999;font-family:Arial,sans-serif;line-height:1.6;">
-            ${block.footer}<br>
-            <a href="${unsubUrl}" style="color:#c9a96e;text-decoration:underline;font-size:11px;">Darse de baja</a>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+// El preheader es opcional y solo se añade si el campo está relleno — nunca
+// por defecto. Se inserta como texto invisible justo tras <body> (o al
+// principio si el HTML pegado es un fragmento sin <body>).
+function withPreheader(html: string, preheader: string): string {
+  if (!preheader.trim()) return html
+  const hidden = `<div style="display:none;font-size:1px;color:#fff;max-height:0;overflow:hidden;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
+  const bodyTag = html.match(/<body[^>]*>/i)
+  if (!bodyTag) return hidden + html
+  const insertAt = html.indexOf(bodyTag[0]) + bodyTag[0].length
+  return html.slice(0, insertAt) + hidden + html.slice(insertAt)
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -166,8 +116,8 @@ export default function NewsletterPage() {
 
   async function handleSend() {
     if (!subject.trim()) { setResult({ type: "error", message: "El asunto es obligatorio" }); return }
-    if (!block.headline.trim() && !block.body.trim()) {
-      setResult({ type: "error", message: "El email necesita al menos un titular o cuerpo" })
+    if (!block.body.trim()) {
+      setResult({ type: "error", message: "Pega el HTML del email en el campo Cuerpo" })
       return
     }
     setSending(true)
@@ -178,7 +128,7 @@ export default function NewsletterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject,
-          content: buildHtml(block),   // full HTML template
+          content: withPreheader(block.body, block.preheader), // HTML pegado, sin envolver
           audience,
           raw_html: true,              // tell the server the content is already wrapped HTML
         }),
@@ -196,7 +146,7 @@ export default function NewsletterPage() {
     }
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────��──────────────────────��──
 
   const activeSubscribers = subscribers.filter((s) => s.status === "active")
   const audienceCount =
@@ -204,7 +154,7 @@ export default function NewsletterPage() {
     audience === "leads"      ? leadsCount :
     activeSubscribers.length + leadsCount
 
-  const previewHtml = buildHtml(block, "María", "#")
+  const previewHtml = withPreheader(personalize(block.body, "María", "#"), block.preheader)
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -212,7 +162,7 @@ export default function NewsletterPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 py-8">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* ── Header ───────────────────────────────────────────────��─────── */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#1a1f3a]">Email Marketing</h1>
@@ -283,69 +233,17 @@ export default function NewsletterPage() {
               </div>
             </Field>
 
-            {/* Accent color */}
-            <Field label="Color de acento (header y botón)">
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={block.accentColor}
-                  onChange={(e) => setBlock({ ...block, accentColor: e.target.value })}
-                  className="h-9 w-16 cursor-pointer rounded border border-gray-200"
-                />
-                <span className="font-mono text-sm text-gray-500">{block.accentColor}</span>
-                <button
-                  onClick={() => setBlock({ ...block, accentColor: SEMZO_NAVY })}
-                  className="text-xs text-gray-400 underline hover:text-gray-600"
-                >
-                  Restablecer
-                </button>
-              </div>
-            </Field>
-
-            {/* Headline */}
-            <Field label="Titular">
-              <Input
-                value={block.headline}
-                onChange={(e) => setBlock({ ...block, headline: e.target.value })}
-                placeholder="Ej: Nuevas llegadas de temporada"
-              />
-            </Field>
-
-            {/* Body */}
-            <Field label="Cuerpo del email (HTML)" hint="Puedes usar {{name}} para personalizar el nombre">
+            {/* Body — HTML completo, sin envolver */}
+            <Field
+              label="Cuerpo del email (HTML completo)"
+              hint="Pega aquí el HTML completo de tu plantilla (incluye su propio header y footer). Se envía EXACTAMENTE tal cual, el sistema no añade nada por encima ni por debajo. Usa {{name}} o {{nombre}} para personalizar, y {{unsubscribe_url}} si tu plantilla incluye enlace de baja."
+            >
               <Textarea
                 value={block.body}
                 onChange={(e) => setBlock({ ...block, body: e.target.value })}
-                rows={8}
-                className="font-mono text-sm"
-                placeholder="<p>Hola {{name}},</p><p>...</p>"
-              />
-            </Field>
-
-            {/* CTA */}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Texto del botón CTA">
-                <Input
-                  value={block.ctaLabel}
-                  onChange={(e) => setBlock({ ...block, ctaLabel: e.target.value })}
-                  placeholder="Ej: Ver colección"
-                />
-              </Field>
-              <Field label="URL del botón">
-                <Input
-                  value={block.ctaUrl}
-                  onChange={(e) => setBlock({ ...block, ctaUrl: e.target.value })}
-                  placeholder="https://semzoprive.com/catalog"
-                />
-              </Field>
-            </div>
-
-            {/* Footer */}
-            <Field label="Pie del email">
-              <Input
-                value={block.footer}
-                onChange={(e) => setBlock({ ...block, footer: e.target.value })}
-                placeholder="SEMZO Privé · Madrid, España"
+                rows={18}
+                className="font-mono text-xs"
+                placeholder="<!DOCTYPE html>&#10;<html>...&#10;  <!-- tu plantilla completa aquí -->&#10;</html>"
               />
             </Field>
 
