@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import ClientHomePage from "./client-page"
+import { createClient } from "./lib/supabase/server"
 
 // ISR: Revalidate every 10 minutes (600 seconds) - reduces function invocations
 export const revalidate = 600
@@ -43,6 +44,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
-  return <ClientHomePage />
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: verifiedReviews } = await supabase
+    .from("public_reviews")
+    .select("id, rating, comment, display_name, last_initial, bag_name, bag_brand")
+    .order("created_at", { ascending: false })
+    .limit(6)
+
+  return <ClientHomePage verifiedReviews={verifiedReviews ?? []} />
 }
