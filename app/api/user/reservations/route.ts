@@ -809,6 +809,17 @@ export async function POST(request: NextRequest) {
 
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
+            <td style="padding:6px 0 0 0;">
+              <img src="https://h0ayghjex33jktep.public.blob.vercel-storage.com/publicidad/cancelacion%20de%20membresia.jpeg"
+                   alt=""
+                   width="600"
+                   style="display:block;width:100%;height:auto;border:0;" />
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
             <td align="center" style="padding:32px 30px 6px 30px;">
               <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;font-weight:500;">
                 Reserva confirmada
