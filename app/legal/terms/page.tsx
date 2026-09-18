@@ -974,15 +974,39 @@ export default function TermsPage() {
                 : "Without prejudice to the above, if the member is considered a consumer under Spanish and European consumer protection regulations, they may exercise their rights before the competent consumer bodies or through alternative dispute resolution platforms."}
             </p>
 
+            <h2 className="font-serif text-2xl text-slate-900 mt-8 mb-4 border-b-2 border-slate-200 pb-2">
+              {es ? "18. Private Purchase Credit" : "18. Private Purchase Credit"}
+            </h2>
+            <p className="text-slate-700 mb-4">
+              {es
+                ? "Las cuotas de membresía efectivamente abonadas podrán generar crédito para la adquisición de artículos disponibles para compra en SEMZO PRIVÉ, conforme a las condiciones vigentes en cada momento."
+                : "Membership fees actually paid may generate credit toward the purchase of articles available for sale at SEMZO PRIVÉ, subject to the terms and conditions in force at any given time."}
+            </p>
+            <p className="text-slate-700 mb-4">
+              {es
+                ? "Dicho crédito no constituye dinero, no es reembolsable, transferible ni canjeable por efectivo, y estará limitado, en todo caso, al veinte por ciento (20%) del precio de venta del artículo."
+                : "This credit does not constitute money and is not refundable, transferable or redeemable for cash, and shall in any case be limited to twenty percent (20%) of the sale price of the article."}
+            </p>
+            <p className="text-slate-700 mb-4">
+              {es
+                ? "El crédito únicamente podrá aplicarse a una compra y no podrá utilizarse conjuntamente con otras promociones, descuentos o beneficios, salvo indicación expresa de SEMZO PRIVÉ."
+                : "The credit may only be applied to a single purchase and may not be used together with other promotions, discounts or benefits, unless expressly indicated otherwise by SEMZO PRIVÉ."}
+            </p>
+            <p className="text-slate-700 mb-4">
+              {es
+                ? "La existencia de este crédito no altera en modo alguno la naturaleza del servicio descrita en la Cláusula 1 de este documento: la membresía sigue siendo, en todo caso, un servicio de alquiler temporal, y la compra de un artículo constituye una operación de compraventa independiente y separada, sujeta a sus propias Condiciones de Venta."
+                : "The existence of this credit does not in any way alter the nature of the service described in Clause 1 of this document: the membership remains, in all cases, a temporary rental service, and the purchase of an article constitutes an independent and separate sale transaction, subject to its own Terms of Sale."}
+            </p>
+
             <div className="mt-12 pt-8 border-t-2 border-slate-200">
               <p className="text-sm text-slate-500">
-                <strong>{es ? "Versión:" : "Version:"}</strong> 3.0
+                <strong>{es ? "Versión:" : "Version:"}</strong> 3.1
                 <br />
                 <strong>{es ? "Última actualización:" : "Last updated:"}</strong>{" "}
-                {es ? "7 de febrero de 2026" : "7 February 2026"}
+                {es ? "18 de septiembre de 2026" : "18 September 2026"}
                 <br />
                 <strong>{es ? "Entrada en vigor:" : "Effective date:"}</strong>{" "}
-                {es ? "7 de febrero de 2026" : "7 February 2026"}
+                {es ? "18 de septiembre de 2026" : "18 September 2026"}
               </p>
               <p className="text-xs text-slate-400 mt-4">
                 {es

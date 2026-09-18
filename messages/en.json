@@ -58,7 +58,7 @@
     "errorLoading": "Error loading the dashboard. Please reload the page.",
     "noActiveMembership": "You have no active membership.",
     "viewPlans": "View available plans",
-    "membershipCancelled": "Your membership has been cancelled. You do not have access to the dashboard.",
+    "membershipCancelled": "Your membership is cancelled. Choose a new plan to enjoy your dashboard again.",
     "openInBrowser": "To access your account you need to open the website in your browser (Safari or Chrome). Browsers built into Instagram and other apps cannot maintain your session.",
     "openBrowserBtn": "Open in my browser",
     "limitedAccess": "Limited Access.",

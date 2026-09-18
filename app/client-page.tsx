@@ -9,12 +9,13 @@ import MembershipSection from "./components/membership-section"
 import TwoModesSection from "./components/two-modes-section"
 import HowItWorks from "./components/how-it-works"
 import TestimonialSection from "./components/testimonial-section"
+import VerifiedReviewsSection, { type PublicReview } from "./components/verified-reviews-section"
 import MagazineSection from "./components/magazine-section"
 import CTASection from "./components/cta-section"
 import SEOBlock from "./components/seo-block"
 import MarqueeBanner from "./components/marquee-banner"
 
-export default function ClientHomePage() {
+export default function ClientHomePage({ verifiedReviews = [] }: { verifiedReviews?: PublicReview[] }) {
   const router = useRouter()
 
   // PERF: NO usar useSearchParams() aqui. Sin un <Suspense> por encima, ese hook
@@ -87,6 +88,7 @@ export default function ClientHomePage() {
       <div id="testimonios">
         <TestimonialSection />
       </div>
+      <VerifiedReviewsSection reviews={verifiedReviews} />
       <div id="magazine">
         <MagazineSection />
       </div>

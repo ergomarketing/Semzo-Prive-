@@ -58,7 +58,7 @@
     "errorLoading": "Error al cargar el dashboard. Por favor recarga la página.",
     "noActiveMembership": "No tienes membresía activa.",
     "viewPlans": "Ver planes disponibles",
-    "membershipCancelled": "Tu membresía ha sido cancelada. No tienes acceso al dashboard.",
+    "membershipCancelled": "Tu membresía está cancelada. Elige un nuevo plan para volver a disfrutar de tu dashboard.",
     "openInBrowser": "Para acceder a tu cuenta necesitas abrir la web en tu navegador (Safari o Chrome). Los navegadores integrados de Instagram y otras apps no permiten mantener la sesión iniciada.",
     "openBrowserBtn": "Abrir en mi navegador",
     "limitedAccess": "Acceso Limitado.",

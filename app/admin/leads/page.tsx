@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RefreshCw, Users, MailCheck, TrendingUp, UserX, FileText, Send } from "lucide-react"
-import Link from "next/link"
+import { RefreshCw, Users, MailCheck, TrendingUp, UserX, Send } from "lucide-react"
 
 interface OpenRates {
   [key: number]: { sent: number; opened: number; rate: number }
@@ -136,13 +135,6 @@ export default function AdminLeadsPage() {
           <div>
           <h1 className="text-2xl font-bold text-[#1a1a4b]">Automatización de Leads</h1>
           <p className="mt-1 text-sm text-gray-500">Leads de Google Ads · Secuencia de 5 emails</p>
-          <Link
-            href="/admin/leads/templates"
-            className="mt-2 inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:underline"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Editar plantillas de email
-          </Link>
           </div>
           <div className="flex items-center gap-2">
             {sendResult && (
