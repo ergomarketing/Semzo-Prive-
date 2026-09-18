@@ -677,6 +677,17 @@ export class EmailServiceProduction {
 
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
+            <td style="padding:6px 0 0 0;">
+              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/cancelacion%20de%20membresia-XJYLp5IMcB4KMD9MhKW24NAPVVObM6.jpeg"
+                   alt=""
+                   width="600"
+                   style="display:block;width:100%;height:auto;border:0;" />
+            </td>
+          </tr>
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
             <td align="center" style="padding:32px 30px 8px 30px;">
               <h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:400;font-size:28px;line-height:1.3;color:#1a1a4b;letter-spacing:-0.3px;">
                 Tu membresía ha quedado cancelada
@@ -764,7 +775,7 @@ export class EmailServiceProduction {
                 "El verdadero lujo no consiste en tener más.<br />Consiste en elegir mejor."
               </p>
               <div style="width:40px;height:1px;background-color:#c9a96e;margin:24px auto 20px auto;"></div>
-              <p style="margin:0 0 2px 0;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a4b;letter-spacing:0.5px;text-align:center;">SEMZO PRIV������</p>
+              <p style="margin:0 0 2px 0;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a4b;letter-spacing:0.5px;text-align:center;">SEMZO PRIV��������</p>
               <p style="margin:0 0 0 0;font-family:'Playfair Display',Georgia,serif;font-size:14px;font-style:italic;color:#7a7a94;text-align:center;letter-spacing:0.3px;">Tu puerta de acceso al armario de tus sueños</p>
             </td>
           </tr>
