@@ -205,9 +205,9 @@ export default function DashboardHome() {
   if (membershipUIStatus === "cancelled") {
     return (
       <div className="max-w-7xl mx-auto">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert className="bg-rose-nude border-rose-pastel">
+          <AlertTriangle className="h-4 w-4 text-indigo-dark" />
+          <AlertDescription className="text-indigo-dark">
             {t("membershipCancelled")}{" "}
             <a href="/catalog" className="underline">{t("viewPlans")}</a>
           </AlertDescription>
