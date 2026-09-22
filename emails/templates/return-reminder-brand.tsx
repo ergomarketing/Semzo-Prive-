@@ -133,13 +133,25 @@ const RETURN_REMINDER_HTML = `<!DOCTYPE html>
               </p>
               <div style="width:30px;height:1px;background-color:#c9a96e;margin:0 auto 20px auto;"></div>
               <p style="margin:0 0 12px 0;font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:500;color:#1a1a4b;text-align:center;">
+                ¿Cómo lo devuelvo?
+              </p>
+              <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;color:#3a3a5c;text-align:center;">
+                Tú decides cómo. Desde tu panel puedes elegir que nuestro mensajero pase a recogerlo en la fecha y franja que más te convenga, o llevarlo tú misma a tu oficina de Correos más cercana.
+              </p>
+              <p style="margin:0 0 20px 0;text-align:center;">
+                <a href="https://semzoprive.com/dashboard" style="display:inline-block;color:#1a1a4b;font-size:15px;font-family:'Playfair Display',Georgia,serif;font-style:italic;text-decoration:underline;text-underline-offset:3px;padding:6px 0;">
+                  Elegir cómo devolverlo
+                </a>
+              </p>
+              <div style="width:30px;height:1px;background-color:#c9a96e;margin:0 auto 20px auto;"></div>
+              <p style="margin:0 0 12px 0;font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:500;color:#1a1a4b;text-align:center;">
                 ¿Quieres quedártelo?
               </p>
               <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;color:#3a3a5c;text-align:center;">
                 Si después de llevarlo sientes que no quieres devolverlo — que es tuyo — escríbenos. Con el modo Colecciona, el crédito acumulado de tu membresía puede aplicarse a la compra.
               </p>
               <p style="margin:0;text-align:center;">
-                <a href="https://semzoprive.com/support#faq" style="display:inline-block;color:#1a1a4b;font-size:15px;font-family:'Playfair Display',Georgia,serif;font-style:italic;text-decoration:underline;text-underline-offset:3px;padding:6px 0;">
+                <a href="https://semzoprive.com/colecciona" style="display:inline-block;color:#1a1a4b;font-size:15px;font-family:'Playfair Display',Georgia,serif;font-style:italic;text-decoration:underline;text-underline-offset:3px;padding:6px 0;">
                   Saber más sobre Colecciona
                 </a>
               </p>
@@ -171,7 +183,7 @@ const RETURN_REMINDER_HTML = `<!DOCTYPE html>
           </tr>
           <tr>
             <td align="center" style="padding:0 20px 36px 20px;">
-              <a href="https://semzoprive.com/support#faq" style="display:inline-block;color:#1a1a4b;font-size:14px;font-family:'Playfair Display',Georgia,serif;font-style:italic;text-decoration:underline;text-underline-offset:3px;padding:10px 0;">
+              <a href="https://semzoprive.com/colecciona" style="display:inline-block;color:#1a1a4b;font-size:14px;font-family:'Playfair Display',Georgia,serif;font-style:italic;text-decoration:underline;text-underline-offset:3px;padding:10px 0;">
                 Saber más sobre Colecciona
               </a>
             </td>
