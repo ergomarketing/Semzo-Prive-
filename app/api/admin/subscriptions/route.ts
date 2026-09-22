@@ -118,7 +118,11 @@ export async function GET() {
           // Esto es esperado, no es un error de sincronizacion.
           (stripeVerifiedStatus === "active" &&
             (m.status === "cancelled" || m.status === "cancelled_active") &&
-            stripeData?.cancel_at_period_end === true)
+            stripeData?.cancel_at_period_end === true) ||
+          // Stripe usa "canceled" (ingles, una L); nuestra BD usa "cancelled"
+          // (dos L). Es el mismo estado, solo difiere la ortografia.
+          (stripeVerifiedStatus === "canceled" &&
+            (m.status === "cancelled" || m.status === "cancelled_active"))
 
         return {
           id: m.id,
