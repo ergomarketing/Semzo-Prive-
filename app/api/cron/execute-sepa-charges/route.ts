@@ -1,10 +1,15 @@
 /**
- * CRON JOB: Ejecutar cargos SEPA por no devolución (14 días tras aviso previo)
+ * CRON JOB: Ejecutar cargos SEPA por no devolución (inmediatamente tras el aviso previo)
  *
- * Ejecuta diariamente. Busca reservas que:
+ * Ejecuta diariamente, después de check-overdue-returns. Busca reservas que:
  *  - Siguen en estado "overdue"
- *  - Recibieron el aviso previo obligatorio (sepa_pre_notice_sent_at) hace >= 14 días
+ *  - Ya recibieron el aviso previo obligatorio (sepa_pre_notice_sent_at no nulo)
  *  - No han sido cargadas todavía (sepa_charged_at IS NULL)
+ *
+ * Ya no hay espera adicional tras el aviso: se cobra en la primera pasada del cron
+ * posterior al envío. Antes de cobrar se re-verifica que la socia siga acumulando
+ * >= 3 pagos de membresía fallidos (por si pagó la membresía entre el aviso y el cargo);
+ * si ya no cumple la condición, se omite el cargo para revisión manual.
  *
  * Para cada una, ejecuta un cargo off-session con el mandato SEPA firmado por la socia
  * (profiles.sepa_payment_method_id) por el valor real del bolso (bags.retail_price).
@@ -22,7 +27,7 @@ import { sendSepaExecutionEmail, sendSepaExecutionAdminEmail } from "@/lib/email
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const NOTICE_PERIOD_DAYS = 14
+const MIN_FAILED_PAYMENTS = 3
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
@@ -44,9 +49,6 @@ export async function GET(request: NextRequest) {
 
     console.log("[SEPA CHARGE CRON] Iniciando ejecución de cargos SEPA vencidos...")
 
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - NOTICE_PERIOD_DAYS)
-
     const { data: dueReservations, error: reservationsError } = await supabaseAdmin
       .from("reservations")
       .select(
@@ -65,7 +67,6 @@ export async function GET(request: NextRequest) {
       )
       .in("status", ["overdue"])
       .not("sepa_pre_notice_sent_at", "is", null)
-      .lte("sepa_pre_notice_sent_at", cutoff.toISOString())
       .is("sepa_charged_at", null)
       .is("sepa_charge_payment_intent_id", null)
 
@@ -79,7 +80,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, message: "No hay cargos pendientes", processed: 0 })
     }
 
-    console.log(`[SEPA CHARGE CRON] ${dueReservations.length} reserva(s) cumplen el plazo de 14 días`)
+    // Re-verificar que la condición de 3 pagos fallidos siga vigente (pudo pagar entre el aviso y hoy)
+    const candidateUserIds = [...new Set(dueReservations.map((r) => r.user_id))]
+    const { data: strugglingMemberships, error: membershipsError } = await supabaseAdmin
+      .from("user_memberships")
+      .select("user_id, failed_payment_count")
+      .in("user_id", candidateUserIds)
+      .gte("failed_payment_count", MIN_FAILED_PAYMENTS)
+
+    if (membershipsError) {
+      console.error("[SEPA CHARGE CRON] Error consultando membresías:", membershipsError)
+      return NextResponse.json({ success: false, error: membershipsError.message }, { status: 500 })
+    }
+
+    const strugglingUserIds = new Set((strugglingMemberships || []).map((m) => m.user_id))
+
+    console.log(`[SEPA CHARGE CRON] ${dueReservations.length} reserva(s) con aviso enviado, verificando condición vigente`)
 
     const results = []
 
@@ -89,6 +105,15 @@ export async function GET(request: NextRequest) {
 
       if (!profile || !bag) {
         console.warn(`[SEPA CHARGE CRON] Reserva ${reservation.id}: datos incompletos, se omite`)
+        continue
+      }
+
+      // La socia ya no acumula >= 3 pagos fallidos (p. ej. puso al día la membresía): no se cobra, requiere revisión manual
+      if (!strugglingUserIds.has(reservation.user_id)) {
+        console.log(
+          `[SEPA CHARGE CRON] Reserva ${reservation.id}: la socia ya no cumple la condición de 3 pagos fallidos, se omite el cargo`,
+        )
+        results.push({ reservationId: reservation.id, success: false, error: "condicion_ya_no_vigente" })
         continue
       }
 
