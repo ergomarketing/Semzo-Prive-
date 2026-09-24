@@ -1,9 +1,13 @@
 /**
- * CRON JOB: Verificar devoluciones vencidas (8 días)
- * 
- * Ejecuta diariamente para detectar reservas no devueltas 8 días después del fin de alquiler.
- * Envía email de aviso pre-ejecución SEPA obligatorio antes de cualquier cargo.
- * 
+ * CRON JOB: Verificar devoluciones vencidas (8 días) + 3 pagos de membresía fallidos
+ *
+ * Ejecuta diariamente. El aviso previo obligatorio de SEPA solo se envía cuando
+ * se cumplen AMBAS condiciones a la vez:
+ *  - La reserva lleva >= 8 días vencida (end_date + 8 días <= ahora)
+ *  - La socia acumula >= 3 intentos de pago de membresía fallidos (user_memberships.failed_payment_count)
+ *
+ * Si la socia devuelve el bolso o pone al día su membresía antes de este punto, no se envía aviso.
+ *
  * Frecuencia: Diaria (sugerido: 10:00 AM CET)
  * Endpoint: /api/cron/check-overdue-returns
  */
@@ -14,6 +18,9 @@ import { sendSepaPreExecutionEmail } from "@/lib/emails/send-sepa-pre-execution-
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+
+const OVERDUE_DAYS = 8
+const MIN_FAILED_PAYMENTS = 3
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,9 +43,10 @@ export async function GET(request: NextRequest) {
 
     console.log("[SEPA CRON] Iniciando verificación de devoluciones vencidas...")
 
-    // Buscar reservas vencidas desde ayer o antes (end_date <= ahora)
-    // que no hayan recibido aviso todavía
+    // Buscar reservas vencidas hace >= 8 días que no hayan recibido aviso todavía
     const now = new Date()
+    const overdueCutoff = new Date(now)
+    overdueCutoff.setDate(overdueCutoff.getDate() - OVERDUE_DAYS)
 
     const { data: overdueReservations, error: reservationsError } = await supabaseAdmin
       .from("reservations")
@@ -56,7 +64,7 @@ export async function GET(request: NextRequest) {
       `,
       )
       .in("status", ["overdue"])
-      .lte("end_date", now.toISOString())
+      .lte("end_date", overdueCutoff.toISOString())
       .is("sepa_pre_notice_sent_at", null)
 
     if (reservationsError) {
@@ -71,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!overdueReservations || overdueReservations.length === 0) {
-      console.log("[SEPA CRON] No hay devoluciones vencidas pendientes de aviso")
+      console.log("[SEPA CRON] No hay devoluciones vencidas >= 8 días pendientes de aviso")
       return NextResponse.json({
         success: true,
         message: "No hay devoluciones vencidas",
@@ -79,11 +87,36 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log(`[SEPA CRON] Encontradas ${overdueReservations.length} reservas vencidas sin aviso`)
+    // De esas reservas, solo interesan las socias con >= 3 pagos de membresía fallidos
+    const candidateUserIds = [...new Set(overdueReservations.map((r) => r.user_id))]
+    const { data: strugglingMemberships, error: membershipsError } = await supabaseAdmin
+      .from("user_memberships")
+      .select("user_id, failed_payment_count")
+      .in("user_id", candidateUserIds)
+      .gte("failed_payment_count", MIN_FAILED_PAYMENTS)
+
+    if (membershipsError) {
+      console.error("[SEPA CRON] Error consultando membresías:", membershipsError)
+      return NextResponse.json({ success: false, error: membershipsError.message }, { status: 500 })
+    }
+
+    const strugglingUserIds = new Set((strugglingMemberships || []).map((m) => m.user_id))
+    const eligibleReservations = overdueReservations.filter((r) => strugglingUserIds.has(r.user_id))
+
+    if (eligibleReservations.length === 0) {
+      console.log("[SEPA CRON] Ninguna socia con reserva vencida >= 8 días acumula >= 3 pagos fallidos")
+      return NextResponse.json({
+        success: true,
+        message: "No hay socias que cumplan ambas condiciones (8 días + 3 pagos fallidos)",
+        processed: 0,
+      })
+    }
+
+    console.log(`[SEPA CRON] ${eligibleReservations.length} reserva(s) cumplen ambas condiciones (8 días + 3 pagos fallidos)`)
 
     const results = []
 
-    for (const reservation of overdueReservations) {
+    for (const reservation of eligibleReservations) {
       try {
         const profile = reservation.profiles
         const bag = reservation.bags

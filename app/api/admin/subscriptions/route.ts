@@ -111,7 +111,18 @@ export async function GET() {
           stripeVerifiedStatus === "error" ||
           stripeVerifiedStatus === m.status ||
           // Caso tipico: BD "active" y Stripe "active" + cancel_at_period_end=true
-          (stripeVerifiedStatus === "active" && m.status === "active")
+          (stripeVerifiedStatus === "active" && m.status === "active") ||
+          // Cancelacion programada: la socia canceló, en BD ya se marcó
+          // "cancelled"/"cancelled_active" pero Stripe sigue "active" hasta
+          // que termine el periodo pagado (cancel_at_period_end=true).
+          // Esto es esperado, no es un error de sincronizacion.
+          (stripeVerifiedStatus === "active" &&
+            (m.status === "cancelled" || m.status === "cancelled_active") &&
+            stripeData?.cancel_at_period_end === true) ||
+          // Stripe usa "canceled" (ingles, una L); nuestra BD usa "cancelled"
+          // (dos L). Es el mismo estado, solo difiere la ortografia.
+          (stripeVerifiedStatus === "canceled" &&
+            (m.status === "cancelled" || m.status === "cancelled_active"))
 
         return {
           id: m.id,

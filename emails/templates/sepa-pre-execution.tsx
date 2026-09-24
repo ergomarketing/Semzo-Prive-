@@ -38,7 +38,7 @@ export default function SepaPreExecutionEmail({
         plazo de finalización del alquiler el día <strong>{rentalEndDate}</strong>.
       </Paragraph>
       <InfoBox accent="danger">
-        <strong>Plazo máximo para resolución: 14 días naturales desde la recepción de este aviso</strong>
+        <strong>Este aviso es el paso previo obligatorio antes de ejecutar el cargo. Requiere resolución inmediata.</strong>
       </InfoBox>
       <Paragraph>Acciones requeridas:</Paragraph>
       <ol style={{ lineHeight: 1.8 }}>
@@ -46,14 +46,14 @@ export default function SepaPreExecutionEmail({
         <li>
           Contactar con nuestro equipo en <a href="mailto:soporte@semzoprive.com">soporte@semzoprive.com</a>
         </li>
-        <li>Regularizar el estado de la reserva antes del vencimiento del plazo</li>
+        <li>Regularizar el estado de su membresía y de la reserva a la mayor brevedad</li>
       </ol>
       <InfoBox accent="warning">
-        <strong>Consecuencias si no se resuelve en 14 días naturales:</strong>
+        <strong>Consecuencias si no se resuelve de inmediato:</strong>
         <br />
         Se procederá a ejecutar el mandato SEPA Direct Debit autorizado en el momento de la contratación, por un importe de{" "}
-        <strong>{amountDue.toFixed(2)}€</strong>, correspondiente al valor real del bolso no devuelto, conforme a lo establecido en la
-        cláusula 8.2 de nuestros Términos y Condiciones.
+        <strong>{amountDue.toFixed(2)}€</strong>, correspondiente al valor real del bolso no devuelto, conforme a lo establecido en
+        nuestros Términos y Condiciones.
       </InfoBox>
       <p style={{ fontSize: 14, color: "#666" }}>
         Este aviso se emite en cumplimiento de la normativa europea SEPA (Reglamento UE 260/2012) y conforme a los{" "}
