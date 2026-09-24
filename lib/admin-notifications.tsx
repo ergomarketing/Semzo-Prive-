@@ -305,6 +305,25 @@ class AdminNotifications {
     )
   }
 
+  async notifySepaMandateRevoked(data: {
+    userName: string
+    userEmail: string
+    paymentMethodId: string
+  }) {
+    return this.sendAdminEmail(
+      `URGENTE: Mandato SEPA revocado — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "Payment Method ID", value: data.paymentMethodId },
+        { label: "Detectado", value: new Date().toLocaleString("es-ES") },
+      ],
+      "sepa_mandate_revoked",
+      { userEmail: data.userEmail, paymentMethodId: data.paymentMethodId },
+      "La socia revocó el mandato SEPA con su banco (o Stripe lo desvinculó). Nuestro seguro de cobro por no devolución ya no es válido para esta cuenta. Contactar de inmediato para regularizar o pedir un nuevo mandato antes de aceptar más reservas.",
+    )
+  }
+
   async notifySepaChargeFailed(data: {
     userName: string
     userEmail: string

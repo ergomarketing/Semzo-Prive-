@@ -1289,6 +1289,91 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      /**
+       * ============================================================
+       * MANDATO SEPA REVOCADO POR EL BANCO — no confundir con
+       * profiles.sepa_payment_method_id, que solo bloquea que NUESTRO
+       * código lo vacíe. Esto detecta cuando la socia revoca el mandato
+       * directamente con su banco, algo que ningún trigger de BD puede
+       * impedir. Es nuestro seguro de cobro por no devolución: si deja de
+       * ser válido hay que saberlo el mismo día, no cuando ya intentamos cobrar.
+       * ============================================================
+       */
+      case "mandate.updated": {
+        const mandate = event.data.object as Stripe.Mandate;
+
+        if (mandate.type === "multi_use" && mandate.status === "inactive") {
+          const paymentMethodId =
+            typeof mandate.payment_method === "string" ? mandate.payment_method : mandate.payment_method?.id;
+
+          if (paymentMethodId) {
+            const { data: affectedProfile } = await supabase
+              .from("profiles")
+              .select("id, email, full_name, first_name, last_name")
+              .eq("sepa_payment_method_id", paymentMethodId)
+              .maybeSingle();
+
+            if (affectedProfile) {
+              const affectedName =
+                affectedProfile.full_name ||
+                `${affectedProfile.first_name || ""} ${affectedProfile.last_name || ""}`.trim() ||
+                "Cliente";
+
+              console.warn(
+                `[SEPA MANDATE] Mandato revocado por el banco para ${affectedProfile.email} (payment_method: ${paymentMethodId})`
+              );
+
+              await adminNotifications
+                .notifySepaMandateRevoked({
+                  userName: affectedName,
+                  userEmail: affectedProfile.email || "sin email",
+                  paymentMethodId,
+                })
+                .catch((err) => console.error("[SEPA MANDATE] Error notificando al admin:", err));
+            }
+          }
+        }
+        break;
+      }
+
+      /**
+       * Desvinculación explícita del método de pago SEPA (vía Stripe
+       * Dashboard o API directa a Stripe, no vía nuestro código — el
+       * trigger de BD ya bloquea que nuestro código lo vacíe). Señal
+       * defensiva adicional para no depender solo de mandate.updated.
+       */
+      case "payment_method.detached": {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+
+        if (paymentMethod.type === "sepa_debit") {
+          const { data: affectedProfile } = await supabase
+            .from("profiles")
+            .select("id, email, full_name, first_name, last_name")
+            .eq("sepa_payment_method_id", paymentMethod.id)
+            .maybeSingle();
+
+          if (affectedProfile) {
+            const affectedName =
+              affectedProfile.full_name ||
+              `${affectedProfile.first_name || ""} ${affectedProfile.last_name || ""}`.trim() ||
+              "Cliente";
+
+            console.warn(
+              `[SEPA MANDATE] Método de pago SEPA desvinculado para ${affectedProfile.email} (payment_method: ${paymentMethod.id})`
+            );
+
+            await adminNotifications
+              .notifySepaMandateRevoked({
+                userName: affectedName,
+                userEmail: affectedProfile.email || "sin email",
+                paymentMethodId: paymentMethod.id,
+              })
+              .catch((err) => console.error("[SEPA MANDATE] Error notificando al admin:", err));
+          }
+        }
+        break;
+      }
+
       default:
         break;
     }
