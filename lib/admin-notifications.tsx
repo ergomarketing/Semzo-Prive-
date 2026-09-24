@@ -305,6 +305,37 @@ class AdminNotifications {
     )
   }
 
+  async notifySepaChargeFailed(data: {
+    userName: string
+    userEmail: string
+    bagName: string
+    bagBrand: string
+    reservationId: string
+    amount: number
+    reason: "sin_mandato_sepa" | "error_stripe"
+    errorDetail: string
+  }) {
+    const reasonLabels: Record<string, string> = {
+      sin_mandato_sepa: "Sin mandato SEPA guardado",
+      error_stripe: "Stripe rechazó el cargo (posible mandato revocado o tarjeta eliminada)",
+    }
+    return this.sendAdminEmail(
+      `URGENTE: Cargo SEPA fallido — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Importe pendiente", value: `€${data.amount.toFixed(2)}` },
+        { label: "Motivo", value: reasonLabels[data.reason] || data.reason },
+        { label: "Detalle técnico", value: data.errorDetail },
+      ],
+      "sepa_charge_failed",
+      { reservationId: data.reservationId, userEmail: data.userEmail, reason: data.reason },
+      "Nuestro seguro de cobro por no devolución no pudo ejecutarse. Requiere gestión manual inmediata (contactar a la socia, reclamación, o vía legal).",
+    )
+  }
+
   async notifyShipmentStatus(data: {
     userName: string
     userEmail: string
