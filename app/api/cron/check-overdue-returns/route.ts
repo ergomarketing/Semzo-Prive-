@@ -1,10 +1,15 @@
 /**
- * CRON JOB: Verificar devoluciones vencidas (8 días) + 3 pagos de membresía fallidos
+ * CRON JOB: Verificar devoluciones vencidas (8 días) + señal de riesgo de pago
  *
  * Ejecuta diariamente. El aviso previo obligatorio de SEPA solo se envía cuando
  * se cumplen AMBAS condiciones a la vez:
  *  - La reserva lleva >= 8 días vencida (end_date + 8 días <= ahora)
- *  - La socia acumula >= 3 intentos de pago de membresía fallidos (user_memberships.failed_payment_count)
+ *  - La socia muestra una señal de riesgo de pago: o bien acumula >= 3 intentos
+ *    de pago de membresía fallidos (user_memberships.failed_payment_count), o
+ *    bien YA NO tiene una membresía vigente que seguir cobrando (cancelled/
+ *    expired/sin fila en user_memberships). Este segundo caso cierra el vacío
+ *    de "cancelo la membresía en paz para no acumular nunca los 3 fallos y
+ *    quedarme con el bolso sin que el seguro SEPA se active jamás".
  *
  * Si la socia devuelve el bolso o pone al día su membresía antes de este punto, no se envía aviso.
  *
