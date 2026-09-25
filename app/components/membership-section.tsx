@@ -21,7 +21,7 @@ const membershipBase = [
   {
     id: "petite",
     name: "Petite",
-    image: "/images/membership-petite.svg",
+    image: "/images/membership-petite-v2.jpg",
     priceMonthly: "19,99€",
     priceQuarterly: "19,99€",
     periodMonthly: "/mes",
@@ -45,7 +45,7 @@ const membershipBase = [
   {
     id: "signature",
     name: "Signature",
-    image: "/images/membership-signature.svg",
+    image: "/images/membership-signature-v2.jpg",
     priceMonthly: "149€",
     priceQuarterly: "357€",
     periodMonthly: "/mes",
