@@ -136,10 +136,12 @@ export default async function BlogPostPage(props: PageProps) {
     author: {
       "@type": "Organization",
       name: "Semzo Privé",
+      url: "https://semzoprive.com",
     },
     publisher: {
       "@type": "Organization",
       name: "Semzo Privé",
+      url: "https://semzoprive.com",
       logo: {
         "@type": "ImageObject",
         url: "https://semzoprive.com/images/sp-monogram-v2.png",
