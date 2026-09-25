@@ -153,7 +153,7 @@ function SignupContent() {
       }
 
       // La atribucion ya viaja en el registro: evita el reenvio de respaldo.
-      markAttributionSynced()
+      markAttributionSynced(result?.user?.id)
 
       const needsConfirmation = result.requiresEmailConfirmation
       setRequiresConfirmation(needsConfirmation)

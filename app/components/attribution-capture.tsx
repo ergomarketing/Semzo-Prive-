@@ -29,7 +29,7 @@ export default function AttributionCapture() {
   }, [])
 
   useEffect(() => {
-    if (!user || isAttributionSynced()) return
+    if (!user || isAttributionSynced(user.id)) return
 
     const { firstTouch, lastTouch } = getStoredAttribution()
     if (!firstTouch && !lastTouch) return
@@ -42,7 +42,7 @@ export default function AttributionCapture() {
       .then((res) => {
         // ok -> guardada; 400/409 -> no aplica (cuenta antigua / payload invalido): no reintentar.
         // 401/5xx/red -> se reintenta en la proxima carga.
-        if (res.ok || res.status === 400 || res.status === 409) markAttributionSynced()
+        if (res.ok || res.status === 400 || res.status === 409) markAttributionSynced(user.id)
       })
       .catch(() => {})
   }, [user])

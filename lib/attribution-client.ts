@@ -104,17 +104,23 @@ export function getStoredAttribution(): { firstTouch: Touch | null; lastTouch: T
   return { firstTouch: readTouch(FIRST_TOUCH_KEY), lastTouch: readTouch(LAST_TOUCH_KEY) }
 }
 
-export function isAttributionSynced(): boolean {
+/**
+ * El marcador de "ya enviado" es POR USUARIO, no global: si en un mismo
+ * navegador inicia sesion antes una cuenta antigua (que el servidor rechaza
+ * por antigua), una cuenta nueva creada despues debe poder sincronizarse.
+ */
+export function isAttributionSynced(userId: string): boolean {
   try {
-    return localStorage.getItem(SYNCED_KEY) === "1"
+    return localStorage.getItem(SYNCED_KEY) === userId
   } catch {
     return true // sin localStorage no podemos deduplicar: mejor no reenviar
   }
 }
 
-export function markAttributionSynced() {
+export function markAttributionSynced(userId?: string) {
+  if (!userId) return
   try {
-    localStorage.setItem(SYNCED_KEY, "1")
+    localStorage.setItem(SYNCED_KEY, userId)
   } catch {
     // ignorado
   }
