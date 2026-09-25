@@ -3,6 +3,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Playfair_Display } from "next/font/google"
 import Script from "next/script"
+import { TRACKING_LOADER_SCRIPT } from "@/lib/tracking-loader"
 import "./globals.css"
 import Navbar from "./components/navbar"
 import Footer from "./components/footer"
@@ -205,22 +206,18 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
         {/*
-         * Google Tag Manager: strategy="afterInteractive" (por defecto de next/script).
-         * NO usar beforeInteractive — bloquearía el render. next/script inyecta el
-         * snippet tras la hidratación, no de forma síncrona.
-         *
-         * Si el TBT sigue alto tras este cambio, la siguiente palanca es pasar
-         * este Script a strategy="lazyOnload" (GTM carga en idle tras el evento
-         * load); coste: GA4/Ads registran el page_view ~1-2s más tarde.
+         * Tracking (Google Tag Manager + pixel de TikTok) — ver lib/tracking-loader.ts.
+         * Un unico script inline afterInteractive decide cuando cargarlos:
+         *  - INMEDIATO (como antes) si la visita trae senal de anuncio/campaña (gclid,
+         *    utm_*, fbclid, ttclid...), si es una landing /lp/* o una pagina del embudo
+         *    (signup, cart, checkout, dashboard...): las conversiones no se ven afectadas.
+         *  - DIFERIDO (1a interaccion o 4 s) solo en paginas de contenido (/, /blog*,
+         *    /proceso, /membresias, /colecciona) para visitas sin senal. GTM + TikTok
+         *    eran ~70 % del Total Blocking Time movil.
+         * NO usar beforeInteractive: bloquearia el render.
          */}
-        <Script id="google-tag-manager" strategy="afterInteractive">
-          {`
-            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','GTM-K3C577WM');
-          `}
+        <Script id="tracking-loader" strategy="afterInteractive">
+          {TRACKING_LOADER_SCRIPT}
         </Script>
 
         {/*
@@ -230,26 +227,7 @@ export default function RootLayout({
          * Google indexa el JSON-LD igual este en head o body.
          */}
 
-        {/*
-         * TikTok Pixel movido al head (antes estaba en body).
-         * En Next 15 RSC, tener Scripts mezclados entre body y los Client
-         * Components del layout causa que webpack genere manifests inconsistentes
-         * tras HMR rebuilds, produciendo errores "factory is undefined".
-         * El head es el lugar canonico para los pixeles de tracking.
-         */}
-        {/*
-         * Pixel de TikTok: strategy="lazyOnload" — es marketing no crítico, no
-         * necesita ejecutarse durante la hidratación. Cargarlo tras el evento
-         * load (en idle) lo saca de la ventana del Total Blocking Time.
-         */}
-        <Script
-          id="tiktok-pixel"
-          strategy="lazyOnload"
-          src="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=D4A7JSJC77U1BLONR900&lib=ttq"
-        />
-        <Script id="tiktok-pixel-init" strategy="lazyOnload">
-          {"window.TiktokAnalyticsObject='ttq';var ttq=window.ttq=window.ttq||[];ttq.methods=['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie'];ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e){ttq._i=ttq._i||{};ttq._i[e]=[]};ttq.load('D4A7JSJC77U1BLONR900');ttq.page();"}
-        </Script>
+        {/* Pixel de TikTok: lo carga tracking-loader junto a GTM (antes dos <Script> lazyOnload aqui). */}
 
         {/*
          * Google Analytics (G-0BMNYQLWLZ) y Google Ads (AW-17660150279) migrados
