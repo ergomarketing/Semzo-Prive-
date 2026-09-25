@@ -1374,6 +1374,71 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      /**
+       * ============================================================
+       * BLINDAJE ANTIFRAUDE: límite de intentos fallidos al configurar
+       * el mandato SEPA. Un IBAN inválido repetido a propósito (o un
+       * intento de fraude probando cuentas robadas) hoy no dejaba
+       * ningún rastro hasta el momento de cobrar. A partir de 3 fallos
+       * se bloquea temporalmente (sepa_setup_blocked_at) y se avisa al
+       * admin para revisión manual antes de dejar reservar de nuevo.
+       * ============================================================
+       */
+      case "setup_intent.setup_failed": {
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const userId = setupIntent.metadata?.user_id;
+
+        if (userId && setupIntent.payment_method_types?.includes("sepa_debit")) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, email, full_name, sepa_setup_failed_count")
+            .eq("id", userId)
+            .maybeSingle();
+
+          if (profile) {
+            const newCount = (profile.sepa_setup_failed_count || 0) + 1;
+            const SEPA_SETUP_FAILURE_LIMIT = 3;
+            const shouldBlock = newCount >= SEPA_SETUP_FAILURE_LIMIT;
+
+            await supabase
+              .from("profiles")
+              .update({
+                sepa_setup_failed_count: newCount,
+                ...(shouldBlock ? { sepa_setup_blocked_at: new Date().toISOString() } : {}),
+              })
+              .eq("id", userId);
+
+            console.warn(`[SEPA SETUP] Fallo #${newCount} configurando mandato SEPA para ${profile.email}`);
+
+            if (shouldBlock) {
+              await adminNotifications
+                .notifySepaSetupBlocked({
+                  userName: profile.full_name || profile.email || userId,
+                  userEmail: profile.email || "sin email",
+                  userId,
+                  failedAttempts: newCount,
+                })
+                .catch((err) => console.error("[SEPA SETUP] Error notificando al admin:", err));
+            }
+          }
+        }
+        break;
+      }
+
+      case "setup_intent.succeeded": {
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const userId = setupIntent.metadata?.user_id;
+
+        // Resetear el contador de fallos al tener éxito (ya no aplica el bloqueo)
+        if (userId && setupIntent.payment_method_types?.includes("sepa_debit")) {
+          await supabase
+            .from("profiles")
+            .update({ sepa_setup_failed_count: 0, sepa_setup_blocked_at: null })
+            .eq("id", userId);
+        }
+        break;
+      }
+
       default:
         break;
     }

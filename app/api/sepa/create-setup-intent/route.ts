@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2025-02-24.acacia",
 })
 
 /**
@@ -34,12 +34,25 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("stripe_customer_id, email, full_name, phone")
+      .select("stripe_customer_id, email, full_name, phone, sepa_setup_blocked_at")
       .eq("id", user.id)
       .single()
 
     if (!profile) {
       return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 })
+    }
+
+    // BLINDAJE ANTIFRAUDE: bloqueado tras 3 intentos fallidos configurando el
+    // mandato SEPA (IBAN inválido repetido o intento de fraude). Requiere
+    // desbloqueo manual del admin antes de intentar de nuevo.
+    if (profile.sepa_setup_blocked_at) {
+      return NextResponse.json(
+        {
+          error:
+            "Tu configuración de pago SEPA está temporalmente bloqueada tras varios intentos fallidos. Contacta con soporte para continuar.",
+        },
+        { status: 403 },
+      )
     }
 
     let stripeCustomerId = profile.stripe_customer_id

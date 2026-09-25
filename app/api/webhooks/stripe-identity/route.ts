@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { createHash } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 import { logAudit } from "@/lib/fraud-gate"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { adminNotifications } from "@/lib/admin-notifications"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2025-02-24.acacia",
 })
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -116,6 +117,65 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
 
         // Resolver el user_id efectivo: del intent si existe, si no del metadata
         const effectiveUserId = intent?.user_id || userId
+
+        // BLINDAJE ANTIFRAUDE: detectar el mismo documento de identidad verificado
+        // en dos cuentas distintas (socia con reserva vencida abriendo cuenta nueva
+        // para seguir reservando sin devolver el bolso anterior).
+        if (effectiveUserId && session.last_verification_report) {
+          try {
+            const report = await stripe.identity.verificationReports.retrieve(
+              session.last_verification_report as string,
+              { expand: ["document"] },
+            )
+            const docNumber = (report.document as any)?.number
+            const docCountry = (report.document as any)?.issuing_country
+            if (docNumber) {
+              const documentHash = createHash("sha256")
+                .update(`${docCountry || ""}:${String(docNumber).toUpperCase().trim()}`)
+                .digest("hex")
+
+              const { data: existingMatch } = await supabase
+                .from("profiles")
+                .select("id, full_name, email")
+                .eq("identity_document_hash", documentHash)
+                .neq("id", effectiveUserId)
+                .maybeSingle()
+
+              await supabase
+                .from("profiles")
+                .update({
+                  identity_document_hash: documentHash,
+                  identity_duplicate_flag: !!existingMatch,
+                  identity_duplicate_of: existingMatch?.id || null,
+                })
+                .eq("id", effectiveUserId)
+
+              if (existingMatch) {
+                const { data: newProfile } = await supabase
+                  .from("profiles")
+                  .select("full_name, email")
+                  .eq("id", effectiveUserId)
+                  .maybeSingle()
+
+                console.warn(
+                  `[identity-webhook] DUPLICADO: usuario ${effectiveUserId} comparte documento con ${existingMatch.id}`,
+                )
+                await adminNotifications
+                  .notifyDuplicateIdentity({
+                    userName: newProfile?.full_name || newProfile?.email || effectiveUserId,
+                    userEmail: newProfile?.email || "desconocido",
+                    userId: effectiveUserId,
+                    matchedUserName: existingMatch.full_name || existingMatch.email || existingMatch.id,
+                    matchedUserEmail: existingMatch.email || "desconocido",
+                    matchedUserId: existingMatch.id,
+                  })
+                  .catch((e) => console.error("[identity-webhook] Error notificando duplicado:", e))
+              }
+            }
+          } catch (docError: any) {
+            console.error("[identity-webhook] Error verificando documento duplicado:", docError?.message)
+          }
+        }
 
         // 3. Actualizar intent si existe (tracking de verification_session_id)
         if (intent) {

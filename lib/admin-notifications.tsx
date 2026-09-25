@@ -355,6 +355,71 @@ class AdminNotifications {
     )
   }
 
+  async notifyDuplicateIdentity(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    matchedUserName: string
+    matchedUserEmail: string
+    matchedUserId: string
+  }) {
+    return this.sendAdminEmail(
+      `URGENTE: Documento de identidad duplicado — ${data.userName}`,
+      [
+        { label: "Cuenta nueva", value: `${data.userName} (${data.userEmail})` },
+        { label: "ID cuenta nueva", value: data.userId },
+        { label: "Cuenta ya existente con el mismo documento", value: `${data.matchedUserName} (${data.matchedUserEmail})` },
+        { label: "ID cuenta existente", value: data.matchedUserId },
+      ],
+      "duplicate_identity",
+      { userId: data.userId, matchedUserId: data.matchedUserId },
+      "El mismo documento de identidad fue verificado en dos cuentas distintas. Puede ser una socia con una reserva vencida abriendo una cuenta nueva para seguir reservando. Revisar antes de aprobar reservas en la cuenta nueva.",
+    )
+  }
+
+  async notifySepaSetupBlocked(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    failedAttempts: number
+  }) {
+    return this.sendAdminEmail(
+      `Configuración de mandato SEPA bloqueada — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID usuario", value: data.userId },
+        { label: "Intentos fallidos", value: String(data.failedAttempts) },
+      ],
+      "sepa_setup_blocked",
+      { userId: data.userId, failedAttempts: data.failedAttempts },
+      "Se bloqueó la configuración del mandato SEPA tras varios intentos fallidos (posible IBAN inválido a propósito o intento de fraude). Requiere revisión manual antes de desbloquear.",
+    )
+  }
+
+  async notifyStaleRetailPrice(data: {
+    bagName: string
+    bagBrand: string
+    bagId: string
+    lastUpdatedDaysAgo: number
+    chargedAmount: number
+    reservationId: string
+  }) {
+    return this.sendAdminEmail(
+      `Aviso: cargo SEPA con precio de reventa desactualizado — ${data.bagBrand} ${data.bagName}`,
+      [
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "ID bolso", value: data.bagId },
+        { label: "Precio sin actualizar hace", value: `${data.lastUpdatedDaysAgo} días` },
+        { label: "Importe cobrado con este precio", value: `€${data.chargedAmount.toFixed(2)}` },
+        { label: "ID Reserva", value: data.reservationId },
+      ],
+      "stale_retail_price",
+      { bagId: data.bagId, lastUpdatedDaysAgo: data.lastUpdatedDaysAgo, reservationId: data.reservationId },
+      "El precio de reventa de este bolso no se actualiza hace tiempo. Si el valor de mercado subió, el seguro SEPA pudo haber cobrado de menos. Revisar y actualizar retail_price.",
+    )
+  }
+
   async notifyShipmentStatus(data: {
     userName: string
     userEmail: string
