@@ -14,6 +14,8 @@ import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/app/hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
 import { useTranslations } from "next-intl"
+import { getStoredAttribution, markAttributionSynced } from "@/lib/attribution-client"
+import { SELF_REPORTED_OPTIONS } from "@/lib/attribution"
 
 function SignupContent() {
   const t = useTranslations("signup")
@@ -34,6 +36,10 @@ function SignupContent() {
   const [selectedBag, setSelectedBag] = useState<string | null>(null)
   const [requiresConfirmation, setRequiresConfirmation] = useState(false)
   const [showSMSModal, setShowSMSModal] = useState(false)
+  // "¿Como nos conociste?" — opcional. La atribucion automatica (UTM, referrer)
+  // la captura AttributionCapture en el layout; aqui solo va lo que ella declara.
+  const [howFound, setHowFound] = useState("")
+  const [howFoundDetail, setHowFoundDetail] = useState("")
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -123,6 +129,11 @@ function SignupContent() {
           plan: selectedPlan,
           bag: selectedBag,
           returnUrl: selectedPlan || selectedBag ? "/cart" : undefined,
+          attribution: {
+            ...getStoredAttribution(),
+            selfReported: howFound || null,
+            selfReportedDetail: howFoundDetail.trim() || null,
+          },
         }),
       })
 
@@ -140,6 +151,9 @@ function SignupContent() {
         setLoading(false)
         return
       }
+
+      // La atribucion ya viaja en el registro: evita el reenvio de respaldo.
+      markAttributionSynced()
 
       const needsConfirmation = result.requiresEmailConfirmation
       setRequiresConfirmation(needsConfirmation)
@@ -229,6 +243,8 @@ function SignupContent() {
         lastName: "",
         phone: "",
       })
+      setHowFound("")
+      setHowFoundDetail("")
     } catch (error) {
       setMessage({ type: "error", text: t("errConnection") })
     } finally {
@@ -386,6 +402,42 @@ function SignupContent() {
               required
               disabled={loading}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="howFound">
+              {t("howFound")} <span className="text-xs font-normal text-slate-400">{t("howFoundOptional")}</span>
+            </Label>
+            <select
+              id="howFound"
+              name="howFound"
+              value={howFound}
+              onChange={(e) => {
+                setHowFound(e.target.value)
+                setHowFoundDetail("")
+              }}
+              disabled={loading}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">{t("howFoundPlaceholder")}</option>
+              {SELF_REPORTED_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`howFoundOptions.${option}`)}
+                </option>
+              ))}
+            </select>
+            {(howFound === "friend" || howFound === "other") && (
+              <Input
+                id="howFoundDetail"
+                name="howFoundDetail"
+                type="text"
+                maxLength={200}
+                value={howFoundDetail}
+                onChange={(e) => setHowFoundDetail(e.target.value)}
+                placeholder={howFound === "friend" ? t("howFoundFriendDetail") : t("howFoundOtherDetail")}
+                disabled={loading}
+              />
+            )}
           </div>
 
           {message && (

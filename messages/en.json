@@ -1059,7 +1059,22 @@
     "errCreate": "Error creating the account",
     "errConnection": "Connection error. Please check your internet and try again.",
     "successConfirm": "Account created successfully. Please check your email to confirm your account.",
-    "successRedirect": "Account created successfully. Redirecting..."
+    "successRedirect": "Account created successfully. Redirecting...",
+    "howFound": "How did you find us?",
+    "howFoundOptional": "(optional)",
+    "howFoundPlaceholder": "Select an option",
+    "howFoundOptions": {
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "pinterest": "Pinterest",
+      "friend": "Someone recommended us",
+      "press": "Press or blog",
+      "event": "An event",
+      "other": "Other"
+    },
+    "howFoundFriendDetail": "Who recommended us?",
+    "howFoundOtherDetail": "Tell us how"
   },
   "legal": {
     "terms": "Terms & Conditions",

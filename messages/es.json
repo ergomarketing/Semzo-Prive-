@@ -1058,7 +1058,22 @@
     "errCreate": "Error al crear la cuenta",
     "errConnection": "Error de conexión. Por favor verifica tu internet e inténtalo de nuevo.",
     "successConfirm": "Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.",
-    "successRedirect": "Cuenta creada exitosamente. Redirigiendo..."
+    "successRedirect": "Cuenta creada exitosamente. Redirigiendo...",
+    "howFound": "¿Cómo nos conociste?",
+    "howFoundOptional": "(opcional)",
+    "howFoundPlaceholder": "Selecciona una opción",
+    "howFoundOptions": {
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "pinterest": "Pinterest",
+      "friend": "Me lo recomendó alguien",
+      "press": "Prensa o blog",
+      "event": "Un evento",
+      "other": "Otro"
+    },
+    "howFoundFriendDetail": "¿Quién te lo recomendó?",
+    "howFoundOtherDetail": "Cuéntanos cómo fue"
   },
   "legal": {
     "terms": "Términos y Condiciones",

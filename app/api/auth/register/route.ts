@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
+import { leadSourceFromChannel, sanitizeAttribution, saveAttribution } from "@/lib/attribution"
 
 /**
  * ============================================================================
@@ -16,6 +17,9 @@ import { createClient } from "@supabase/supabase-js"
  * - Upsert en profiles: id, email, full_name, first_name, last_name, auth_method
  * - Phone se guarda en paso separado para respetar constraint profiles_phone_unique
  * - Notificar al admin del nuevo registro (no bloqueante)
+ * - Atribucion ("como nos encontraron"): body.attribution es OPCIONAL y se
+ *   guarda aparte en signup_attribution (best-effort, nunca bloquea ni cambia
+ *   la respuesta). Ademas informa el `source` del lead. Ver lib/attribution.ts.
  *
  * NO tocar sin avisar: este endpoint forma parte del contrato con signup/page.tsx,
  * auth/callback y auth/welcome. Cambiar el shape del body o la respuesta rompe el flujo.
@@ -154,6 +158,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Atribucion de registro (aditivo y no bloqueante): saveAttribution nunca
+    // lanza y, si la tabla aun no existe, solo lo loguea.
+    const attribution = sanitizeAttribution(body.attribution)
+    const attributionResult = await saveAttribution(supabaseService, authData.user.id, attribution)
+    const attributionTouch = attribution.lastTouch || attribution.firstTouch
+
     // Notificar al admin del nuevo registro
     try {
       const { adminNotifications } = await import("@/lib/admin-notifications")
@@ -171,7 +181,12 @@ export async function POST(request: NextRequest) {
       await enrollLead({
         email: email.toLowerCase().trim(),
         name: fullName || undefined,
-        source: "organic_web",
+        // Antes siempre "organic_web": ahora refleja el canal real (Google Ads,
+        // redes...) y alimenta el panel de fuentes de /admin/leads.
+        source: leadSourceFromChannel(attributionResult.channel),
+        utm_campaign: attributionTouch?.utm_campaign,
+        utm_medium: attributionTouch?.utm_medium,
+        utm_content: attributionTouch?.utm_content,
       })
     } catch (leadError) {
       // No bloquear el registro si falla el enrol de leads
