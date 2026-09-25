@@ -142,7 +142,7 @@ export default async function BlogPostPage(props: PageProps) {
       name: "Semzo Privé",
       logo: {
         "@type": "ImageObject",
-        url: "https://semzoprive.com/images/semzo-prive-logo.png",
+        url: "https://semzoprive.com/images/sp-monogram-v2.png",
       },
     },
   }

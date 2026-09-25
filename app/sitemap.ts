@@ -75,16 +75,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const blogUrls: MetadataRoute.Sitemap = []
   let catalogLastMod = STATIC_PAGES_LASTMOD
 
-  // Blog posts (con fecha real del articulo + imagen para Google Images)
+  // Blog posts (con fecha real del articulo + imagen para Google Images).
+  // FUENTE: la misma que usa /blog y /blog/[slug] (tabla Supabase blog_posts).
+  // Antes se leia de @/lib/blog-storage (markdown/Blob legado): el sitemap
+  // anunciaba 2 URLs que ya no existen (soft 404) y omitia los articulos reales.
   try {
-    const { listPosts } = await import("@/lib/blog-storage")
+    const { listPosts } = await import("@/lib/blog-supabase")
     const posts = await listPosts()
     for (const post of posts) {
-      const postImage = (post as { image?: string }).image
-      const normalizedImage = normalizeImageUrl(postImage, baseUrl)
+      const normalizedImage = normalizeImageUrl(post.image_url, baseUrl)
       blogUrls.push({
-        url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: post.date || STATIC_PAGES_LASTMOD,
+        url: `${baseUrl}/blog/${encodeURIComponent(post.slug)}`,
+        lastModified: post.updated_at || post.created_at || STATIC_PAGES_LASTMOD,
         changeFrequency: "monthly" as const,
         priority: 0.6,
         ...(normalizedImage ? { images: [normalizedImage] } : {}),

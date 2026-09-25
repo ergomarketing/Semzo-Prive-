@@ -146,7 +146,7 @@ export default function RootLayout({
     "@type": "Organization",
     name: "Semzo Privé",
     url: "https://semzoprive.com",
-    logo: "https://semzoprive.com/images/semzo-prive-logo.png",
+    logo: "https://semzoprive.com/images/sp-monogram-v2.png",
     sameAs: [
       "https://www.instagram.com/semzoprive",
       "https://www.tiktok.com/@semzoprive",
