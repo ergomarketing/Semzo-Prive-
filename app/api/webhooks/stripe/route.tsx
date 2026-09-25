@@ -1289,6 +1289,156 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      /**
+       * ============================================================
+       * MANDATO SEPA REVOCADO POR EL BANCO — no confundir con
+       * profiles.sepa_payment_method_id, que solo bloquea que NUESTRO
+       * código lo vacíe. Esto detecta cuando la socia revoca el mandato
+       * directamente con su banco, algo que ningún trigger de BD puede
+       * impedir. Es nuestro seguro de cobro por no devolución: si deja de
+       * ser válido hay que saberlo el mismo día, no cuando ya intentamos cobrar.
+       * ============================================================
+       */
+      case "mandate.updated": {
+        const mandate = event.data.object as Stripe.Mandate;
+
+        if (mandate.type === "multi_use" && mandate.status === "inactive") {
+          const paymentMethodId =
+            typeof mandate.payment_method === "string" ? mandate.payment_method : mandate.payment_method?.id;
+
+          if (paymentMethodId) {
+            const { data: affectedProfile } = await supabase
+              .from("profiles")
+              .select("id, email, full_name, first_name, last_name")
+              .eq("sepa_payment_method_id", paymentMethodId)
+              .maybeSingle();
+
+            if (affectedProfile) {
+              const affectedName =
+                affectedProfile.full_name ||
+                `${affectedProfile.first_name || ""} ${affectedProfile.last_name || ""}`.trim() ||
+                "Cliente";
+
+              console.warn(
+                `[SEPA MANDATE] Mandato revocado por el banco para ${affectedProfile.email} (payment_method: ${paymentMethodId})`
+              );
+
+              await adminNotifications
+                .notifySepaMandateRevoked({
+                  userName: affectedName,
+                  userEmail: affectedProfile.email || "sin email",
+                  paymentMethodId,
+                })
+                .catch((err) => console.error("[SEPA MANDATE] Error notificando al admin:", err));
+            }
+          }
+        }
+        break;
+      }
+
+      /**
+       * Desvinculación explícita del método de pago SEPA (vía Stripe
+       * Dashboard o API directa a Stripe, no vía nuestro código — el
+       * trigger de BD ya bloquea que nuestro código lo vacíe). Señal
+       * defensiva adicional para no depender solo de mandate.updated.
+       */
+      case "payment_method.detached": {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+
+        if (paymentMethod.type === "sepa_debit") {
+          const { data: affectedProfile } = await supabase
+            .from("profiles")
+            .select("id, email, full_name, first_name, last_name")
+            .eq("sepa_payment_method_id", paymentMethod.id)
+            .maybeSingle();
+
+          if (affectedProfile) {
+            const affectedName =
+              affectedProfile.full_name ||
+              `${affectedProfile.first_name || ""} ${affectedProfile.last_name || ""}`.trim() ||
+              "Cliente";
+
+            console.warn(
+              `[SEPA MANDATE] Método de pago SEPA desvinculado para ${affectedProfile.email} (payment_method: ${paymentMethod.id})`
+            );
+
+            await adminNotifications
+              .notifySepaMandateRevoked({
+                userName: affectedName,
+                userEmail: affectedProfile.email || "sin email",
+                paymentMethodId: paymentMethod.id,
+              })
+              .catch((err) => console.error("[SEPA MANDATE] Error notificando al admin:", err));
+          }
+        }
+        break;
+      }
+
+      /**
+       * ============================================================
+       * BLINDAJE ANTIFRAUDE: límite de intentos fallidos al configurar
+       * el mandato SEPA. Un IBAN inválido repetido a propósito (o un
+       * intento de fraude probando cuentas robadas) hoy no dejaba
+       * ningún rastro hasta el momento de cobrar. A partir de 3 fallos
+       * se bloquea temporalmente (sepa_setup_blocked_at) y se avisa al
+       * admin para revisión manual antes de dejar reservar de nuevo.
+       * ============================================================
+       */
+      case "setup_intent.setup_failed": {
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const userId = setupIntent.metadata?.user_id;
+
+        if (userId && setupIntent.payment_method_types?.includes("sepa_debit")) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, email, full_name, sepa_setup_failed_count")
+            .eq("id", userId)
+            .maybeSingle();
+
+          if (profile) {
+            const newCount = (profile.sepa_setup_failed_count || 0) + 1;
+            const SEPA_SETUP_FAILURE_LIMIT = 3;
+            const shouldBlock = newCount >= SEPA_SETUP_FAILURE_LIMIT;
+
+            await supabase
+              .from("profiles")
+              .update({
+                sepa_setup_failed_count: newCount,
+                ...(shouldBlock ? { sepa_setup_blocked_at: new Date().toISOString() } : {}),
+              })
+              .eq("id", userId);
+
+            console.warn(`[SEPA SETUP] Fallo #${newCount} configurando mandato SEPA para ${profile.email}`);
+
+            if (shouldBlock) {
+              await adminNotifications
+                .notifySepaSetupBlocked({
+                  userName: profile.full_name || profile.email || userId,
+                  userEmail: profile.email || "sin email",
+                  userId,
+                  failedAttempts: newCount,
+                })
+                .catch((err) => console.error("[SEPA SETUP] Error notificando al admin:", err));
+            }
+          }
+        }
+        break;
+      }
+
+      case "setup_intent.succeeded": {
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const userId = setupIntent.metadata?.user_id;
+
+        // Resetear el contador de fallos al tener éxito (ya no aplica el bloqueo)
+        if (userId && setupIntent.payment_method_types?.includes("sepa_debit")) {
+          await supabase
+            .from("profiles")
+            .update({ sepa_setup_failed_count: 0, sepa_setup_blocked_at: null })
+            .eq("id", userId);
+        }
+        break;
+      }
+
       default:
         break;
     }

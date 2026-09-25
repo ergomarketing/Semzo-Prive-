@@ -305,6 +305,147 @@ class AdminNotifications {
     )
   }
 
+  async notifySepaMandateRevoked(data: {
+    userName: string
+    userEmail: string
+    paymentMethodId: string
+  }) {
+    return this.sendAdminEmail(
+      `URGENTE: Mandato SEPA revocado — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "Payment Method ID", value: data.paymentMethodId },
+        { label: "Detectado", value: new Date().toLocaleString("es-ES") },
+      ],
+      "sepa_mandate_revoked",
+      { userEmail: data.userEmail, paymentMethodId: data.paymentMethodId },
+      "La socia revocó el mandato SEPA con su banco (o Stripe lo desvinculó). Nuestro seguro de cobro por no devolución ya no es válido para esta cuenta. Contactar de inmediato para regularizar o pedir un nuevo mandato antes de aceptar más reservas.",
+    )
+  }
+
+  async notifySepaChargeFailed(data: {
+    userName: string
+    userEmail: string
+    bagName: string
+    bagBrand: string
+    reservationId: string
+    amount: number
+    reason: "sin_mandato_sepa" | "error_stripe"
+    errorDetail: string
+  }) {
+    const reasonLabels: Record<string, string> = {
+      sin_mandato_sepa: "Sin mandato SEPA guardado",
+      error_stripe: "Stripe rechazó el cargo (posible mandato revocado o tarjeta eliminada)",
+    }
+    return this.sendAdminEmail(
+      `URGENTE: Cargo SEPA fallido — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Importe pendiente", value: `€${data.amount.toFixed(2)}` },
+        { label: "Motivo", value: reasonLabels[data.reason] || data.reason },
+        { label: "Detalle técnico", value: data.errorDetail },
+      ],
+      "sepa_charge_failed",
+      { reservationId: data.reservationId, userEmail: data.userEmail, reason: data.reason },
+      "Nuestro seguro de cobro por no devolución no pudo ejecutarse. Requiere gestión manual inmediata (contactar a la socia, reclamación, o vía legal).",
+    )
+  }
+
+  async notifyDuplicateIdentity(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    matchedUserName: string
+    matchedUserEmail: string
+    matchedUserId: string
+  }) {
+    return this.sendAdminEmail(
+      `URGENTE: Documento de identidad duplicado — ${data.userName}`,
+      [
+        { label: "Cuenta nueva", value: `${data.userName} (${data.userEmail})` },
+        { label: "ID cuenta nueva", value: data.userId },
+        { label: "Cuenta ya existente con el mismo documento", value: `${data.matchedUserName} (${data.matchedUserEmail})` },
+        { label: "ID cuenta existente", value: data.matchedUserId },
+      ],
+      "duplicate_identity",
+      { userId: data.userId, matchedUserId: data.matchedUserId },
+      "El mismo documento de identidad fue verificado en dos cuentas distintas. Puede ser una socia con una reserva vencida abriendo una cuenta nueva para seguir reservando. Revisar antes de aprobar reservas en la cuenta nueva.",
+    )
+  }
+
+  async notifySepaSetupBlocked(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    failedAttempts: number
+  }) {
+    return this.sendAdminEmail(
+      `Configuración de mandato SEPA bloqueada — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID usuario", value: data.userId },
+        { label: "Intentos fallidos", value: String(data.failedAttempts) },
+      ],
+      "sepa_setup_blocked",
+      { userId: data.userId, failedAttempts: data.failedAttempts },
+      "Se bloqueó la configuración del mandato SEPA tras varios intentos fallidos (posible IBAN inválido a propósito o intento de fraude). Requiere revisión manual antes de desbloquear.",
+    )
+  }
+
+  async notifyStaleRetailPrice(data: {
+    bagName: string
+    bagBrand: string
+    bagId: string
+    lastUpdatedDaysAgo: number
+    chargedAmount: number
+    reservationId: string
+  }) {
+    return this.sendAdminEmail(
+      `Aviso: cargo SEPA con precio de reventa desactualizado — ${data.bagBrand} ${data.bagName}`,
+      [
+        { label: "Bolso", value: `${data.bagBrand} - ${data.bagName}` },
+        { label: "ID bolso", value: data.bagId },
+        { label: "Precio sin actualizar hace", value: `${data.lastUpdatedDaysAgo} días` },
+        { label: "Importe cobrado con este precio", value: `€${data.chargedAmount.toFixed(2)}` },
+        { label: "ID Reserva", value: data.reservationId },
+      ],
+      "stale_retail_price",
+      { bagId: data.bagId, lastUpdatedDaysAgo: data.lastUpdatedDaysAgo, reservationId: data.reservationId },
+      "El precio de reventa de este bolso no se actualiza hace tiempo. Si el valor de mercado subió, el seguro SEPA pudo haber cobrado de menos. Revisar y actualizar retail_price.",
+    )
+  }
+
+  async notifySuspiciousAddressChange(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    reservationId: string
+    reservationStatus: string
+    oldAddress: string
+    newAddress: string
+  }) {
+    return this.sendAdminEmail(
+      `Aviso: cambio de dirección con bolso en curso — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID usuario", value: data.userId },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Estado de la reserva", value: data.reservationStatus },
+        { label: "Dirección anterior", value: data.oldAddress },
+        { label: "Dirección nueva", value: data.newAddress },
+      ],
+      "suspicious_address_change",
+      { userId: data.userId, reservationId: data.reservationId },
+      "La socia cambió su dirección de envío mientras tiene un bolso en curso (enviado, en su poder o pendiente de devolución). No se bloqueó el cambio, pero requiere revisión antes de procesar cualquier envío o devolución con la nueva dirección.",
+    )
+  }
+
   async notifyShipmentStatus(data: {
     userName: string
     userEmail: string

@@ -1,10 +1,15 @@
 /**
- * CRON JOB: Verificar devoluciones vencidas (8 días) + 3 pagos de membresía fallidos
+ * CRON JOB: Verificar devoluciones vencidas (8 días) + señal de riesgo de pago
  *
  * Ejecuta diariamente. El aviso previo obligatorio de SEPA solo se envía cuando
  * se cumplen AMBAS condiciones a la vez:
  *  - La reserva lleva >= 8 días vencida (end_date + 8 días <= ahora)
- *  - La socia acumula >= 3 intentos de pago de membresía fallidos (user_memberships.failed_payment_count)
+ *  - La socia muestra una señal de riesgo de pago: o bien acumula >= 3 intentos
+ *    de pago de membresía fallidos (user_memberships.failed_payment_count), o
+ *    bien YA NO tiene una membresía vigente que seguir cobrando (cancelled/
+ *    expired/sin fila en user_memberships). Este segundo caso cierra el vacío
+ *    de "cancelo la membresía en paz para no acumular nunca los 3 fallos y
+ *    quedarme con el bolso sin que el seguro SEPA se active jamás".
  *
  * Si la socia devuelve el bolso o pone al día su membresía antes de este punto, no se envía aviso.
  *
@@ -87,32 +92,44 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // De esas reservas, solo interesan las socias con >= 3 pagos de membresía fallidos
+    // De esas reservas, interesan las socias con señal de riesgo de pago:
+    // >= 3 pagos de membresía fallidos, O membresía ya no activa (cancelada/expirada/sin fila)
     const candidateUserIds = [...new Set(overdueReservations.map((r) => r.user_id))]
-    const { data: strugglingMemberships, error: membershipsError } = await supabaseAdmin
+    const { data: memberships, error: membershipsError } = await supabaseAdmin
       .from("user_memberships")
-      .select("user_id, failed_payment_count")
+      .select("user_id, failed_payment_count, status")
       .in("user_id", candidateUserIds)
-      .gte("failed_payment_count", MIN_FAILED_PAYMENTS)
 
     if (membershipsError) {
       console.error("[SEPA CRON] Error consultando membresías:", membershipsError)
       return NextResponse.json({ success: false, error: membershipsError.message }, { status: 500 })
     }
 
-    const strugglingUserIds = new Set((strugglingMemberships || []).map((m) => m.user_id))
-    const eligibleReservations = overdueReservations.filter((r) => strugglingUserIds.has(r.user_id))
+    // Estados donde la membresía sigue activamente cobrando o dentro del periodo pagado
+    const STILL_PAYING_STATUSES = new Set(["active", "cancelled_active", "past_due", "limited_access"])
+
+    const membershipByUserId = new Map((memberships || []).map((m) => [m.user_id, m]))
+    const riskyUserIds = new Set(
+      candidateUserIds.filter((userId) => {
+        const membership = membershipByUserId.get(userId)
+        if (!membership) return true // sin fila = sin membresía vigente que seguir cobrando
+        if ((membership.failed_payment_count || 0) >= MIN_FAILED_PAYMENTS) return true
+        return !STILL_PAYING_STATUSES.has(membership.status) // cancelada/expirada/pausada/no_membership
+      }),
+    )
+
+    const eligibleReservations = overdueReservations.filter((r) => riskyUserIds.has(r.user_id))
 
     if (eligibleReservations.length === 0) {
-      console.log("[SEPA CRON] Ninguna socia con reserva vencida >= 8 días acumula >= 3 pagos fallidos")
+      console.log("[SEPA CRON] Ninguna socia con reserva vencida >= 8 días muestra señal de riesgo de pago")
       return NextResponse.json({
         success: true,
-        message: "No hay socias que cumplan ambas condiciones (8 días + 3 pagos fallidos)",
+        message: "No hay socias que cumplan ambas condiciones (8 días + riesgo de pago)",
         processed: 0,
       })
     }
 
-    console.log(`[SEPA CRON] ${eligibleReservations.length} reserva(s) cumplen ambas condiciones (8 días + 3 pagos fallidos)`)
+    console.log(`[SEPA CRON] ${eligibleReservations.length} reserva(s) cumplen ambas condiciones (8 días + riesgo de pago)`)
 
     const results = []
 

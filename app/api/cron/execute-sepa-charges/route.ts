@@ -23,6 +23,7 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { sendSepaExecutionEmail, sendSepaExecutionAdminEmail } from "@/lib/emails/send-sepa-execution-email"
+import { adminNotifications } from "@/lib/admin-notifications"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
         sepa_pre_notice_sent_at,
         sepa_charged_at,
         profiles!inner(id, email, full_name, first_name, last_name, stripe_customer_id, sepa_payment_method_id),
-        bags!inner(id, name, brand, retail_price)
+        bags!inner(id, name, brand, retail_price, retail_price_updated_at)
       `,
       )
       .in("status", ["overdue"])
@@ -125,13 +126,27 @@ export async function GET(request: NextRequest) {
       // Sin mandato SEPA firmado no se puede cobrar automáticamente: se marca para revisión manual.
       if (!profile.sepa_payment_method_id || !profile.stripe_customer_id) {
         console.warn(`[SEPA CHARGE CRON] Reserva ${reservation.id}: sin mandato SEPA, requiere revisión manual`)
+        const noMandateError = "Sin mandato SEPA guardado (profiles.sepa_payment_method_id vacío)"
         await supabaseAdmin
           .from("reservations")
           .update({
             sepa_charge_failed_at: new Date().toISOString(),
-            sepa_charge_error: "Sin mandato SEPA guardado (profiles.sepa_payment_method_id vacío)",
+            sepa_charge_error: noMandateError,
           })
           .eq("id", reservation.id)
+
+        await adminNotifications
+          .notifySepaChargeFailed({
+            userName: customerName,
+            userEmail: profile.email || "sin email",
+            bagName,
+            bagBrand: bag.brand,
+            reservationId: reservation.id,
+            amount,
+            reason: "sin_mandato_sepa",
+            errorDetail: noMandateError,
+          })
+          .catch((err) => console.error("[SEPA CHARGE CRON] Error notificando al admin:", err))
 
         results.push({ reservationId: reservation.id, success: false, error: "sin_mandato_sepa" })
         continue
@@ -186,6 +201,29 @@ export async function GET(request: NextRequest) {
           })
 
           console.log(`[SEPA CHARGE CRON] ✅ Cargo ejecutado para reserva ${reservation.id}: ${amount}€`)
+
+          // BLINDAJE ANTIFRAUDE: si el precio de reventa usado para el cargo no se
+          // actualiza hace mucho, el importe cobrado puede no reflejar el valor real
+          // de mercado del bolso. Avisar al admin sin bloquear el cargo ya ejecutado.
+          const STALE_PRICE_DAYS = 180
+          if (bag.retail_price_updated_at) {
+            const daysSinceUpdate = Math.floor(
+              (Date.now() - new Date(bag.retail_price_updated_at).getTime()) / (1000 * 60 * 60 * 24),
+            )
+            if (daysSinceUpdate > STALE_PRICE_DAYS) {
+              await adminNotifications
+                .notifyStaleRetailPrice({
+                  bagName: bag.name,
+                  bagBrand: bag.brand,
+                  bagId: bag.id,
+                  lastUpdatedDaysAgo: daysSinceUpdate,
+                  chargedAmount: amount,
+                  reservationId: reservation.id,
+                })
+                .catch((err) => console.error("[SEPA CHARGE CRON] Error notificando precio desactualizado:", err))
+            }
+          }
+
           results.push({ reservationId: reservation.id, success: true, amount, paymentIntentId: paymentIntent.id })
         } else {
           throw new Error(`Estado inesperado del PaymentIntent: ${paymentIntent.status}`)
@@ -201,6 +239,19 @@ export async function GET(request: NextRequest) {
             sepa_charge_error: errorMessage,
           })
           .eq("id", reservation.id)
+
+        await adminNotifications
+          .notifySepaChargeFailed({
+            userName: customerName,
+            userEmail: profile.email || "sin email",
+            bagName,
+            bagBrand: bag.brand,
+            reservationId: reservation.id,
+            amount,
+            reason: "error_stripe",
+            errorDetail: errorMessage,
+          })
+          .catch((err) => console.error("[SEPA CHARGE CRON] Error notificando al admin:", err))
 
         results.push({ reservationId: reservation.id, success: false, error: errorMessage })
       }
