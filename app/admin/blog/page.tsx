@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Upload, FileText, Trash2, ExternalLink, Plus, Loader2, Pencil } from "lucide-react"
 import Link from "next/link"
+import { publicBlogSlug } from "@/lib/blog-slug-map"
 import { ImageUploader } from "@/app/components/image-uploader"
 
 interface BlogPost {
@@ -422,7 +423,7 @@ export default function AdminBlogPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Link href={`/blog/${post.slug}`} target="_blank">
+                        <Link href={`/blog/${publicBlogSlug(post.slug)}`} target="_blank">
                           <Button variant="outline" size="sm">
                             Ver
                           </Button>

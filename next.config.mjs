@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+import { readFileSync } from 'node:fs';
+
+// Slugs del blog que se limpian solo en la URL (Supabase no se toca). Misma
+// fuente que lib/blog-slug-map.ts.
+const blogSlugMap = JSON.parse(readFileSync(new URL('./lib/blog-slug-map.json', import.meta.url), 'utf8'));
 // Config rebuild marker: 2026-05-11T14:05 (force webpack manifest regen)
 // Tocar este archivo fuerza un restart completo del dev server, lo que
 // regenera el manifest de webpack y resuelve errores de modulo factory
@@ -24,6 +29,13 @@ const nextConfig = {
 
   async redirects() {
     return [
+      // Blog: slug antiguo -> slug limpio (301). Ver lib/blog-slug-map.ts.
+      ...Object.entries(blogSlugMap).map(([oldSlug, newSlug]) => ({
+        source: `/blog/${oldSlug}`,
+        destination: `/blog/${newSlug}`,
+        permanent: true,
+      })),
+
       // Página de upgrade antigua → página de membresías (antes era /#membresias,
       // ahora /membresias es una página propia con su meta SEO).
       // Source exacto (sin comodín) para NO afectar las landings SEO

@@ -6,6 +6,7 @@ import { Calendar, User } from "lucide-react"
 import { BlogScrollContainer } from "./blog-scroll-container"
 import { BlogHero, BlogSectionIntro, BlogEmptyState } from "./blog-texts"
 import { listPosts, type BlogPost } from "@/lib/blog-supabase"
+import { publicBlogSlug } from "@/lib/blog-slug-map"
 
 export const dynamic = "force-dynamic"
 
@@ -78,7 +79,7 @@ export default async function BlogPage() {
                 {posts.map((post) => (
                   <Link
                     key={post.slug}
-                    href={`/blog/${post.slug}`}
+                    href={`/blog/${publicBlogSlug(post.slug)}`}
                     className="flex-shrink-0 w-[85vw] md:w-[45vw] lg:w-[30vw] group"
                   >
                     <div className="flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">

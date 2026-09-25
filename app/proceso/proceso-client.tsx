@@ -214,6 +214,22 @@ export default function ProcesoClient() {
           </div>
         </section>
 
+        {/* Introduccion editorial: contexto de busqueda (alquiler de bolsos de lujo) */}
+        <section className="py-16 md:py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2
+                className="font-serif font-light leading-tight mb-6 text-2xl md:text-3xl tracking-tight"
+                style={{ color: "#1a1a4b" }}
+              >
+                {t("introTitle")}
+              </h2>
+              <p className="text-slate-600 font-light leading-relaxed text-base md:text-lg mb-4">{t("introP1")}</p>
+              <p className="text-slate-600 font-light leading-relaxed text-base md:text-lg">{t("introP2")}</p>
+            </div>
+          </div>
+        </section>
+
         {/* FAQs — hairline editorial estilo cocoon */}
         <section id="faqs" className="py-16 md:py-20 bg-white">
           <div className="container mx-auto px-4">

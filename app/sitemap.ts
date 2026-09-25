@@ -81,11 +81,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // anunciaba 2 URLs que ya no existen (soft 404) y omitia los articulos reales.
   try {
     const { listPosts } = await import("@/lib/blog-supabase")
+    const { publicBlogSlug } = await import("@/lib/blog-slug-map")
     const posts = await listPosts()
     for (const post of posts) {
       const normalizedImage = normalizeImageUrl(post.image_url, baseUrl)
       blogUrls.push({
-        url: `${baseUrl}/blog/${encodeURIComponent(post.slug)}`,
+        url: `${baseUrl}/blog/${encodeURIComponent(publicBlogSlug(post.slug))}`,
         lastModified: post.updated_at || post.created_at || STATIC_PAGES_LASTMOD,
         changeFrequency: "monthly" as const,
         priority: 0.6,
