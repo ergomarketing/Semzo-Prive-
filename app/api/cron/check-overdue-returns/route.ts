@@ -92,32 +92,44 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // De esas reservas, solo interesan las socias con >= 3 pagos de membresía fallidos
+    // De esas reservas, interesan las socias con señal de riesgo de pago:
+    // >= 3 pagos de membresía fallidos, O membresía ya no activa (cancelada/expirada/sin fila)
     const candidateUserIds = [...new Set(overdueReservations.map((r) => r.user_id))]
-    const { data: strugglingMemberships, error: membershipsError } = await supabaseAdmin
+    const { data: memberships, error: membershipsError } = await supabaseAdmin
       .from("user_memberships")
-      .select("user_id, failed_payment_count")
+      .select("user_id, failed_payment_count, status")
       .in("user_id", candidateUserIds)
-      .gte("failed_payment_count", MIN_FAILED_PAYMENTS)
 
     if (membershipsError) {
       console.error("[SEPA CRON] Error consultando membresías:", membershipsError)
       return NextResponse.json({ success: false, error: membershipsError.message }, { status: 500 })
     }
 
-    const strugglingUserIds = new Set((strugglingMemberships || []).map((m) => m.user_id))
-    const eligibleReservations = overdueReservations.filter((r) => strugglingUserIds.has(r.user_id))
+    // Estados donde la membresía sigue activamente cobrando o dentro del periodo pagado
+    const STILL_PAYING_STATUSES = new Set(["active", "cancelled_active", "past_due", "limited_access"])
+
+    const membershipByUserId = new Map((memberships || []).map((m) => [m.user_id, m]))
+    const riskyUserIds = new Set(
+      candidateUserIds.filter((userId) => {
+        const membership = membershipByUserId.get(userId)
+        if (!membership) return true // sin fila = sin membresía vigente que seguir cobrando
+        if ((membership.failed_payment_count || 0) >= MIN_FAILED_PAYMENTS) return true
+        return !STILL_PAYING_STATUSES.has(membership.status) // cancelada/expirada/pausada/no_membership
+      }),
+    )
+
+    const eligibleReservations = overdueReservations.filter((r) => riskyUserIds.has(r.user_id))
 
     if (eligibleReservations.length === 0) {
-      console.log("[SEPA CRON] Ninguna socia con reserva vencida >= 8 días acumula >= 3 pagos fallidos")
+      console.log("[SEPA CRON] Ninguna socia con reserva vencida >= 8 días muestra señal de riesgo de pago")
       return NextResponse.json({
         success: true,
-        message: "No hay socias que cumplan ambas condiciones (8 días + 3 pagos fallidos)",
+        message: "No hay socias que cumplan ambas condiciones (8 días + riesgo de pago)",
         processed: 0,
       })
     }
 
-    console.log(`[SEPA CRON] ${eligibleReservations.length} reserva(s) cumplen ambas condiciones (8 días + 3 pagos fallidos)`)
+    console.log(`[SEPA CRON] ${eligibleReservations.length} reserva(s) cumplen ambas condiciones (8 días + riesgo de pago)`)
 
     const results = []
 
