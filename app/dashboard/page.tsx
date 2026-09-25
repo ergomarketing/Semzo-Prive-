@@ -14,6 +14,7 @@ import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-c
 import { MyBagCard } from "@/app/components/my-bag-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { PetitePassBanner } from "@/app/components/petite-pass-banner"
+import HowFoundPrompt from "@/app/components/how-found-prompt"
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 
@@ -279,6 +280,9 @@ export default function DashboardHome() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Pregunta de un toque "¿Como nos conociste?" (solo cuentas recientes sin respuesta) */}
+      <HowFoundPrompt />
 
       {/*
        * Banner: cancelada con acceso vigente hasta end_date.

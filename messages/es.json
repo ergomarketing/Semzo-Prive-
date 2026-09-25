@@ -691,6 +691,13 @@
     "ctaQuestion": "¿Quieres saber más sobre Colecciona?",
     "ctaLink": "Descubrir cómo funciona"
   },
+  "howFoundPrompt": {
+    "title": "¿Cómo nos conociste?",
+    "subtitle": "Un toque y nos ayudas a llegar a más socias como tú.",
+    "send": "Enviar",
+    "thanks": "¡Gracias!",
+    "dismiss": "Cerrar"
+  },
   "footer": {
     "brand": {
       "desc": "Accede a bolsos de lujo autenticados con la membresía de Semzo Privé. Hermès, Chanel, Louis Vuitton y más marcas exclusivas, sin compromiso de compra. Tu armario de ensueño, a un solo paso."

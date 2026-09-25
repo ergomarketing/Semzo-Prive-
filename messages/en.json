@@ -691,6 +691,13 @@
     "ctaQuestion": "Want to know more about Colecciona?",
     "ctaLink": "Discover how it works"
   },
+  "howFoundPrompt": {
+    "title": "How did you find us?",
+    "subtitle": "One tap and you help us reach more members like you.",
+    "send": "Send",
+    "thanks": "Thank you!",
+    "dismiss": "Close"
+  },
   "footer": {
     "brand": {
       "desc": "Access authenticated luxury bags with your Semzo Privé membership. Hermès, Chanel, Louis Vuitton and more iconic brands, no purchase commitment. Your dream wardrobe, one step away."
