@@ -1,36 +1,20 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { CorreosAPI, CORREOS_PRODUCTS, type CorreosParty } from "@/lib/correos-api"
-import { sanitizeRecipient, type RecipientInput } from "@/lib/correos-sanitize"
+import {
+  sanitizeRecipient,
+  provinceCodeFromPostalCode,
+  resolveProvinceCode,
+  type RecipientInput,
+} from "@/lib/correos-sanitize"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
 
-// Mapa de nombres de provincia → codigo de 2 digitos (Correos REST v1 requiere codigo numerico).
-const PROVINCE_CODE_MAP: Record<string, string> = {
-  ALAVA: "01", ALBACETE: "02", ALICANTE: "03", ALMERIA: "04", AVILA: "05",
-  BADAJOZ: "06", "ILLES BALEARS": "07", BALEARES: "07", BARCELONA: "08",
-  BURGOS: "09", CACERES: "10", CADIZ: "11", CASTELLON: "12", "CIUDAD REAL": "13",
-  CORDOBA: "14", "A CORUÑA": "15", CORUÑA: "15", CUENCA: "16", GIRONA: "17",
-  GRANADA: "18", GUADALAJARA: "19", GUIPUZCOA: "20", HUELVA: "21", HUESCA: "22",
-  JAEN: "23", LEON: "24", LLEIDA: "25", RIOJA: "26", LUGO: "27", MADRID: "28",
-  MALAGA: "29", MURCIA: "30", NAVARRA: "31", OURENSE: "32", ASTURIAS: "33",
-  PALENCIA: "34", "LAS PALMAS": "35", PONTEVEDRA: "36", SALAMANCA: "37",
-  "SANTA CRUZ DE TENERIFE": "38", TENERIFE: "38", CANTABRIA: "39", SEGOVIA: "40",
-  SEVILLA: "41", SORIA: "42", TARRAGONA: "43", TERUEL: "44", TOLEDO: "45",
-  VALENCIA: "46", VALLADOLID: "47", VIZCAYA: "48", ZAMORA: "49", ZARAGOZA: "50",
-  CEUTA: "51", MELILLA: "52",
-}
-
-/** Resuelve el codigo de 2 digitos de provincia. Si ya viene como codigo lo devuelve tal cual. */
-function resolveProvinceCode(province: string): string {
-  if (!province) return ""
-  // Si ya es un codigo de 1-2 digitos numericos, devolver con padding
-  if (/^\d{1,2}$/.test(province.trim())) return province.trim().padStart(2, "0")
-  return PROVINCE_CODE_MAP[province.trim().toUpperCase()] || province
-}
+// La resolucion de provincia (codigo de 2 digitos que exige Correos) vive en
+// lib/correos-sanitize.ts: una sola tabla, con el codigo postal como fuente de verdad.
 
 // Default sender info (Semzo Prive). Fallback si logistics_settings.sender_info no esta configurado.
 // country: "ESP" (ISO 3166 alfa-3 requerido por Correos REST v1, no "ES")
@@ -69,8 +53,8 @@ function buildSenderParty(senderInfo: any): CorreosParty {
     door: s.door || "",
     postalCode: s.postalCode || "",
     city: s.city || "",
-    // Normalizar siempre a codigo de 2 digitos (Correos rechaza nombre libre)
-    province: resolveProvinceCode(s.province || ""),
+    // Codigo de 2 digitos (Correos rechaza nombre libre): primero el del CP, luego el del nombre
+    province: provinceCodeFromPostalCode(s.postalCode) || resolveProvinceCode(s.province) || s.province || "",
     // Normalizar a ISO alfa-3 (Correos rechaza "ES", espera "ESP")
     country: (s.country === "ES" ? "ESP" : s.country) || "ESP",
     phone: s.phone || "",

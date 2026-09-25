@@ -485,7 +485,10 @@ export default function LogisticsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "Error al crear envío")
+        // Incluir el detalle de validacion (p.ej. CP/provincia incoherentes) para
+        // que el admin vea QUE corregir y no solo "datos invalidos".
+        const details = Array.isArray(data.details) && data.details.length > 0 ? `\n\n- ${data.details.join("\n- ")}` : ""
+        throw new Error((data.error || "Error al crear envío") + details)
       }
 
       if (data.correos_success && data.return_label_created) {

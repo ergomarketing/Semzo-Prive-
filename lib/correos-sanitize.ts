@@ -98,6 +98,109 @@ export function normalizePhone(input: string | null | undefined): string {
 /**
  * Normaliza codigo postal espanol: 5 digitos exactos con padding.
  */
+// ---------------------------------------------------------------------------
+// Provincias: Correos REST v1 exige el CODIGO de 2 digitos (01-52) y valida que
+// coincida con el codigo postal.
+//
+// FUENTE DE VERDAD = codigo postal: sus 2 primeros digitos SON el codigo de
+// provincia (INE/Correos). Resolver por nombre es fragil: el nombre pasa por
+// normalizeText (mayusculas, sin acentos, Ñ -> N), asi que "La Coruña" llegaba
+// como "LA CORUNA" y no coincidia con ninguna clave ("A CORUÑA"/"CORUÑA");
+// "La Rioja" tampoco ("RIOJA"). Resultado: Correos rechazaba con 1046
+// "Provincia no valida" + 1115 "CP no coincide con la provincia".
+// ---------------------------------------------------------------------------
+const PROVINCE_CODE_BY_NAME: Record<string, string> = {
+  "ALAVA": "01", "ARABA": "01", "ARABA ALAVA": "01",
+  "ALBACETE": "02",
+  "ALICANTE": "03", "ALACANT": "03",
+  "ALMERIA": "04",
+  "AVILA": "05",
+  "BADAJOZ": "06",
+  "BALEARES": "07", "ILLES BALEARS": "07", "ISLAS BALEARES": "07",
+  "BARCELONA": "08",
+  "BURGOS": "09",
+  "CACERES": "10",
+  "CADIZ": "11",
+  "CASTELLON": "12", "CASTELLO": "12",
+  "CIUDAD REAL": "13",
+  "CORDOBA": "14",
+  "A CORUNA": "15", "LA CORUNA": "15", "CORUNA": "15", "CORUNA A": "15",
+  "CUENCA": "16",
+  "GIRONA": "17", "GERONA": "17",
+  "GRANADA": "18",
+  "GUADALAJARA": "19",
+  "GUIPUZCOA": "20", "GIPUZKOA": "20",
+  "HUELVA": "21",
+  "HUESCA": "22",
+  "JAEN": "23",
+  "LEON": "24",
+  "LLEIDA": "25", "LERIDA": "25",
+  "LA RIOJA": "26", "RIOJA": "26",
+  "LUGO": "27",
+  "MADRID": "28",
+  "MALAGA": "29",
+  "MURCIA": "30",
+  "NAVARRA": "31", "NAFARROA": "31",
+  "OURENSE": "32", "ORENSE": "32",
+  "ASTURIAS": "33",
+  "PALENCIA": "34",
+  "LAS PALMAS": "35", "PALMAS": "35", "LAS PALMAS DE GRAN CANARIA": "35",
+  "PONTEVEDRA": "36",
+  "SALAMANCA": "37",
+  "SANTA CRUZ DE TENERIFE": "38", "TENERIFE": "38",
+  "CANTABRIA": "39",
+  "SEGOVIA": "40",
+  "SEVILLA": "41",
+  "SORIA": "42",
+  "TARRAGONA": "43",
+  "TERUEL": "44",
+  "TOLEDO": "45",
+  "VALENCIA": "46",
+  "VALLADOLID": "47",
+  "VIZCAYA": "48", "BIZKAIA": "48",
+  "ZAMORA": "49",
+  "ZARAGOZA": "50",
+  "CEUTA": "51",
+  "MELILLA": "52",
+}
+
+function provinceKey(input: string): string {
+  return removeAccents((input || "").trim().toUpperCase())
+    .replace(/^PROVINCIA DE\s+/, "")
+    .replace(/[^A-Z0-9/\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/** Codigo de provincia (2 digitos) segun los 2 primeros digitos de un CP de 5 cifras; "" si no es valido (01-52). */
+export function provinceCodeFromPostalCode(postalCode: string | null | undefined): string {
+  const cp = (postalCode || "").replace(/\D/g, "")
+  if (cp.length !== 5) return ""
+  const code = cp.slice(0, 2)
+  return code >= "01" && code <= "52" ? code : ""
+}
+
+/**
+ * Codigo de provincia a partir de un nombre o de un codigo numerico ("15", "A Coruña",
+ * "La Coruña", "Gipuzkoa", "Araba/Álava"...). "" si no se reconoce.
+ */
+export function resolveProvinceCode(input: string | null | undefined): string {
+  const raw = (input || "").trim()
+  if (!raw) return ""
+  if (/^\d{1,2}$/.test(raw)) {
+    const padded = raw.padStart(2, "0")
+    return padded >= "01" && padded <= "52" ? padded : ""
+  }
+  const key = provinceKey(raw)
+  if (PROVINCE_CODE_BY_NAME[key]) return PROVINCE_CODE_BY_NAME[key]
+  // "Araba/Álava", "Valencia/València"...: probar cada parte
+  for (const part of key.split("/")) {
+    const found = PROVINCE_CODE_BY_NAME[part.trim()]
+    if (found) return found
+  }
+  return ""
+}
+
 export function normalizePostalCode(input: string | null | undefined): string {
   if (!input) return ""
   const cp = input.replace(/\D/g, "")
@@ -295,27 +398,25 @@ export function sanitizeRecipient(raw: RawRecipient): SanitizationResult {
   const city = normalizeText(raw.city, CORREOS_MAX_LENGTHS.city)
   if (!city) errors.push("Localidad obligatoria")
 
-  // Correos REST v1 requiere codigo de 2 digitos, no nombre libre.
-  // Si viene texto (ej "MALAGA"), intentamos resolver el codigo; si no se conoce
-  // usamos el texto para no bloquear y que Correos devuelva el error descriptivo.
+  // Provincia: el codigo postal manda (ver comentario de PROVINCE_CODE_BY_NAME).
+  // El nombre solo sirve para detectar una direccion incoherente; nunca para
+  // bloquear por un nombre mal escrito ("La Coruña", "La Rioja"...).
   const provinceRaw = normalizeText(raw.province, CORREOS_MAX_LENGTHS.province)
-  if (!provinceRaw) errors.push("Provincia obligatoria")
-  const PROVINCE_CODES: Record<string, string> = {
-    ALAVA:"01",ALBACETE:"02",ALICANTE:"03",ALMERIA:"04",AVILA:"05",BADAJOZ:"06",
-    "ILLES BALEARS":"07",BALEARES:"07",BARCELONA:"08",BURGOS:"09",CACERES:"10",
-    CADIZ:"11",CASTELLON:"12","CIUDAD REAL":"13",CORDOBA:"14","A CORUÑA":"15",
-    CORUÑA:"15",CUENCA:"16",GIRONA:"17",GRANADA:"18",GUADALAJARA:"19",
-    GUIPUZCOA:"20",HUELVA:"21",HUESCA:"22",JAEN:"23",LEON:"24",LLEIDA:"25",
-    RIOJA:"26",LUGO:"27",MADRID:"28",MALAGA:"29",MURCIA:"30",NAVARRA:"31",
-    OURENSE:"32",ASTURIAS:"33",PALENCIA:"34","LAS PALMAS":"35",PONTEVEDRA:"36",
-    SALAMANCA:"37","SANTA CRUZ DE TENERIFE":"38",TENERIFE:"38",CANTABRIA:"39",
-    SEGOVIA:"40",SEVILLA:"41",SORIA:"42",TARRAGONA:"43",TERUEL:"44",TOLEDO:"45",
-    VALENCIA:"46",VALLADOLID:"47",VIZCAYA:"48",ZAMORA:"49",ZARAGOZA:"50",
-    CEUTA:"51",MELILLA:"52",
+  const provinceFromCp = provinceCodeFromPostalCode(postalCode)
+  const provinceFromName = resolveProvinceCode(provinceRaw)
+  const province = provinceFromCp || provinceFromName || provinceRaw
+
+  if (provinceFromCp) {
+    if (provinceFromName && provinceFromName !== provinceFromCp) {
+      errors.push(
+        `El codigo postal ${postalCode} corresponde a la provincia ${provinceFromCp}, pero la provincia indicada ("${provinceRaw}") es la ${provinceFromName}. Revisa la direccion de la socia.`,
+      )
+    }
+  } else if (!provinceRaw) {
+    errors.push("Provincia obligatoria")
+  } else if (!provinceFromName) {
+    errors.push(`Provincia no reconocida: "${provinceRaw}"`)
   }
-  const province = /^\d{1,2}$/.test(provinceRaw.trim())
-    ? provinceRaw.trim().padStart(2, "0")
-    : PROVINCE_CODES[provinceRaw.trim()] || provinceRaw
 
   const phone = normalizePhone(raw.phone)
   if (!phone) errors.push("Telefono no valido (9 digitos espanoles)")
