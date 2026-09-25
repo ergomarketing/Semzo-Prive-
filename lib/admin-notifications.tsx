@@ -420,6 +420,32 @@ class AdminNotifications {
     )
   }
 
+  async notifySuspiciousAddressChange(data: {
+    userName: string
+    userEmail: string
+    userId: string
+    reservationId: string
+    reservationStatus: string
+    oldAddress: string
+    newAddress: string
+  }) {
+    return this.sendAdminEmail(
+      `Aviso: cambio de dirección con bolso en curso — ${data.userName}`,
+      [
+        { label: "Socia", value: data.userName },
+        { label: "Email", value: data.userEmail },
+        { label: "ID usuario", value: data.userId },
+        { label: "ID Reserva", value: data.reservationId },
+        { label: "Estado de la reserva", value: data.reservationStatus },
+        { label: "Dirección anterior", value: data.oldAddress },
+        { label: "Dirección nueva", value: data.newAddress },
+      ],
+      "suspicious_address_change",
+      { userId: data.userId, reservationId: data.reservationId },
+      "La socia cambió su dirección de envío mientras tiene un bolso en curso (enviado, en su poder o pendiente de devolución). No se bloqueó el cambio, pero requiere revisión antes de procesar cualquier envío o devolución con la nueva dirección.",
+    )
+  }
+
   async notifyShipmentStatus(data: {
     userName: string
     userEmail: string
