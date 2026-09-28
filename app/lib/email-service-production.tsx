@@ -29,6 +29,7 @@ import ReturnReminderEmail from "@/emails/templates/return-reminder"
 import { getMessages } from "@/emails/messages"
 
 import { getResendApiKey } from "@/lib/resend-api-key"
+import { logEmail } from "@/lib/email-logger"
 
 function resolveResendApiKey(): string {
   return getResendApiKey()
@@ -1499,6 +1500,22 @@ export class EmailServiceProduction {
 
     const userSent = await this.sendWithResend(userEmailData)
     const adminSent = await this.sendWithResend(adminEmailData)
+
+    // Registrar el E1 en email_logs para que aparezca en el panel de
+    // Historial de Emails del admin (antes solo se enviaba, sin registrar).
+    await logEmail({
+      recipientEmail: data.userEmail,
+      recipientName: data.userName,
+      subject: userEmailData.subject,
+      emailType: "dunning_e1",
+      status: userSent ? "sent" : "failed",
+      metadata: {
+        amount: data.amount,
+        reason: data.reason,
+        membershipType: data.membershipType,
+      },
+    })
+
     return userSent && adminSent
   }
 
