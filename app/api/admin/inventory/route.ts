@@ -73,6 +73,12 @@ export async function GET(request: NextRequest) {
           images: bag.images,
           category: bag.category,
           description: bag.description,
+          nfc_uid: bag.nfc_uid,
+          nfc_assigned_at: bag.nfc_assigned_at,
+          nfc_scan_count: bag.nfc_scan_count,
+          nfc_last_scan: bag.nfc_last_scan,
+          nfc_blocked: bag.nfc_blocked,
+          nfc_blocked_reason: bag.nfc_blocked_reason,
         }
       }) || []
 
