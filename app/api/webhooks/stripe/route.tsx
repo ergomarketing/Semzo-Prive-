@@ -105,6 +105,93 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        // --- COMPRA DIRECTA DE BOLSO COLECCIONA (mode: payment, pago único) ---
+        if (
+          session.mode === "payment" &&
+          session.payment_status === "paid" &&
+          session.metadata?.type === "bag_direct_purchase"
+        ) {
+          const bagId = session.metadata?.bag_id;
+          const userId = session.metadata?.user_id;
+
+          console.log("[v0] [bag_direct_purchase_webhook] checkout.session.completed received", {
+            session_id: session.id,
+            user_id: userId,
+            bag_id: bagId,
+            amount_total: session.amount_total,
+          });
+
+          if (!bagId || !userId) {
+            console.error("[v0] [bag_direct_purchase_webhook] missing bag_id or user_id in metadata", {
+              session_id: session.id,
+            });
+            break;
+          }
+
+          // Idempotencia: si ya se registró esta sesión, no repetir el efecto
+          const { data: existingSale } = await supabase
+            .from("admin_notifications")
+            .select("id")
+            .eq("type", "bag_direct_purchase")
+            .contains("metadata", { stripe_session_id: session.id })
+            .maybeSingle();
+
+          if (existingSale) {
+            console.log("[v0] [bag_direct_purchase_webhook] duplicate detected, skipping", {
+              session_id: session.id,
+            });
+            break;
+          }
+
+          // El bolso sale del inventario de alquiler: pasa a estado "colecciona" (vendido)
+          const { error: bagUpdateError } = await supabase
+            .from("bags")
+            .update({ status: "colecciona", updated_at: now })
+            .eq("id", bagId);
+
+          if (bagUpdateError) {
+            console.error("[v0] [bag_direct_purchase_webhook] failed to update bag status", {
+              session_id: session.id,
+              bag_id: bagId,
+              error: bagUpdateError.message,
+            });
+          }
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name")
+            .eq("id", userId)
+            .maybeSingle();
+
+          const { data: bag } = await supabase
+            .from("bags")
+            .select("name, brand, purchase_price")
+            .eq("id", bagId)
+            .maybeSingle();
+
+          await supabase.from("admin_notifications").insert({
+            type: "bag_direct_purchase",
+            priority: "normal",
+            title: `Compra directa — ${bag?.brand || ""} ${bag?.name || ""}`.trim(),
+            message: `${profile?.full_name || profile?.email || userId} compró el bolso ${bag?.brand || ""} ${bag?.name || ""} por ${(session.amount_total || 0) / 100}€`,
+            metadata: {
+              user_id: userId,
+              email: profile?.email,
+              bag_id: bagId,
+              amount_total: (session.amount_total || 0) / 100,
+              stripe_session_id: session.id,
+            },
+          });
+
+          console.log("[v0] [bag_direct_purchase_webhook] bag marked as colecciona (sold) OK", {
+            session_id: session.id,
+            bag_id: bagId,
+            user_id: userId,
+          });
+
+          break;
+        }
+
         // --- PASE DE BOLSO (mode: payment) ---
         if (session.mode === "payment" && session.payment_status === "paid") {
           const giftCardId = session.metadata?.gift_card_id;
