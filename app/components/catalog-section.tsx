@@ -365,6 +365,7 @@ function BagCard({
   const supabase = useMemo(() => getSupabaseBrowser(), [])
 
   const isAvailable = bag.status === "available"
+  const isColecciona = bag.status === "colecciona"
 
   useEffect(() => {
     const checkWaitlist = async () => {
@@ -660,8 +661,14 @@ function BagCard({
         </div>
 
         {!isAvailable && (
-          <div className="text-center py-2 border-b border-slate-200">
-            <p className="text-sm font-medium tracking-widest text-slate-400">{t("outWithMember")}</p>
+          <div className={`text-center py-2 border-b border-slate-200 ${isColecciona ? "bg-rose-pastel/10" : ""}`}>
+            <p
+              className={`text-sm font-medium tracking-widest ${
+                isColecciona ? "text-rose-500" : "text-slate-400"
+              }`}
+            >
+              {isColecciona ? t("coleccionaBadge") : t("outWithMember")}
+            </p>
           </div>
         )}
 
@@ -717,6 +724,10 @@ function BagCard({
                   </>
                 )}
               </Button>
+            </div>
+          ) : isColecciona ? (
+            <div className="rounded-lg border border-rose-pastel/40 bg-rose-pastel/10 px-4 py-3 text-center">
+              <p className="text-sm font-medium text-indigo-dark">{t("coleccionaSold")}</p>
             </div>
           ) : (
             <div className="space-y-2">

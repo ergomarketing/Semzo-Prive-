@@ -783,6 +783,8 @@
     "privePromoDesc": "La membresía Privé por 279€/mes ofrece acceso a nuestros bolsos más exclusivos y codiciados. La experiencia definitiva para verdaderas conocedoras.",
     "privePromoCta": "Suscribirse a Privé",
     "outWithMember": "FUERA CON MIEMBRO",
+    "coleccionaBadge": "COLECCIONA",
+    "coleccionaSold": "Esta pieza ya ha encontrado dueña",
     "perMonth": "€/mes",
     "value": "Valor: {price}€",
     "reserveSuccessTitle": "¡Reserva creada exitosamente!",
@@ -1091,6 +1093,8 @@
   "bagDetail": {
     "backToCatalog": "Volver al catálogo",
     "outWithMember": "FUERA CON MIEMBRO",
+    "coleccionaBadge": "COLECCIONA",
+    "coleccionaSold": "Esta pieza ya ha encontrado dueña",
     "shareBag": "Compartir este bolso",
     "share": "Compartir",
     "shareSocial": "Compartir en redes sociales",
