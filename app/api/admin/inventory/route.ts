@@ -106,7 +106,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "bagId y status son requeridos" }, { status: 400 })
     }
 
-    if (!["available", "rented", "maintenance", "reserved"].includes(status)) {
+    if (!["available", "rented", "maintenance", "reserved", "colecciona"].includes(status)) {
       return NextResponse.json({ error: "Estado inválido" }, { status: 400 })
     }
 
@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest) {
     // Si se marca como "available" o "maintenance", cerrar cualquier reserva admin activa.
     // De lo contrario, quedarian activas indefinidamente y el cleanup las veria como
     // "bolso alquilado por admin" aunque el admin ya lo hubiera desbloqueado.
-    if (status === "available" || status === "maintenance") {
+    if (status === "available" || status === "maintenance" || status === "colecciona") {
       try {
         await supabase
           .from("reservations")

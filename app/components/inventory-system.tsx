@@ -24,6 +24,7 @@ import {
   Eye,
   Upload,
   Loader2,
+  Sparkles,
 } from "lucide-react"
 
 const SEMZO_INDIGO = "#1a1a4b" // Indigo oscuro - color principal
@@ -34,7 +35,7 @@ interface BagInventory {
   id: string
   name: string
   brand: string
-  status: "available" | "rented" | "maintenance" | "reserved"
+  status: "available" | "rented" | "maintenance" | "reserved" | "colecciona"
   currentRenter?: string
   rentedUntil?: Date
   nextAvailable?: Date
@@ -179,6 +180,8 @@ export default function InventorySystem() {
         return "bg-slate-50 text-slate-700 border border-slate-300"
       case "reserved":
         return "bg-slate-100 text-slate-700 border border-slate-300"
+      case "colecciona":
+        return "bg-[#f4c4cc]/40 text-[#1a1a4b] border border-[#f4c4cc]"
       default:
         return "bg-slate-50 text-slate-700 border border-slate-200"
     }
@@ -194,6 +197,8 @@ export default function InventorySystem() {
         return "Mantenimiento"
       case "reserved":
         return "Reservado"
+      case "colecciona":
+        return "Colecciona (Vendido)"
       default:
         return status
     }
@@ -209,6 +214,8 @@ export default function InventorySystem() {
         return <AlertCircle className="h-4 w-4" />
       case "reserved":
         return <Clock className="h-4 w-4" />
+      case "colecciona":
+        return <Sparkles className="h-4 w-4" />
       default:
         return <Package className="h-4 w-4" />
     }
@@ -258,7 +265,10 @@ export default function InventorySystem() {
     )
   }
 
-  const toggleBagStatus = async (bagId: string, newStatus: "available" | "rented" | "maintenance") => {
+  const toggleBagStatus = async (
+    bagId: string,
+    newStatus: "available" | "rented" | "maintenance" | "colecciona",
+  ) => {
     try {
       const response = await fetch("/api/admin/inventory", {
         method: "PATCH",
@@ -291,7 +301,15 @@ export default function InventorySystem() {
 
         toast({
           title: "Estado actualizado",
-          description: `El bolso ahora está ${newStatus === "available" ? "disponible" : newStatus === "rented" ? "alquilado" : "en mantenimiento"}.`,
+          description: `El bolso ahora está ${
+            newStatus === "available"
+              ? "disponible"
+              : newStatus === "rented"
+                ? "alquilado"
+                : newStatus === "colecciona"
+                  ? "marcado como Colecciona (vendido)"
+                  : "en mantenimiento"
+          }.`,
         })
       }
     } catch (error) {
@@ -529,6 +547,9 @@ export default function InventorySystem() {
           <Badge className="bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1">
             {inventory.filter((b) => b.status === "maintenance").length} Mantenimiento
           </Badge>
+          <Badge className="bg-[#f4c4cc]/40 text-[#1a1a4b] border border-[#f4c4cc] px-3 py-1">
+            {inventory.filter((b) => b.status === "colecciona").length} Colecciona
+          </Badge>
         </div>
       </div>
 
@@ -611,6 +632,14 @@ export default function InventorySystem() {
                           Manten.
                         </Button>
                       </>
+                    ) : bag.status === "colecciona" ? (
+                      <Button
+                        size="sm"
+                        onClick={() => toggleBagStatus(bag.id, "available")}
+                        className="flex-1 h-8 text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
+                      >
+                        Marcar Disponible
+                      </Button>
                     ) : bag.status === "rented" ? (
                       <Button
                         size="sm"
@@ -629,6 +658,18 @@ export default function InventorySystem() {
                       </Button>
                     )}
                   </div>
+
+                  {bag.status !== "colecciona" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleBagStatus(bag.id, "colecciona")}
+                      className="h-8 text-xs border-[#f4c4cc] text-[#1a1a4b] hover:bg-[#f4c4cc]/10"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1.5" />
+                      Marcar Colecciona (Vendido)
+                    </Button>
+                  )}
 
                   <div className="flex space-x-1.5">
                     <Button
@@ -1257,6 +1298,7 @@ function BagForm({
               <SelectItem value="rented">Alquilado</SelectItem>
               <SelectItem value="maintenance">Mantenimiento</SelectItem>
               <SelectItem value="reserved">Reservado</SelectItem>
+              <SelectItem value="colecciona">Colecciona (Vendido)</SelectItem>
             </SelectContent>
           </Select>
         </div>

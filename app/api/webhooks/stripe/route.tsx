@@ -749,6 +749,23 @@ export async function POST(req: NextRequest) {
           console.log("✅ Membership RECOVERED from delinquency to active:", membership.user_id);
         }
 
+        // Sincronizar la reserva activa del bolso actual con el nuevo periodo.
+        // Sin esto, reservations.end_date queda con la fecha del ciclo anterior
+        // y el cron auto-update-reservation-status la marca como "overdue"
+        // (devolucion vencida) aunque la socia ya pago la renovacion y sigue
+        // con el mismo bolso. Tambien revierte una reserva que ya hubiera
+        // caido en overdue por este mismo motivo antes de que llegara el pago.
+        await supabase
+          .from("reservations")
+          .update({
+            status: "active",
+            end_date: renewalEnd.toISOString(),
+            updated_at: now,
+          })
+          .eq("user_id", membership.user_id)
+          .in("status", ["active", "overdue"])
+          .or("is_admin_rent.is.null,is_admin_rent.eq.false");
+
         await supabase
           .from("payment_history")
           .upsert(

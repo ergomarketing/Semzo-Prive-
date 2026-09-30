@@ -243,12 +243,18 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       bgColor: "bg-rose-50",
       message: t("availableMsg"),
     },
-    rented: {
-      label: t("rented"),
-      color: "text-[#1a2c4e]",
-      bgColor: "bg-rose-50",
-      message: t("rentedMsg"),
-    },
+  rented: {
+  label: t("rented"),
+  color: "text-[#1a2c4e]",
+  bgColor: "bg-rose-50",
+  message: t("rentedMsg"),
+  },
+  colecciona: {
+  label: t("coleccionaBadge"),
+  color: "text-rose-500",
+  bgColor: "bg-rose-pastel/10",
+  message: t("coleccionaSold"),
+  },
   }
 
   const bagsToShow = relatedBags || []
@@ -644,6 +650,14 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   </div>
                 </div>
               )}
+              {bag.availability.status === "colecciona" && (
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <p className="text-2xl font-serif mb-2">{t("coleccionaBadge")}</p>
+                    <p className="text-sm text-white/80">{t("coleccionaSold")}</p>
+                  </div>
+                </div>
+              )}
               <Image
                 src={bag.images[selectedImage] || "/placeholder.svg"}
                 alt={`Alquiler ${bag.brand} ${bag.name}${bag.color && bag.color !== "Clasico" ? ` ${bag.color}` : ""} - Bolso de lujo en Semzo Prive`}
@@ -859,7 +873,9 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                   )}
                 </div>
 
-                {canReserveWithMembership() && bag.availability.status === "available" && (
+                {canReserveWithMembership() &&
+                  bag.availability.status === "available" &&
+                  bag.availability.status !== "colecciona" && (
                   <Button
                     onClick={handleDirectReservation}
                     disabled={isReserving}
