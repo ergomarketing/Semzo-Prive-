@@ -694,18 +694,27 @@ export default function InventorySystem() {
                     </Button>
                   </div>
 
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedBag(bag)
-                      setNfcAction(bag.nfc_uid ? "scan" : "assign")
-                      setShowNfcModal(true)
-                    }}
-                    className="w-full h-8 text-xs bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
-                    disabled={bag.nfc_blocked}
-                  >
-                    📱 {bag.nfc_uid ? "Escanear NFC" : "Asignar NFC"}
-                  </Button>
+                  {bag.nfc_blocked ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleUnblockBag(bag.id)}
+                      className="w-full h-8 text-xs bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
+                    >
+                      🔓 Desbloquear NFC
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBag(bag)
+                        setNfcAction(bag.nfc_uid ? "scan" : "assign")
+                        setShowNfcModal(true)
+                      }}
+                      className="w-full h-8 text-xs bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
+                    >
+                      📱 {bag.nfc_uid ? "Escanear NFC" : "Asignar NFC"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
