@@ -451,14 +451,16 @@ class AdminNotifications {
     userEmail: string
     bagName: string
     bagBrand: string
-    status: "created" | "in_transit" | "delivered"
-    trackingNumber?: string
+  status: "created" | "in_transit" | "delivered" | "return_in_transit" | "return_delivered"
+  trackingNumber?: string
   }) {
-    const statusLabels: Record<string, string> = {
-      created: "Envío Creado",
-      in_transit: "Envío en Tránsito",
-      delivered: "Envío Entregado",
-    }
+  const statusLabels: Record<string, string> = {
+  created: "Envío Creado",
+  in_transit: "Envío en Tránsito",
+  delivered: "Envío Entregado",
+  return_in_transit: "Devolución en Tránsito",
+  return_delivered: "Devolución Recibida",
+  }
     const rows: Row[] = [
       { label: "Socia", value: data.userName },
       { label: "Email", value: data.userEmail },

@@ -776,7 +776,7 @@ export class EmailServiceProduction {
                 "El verdadero lujo no consiste en tener más.<br />Consiste en elegir mejor."
               </p>
               <div style="width:40px;height:1px;background-color:#c9a96e;margin:24px auto 20px auto;"></div>
-              <p style="margin:0 0 2px 0;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a4b;letter-spacing:0.5px;text-align:center;">SEMZO PRIV��������</p>
+              <p style="margin:0 0 2px 0;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a4b;letter-spacing:0.5px;text-align:center;">SEMZO PRIVÉ</p>
               <p style="margin:0 0 0 0;font-family:'Playfair Display',Georgia,serif;font-size:14px;font-style:italic;color:#7a7a94;text-align:center;letter-spacing:0.3px;">Tu puerta de acceso al armario de tus sueños</p>
             </td>
           </tr>

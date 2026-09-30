@@ -154,7 +154,108 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, tracked, delivered, errors })
+    // ============================================================
+    // SEGUIMIENTO DE DEVOLUCIONES
+    // ============================================================
+    // La etiqueta de devolucion se genera cuando la socia notifica el envio
+    // (return_tracking_number), pero antes de esto NADA volvia a consultar
+    // Correos sobre ese numero: el filtro de arriba excluye los envios ya
+    // "delivered" (entrega de ida), asi que el seguimiento del paquete de
+    // vuelta quedaba invisible para siempre. Aqui se rastrea por separado.
+    const { data: returnShipments, error: returnFetchError } = await supabase
+      .from("shipments")
+      .select("id, reservation_id, return_tracking_number, return_status")
+      .not("return_tracking_number", "is", null)
+      .or("return_status.is.null,return_status.in.(pending,in_transit,out_for_delivery)")
+
+    if (returnFetchError) throw returnFetchError
+
+    let returnsDelivered = 0
+
+    for (const shipment of returnShipments || []) {
+      try {
+        const trackingInfo = await correosClient.trackShipment(shipment.return_tracking_number as string)
+        tracked++
+
+        if (!trackingInfo.estadoEnvio) continue
+
+        const newReturnStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+        const wasUntracked = !shipment.return_status
+        const wasReturnDelivered = shipment.return_status === "delivered"
+
+        await supabase
+          .from("shipments")
+          .update({
+            return_status: newReturnStatus,
+            return_actual_delivery: trackingInfo.fechaEntrega || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", shipment.id)
+
+        const justShippedBack = newReturnStatus === "in_transit" && wasUntracked
+        const justReturnDelivered = newReturnStatus === "delivered" && !wasReturnDelivered
+
+        if (justShippedBack || justReturnDelivered) {
+          const { data: reservation } = await supabase
+            .from("reservations")
+            .select(`
+              id,
+              profiles!reservations_user_id_fkey ( email, full_name ),
+              bags!reservations_bag_id_fkey ( name, brand )
+            `)
+            .eq("id", shipment.reservation_id)
+            .maybeSingle()
+
+          const profile = (reservation as any)?.profiles
+          const bag = (reservation as any)?.bags
+          const bagName = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : "tu bolso"
+
+          if (justShippedBack) {
+            await adminNotifications
+              .notifyShipmentStatus({
+                userName: profile?.full_name || profile?.email || "—",
+                userEmail: profile?.email || "—",
+                bagName: bag?.name || "—",
+                bagBrand: bag?.brand || "",
+                status: "return_in_transit" as any,
+                trackingNumber: shipment.return_tracking_number as string,
+              })
+              .catch((e) => console.error("[track-shipments] Error aviso admin devolucion en transito:", e))
+          }
+
+          if (justReturnDelivered) {
+            returnsDelivered++
+
+            if (profile?.email) {
+              await emailService
+                .sendReturnReceivedEmail({
+                  userEmail: profile.email,
+                  userName: profile.full_name || profile.email,
+                  bagName,
+                })
+                .catch((e) => console.error(`[track-shipments] Error email devolucion recibida ${profile.email}:`, e))
+            }
+
+            await adminNotifications
+              .notifyShipmentStatus({
+                userName: profile?.full_name || profile?.email || "—",
+                userEmail: profile?.email || "—",
+                bagName: bag?.name || "—",
+                bagBrand: bag?.brand || "",
+                status: "return_delivered" as any,
+                trackingNumber: shipment.return_tracking_number as string,
+              })
+              .catch((e) => console.error("[track-shipments] Error aviso admin devolucion recibida:", e))
+          }
+        }
+      } catch (shipmentError) {
+        const message = shipmentError instanceof Error ? shipmentError.message : "Error desconocido"
+        errors.push({ tracking_number: shipment.return_tracking_number as string, error: message })
+        console.error(`[track-shipments] Error tracking devolucion ${shipment.return_tracking_number}:`, message)
+      }
+    }
+
+    return NextResponse.json({ success: true, tracked, delivered, returnsDelivered, errors })
   } catch (error) {
     console.error("[track-shipments] Error general:", error)
     const message = error instanceof Error ? error.message : "Error al rastrear envios"
