@@ -659,19 +659,7 @@ export default function InventorySystem() {
                     )}
                   </div>
 
-                  {bag.status !== "colecciona" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleBagStatus(bag.id, "colecciona")}
-                      className="h-8 text-xs border-[#f4c4cc] text-[#1a1a4b] hover:bg-[#f4c4cc]/10"
-                    >
-                      <Sparkles className="h-3 w-3 mr-1.5" />
-                      Marcar Colecciona (Vendido)
-                    </Button>
-                  )}
-
-                  <div className="flex space-x-1.5">
+  <div className="flex space-x-1.5">
                     <Button
                       size="sm"
                       variant="outline"
