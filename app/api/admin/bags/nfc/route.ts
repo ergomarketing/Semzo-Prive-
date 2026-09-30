@@ -93,12 +93,10 @@ export async function POST(request: NextRequest) {
       const isMatch = bag.nfc_uid === nfcUid
 
       if (!isMatch) {
-        // Bloquear el bolso por discrepancia
+        // Solo se registra el intento fallido, no se bloquea el bolso
         await supabase
           .from("bags")
           .update({
-            nfc_blocked: true,
-            nfc_blocked_reason: `UID escaneado (${nfcUid}) no coincide con el asignado (${bag.nfc_uid})`,
             nfc_last_scan: new Date().toISOString(),
           })
           .eq("id", bagId)
@@ -107,10 +105,9 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             match: false,
-            message: "⚠️ ALERTA: El NFC no coincide. Bolso bloqueado.",
+            message: "⚠️ ALERTA: El NFC escaneado no coincide con el registrado para este bolso.",
             expected: bag.nfc_uid,
             scanned: nfcUid,
-            blocked: true,
           },
           { status: 200 },
         )

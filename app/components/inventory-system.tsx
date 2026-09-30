@@ -439,23 +439,8 @@ export default function InventorySystem() {
           setSelectedBag((prev) => (prev ? { ...prev, ...result.bag } : null))
         }
       } else {
-        // Escaneo fallido - actualizar inventario para mostrar bloqueo
-        if (result.blocked) {
-          setInventory((prev) =>
-            prev.map((bag) =>
-              bag.id === selectedBag.id
-                ? {
-                    ...bag,
-                    nfc_blocked: true,
-                    nfc_blocked_reason: result.message,
-                  }
-                : bag,
-            ),
-          )
-        }
-
         toast({
-          title: nfcAction === "assign" ? "No se pudo asignar el NFC" : "Error de Validación NFC",
+          title: nfcAction === "assign" ? "No se pudo asignar el NFC" : "⚠️ NFC no coincide",
           description:
             result.error ||
             result.message ||
@@ -474,41 +459,6 @@ export default function InventorySystem() {
       })
     } finally {
       setNfcLoading(false)
-    }
-  }
-
-  const handleUnblockBag = async (bagId: string) => {
-    try {
-      const response = await fetch("/api/admin/bags/nfc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "unblock",
-          bagId,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast({
-          title: "Bolso Desbloqueado",
-          description: "El bolso ha sido desbloqueado correctamente",
-        })
-
-        setInventory((prev) => prev.map((bag) => (bag.id === bagId ? { ...bag, ...result.bag } : bag)))
-
-        if (selectedBag?.id === bagId) {
-          setSelectedBag((prev) => (prev ? { ...prev, ...result.bag } : null))
-        }
-      }
-    } catch (error) {
-      console.error("[v0] Error desbloqueando:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo desbloquear el bolso",
-        variant: "destructive",
-      })
     }
   }
 
@@ -583,7 +533,6 @@ export default function InventorySystem() {
                   <Badge className={`${getMembershipColor(bag.membership_type)} text-xs`}>
                     {getMembershipLabel(bag.membership_type)}
                   </Badge>
-                  {bag.nfc_blocked && <Badge className="bg-[#1a1a4b] text-white text-xs">🔒 Bloqueado</Badge>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -702,7 +651,6 @@ export default function InventorySystem() {
                       setShowNfcModal(true)
                     }}
                     className="w-full h-8 text-xs bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
-                    disabled={bag.nfc_blocked}
                   >
                     📱 {bag.nfc_uid ? "Escanear NFC" : "Asignar NFC"}
                   </Button>
@@ -752,19 +700,6 @@ export default function InventorySystem() {
                       <p className="text-slate-900">{selectedBag.nfc_scan_count || 0}</p>
                     </div>
                   </div>
-                  {selectedBag.nfc_blocked && (
-                    <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded">
-                      <p className="text-red-900 font-semibold">⚠️ BOLSO BLOQUEADO</p>
-                      <p className="text-red-800 text-sm mt-1">{selectedBag.nfc_blocked_reason}</p>
-                      <Button
-                        size="sm"
-                        onClick={() => handleUnblockBag(selectedBag.id)}
-                        className="mt-2 bg-red-700 hover:bg-red-800 text-white"
-                      >
-                        Desbloquear Bolso
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
 
