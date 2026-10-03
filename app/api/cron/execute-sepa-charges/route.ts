@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         sepa_pre_notice_sent_at,
         sepa_charged_at,
         profiles!inner(id, email, full_name, first_name, last_name, stripe_customer_id, sepa_payment_method_id),
-        bags!inner(id, name, brand, retail_price, retail_price_updated_at)
+        bags!inner(id, name, brand, status, retail_price, retail_price_updated_at)
       `,
       )
       .in("status", ["overdue"])
@@ -106,6 +106,16 @@ export async function GET(request: NextRequest) {
 
       if (!profile || !bag) {
         console.warn(`[SEPA CHARGE CRON] Reserva ${reservation.id}: datos incompletos, se omite`)
+        continue
+      }
+
+      // The bag can be marked returned in inventory without the reservation being closed;
+      // never charge for a bag that is physically back.
+      if (bag.status !== "rented") {
+        console.log(
+          `[SEPA CHARGE CRON] Reserva ${reservation.id}: el bolso ya no está alquilado (status=${bag.status}), se omite el cargo`,
+        )
+        results.push({ reservationId: reservation.id, success: false, error: "bolso_ya_devuelto" })
         continue
       }
 

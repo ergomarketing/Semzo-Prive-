@@ -65,10 +65,11 @@ export async function GET(request: NextRequest) {
         status,
         sepa_pre_notice_sent_at,
         profiles!inner(id, email, full_name, first_name, last_name),
-        bags!inner(id, name, brand, retail_price)
+        bags!inner(id, name, brand, status, retail_price)
       `,
       )
       .in("status", ["overdue"])
+      .eq("bags.status", "rented")
       .lte("end_date", overdueCutoff.toISOString())
       .is("sepa_pre_notice_sent_at", null)
 
