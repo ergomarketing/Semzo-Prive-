@@ -331,13 +331,14 @@ class AdminNotifications {
     bagBrand: string
     reservationId: string
     amount: number
-    reason: "sin_mandato_sepa" | "error_stripe"
-    errorDetail: string
+  reason: "sin_mandato_sepa" | "error_stripe" | "fondos_insuficientes_diferido"
+  errorDetail: string
   }) {
-    const reasonLabels: Record<string, string> = {
-      sin_mandato_sepa: "Sin mandato SEPA guardado",
-      error_stripe: "Stripe rechazó el cargo (posible mandato revocado o tarjeta eliminada)",
-    }
+  const reasonLabels: Record<string, string> = {
+  sin_mandato_sepa: "Sin mandato SEPA guardado",
+  error_stripe: "Stripe rechazó el cargo (posible mandato revocado o tarjeta eliminada)",
+  fondos_insuficientes_diferido: "El cargo se inició pero falló días después (fondos insuficientes u otro rechazo del banco). Requiere gestión manual con la socia.",
+  }
     return this.sendAdminEmail(
       `URGENTE: Cargo SEPA fallido — ${data.userName}`,
       [

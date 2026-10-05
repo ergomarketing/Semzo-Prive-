@@ -105,6 +105,93 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        // --- COMPRA DIRECTA DE BOLSO COLECCIONA (mode: payment, pago único) ---
+        if (
+          session.mode === "payment" &&
+          session.payment_status === "paid" &&
+          session.metadata?.type === "bag_direct_purchase"
+        ) {
+          const bagId = session.metadata?.bag_id;
+          const userId = session.metadata?.user_id;
+
+          console.log("[v0] [bag_direct_purchase_webhook] checkout.session.completed received", {
+            session_id: session.id,
+            user_id: userId,
+            bag_id: bagId,
+            amount_total: session.amount_total,
+          });
+
+          if (!bagId || !userId) {
+            console.error("[v0] [bag_direct_purchase_webhook] missing bag_id or user_id in metadata", {
+              session_id: session.id,
+            });
+            break;
+          }
+
+          // Idempotencia: si ya se registró esta sesión, no repetir el efecto
+          const { data: existingSale } = await supabase
+            .from("admin_notifications")
+            .select("id")
+            .eq("type", "bag_direct_purchase")
+            .contains("metadata", { stripe_session_id: session.id })
+            .maybeSingle();
+
+          if (existingSale) {
+            console.log("[v0] [bag_direct_purchase_webhook] duplicate detected, skipping", {
+              session_id: session.id,
+            });
+            break;
+          }
+
+          // El bolso sale del inventario de alquiler: pasa a estado "colecciona" (vendido)
+          const { error: bagUpdateError } = await supabase
+            .from("bags")
+            .update({ status: "colecciona", updated_at: now })
+            .eq("id", bagId);
+
+          if (bagUpdateError) {
+            console.error("[v0] [bag_direct_purchase_webhook] failed to update bag status", {
+              session_id: session.id,
+              bag_id: bagId,
+              error: bagUpdateError.message,
+            });
+          }
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name")
+            .eq("id", userId)
+            .maybeSingle();
+
+          const { data: bag } = await supabase
+            .from("bags")
+            .select("name, brand, purchase_price")
+            .eq("id", bagId)
+            .maybeSingle();
+
+          await supabase.from("admin_notifications").insert({
+            type: "bag_direct_purchase",
+            priority: "normal",
+            title: `Compra directa — ${bag?.brand || ""} ${bag?.name || ""}`.trim(),
+            message: `${profile?.full_name || profile?.email || userId} compró el bolso ${bag?.brand || ""} ${bag?.name || ""} por ${(session.amount_total || 0) / 100}€`,
+            metadata: {
+              user_id: userId,
+              email: profile?.email,
+              bag_id: bagId,
+              amount_total: (session.amount_total || 0) / 100,
+              stripe_session_id: session.id,
+            },
+          });
+
+          console.log("[v0] [bag_direct_purchase_webhook] bag marked as colecciona (sold) OK", {
+            session_id: session.id,
+            bag_id: bagId,
+            user_id: userId,
+          });
+
+          break;
+        }
+
         // --- PASE DE BOLSO (mode: payment) ---
         if (session.mode === "payment" && session.payment_status === "paid") {
           const giftCardId = session.metadata?.gift_card_id;
@@ -1255,6 +1342,57 @@ export async function POST(req: NextRequest) {
       case "payment_intent.payment_failed": {
         const pi = event.data.object as Stripe.PaymentIntent;
         const piUserId = pi.metadata?.user_id;
+
+        // CASO ESPECIAL: cargo por no devolución de bolso (cron execute-sepa-charges).
+        // El PaymentIntent de SEPA suele quedar "processing" varios días y solo falla
+        // después (fondos insuficientes, mandato revocado, etc.). Si no distinguimos
+        // este caso, el fallo se trataría como un impago de membresía genérico y se
+        // perdería el rastro del bolso no cobrado.
+        if (pi.metadata?.reason === "non_return_sepa_mandate" && pi.metadata?.reservation_id) {
+          const reservationId = pi.metadata.reservation_id;
+          const errorDetail = pi.last_payment_error?.message || "Cargo SEPA fallido (fondos insuficientes u otro rechazo del banco)";
+
+          await supabase
+            .from("reservations")
+            .update({
+              sepa_charge_failed_at: now,
+              sepa_charge_error: errorDetail,
+            })
+            .eq("id", reservationId);
+
+          const { data: failedProfile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", pi.metadata?.user_id || "")
+            .single();
+
+          const { data: failedReservation } = await supabase
+            .from("reservations")
+            .select("bags(name, brand)")
+            .eq("id", reservationId)
+            .single();
+
+          const failedCustomerName = failedProfile?.full_name ||
+            `${failedProfile?.first_name || ""} ${failedProfile?.last_name || ""}`.trim() ||
+            "Socia";
+          const failedBag = (failedReservation as any)?.bags;
+
+          await adminNotifications
+            .notifySepaChargeFailed({
+              userName: failedCustomerName,
+              userEmail: failedProfile?.email || "sin email",
+              bagName: failedBag?.name || "—",
+              bagBrand: failedBag?.brand || "—",
+              reservationId,
+              amount: pi.amount ? pi.amount / 100 : 0,
+              reason: "fondos_insuficientes_diferido",
+              errorDetail,
+            })
+            .catch((err) => console.error("[stripe-webhook] Error notificando cargo SEPA no devolución fallido:", err));
+
+          console.log(`[Stripe Webhook] Cargo SEPA por no devolución fallido para reserva ${reservationId}`);
+          break;
+        }
 
         if (piUserId) {
           // Actualizar failed_payment_count en user_memberships
