@@ -1343,6 +1343,57 @@ export async function POST(req: NextRequest) {
         const pi = event.data.object as Stripe.PaymentIntent;
         const piUserId = pi.metadata?.user_id;
 
+        // CASO ESPECIAL: cargo por no devolución de bolso (cron execute-sepa-charges).
+        // El PaymentIntent de SEPA suele quedar "processing" varios días y solo falla
+        // después (fondos insuficientes, mandato revocado, etc.). Si no distinguimos
+        // este caso, el fallo se trataría como un impago de membresía genérico y se
+        // perdería el rastro del bolso no cobrado.
+        if (pi.metadata?.reason === "non_return_sepa_mandate" && pi.metadata?.reservation_id) {
+          const reservationId = pi.metadata.reservation_id;
+          const errorDetail = pi.last_payment_error?.message || "Cargo SEPA fallido (fondos insuficientes u otro rechazo del banco)";
+
+          await supabase
+            .from("reservations")
+            .update({
+              sepa_charge_failed_at: now,
+              sepa_charge_error: errorDetail,
+            })
+            .eq("id", reservationId);
+
+          const { data: failedProfile } = await supabase
+            .from("profiles")
+            .select("email, full_name, first_name, last_name")
+            .eq("id", pi.metadata?.user_id || "")
+            .single();
+
+          const { data: failedReservation } = await supabase
+            .from("reservations")
+            .select("bags(name, brand)")
+            .eq("id", reservationId)
+            .single();
+
+          const failedCustomerName = failedProfile?.full_name ||
+            `${failedProfile?.first_name || ""} ${failedProfile?.last_name || ""}`.trim() ||
+            "Socia";
+          const failedBag = (failedReservation as any)?.bags;
+
+          await adminNotifications
+            .notifySepaChargeFailed({
+              userName: failedCustomerName,
+              userEmail: failedProfile?.email || "sin email",
+              bagName: failedBag?.name || "—",
+              bagBrand: failedBag?.brand || "—",
+              reservationId,
+              amount: pi.amount ? pi.amount / 100 : 0,
+              reason: "fondos_insuficientes_diferido",
+              errorDetail,
+            })
+            .catch((err) => console.error("[stripe-webhook] Error notificando cargo SEPA no devolución fallido:", err));
+
+          console.log(`[Stripe Webhook] Cargo SEPA por no devolución fallido para reserva ${reservationId}`);
+          break;
+        }
+
         if (piUserId) {
           // Actualizar failed_payment_count en user_memberships
           const { data: piMembership } = await supabase
