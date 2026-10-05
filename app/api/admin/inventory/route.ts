@@ -171,9 +171,10 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Si se marca como "available" o "maintenance", cerrar cualquier reserva admin activa.
-    // De lo contrario, quedarian activas indefinidamente y el cleanup las veria como
-    // "bolso alquilado por admin" aunque el admin ya lo hubiera desbloqueado.
+    // Si se marca como "available", "maintenance" o "colecciona", cerrar CUALQUIER reserva
+    // activa del bolso (admin o de socia real). De lo contrario, quedaria activa/vencida
+    // indefinidamente y los crons diarios (avisos y cargos SEPA) la seguirian viendo como
+    // "bolso no devuelto" aunque el admin ya lo haya marcado como disponible.
     if (status === "available" || status === "maintenance" || status === "colecciona") {
       try {
         await supabase
@@ -184,12 +185,11 @@ export async function PATCH(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq("bag_id", bagId)
-          .eq("is_admin_rent", true)
           .in("status", ["active", "confirmed", "pending"])
 
-        console.log(`[v0] Closed admin reservations for bag ${bagId}`)
+        console.log(`[v0] Closed active reservations for bag ${bagId}`)
       } catch (closeError) {
-        console.error("[v0] Error closing admin reservation:", closeError)
+        console.error("[v0] Error closing active reservations:", closeError)
       }
     }
 
