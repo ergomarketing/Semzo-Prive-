@@ -114,8 +114,24 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
   const handleInstagramStory = () =>
     shareNativeWithImage(() => { window.location.href = "instagram://story-camera" })
 
-  const handleInstagramFeed = () =>
-    shareNativeWithImage(() => { window.location.href = "instagram://library" })
+  // Sharing only the URL makes Instagram Direct render the same link preview
+  // (cover + title from Open Graph) that WhatsApp shows.
+  const handleInstagramFeed = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ url })
+      } else {
+        await navigator.clipboard?.writeText(url)
+        window.location.href = "instagram://direct-inbox"
+      }
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        await navigator.clipboard?.writeText(url).catch(() => {})
+        window.location.href = "instagram://direct-inbox"
+      }
+    }
+    setOpen(false)
+  }
 
   const pinterestUrl = `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(coverImage)}&description=${encodeURIComponent(title)}`
 
