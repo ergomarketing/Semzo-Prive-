@@ -54,24 +54,44 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
   const shareText = `${title}\n\n${excerpt ? excerpt + "\n\n" : ""}${url}`
 
   // iOS Safari only allows navigator.share() during the click's user activation,
-  // so the cover image is downloaded as a File before the menu is used.
+  // so the cover image (converted to JPEG by our own endpoint, no CORS issues)
+  // is downloaded as a File as soon as the page loads on mobile.
   const coverFileRef = useRef<File | null>(null)
   useEffect(() => {
-    if (!open || coverFileRef.current) return
-    const absolute = coverImage.startsWith("http") ? coverImage : `${window.location.origin}${coverImage}`
-    fetch(absolute)
+    if (!isMobile || coverFileRef.current) return
+    fetch(`/api/share-image?src=${encodeURIComponent(coverImage)}`)
       .then((res) => (res.ok ? res.blob() : Promise.reject()))
       .then((blob) => {
-        const ext = blob.type.split("/")[1] || "jpg"
-        coverFileRef.current = new File([blob], `semzo-prive-${slug}.${ext}`, { type: blob.type || "image/jpeg" })
+        coverFileRef.current = new File([blob], `semzo-prive-${slug}.jpg`, { type: "image/jpeg" })
       })
       .catch(() => {})
-  }, [open, coverImage, slug])
+  }, [isMobile, coverImage, slug])
+
+  const downloadCover = async () => {
+    let file = coverFileRef.current
+    if (!file) {
+      try {
+        const res = await fetch(`/api/share-image?src=${encodeURIComponent(coverImage)}`)
+        if (res.ok) file = new File([await res.blob()], `semzo-prive-${slug}.jpg`, { type: "image/jpeg" })
+      } catch {}
+    }
+    if (!file) return
+    const objectUrl = URL.createObjectURL(file)
+    const a = document.createElement("a")
+    a.href = objectUrl
+    a.download = file.name
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
+  }
 
   // Instagram (Historia/Feed) and Pinterest on mobile can't receive content via URL
   // schemes, so we use the native share sheet with the cover image attached.
+  // If the share sheet is unavailable, the image is saved to the device and the
+  // caption is copied so it can be posted manually.
   const shareNativeWithImage = async (fallback: () => void) => {
-    navigator.clipboard?.writeText(url).catch(() => {})
+    navigator.clipboard?.writeText(shareText).catch(() => {})
     const file = coverFileRef.current
     try {
       if (file && navigator.canShare?.({ files: [file] })) {
@@ -79,10 +99,14 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
       } else if (navigator.share) {
         await navigator.share({ title, text: shareText, url })
       } else {
+        await downloadCover()
         fallback()
       }
     } catch (err) {
-      if ((err as Error)?.name !== "AbortError") fallback()
+      if ((err as Error)?.name !== "AbortError") {
+        await downloadCover()
+        fallback()
+      }
     }
     setOpen(false)
   }
@@ -91,7 +115,7 @@ function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: st
     shareNativeWithImage(() => { window.location.href = "instagram://story-camera" })
 
   const handleInstagramFeed = () =>
-    shareNativeWithImage(() => { window.location.href = "instagram://" })
+    shareNativeWithImage(() => { window.location.href = "instagram://library" })
 
   const pinterestUrl = `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(coverImage)}&description=${encodeURIComponent(title)}`
 
