@@ -221,6 +221,12 @@ export default function RootLayout({
           {TRACKING_LOADER_SCRIPT}
         </Script>
 
+        {/* Klaviyo (tracking de comportamiento en la web) */}
+        <Script
+          src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=UF9KLn"
+          strategy="afterInteractive"
+        />
+
         {/*
          * Structured Data (JSON-LD) movido al final del <body> para evitar
          * conflicto de hidratacion con el script de sandbox de v0 que se
