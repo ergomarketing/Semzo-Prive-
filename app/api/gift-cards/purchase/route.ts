@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: "eur",
+      description: `Gift Card Semzo Prive - ${recipientName || recipientEmail || "sin destinatario"}`,
       metadata: {
         type: "gift_card",
         user_id: user.id,
