@@ -691,6 +691,14 @@
     "ctaQuestion": "¿Quieres saber más sobre Colecciona?",
     "ctaLink": "Descubrir cómo funciona"
   },
+  "contactWidget": {
+    "buttonLabel": "Abrir opciones de contacto",
+    "eyebrow": "¿TIENES ALGUNA PREGUNTA?",
+    "headline": "Estamos aquí para ayudarte.",
+    "whatsapp": "Escríbenos por WhatsApp",
+    "email": "Escríbenos por email",
+    "footer": "Respondemos en menos de 24h"
+  },
   "howFoundPrompt": {
     "title": "¿Cómo nos conociste?",
     "subtitle": "Un toque y nos ayudas a llegar a más socias como tú.",

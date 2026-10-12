@@ -691,6 +691,14 @@
     "ctaQuestion": "Want to know more about Colecciona?",
     "ctaLink": "Discover how it works"
   },
+  "contactWidget": {
+    "buttonLabel": "Open contact options",
+    "eyebrow": "DO YOU HAVE A QUESTION?",
+    "headline": "We are here to help.",
+    "whatsapp": "Message us on WhatsApp",
+    "email": "Email us",
+    "footer": "We reply within 24h"
+  },
   "howFoundPrompt": {
     "title": "How did you find us?",
     "subtitle": "One tap and you help us reach more members like you.",
