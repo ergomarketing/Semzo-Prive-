@@ -480,10 +480,13 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
   const handleApplyCoupon = () => applyCouponCode(couponCode)
 
-  // Codigo de bienvenida dejado por el pop-up de /membresias: se aplica una sola vez.
+  // Codigo de bienvenida dejado por el pop-up de /membresias. Solo se consume cuando
+  // hay sesion iniciada (sin sesion el carrito no muestra el campo de cupon y, tras
+  // el login, la pagina puede recargarse): asi sobrevive al registro / inicio de sesion
+  // dentro de la misma pestaña y se aplica una sola vez.
   const hasAutoAppliedPromoRef = useRef(false)
   useEffect(() => {
-    if (!isHydrated || hasAutoAppliedPromoRef.current) return
+    if (!isHydrated || !user || hasAutoAppliedPromoRef.current) return
     let pending: string | null = null
     try {
       pending = sessionStorage.getItem(PENDING_PROMO_KEY)
@@ -493,9 +496,10 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     try {
       sessionStorage.removeItem(PENDING_PROMO_KEY)
     } catch {}
+    if (appliedCoupon) return
     void applyCouponCode(pending, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated])
+  }, [isHydrated, user?.id])
 
   const handleApplyGiftCard = async () => {
     if (!giftCardCode.trim()) return
