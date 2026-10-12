@@ -1246,6 +1246,52 @@ export async function POST(req: NextRequest) {
 
       case "payment_intent.processing": {
         // Estado de pago se refleja en user_memberships, no en profiles
+        const piProcessing = event.data.object as Stripe.PaymentIntent;
+
+        // Gift card pagada con SEPA: el cobro tarda dias, avisar al admin al iniciarse
+        if (piProcessing.metadata?.type === "gift_card") {
+          const { data: pendingGiftCard } = await supabase
+            .from("gift_cards")
+            .select("code, amount, recipient_name, recipient_email")
+            .eq("stripe_payment_intent_id", piProcessing.id)
+            .maybeSingle();
+
+          const amountEurosPending = (piProcessing.amount / 100).toFixed(0);
+          const subjectPending = `[Admin] Gift Card en proceso de cobro (SEPA) - ${amountEurosPending}€`;
+
+          await EmailServiceProduction.getInstance()
+            .sendWithResend({
+              to: "mailbox@semzoprive.com",
+              subject: subjectPending,
+              html: await render(
+                <AdminNotificationEmail
+                  title="Gift Card pendiente de cobro"
+                  rows={[
+                    { label: "Codigo", value: pendingGiftCard?.code || "N/A" },
+                    { label: "Monto", value: `${amountEurosPending}€` },
+                    {
+                      label: "Destinatario",
+                      value: `${pendingGiftCard?.recipient_name || piProcessing.metadata?.recipient_name || "N/A"} (${pendingGiftCard?.recipient_email || piProcessing.metadata?.recipient_email || "N/A"})`,
+                    },
+                    { label: "Estado", value: "Pago SEPA en proceso. La gift card se activara al confirmarse el cobro." },
+                    { label: "Payment Intent", value: piProcessing.id },
+                    { label: "Fecha", value: new Date().toLocaleString("es-ES") },
+                  ]}
+                />,
+              ),
+            })
+            .then((sent) =>
+              logEmail({
+                recipientEmail: "mailbox@semzoprive.com",
+                recipientName: "Admin",
+                subject: subjectPending,
+                emailType: "admin_gift_card_processing",
+                status: sent ? "sent" : "failed",
+                metadata: { payment_intent_id: piProcessing.id },
+              }),
+            )
+            .catch((err) => console.error("[stripe-webhook] Error notificando gift card en proceso:", err));
+        }
         break;
       }
 
