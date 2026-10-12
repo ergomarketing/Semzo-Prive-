@@ -2,23 +2,30 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { Cormorant_Garamond } from "next/font/google"
-import { X } from "lucide-react"
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  style: ["italic", "normal"],
-  display: "swap",
-})
+import { Check, Copy, X } from "lucide-react"
+import { WELCOME_PROMO_CODE, setPendingPromo } from "@/lib/promo-code"
 
 const STORAGE_KEY = "semzo_exit_intent_shown"
 const IDLE_MS = 60_000
 const FADE_MS = 300
 
+function trackEvent(name: string, params: Record<string, unknown> = {}) {
+  if (typeof window === "undefined") return
+  const w = window as unknown as { dataLayer?: unknown[] }
+  w.dataLayer = w.dataLayer || []
+  w.dataLayer.push({ event: name, ...params })
+}
+
+/**
+ * Pop-up de intencion de salida de /membresias.
+ * Mismo bloque visual que el banner PRIVE50 de /lp/membresia (tipografia serif del
+ * sitio, sin fuentes extra). Al pulsar el boton o copiar el codigo, PRIVE50 queda
+ * pendiente y /cart lo aplica solo.
+ */
 export default function ExitIntentPopup() {
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
+  const [copied, setCopied] = useState(false)
   const ctaClickedRef = useRef(false)
   const shownRef = useRef(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -85,6 +92,24 @@ export default function ExitIntentPopup() {
     return () => document.removeEventListener("keydown", onKey)
   }, [mounted, close])
 
+  const handleCopy = () => {
+    try {
+      navigator.clipboard.writeText(WELCOME_PROMO_CODE)
+    } catch {
+      // sin portapapeles: el codigo igualmente queda pendiente para el carrito
+    }
+    setPendingPromo()
+    setCopied(true)
+    trackEvent("copy_discount_code", { code: WELCOME_PROMO_CODE, source: "exit_intent" })
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleCta = () => {
+    setPendingPromo()
+    trackEvent("exit_intent_cta_click", { code: WELCOME_PROMO_CODE })
+    close()
+  }
+
   if (!mounted) return null
 
   return (
@@ -104,45 +129,51 @@ export default function ExitIntentPopup() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="exit-intent-title"
-        className="relative w-full max-w-[480px] bg-[#1a1a4b] px-6 py-12 text-center sm:px-10"
+        className="relative w-full max-w-xl border border-indigo-dark/20 bg-white p-6 pt-10 text-center font-serif text-indigo-dark md:p-8 md:pt-12"
       >
         <button
           ref={closeButtonRef}
           type="button"
           onClick={close}
           aria-label="Cerrar"
-          className="absolute right-4 top-4 p-1 text-[#f4c4cc] transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f4c4cc]"
+          className="absolute right-3 top-3 p-1 text-indigo-dark/60 transition hover:text-indigo-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-dark"
         >
           <X className="h-6 w-6" />
         </button>
 
-        <p className="text-xs uppercase tracking-[0.3em] text-[#f4c4cc]">Antes de que te vayas</p>
+        <p className="mb-3 text-[10px] tracking-[0.4em] text-indigo-dark/60 md:text-xs">OFERTA DE BIENVENIDA</p>
 
-        <h2
-          id="exit-intent-title"
-          className="mt-4 text-balance text-4xl font-medium leading-tight text-white"
-          style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
-        >
-          Tu primer mes al 50%.
+        <h2 id="exit-intent-title" className="mb-3 text-balance font-serif text-2xl leading-tight md:text-3xl">
+          Tu primera mensualidad al <span className="italic">50%</span> con el código {WELCOME_PROMO_CODE}
         </h2>
 
-        <p className={`${cormorant.className} mt-3 text-xl italic text-[#f4c4cc]`}>
-          Solo para nuevas socias. Solo hoy.
+        <p className="mb-4 text-sm text-indigo-dark/70">
+          No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Válido esta semana.
         </p>
 
-        <div className="mx-auto mt-8 border border-[#f4c4cc] px-6 py-4">
-          <span className="text-3xl font-medium tracking-[0.25em] text-[#f4c4cc]">PRIVE50</span>
+        <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
+          <span className="flex-1 border border-dashed border-indigo-dark/40 bg-rose-nude px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">
+            {WELCOME_PROMO_CODE}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copiar codigo de descuento"
+            className="flex h-12 w-12 items-center justify-center border border-indigo-dark/30 transition hover:bg-indigo-dark hover:text-white"
+          >
+            {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+          </button>
         </div>
+
+        <p className="mt-4 text-xs text-indigo-dark/60">Introduce el código durante el proceso de pago.</p>
 
         <Link
           href="/membresias#planes"
-          onClick={close}
-          className="mt-6 block w-full bg-[#f4c4cc] px-6 py-4 text-sm font-medium uppercase tracking-[0.2em] text-[#1a1a4b] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          onClick={handleCta}
+          className="mt-6 block w-full bg-indigo-dark px-6 py-4 font-sans text-sm font-medium uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-dark"
         >
           Elegir mi membresía
         </Link>
-
-        <p className="mt-4 text-sm text-white/70">Sin permanencia. Cancela cuando quieras.</p>
       </div>
     </div>
   )

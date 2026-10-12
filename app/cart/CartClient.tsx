@@ -31,6 +31,7 @@ const toast = {
   warning: (message: string) => showToast({ description: message, variant: "destructive" as const }),
 }
 import { useRouter, useSearchParams } from "next/navigation"
+import { PENDING_PROMO_KEY } from "@/lib/promo-code"
 import SMSAuthModal from "@/app/components/sms-auth-modal"
 import { LoginModal } from "@/app/components/login-modal"
 import { useRequireAuth } from "@/app/hooks/useRequireAuth"
@@ -441,17 +442,19 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
 
   const finalAmount = calculateFinalAmount()
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return
+  // Valida y aplica un cupon. `silent`: no mostrar error si falla (aplicacion
+  // automatica del codigo de bienvenida; la clienta aun puede escribir otro).
+  const applyCouponCode = async (rawCode: string, silent = false) => {
+    if (!rawCode.trim()) return
 
     setCouponLoading(true)
-    setCouponError("")
+    if (!silent) setCouponError("")
 
     try {
       const response = await fetch("/api/payments/validate-coupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ couponCode: couponCode.trim(), amount: total }),
+        body: JSON.stringify({ couponCode: rawCode.trim(), amount: total }),
       })
 
       const data = await response.json()
@@ -460,20 +463,39 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
         setAppliedCoupon({
           code: data.code, // ID de Stripe (no el codigo ingresado)
           promotionCodeId: data.promotionCodeId || null, // Promotion Code (impone restricciones nativas)
-          displayCode: couponCode.trim().toUpperCase(), // Para mostrar en UI
+          displayCode: rawCode.trim().toUpperCase(), // Para mostrar en UI
           discount: data.percentOff || data.amountOff || 0,
           type: data.percentOff ? "percent" : "fixed",
         })
         setCouponCode("")
-      } else {
+      } else if (!silent) {
         setCouponError(data.error || "Cupón no válido")
       }
     } catch (error) {
-      setCouponError("Error al validar cupón")
+      if (!silent) setCouponError("Error al validar cupón")
     } finally {
       setCouponLoading(false)
     }
   }
+
+  const handleApplyCoupon = () => applyCouponCode(couponCode)
+
+  // Codigo de bienvenida dejado por el pop-up de /membresias: se aplica una sola vez.
+  const hasAutoAppliedPromoRef = useRef(false)
+  useEffect(() => {
+    if (!isHydrated || hasAutoAppliedPromoRef.current) return
+    let pending: string | null = null
+    try {
+      pending = sessionStorage.getItem(PENDING_PROMO_KEY)
+    } catch {}
+    if (!pending) return
+    hasAutoAppliedPromoRef.current = true
+    try {
+      sessionStorage.removeItem(PENDING_PROMO_KEY)
+    } catch {}
+    void applyCouponCode(pending, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated])
 
   const handleApplyGiftCard = async () => {
     if (!giftCardCode.trim()) return
