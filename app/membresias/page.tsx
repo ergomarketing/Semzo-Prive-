@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import MembershipSection from "../components/membership-section"
 import ColeccionaSection from "../components/colecciona-section"
 import HowItWorks from "../components/how-it-works"
+import ExitIntentPopup from "../components/exit-intent-popup"
 
 // ISR: contenido casi estatico (planes). Revalida cada hora.
 export const revalidate = 3600
@@ -51,6 +52,7 @@ export default function MembresiasPage() {
       <MembershipSection />
       <ColeccionaSection />
       <HowItWorks />
+      <ExitIntentPopup />
     </main>
   )
 }
