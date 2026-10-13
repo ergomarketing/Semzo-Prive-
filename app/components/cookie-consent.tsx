@@ -5,6 +5,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Cookie, Settings, X } from "lucide-react"
 
+/** Avisa a lib/tracking-loader.ts (Klaviyo, estado para GTM) de que cambio el consentimiento. */
+function announceConsent() {
+  try {
+    window.dispatchEvent(new CustomEvent("semzo:cookie-consent"))
+  } catch {
+    // navegadores sin CustomEvent: el cargador lo leera en la proxima pagina
+  }
+}
+
 export default function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -35,6 +44,7 @@ export default function CookieConsent() {
       }
       setPreferences(allAccepted)
       localStorage.setItem("cookie-consent", JSON.stringify(allAccepted))
+      announceConsent()
       setShowBanner(false)
     }
   }
@@ -42,6 +52,7 @@ export default function CookieConsent() {
   const acceptSelected = () => {
     if (typeof window !== "undefined") {
       localStorage.setItem("cookie-consent", JSON.stringify(preferences))
+      announceConsent()
       setShowBanner(false)
       setShowSettings(false)
     }
@@ -57,6 +68,7 @@ export default function CookieConsent() {
       }
       setPreferences(minimal)
       localStorage.setItem("cookie-consent", JSON.stringify(minimal))
+      announceConsent()
       setShowBanner(false)
     }
   }

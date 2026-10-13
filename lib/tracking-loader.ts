@@ -26,6 +26,16 @@
  *  antes. Los eventos que la web empuje a dataLayer antes de que cargue GTM
  *  quedan en cola y se procesan al iniciarse, no se pierden.
  *
+ * CONSENTIMIENTO (banner de cookies, localStorage "cookie-consent"):
+ *  - Klaviyo solo se carga si el visitante acepto la categoria "marketing"
+ *    (ademas de pasar la regla de carga inmediata/diferida de arriba). Si acepta
+ *    mas tarde, el banner emite el evento "semzo:cookie-consent" y se carga en ese
+ *    momento. No cargues Klaviyo desde otro sitio: se saltaria este filtro.
+ *  - El estado se publica en dataLayer ({event:'semzo_consent', consent_analytics,
+ *    consent_marketing, consent_status}) para que GTM pueda condicionar etiquetas
+ *    (p. ej. Clarity: disparar solo con consent_analytics = true).
+ *  - GTM, GA4, Ads y TikTok NO se condicionan aqui (siguen como antes).
+ *
  * Coste conocido: una visita organica que se va en <4 s SIN interactuar no se
  * cuenta en Analytics. Si esto no interesa, basta con vaciar
  * DELAYABLE_FIRST_SEGMENTS y todo vuelve a cargar de inmediato.
@@ -78,7 +88,33 @@ export const TRACKING_LOADER_SCRIPT = `(function () {
     document.head.appendChild(s);
   }
 
+  function readConsent() {
+    try {
+      var raw = localStorage.getItem('cookie-consent');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function publishConsent() {
+    var c = readConsent();
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'semzo_consent',
+      consent_status: c ? 'decided' : 'unset',
+      consent_analytics: !!(c && c.analytics),
+      consent_marketing: !!(c && c.marketing)
+    });
+  }
+
+  var klaviyoLoaded = false;
   function loadKlaviyo() {
+    if (klaviyoLoaded) return;
+    // Solo con consentimiento de marketing y una vez que le toca cargar al tracking.
+    var c = readConsent();
+    if (!started || !c || !c.marketing) return;
+    klaviyoLoaded = true;
     var s = document.createElement('script');
     s.async = true;
     s.src = 'https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=${KLAVIYO_COMPANY_ID}';
@@ -89,6 +125,16 @@ export const TRACKING_LOADER_SCRIPT = `(function () {
     loadTikTok();
     loadKlaviyo();
   }
+
+  function onConsentChange() {
+    publishConsent();
+    loadKlaviyo();
+  }
+  window.addEventListener('semzo:cookie-consent', onConsentChange);
+  window.addEventListener('storage', function (e) {
+    if (e.key === 'cookie-consent') onConsentChange();
+  });
+  publishConsent();
 
   function start() {
     if (started) return;
