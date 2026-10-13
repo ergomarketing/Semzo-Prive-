@@ -208,7 +208,7 @@ export default function RootLayout({
 
         {/*
          * Tracking (Google Tag Manager + pixel de TikTok) — ver lib/tracking-loader.ts.
-         * Un unico script inline afterInteractive decide cuando cargarlos:
+         * Un unico script inline afterInteractive decide cuando cargarlos (GTM, TikTok, Klaviyo):
          *  - INMEDIATO (como antes) si la visita trae senal de anuncio/campaña (gclid,
          *    utm_*, fbclid, ttclid...), si es una landing /lp/* o una pagina del embudo
          *    (signup, cart, checkout, dashboard...): las conversiones no se ven afectadas.
@@ -221,11 +221,7 @@ export default function RootLayout({
           {TRACKING_LOADER_SCRIPT}
         </Script>
 
-        {/* Klaviyo (tracking de comportamiento en la web) */}
-        <Script
-          src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=UF9KLn"
-          strategy="afterInteractive"
-        />
+        {/* Klaviyo (company_id UF9KLn): lo carga tracking-loader junto a GTM y TikTok. */}
 
         {/*
          * Structured Data (JSON-LD) movido al final del <body> para evitar

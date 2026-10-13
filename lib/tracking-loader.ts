@@ -1,8 +1,10 @@
 /**
- * Cargador de tracking (Google Tag Manager + pixel de TikTok).
+ * Cargador de tracking (Google Tag Manager + pixel de TikTok + Klaviyo).
  *
  * Por que existe: GTM (con GA4 y los destinos de Google Ads) y TikTok suponian
  * ~70 % del Total Blocking Time movil en PageSpeed (~530 ms de tareas largas).
+ * Klaviyo cargado directo desde el layout volvio a subir el TBT a ~490 ms
+ * (PageSpeed movil 96 -> 81), por eso va aqui con las mismas reglas.
  *
  * Regla (se ejecuta como script inline afterInteractive desde app/layout.tsx):
  *
@@ -34,6 +36,7 @@
 
 export const GTM_ID = "GTM-K3C577WM"
 export const TIKTOK_PIXEL_ID = "D4A7JSJC77U1BLONR900"
+export const KLAVIYO_COMPANY_ID = "UF9KLn"
 
 /** Primer segmento de ruta de las paginas de contenido donde se puede diferir (ademas de "/"). */
 export const DELAYABLE_FIRST_SEGMENTS = ["blog", "proceso", "membresias", "colecciona"]
@@ -75,6 +78,18 @@ export const TRACKING_LOADER_SCRIPT = `(function () {
     document.head.appendChild(s);
   }
 
+  function loadKlaviyo() {
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=${KLAVIYO_COMPANY_ID}';
+    document.head.appendChild(s);
+  }
+
+  function loadAfterPageLoad() {
+    loadTikTok();
+    loadKlaviyo();
+  }
+
   function start() {
     if (started) return;
     started = true;
@@ -83,9 +98,9 @@ export const TRACKING_LOADER_SCRIPT = `(function () {
       window.removeEventListener(interactionEvents[i], start, true);
     }
     loadGtm();
-    // TikTok tras el evento load, como cuando era strategy="lazyOnload".
-    if (document.readyState === 'complete') loadTikTok();
-    else window.addEventListener('load', loadTikTok);
+    // TikTok y Klaviyo tras el evento load, como cuando era strategy="lazyOnload".
+    if (document.readyState === 'complete') loadAfterPageLoad();
+    else window.addEventListener('load', loadAfterPageLoad);
   }
 
   function hasCampaignSignal() {
