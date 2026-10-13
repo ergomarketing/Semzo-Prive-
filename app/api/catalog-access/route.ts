@@ -27,21 +27,44 @@ export async function POST(request: Request) {
       null
     const ua = request.headers.get("user-agent") || null
 
-    // Upsert por email (case insensitive)
-    const { error } = await supabase.from("catalog_leads").upsert(
-      {
-        email: email.toLowerCase().trim(),
-        full_name: full_name?.trim() || null,
-        whatsapp: whatsapp?.trim() || null,
-        source: "catalog_gate",
-        utm_source: utm_source || null,
-        utm_medium: utm_medium || null,
-        utm_campaign: utm_campaign || null,
-        ip,
-        user_agent: ua,
-      },
-      { onConflict: "email", ignoreDuplicates: false },
-    )
+    const normalizedEmail = email.toLowerCase().trim()
+
+    // catalog_leads solo tiene un UNIQUE sobre lower(email) (scripts/catalog_leads_table.sql),
+    // no sobre la columna email: un upsert con onConflict:"email" fallaba SIEMPRE y la
+    // tabla quedaba vacia. Se hace select + update/insert (el email ya va en minusculas).
+    const contact = {
+      full_name: full_name?.trim() || null,
+      whatsapp: whatsapp?.trim() || null,
+      utm_source: utm_source || null,
+      utm_medium: utm_medium || null,
+      utm_campaign: utm_campaign || null,
+      ip,
+      user_agent: ua,
+    }
+
+    const { data: existing, error: selectError } = await supabase
+      .from("catalog_leads")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle()
+
+    let error = selectError
+    if (!selectError) {
+      if (existing) {
+        // Reenvio del formulario: solo se completan los datos que ahora si llegan.
+        const updates = Object.fromEntries(Object.entries(contact).filter(([, v]) => v))
+        if (Object.keys(updates).length > 0) {
+          const res = await supabase.from("catalog_leads").update(updates).eq("id", existing.id)
+          error = res.error
+        }
+      } else {
+        const res = await supabase
+          .from("catalog_leads")
+          .insert({ email: normalizedEmail, source: "catalog_gate", ...contact })
+        // 23505 = otra peticion lo inserto a la vez: el contacto ya existe, no es un fallo.
+        error = res.error?.code === "23505" ? null : res.error
+      }
+    }
 
     if (error) {
       console.error("[catalog-access] error guardando lead:", error)
