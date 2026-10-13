@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import BlogContent from "./BlogContent"
 import type { Metadata } from "next"
+import { dbBlogSlug } from "@/lib/blog-slug-map"
 
 export const dynamic = "force-dynamic"
 export const fetchCache = "force-no-store"
@@ -25,7 +26,7 @@ interface BlogPost {
 async function getPost(slug: string): Promise<BlogPost | null> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/blog?slug=${slug}`,
+      `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/api/blog?slug=${encodeURIComponent(dbBlogSlug(slug))}`,
       {
         next: { revalidate: 300 },
       }

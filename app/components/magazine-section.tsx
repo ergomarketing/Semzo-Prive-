@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Calendar, User, ChevronLeft, ChevronRight } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
+import { publicBlogSlug } from "@/lib/blog-slug-map"
 
 interface BlogPost {
   slug: string
@@ -145,7 +146,7 @@ export default function MagazineSection() {
                 {posts.map((post) => (
                   <Link
                     key={post.slug}
-                    href={`/blog/${post.slug}`}
+                    href={`/blog/${publicBlogSlug(post.slug)}`}
                     className="flex-shrink-0 w-[80vw] md:w-[40vw] lg:w-[28vw] group/card"
                   >
                     <div className="flex flex-col rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
