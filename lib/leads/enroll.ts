@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
+import { ensureUnsubscribeFooter, rewriteLeadEmailLinks } from "@/lib/email-tracking"
 
 function getServiceClient() {
   return createClient(
@@ -157,22 +158,50 @@ async function sendEmailNow(leadId: string, email: string, name: string) {
 
   if (!template) return
 
-  const ctaUrl = `${appUrl}/api/track/click?lid=${leadId}&eid=1&url=${encodeURIComponent(`${appUrl}/membresias`)}`
+  // /api/track/* identifica el envio por el id (uuid) de la fila de email_sequence_log.
+  // Antes se pasaba eid=1 (el numero de email), que no coincide con ninguna fila y hacia
+  // que el email 1 nunca registrara aperturas ni clics.
+  const { data: seqRow } = await supabase
+    .from("email_sequence_log")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("email_number", 1)
+    .maybeSingle()
+  const rowId = seqRow?.id as string | undefined
+
+  const ctaUrl = rowId
+    ? `${appUrl}/api/track/click?lid=${leadId}&eid=${rowId}&url=${encodeURIComponent(`${appUrl}/membresias`)}`
+    : `${appUrl}/membresias`
   const unsubUrl = `${appUrl}/api/webhooks/unsubscribe?lid=${leadId}`
-  const trackingPixel = `<img src="${appUrl}/api/track/open?lid=${leadId}&eid=1" width="1" height="1" style="display:none" />`
+  const trackingPixel = rowId
+    ? `<img src="${appUrl}/api/track/open?lid=${leadId}&eid=${rowId}" width="1" height="1" style="display:none" />`
+    : ""
 
   const subject = template.subject.replace(/\{\{name\}\}/g, name || "")
-  const bodyHtml = template.body_html
+  let bodyHtml = template.body_html
     .replace(/\{\{name\}\}/g, name || "")
     .replace(/\{\{cta_url\}\}/g, ctaUrl)
     .replace(/\{\{unsubscribe_url\}\}/g, unsubUrl)
-    + trackingPixel
+  if (rowId) {
+    bodyHtml = rewriteLeadEmailLinks(bodyHtml, { appUrl, leadId, sequenceRowId: rowId, unsubscribeUrl: unsubUrl })
+  }
+  // La plantilla del email 1 no trae enlace de baja: se anade uno discreto.
+  bodyHtml = ensureUnsubscribeFooter(bodyHtml, unsubUrl) + trackingPixel
 
   const resend = new Resend(getResendApiKey())
   const fromEmail = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
   try {
-    const { data: sendData, error: sendError } = await resend.emails.send({ from: fromEmail, to: email, subject, html: bodyHtml })
+    const { data: sendData, error: sendError } = await resend.emails.send({
+      from: fromEmail,
+      to: email,
+      subject,
+      html: bodyHtml,
+      headers: {
+        "List-Unsubscribe": `<${unsubUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    })
     await logEmail({
       recipientEmail: email,
       recipientName: name,

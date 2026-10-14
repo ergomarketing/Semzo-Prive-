@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
+import { rewriteLeadEmailLinks } from "@/lib/email-tracking"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,7 +74,12 @@ export async function POST() {
     }
 
     const subject = renderTemplate(template.subject, vars)
-    const bodyHtml = renderTemplate(template.body_html, vars)
+    const bodyHtml = rewriteLeadEmailLinks(renderTemplate(template.body_html, vars), {
+      appUrl,
+      leadId: lead.id,
+      sequenceRowId: row.id,
+      unsubscribeUrl: vars.unsubscribe_url,
+    })
 
     const html = `<!DOCTYPE html>
 <html lang="es">

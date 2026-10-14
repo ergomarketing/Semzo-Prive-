@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const eid = searchParams.get("eid")
 
-  if (eid) {
-    await supabase
+  if (eid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eid)) {
+    const { error } = await supabase
       .from("email_sequence_log")
       .update({ opened_at: new Date().toISOString() })
       .eq("id", eid)
       .is("opened_at", null) // solo primera apertura
+    if (error) console.error("[track/open] error guardando la apertura:", error.message)
   }
 
   // GIF transparente 1x1

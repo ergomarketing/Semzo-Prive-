@@ -5,6 +5,7 @@ import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import LeadSequenceEmail from "@/emails/templates/lead-sequence"
+import { rewriteLeadEmailLinks } from "@/lib/email-tracking"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const resend = new Resend(getResendApiKey())
@@ -78,7 +79,15 @@ export async function GET(req: NextRequest) {
     }
 
     const subject = renderTemplate(template.subject, vars)
-    const bodyHtml = renderTemplate(template.body_html, vars) + vars.tracking_pixel
+    // Las plantillas de marca llevan enlaces directos: se reescriben aqui para rastrear clics
+    // y se arregla el "Darse de baja" muerto (href="#").
+    const bodyHtml =
+      rewriteLeadEmailLinks(renderTemplate(template.body_html, vars), {
+        appUrl,
+        leadId: lead.id,
+        sequenceRowId: row.id,
+        unsubscribeUrl: vars.unsubscribe_url,
+      }) + vars.tracking_pixel
 
     const html = await render(<LeadSequenceEmail bodyHtml={bodyHtml} unsubscribeUrl={vars.unsubscribe_url} />)
 
