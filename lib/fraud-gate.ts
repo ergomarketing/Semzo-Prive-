@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
+import { isIdentityVerified } from "@/lib/identity-status"
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -88,10 +89,10 @@ async function checkDuplicateMembership(userId: string) {
   console.log(`[FraudGate] Checking for duplicate memberships for user ${userId}`)
 
   const { data: existingMembership, error } = await supabaseAdmin
-    .from("profiles")
-    .select("membership_status, membership_plan, membership_type")
-    .eq("id", userId)
-    .single()
+    .from("user_memberships")
+    .select("status, membership_type")
+    .eq("user_id", userId)
+    .maybeSingle()
 
   if (error) {
     console.error("[FraudGate] Error checking duplicates:", error)
@@ -105,8 +106,7 @@ async function checkDuplicateMembership(userId: string) {
 
   // Check if user already has an active or pending membership
   const hasActiveMembership =
-    existingMembership?.membership_status === "active" ||
-    existingMembership?.membership_status === "pending_verification"
+    existingMembership?.status === "active" || existingMembership?.status === "pending_verification"
 
   if (hasActiveMembership) {
     console.warn(`[FraudGate] BLOCKED: User ${userId} already has active membership`)
@@ -115,8 +115,8 @@ async function checkDuplicateMembership(userId: string) {
       passed: false,
       message: "El usuario ya tiene una membresía activa",
       details: {
-        currentStatus: existingMembership.membership_status,
-        currentPlan: existingMembership.membership_plan,
+        currentStatus: existingMembership.status,
+        currentPlan: existingMembership.membership_type,
       },
     }
   }
@@ -266,9 +266,11 @@ async function checkUserRiskProfile(userId: string, amount: number) {
     // Get user profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("created_at, email, full_name, identity_verified")
+      .select("created_at, email, full_name")
       .eq("id", userId)
       .single()
+
+    const identityVerified = await isIdentityVerified(supabaseAdmin, userId)
 
     if (!profile) {
       return {
@@ -300,7 +302,7 @@ async function checkUserRiskProfile(userId: string, amount: number) {
     }
 
     // No identity verification
-    if (!profile.identity_verified) {
+    if (!identityVerified) {
       riskScore += 10
       flags.push("Sin verificación de identidad completada")
     }
@@ -330,7 +332,7 @@ async function checkUserRiskProfile(userId: string, amount: number) {
         riskScore,
         accountAgeHours: Math.round(accountAgeHours),
         flags,
-        identityVerified: profile.identity_verified,
+        identityVerified,
       },
     }
   } catch (error: any) {

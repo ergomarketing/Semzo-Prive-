@@ -103,7 +103,8 @@ function mapStripeStatus(stripeStatus: string): string {
 /**
  * syncMembershipFromStripe
  * Fuente única de verdad: Stripe subscription → user_memberships
- * NO toca: membership_intents, identity_verified, emails, notificaciones
+ * Solo toca membership_intents para cerrar el intent cuando la membresia pasa a "active".
+ * NO toca: identity_verified, emails, notificaciones
  */
 export async function syncMembershipFromStripe(
   subscription: Stripe.Subscription
@@ -235,6 +236,33 @@ export async function syncMembershipFromStripe(
 
   if (allConditionsMet) {
     console.log("[ORCHESTRATOR] Membresia ACTIVA (pago + identidad + SEPA) para userId:", userId)
+
+    // Cerrar el intent vigente para que no se quede en un estado intermedio
+    // cuando la activacion no pasa por resume-onboarding. Best-effort.
+    try {
+      const { data: openIntent } = await supabase
+        .from("membership_intents")
+        .select("id, status, activated_at")
+        .eq("user_id", userId)
+        .not("status", "in", "(expired,canceled)")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (openIntent && (openIntent.status !== "active" || !openIntent.activated_at)) {
+        const now = new Date().toISOString()
+        await supabase
+          .from("membership_intents")
+          .update({
+            status: "active",
+            activated_at: openIntent.activated_at || now,
+            updated_at: now,
+          })
+          .eq("id", openIntent.id)
+      }
+    } catch (err) {
+      console.error("[ORCHESTRATOR] Error cerrando membership_intent:", err)
+    }
   }
 
   // Onboarding post-activacion (Secuencia 2, Fase 3): best-effort, nunca
