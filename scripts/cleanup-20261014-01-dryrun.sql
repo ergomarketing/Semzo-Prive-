@@ -67,3 +67,16 @@ where mi.status = 'paid_pending_verification'
     where um.user_id = mi.user_id and um.status = 'paid_pending_verification'
   )
 order by p.email, mi.created_at;
+
+-- PUNTO 5d: intent 'active' con membresia cancelada y sin membresia activa
+select mi.id, p.email, mi.membership_type,
+       mi.status as status_actual, 'canceled' as status_nuevo,
+       um.status as um_status,
+       mi.canceled_at as canceled_at_actual, coalesce(mi.canceled_at, um.updated_at) as canceled_at_nuevo
+from membership_intents mi
+join user_memberships um on um.user_id = mi.user_id
+join profiles p on p.id = mi.user_id
+where mi.status = 'active'
+  and um.status = 'cancelled'
+  and not exists (select 1 from user_memberships a where a.user_id = mi.user_id and a.status = 'active')
+order by p.email;

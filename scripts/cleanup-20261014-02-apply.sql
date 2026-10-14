@@ -7,6 +7,11 @@ create table cleanup_backup_20261014_profiles as select * from profiles;
 create table cleanup_backup_20261014_intents as select * from membership_intents;
 create table cleanup_backup_20261014_user_memberships as select * from user_memberships;
 
+-- RLS sin politicas: solo el service role puede leer los backups
+alter table cleanup_backup_20261014_profiles enable row level security;
+alter table cleanup_backup_20261014_intents enable row level security;
+alter table cleanup_backup_20261014_user_memberships enable row level security;
+
 begin;
 
 -- PUNTO 3: identidad (ultima verificacion = verified)
@@ -79,5 +84,15 @@ where mi.status = 'paid_pending_verification'
     where um.user_id = mi.user_id
       and um.status in ('active','paid_pending_verification')
   );
+
+-- PUNTO 5d: intent 'active' con membresia cancelada y sin membresia activa -> 'canceled'
+update membership_intents mi
+set status = 'canceled',
+    canceled_at = coalesce(mi.canceled_at, um.updated_at)
+from user_memberships um
+where mi.user_id = um.user_id
+  and mi.status = 'active'
+  and um.status = 'cancelled'
+  and not exists (select 1 from user_memberships a where a.user_id = mi.user_id and a.status = 'active');
 
 commit;
