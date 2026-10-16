@@ -143,6 +143,12 @@ export function MyBagCard() {
           description: "Tus cuotas pagadas y las nuevas suman hacia la compra.",
         })
         mutate()
+      } else if (res.status === 409 && json.code === "already_collect") {
+        toast({
+          title: "Ya estás en Modo Colecciona",
+          description: "Este bolso ya suma hacia la compra. No se ha cambiado nada.",
+        })
+        mutate()
       } else {
         toast({
           title: "Error",
