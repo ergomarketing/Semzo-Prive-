@@ -2,6 +2,12 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
+import {
+  insertLedgerEntries,
+  previewRentalConversion,
+  type LedgerRow,
+} from "@/lib/ownership-credit-ledger"
+import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
 
 export const dynamic = "force-dynamic"
 
@@ -15,57 +21,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 /**
- * Suma de las facturas pagadas de la suscripcion actual que corresponden a
- * cuotas de alquiler, es decir, pagadas fuera de cualquier periodo en el que
- * la socia tuviera un registro Colecciona (esas ya se acumularon por webhook).
- */
-async function getRentalFeesPaid(userId: string): Promise<number> {
-  const { data: membership } = await supabaseAdmin
-    .from("user_memberships")
-    .select("stripe_subscription_id")
-    .eq("user_id", userId)
-    .maybeSingle()
-
-  const subscriptionId = membership?.stripe_subscription_id
-  if (!subscriptionId) return 0
-
-  const { data: collectRecords } = await supabaseAdmin
-    .from("ownership_progress")
-    .select("status, started_at, completed_at, updated_at")
-    .eq("user_id", userId)
-    .eq("mode", "collect")
-
-  const collectPeriods = (collectRecords ?? []).map((record) => {
-    const start = new Date(record.started_at).getTime()
-    const end =
-      record.status === "active"
-        ? Date.now()
-        : new Date(record.completed_at ?? record.updated_at).getTime()
-    return { start, end }
-  })
-
-  let totalCents = 0
-  for await (const invoice of stripe.invoices.list({
-    subscription: subscriptionId,
-    status: "paid",
-    limit: 100,
-  })) {
-    const paidAt = invoice.created * 1000
-    const insideCollectPeriod = collectPeriods.some(
-      (period) => paidAt >= period.start && paidAt <= period.end,
-    )
-    if (!insideCollectPeriod) totalCents += invoice.amount_paid ?? 0
-  }
-
-  return totalCents / 100
-}
-
-/**
  * POST /api/user/ownership/convert-to-collect
  *
  * Convertir el bolso actual de Modo Descubre (alquiler) a Modo Colecciona.
- * Las cuotas de alquiler ya pagadas de la suscripcion actual cuentan como
- * credito inicial; a partir de ahi cada cuota nueva se suma por webhook.
+ * Las facturas pagadas de la suscripcion actual que aun NO estan en el libro
+ * (ownership_credit_entries, de ningun progreso) cuentan como credito inicial y
+ * se registran con source='rental_conversion'. Una factura solo da credito una vez.
+ * Nunca marca 'completed': si el credito cubre el precio queda 'active' y la socia
+ * finaliza la compra en /ownership/complete.
  * Requiere que el bolso tenga purchase_price configurado.
  */
 export async function POST(req: NextRequest) {
@@ -102,19 +65,22 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString()
     const target = Number(bag.purchase_price)
 
-    // Credito inicial: cuotas de alquiler ya pagadas de la suscripcion actual
-    // (se excluyen las pagadas mientras existia un registro Colecciona).
-    let initialCredit = 0
+    let preview
     try {
-      initialCredit = await getRentalFeesPaid(user.id)
+      preview = await previewRentalConversion(supabaseAdmin, stripe, user.id)
     } catch (err) {
-      console.error("[v0] convert-to-collect no se pudieron leer las cuotas pagadas:", err)
+      console.error("[v0] convert-to-collect no se pudieron leer las facturas pagadas:", err)
       return NextResponse.json(
         { error: "No se pudieron calcular tus cuotas pagadas. Inténtalo de nuevo." },
         { status: 502 },
       )
     }
-    const isCompleted = initialCredit >= target
+    if (!preview.ledger_available) {
+      return NextResponse.json(
+        { error: "El libro de crédito no está disponible todavía. Inténtalo más tarde." },
+        { status: 503 },
+      )
+    }
 
     // Cerrar discover activo
     await supabaseAdmin
@@ -124,7 +90,7 @@ export async function POST(req: NextRequest) {
       .eq("bag_id", bagId)
       .eq("status", "active")
 
-    // Crear nuevo registro collect con las cuotas de alquiler ya pagadas
+    // Nuevo registro collect (siempre 'active'); el credito se aplica tras registrar el libro
     const { data: created, error: insertErr } = await supabaseAdmin
       .from("ownership_progress")
       .insert({
@@ -132,19 +98,57 @@ export async function POST(req: NextRequest) {
         bag_id: bagId,
         mode: "collect",
         purchase_price: bag.purchase_price,
-        accumulated: isCompleted ? target : initialCredit,
-        status: isCompleted ? "completed" : "active",
-        completed_at: isCompleted ? now : null,
+        accumulated: 0,
+        status: "active",
+        completed_at: null,
       })
       .select("id")
       .single()
 
-    if (insertErr) {
+    if (insertErr || !created) {
       console.error("[v0] convert-to-collect insert error:", insertErr)
       return NextResponse.json({ error: "No se pudo crear el progreso" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, ownership_progress_id: created.id })
+    let initialCredit = 0
+    try {
+      const rows: LedgerRow[] = preview.eligible.map((invoice) => ({
+        ownership_progress_id: created.id,
+        user_id: user.id,
+        stripe_invoice_id: invoice.id,
+        amount_cents: invoice.amount_cents,
+        source: "rental_conversion",
+      }))
+      // Solo cuentan las filas realmente insertadas (si otra peticion se adelanto, no se duplica)
+      const inserted = await insertLedgerEntries(supabaseAdmin, rows)
+      const creditCents = inserted.reduce((total, row) => total + row.amount_cents, 0)
+      initialCredit = Math.round(Math.min(creditCents / 100, target) * 100) / 100
+
+      if (initialCredit > 0) {
+        const { error: updateErr } = await supabaseAdmin
+          .from("ownership_progress")
+          .update({ accumulated: initialCredit, updated_at: new Date().toISOString() })
+          .eq("id", created.id)
+        if (updateErr) throw updateErr
+      }
+    } catch (err) {
+      console.error("[v0] convert-to-collect error aplicando el credito:", err)
+      await supabaseAdmin.from("ownership_credit_entries").delete().eq("ownership_progress_id", created.id)
+      await supabaseAdmin.from("ownership_progress").delete().eq("id", created.id)
+      return NextResponse.json({ error: "No se pudo aplicar el crédito. Inténtalo de nuevo." }, { status: 500 })
+    }
+
+    const readyToFinalize = initialCredit >= target
+    if (readyToFinalize) {
+      await notifyReadyToFinalize(supabaseAdmin, user.id, bagId)
+    }
+
+    return NextResponse.json({
+      success: true,
+      ownership_progress_id: created.id,
+      initial_credit: initialCredit,
+      ready_to_finalize: readyToFinalize,
+    })
   } catch (err) {
     console.error("[v0] ownership/convert-to-collect error:", err)
     return NextResponse.json(

@@ -637,7 +637,7 @@ export default function TermsPage() {
                   <li>La Empresa evaluará el daño mediante expertos independientes</li>
                   <li>Se emitirá una factura de reparación o reposición según corresponda</li>
                   <li>El Usuario dispone de 15 días naturales para abonar el importe</li>
-                  <li>El impago suspenderá autom������ticamente el servicio y podrá derivar en acciones legales</li>
+                  <li>El impago suspenderá automáticamente el servicio y podrá derivar en acciones legales</li>
                 </>
               ) : (
                 <>

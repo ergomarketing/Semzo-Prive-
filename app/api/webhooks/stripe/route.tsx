@@ -8,7 +8,8 @@ import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
 import MembershipActivatedEmail from "@/emails/templates/membership-activated";
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
-import OwnershipCompletedEmail from "@/emails/templates/ownership-completed";
+import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
+import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -686,7 +687,7 @@ export async function POST(req: NextRequest) {
               // Buscar ownership_progress activo en modo collect (solo uno por user)
               const { data: progress } = await supabase
                 .from("ownership_progress")
-                .select("id, accumulated, purchase_price, bag_id")
+                .select("id, purchase_price, bag_id")
                 .eq("user_id", mem.user_id)
                 .eq("mode", "collect")
                 .eq("status", "active")
@@ -694,63 +695,46 @@ export async function POST(req: NextRequest) {
                 .limit(1)
                 .maybeSingle();
 
-              if (progress?.id && progress.purchase_price != null) {
-                const paidEuros = invoice.amount_paid / 100;
-                const newAccumulated = Number(progress.accumulated || 0) + paidEuros;
-                const target = Number(progress.purchase_price);
-                const isCompleted = newAccumulated >= target;
+              if (progress?.id && progress.purchase_price != null && invoice.id) {
+                // Libro por factura: se inserta PRIMERO. Si la factura ya estaba
+                // (evento repetido o ya contada en otro progreso), no se suma nada.
+                const [entry] = await insertLedgerEntries(supabase, [
+                  {
+                    ownership_progress_id: progress.id,
+                    user_id: mem.user_id,
+                    stripe_invoice_id: invoice.id,
+                    amount_cents: invoice.amount_paid,
+                    source: "collect_invoice",
+                  },
+                ]);
 
-                await supabase
-                  .from("ownership_progress")
-                  .update({
-                    accumulated: isCompleted ? target : newAccumulated,
-                    status: isCompleted ? "completed" : "active",
-                    completed_at: isCompleted ? now : null,
-                    updated_at: now,
-                  })
-                  .eq("id", progress.id);
-
-                console.log("[v0] ownership_progress credit:", {
-                  user_id: mem.user_id,
-                  bag_id: progress.bag_id,
-                  added: paidEuros,
-                  total: isCompleted ? target : newAccumulated,
-                  completed: isCompleted,
-                });
-
-                // Si se completa, notificar a la socia
-                if (isCompleted) {
-                  const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("full_name, email")
-                    .eq("id", mem.user_id)
-                    .single();
-
-                  if (profile?.email) {
-                    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
-                    const emailService = EmailServiceProduction.getInstance();
-                    await emailService.sendWithResend({
-                      to: profile.email,
-                      subject: "Tu bolso ya es tuyo — Semzo Privé",
-                      html: await render(
-                        <OwnershipCompletedEmail
-                          name={profile.full_name || ""}
-                          ctaUrl={`${siteUrl}/dashboard`}
-                          ctaLabel="Finalizar la compra"
-                        />,
-                      ),
-                    })
-                      .then((sent) =>
-                        logEmail({
-                          recipientEmail: profile.email,
-                          recipientName: profile.full_name || null,
-                          subject: "Tu bolso ya es tuyo — Semzo Privé",
-                          emailType: "ownership_completed",
-                          status: sent ? "sent" : "failed",
-                        }),
-                      )
-                      .catch((err) => console.error("[stripe-webhook] Error enviando email de bolso completado:", err));
+                if (entry) {
+                  try {
+                    const result = await addCreditToProgress(
+                      supabase,
+                      progress.id,
+                      invoice.amount_paid / 100,
+                      Number(progress.purchase_price),
+                    );
+                    console.log("[v0] ownership_progress credit:", {
+                      user_id: mem.user_id,
+                      bag_id: progress.bag_id,
+                      invoice_id: invoice.id,
+                      added: invoice.amount_paid / 100,
+                      total: result.accumulated,
+                      ready_to_finalize: result.reachedPrice,
+                    });
+                    // Nunca se marca completed aqui: solo /ownership/complete, con la aceptacion.
+                    if (result.reachedPrice) {
+                      await notifyReadyToFinalize(supabase, mem.user_id, progress.bag_id);
+                    }
+                  } catch (creditErr) {
+                    // Sin crédito sumado no debe quedar la factura reservada en el libro.
+                    await deleteLedgerEntry(supabase, invoice.id);
+                    throw creditErr;
                   }
+                } else {
+                  console.log("[v0] ownership_progress credit omitido (factura ya registrada):", invoice.id);
                 }
               }
             }

@@ -128,7 +128,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Cómo devuelvo un bolso cuando termine de usarlo?",
         answer:
-          "La devolución se realiza automáticamente al finalizar tu mes de membresía. Debes devolver el bolso con todos los elementos originales (dust bag, tarjetas de autenticidad, etc.) usando la etiqueta de envío prepagada que recibiste junto al bolso. Una vez enviado, recibirás confirmación de recepci��n en 24-48 horas.",
+          "La devolución se realiza automáticamente al finalizar tu mes de membresía. Debes devolver el bolso con todos los elementos originales (dust bag, tarjetas de autenticidad, etc.) usando la etiqueta de envío prepagada que recibiste junto al bolso. Una vez enviado, recibirás confirmación de recepción en 24-48 horas.",
       },
       {
         question: "¿Cómo sé que mi bolso ha sido devuelto con éxito?",

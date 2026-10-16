@@ -43,11 +43,12 @@ export const es = {
     cta: "Ver mi cuenta",
   },
   ownershipCompleted: {
-    subject: "Tu bolso ya es tuyo — Semzo Privé",
-    eyebrow: "Propiedad transferida",
-    heading: "Tu bolso ya es tuyo",
-    intro: (bag: string) => `El bolso ${bag} ya forma parte de tu colección personal.`,
-    cta: "Ver mi colección",
+  subject: "Ya puedes finalizar tu compra — Semzo Privé",
+  eyebrow: "Compra lista para finalizar",
+  heading: "Ya puedes finalizar tu compra",
+  intro: (bag: string) =>
+    `Tu crédito acumulado ya cubre el precio de ${bag}. Confirma la compra desde tu panel para completarla; hasta entonces el bolso no pasa a tu colección.`,
+  cta: "Finalizar la compra",
   },
   giftCardRecipient: {
     subject: (amount: string) => `Has recibido una Gift Card de Semzo Privé - ${amount}€`,
