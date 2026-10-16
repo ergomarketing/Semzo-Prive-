@@ -637,7 +637,7 @@ export default function TermsPage() {
                   <li>La Empresa evaluará el daño mediante expertos independientes</li>
                   <li>Se emitirá una factura de reparación o reposición según corresponda</li>
                   <li>El Usuario dispone de 15 días naturales para abonar el importe</li>
-                  <li>El impago suspenderá automáticamente el servicio y podrá derivar en acciones legales</li>
+                  <li>El impago suspenderá autom��ticamente el servicio y podrá derivar en acciones legales</li>
                 </>
               ) : (
                 <>
@@ -984,8 +984,8 @@ export default function TermsPage() {
             </p>
             <p className="text-slate-700 mb-4">
               {es
-                ? "Dicho crédito no constituye dinero, no es reembolsable, transferible ni canjeable por efectivo, y estará limitado, en todo caso, al veinte por ciento (20%) del precio de venta del artículo."
-                : "This credit does not constitute money and is not refundable, transferable or redeemable for cash, and shall in any case be limited to twenty percent (20%) of the sale price of the article."}
+                ? "Dicho crédito no constituye dinero, no es reembolsable, transferible ni canjeable por efectivo, y solo puede aplicarse a la compra del artículo para el que se ha acumulado."
+                : "This credit does not constitute money and is not refundable, transferable or redeemable for cash, and can only be applied to the purchase of the article for which it was accumulated."}
             </p>
             <p className="text-slate-700 mb-4">
               {es

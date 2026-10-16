@@ -27,7 +27,7 @@ const supabaseAdmin = createClient(
  * Finaliza la compra del bolso reservado en modo Colecciona.
  * Body: { accepted_terms: true, expected_amount: number }
  * - Exige aceptación expresa de las condiciones de compra (se registra en legal_acceptances).
- * - Cobra precio - crédito aplicable (crédito acumulado con tope del 20% del precio).
+ * - Cobra precio - crédito acumulado (1 € simbólico si ya está todo acumulado).
  * - El importe esperado debe coincidir con el calculado en servidor; si no, no se cobra.
  */
 export async function POST(req: NextRequest) {

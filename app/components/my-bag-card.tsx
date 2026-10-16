@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { getAmountDue, getAppliedCredit, getCreditCap } from "@/lib/ownership-credit"
+import { getAmountDue, getAppliedCredit } from "@/lib/ownership-credit"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -173,10 +173,9 @@ export function MyBagCard() {
   const mode = ownership?.mode ?? "discover"
   const accumulated = ownership?.accumulated ?? 0
   const targetPrice = ownership?.purchase_price_snapshot ?? bag.purchase_price ?? 0
-  const creditCap = getCreditCap(targetPrice)
   const appliedCredit = getAppliedCredit(accumulated, targetPrice)
   const amountDue = getAmountDue(accumulated, targetPrice)
-  const progressPct = creditCap > 0 ? Math.min((appliedCredit / creditCap) * 100, 100) : 0
+  const progressPct = targetPrice > 0 ? Math.min((appliedCredit / targetPrice) * 100, 100) : 0
 
   return (
     <Card className="overflow-hidden border-slate-200">
@@ -225,7 +224,7 @@ export function MyBagCard() {
                 <div className="mb-2 flex items-baseline justify-between gap-2">
                   <span className="text-sm text-slate-600">Crédito acumulado</span>
                   <span className="font-serif text-base text-indigo-dark">
-                    {formatEUR(appliedCredit)} <span className="text-slate-400">/ {formatEUR(creditCap)} máx.</span>
+                    {formatEUR(appliedCredit)} <span className="text-slate-400">/ {formatEUR(targetPrice)}</span>
                   </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-rose-nude">
@@ -235,7 +234,7 @@ export function MyBagCard() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  El crédito está limitado al 20% del precio ({formatEUR(targetPrice)}). Si compras hoy, pagarías{" "}
+                  Cada cuota suma al precio del bolso ({formatEUR(targetPrice)}). Si compras hoy, pagarías{" "}
                   {formatEUR(amountDue)}.
                 </p>
 
@@ -332,7 +331,7 @@ export function MyBagCard() {
                     <dd>{formatEUR(targetPrice)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>Crédito aplicado (máx. 20%)</dt>
+                    <dt>Crédito acumulado</dt>
                     <dd>- {formatEUR(appliedCredit)}</dd>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-1 font-medium text-indigo-dark">
@@ -411,8 +410,8 @@ export function MyBagCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Quieres hacer tuyo este bolso?</AlertDialogTitle>
             <AlertDialogDescription>
-              A partir de hoy, cada cuota que pagues acumulará crédito hacia su compra, hasta un máximo del 20% del
-              precio{bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}. Las cuotas anteriores no cuentan.
+              A partir de hoy, cada cuota que pagues se sumará como crédito hacia su precio
+              {bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}. Las cuotas anteriores no cuentan.
               El bolso solo pasa a ser tuyo cuando finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
               de SEMZO PRIVÉ.
             </AlertDialogDescription>
