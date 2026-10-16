@@ -32,8 +32,8 @@ BEGIN
 
   CREATE TABLE IF NOT EXISTS public.ownership_credit_entries (
     id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    -- RESTRICT: borrar un progreso no puede liberar sus facturas para volver a contarse.
-    ownership_progress_id uuid        NOT NULL REFERENCES public.ownership_progress(id) ON DELETE RESTRICT,
+    -- NO ACTION: borrar un progreso con entradas falla al final de la sentencia, así sus facturas no quedan libres para recontarse.
+    ownership_progress_id uuid        NOT NULL REFERENCES public.ownership_progress(id) ON DELETE NO ACTION,
     user_id               uuid        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     stripe_invoice_id     text        NOT NULL UNIQUE,
     amount_cents          integer     NOT NULL CHECK (amount_cents > 0),
