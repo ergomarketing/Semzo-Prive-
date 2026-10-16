@@ -637,7 +637,7 @@ export default function TermsPage() {
                   <li>La Empresa evaluará el daño mediante expertos independientes</li>
                   <li>Se emitirá una factura de reparación o reposición según corresponda</li>
                   <li>El Usuario dispone de 15 días naturales para abonar el importe</li>
-                  <li>El impago suspenderá autom��ticamente el servicio y podrá derivar en acciones legales</li>
+                  <li>El impago suspenderá autom����ticamente el servicio y podrá derivar en acciones legales</li>
                 </>
               ) : (
                 <>
@@ -979,8 +979,8 @@ export default function TermsPage() {
             </h2>
             <p className="text-slate-700 mb-4">
               {es
-                ? "Las cuotas de membresía efectivamente abonadas podrán generar crédito para la adquisición de artículos disponibles para compra en SEMZO PRIVÉ, conforme a las condiciones vigentes en cada momento."
-                : "Membership fees actually paid may generate credit toward the purchase of articles available for sale at SEMZO PRIVÉ, subject to the terms and conditions in force at any given time."}
+                ? "Mientras la socia mantenga un artículo en Modo Colecciona, el importe íntegro de las cuotas de membresía efectivamente abonadas se acumula como crédito para la compra de ese artículo. En modo alquiler, la cuota corresponde al uso mensual y no genera crédito. El crédito acumulado se pierde si la socia cancela la membresía o renuncia al artículo."
+                : "While the member keeps an article in Collect Mode, the full amount of membership fees actually paid builds up as credit toward the purchase of that article. In rental mode, the fee corresponds to monthly use and generates no credit. Accumulated credit is lost if the member cancels the membership or gives up the article."}
             </p>
             <p className="text-slate-700 mb-4">
               {es

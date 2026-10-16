@@ -1118,6 +1118,23 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           console.error("[v0] Error en bloque email cancelacion:", err);
         }
+
+        // Cancelacion efectiva: el credito acumulado en modo Colecciona se pierde.
+        if (event.type === "customer.subscription.deleted") {
+          try {
+            const { error: lostCreditError } = await supabase
+              .from("ownership_progress")
+              .update({ status: "cancelled", updated_at: now })
+              .eq("user_id", membership.user_id)
+              .eq("mode", "collect")
+              .eq("status", "active");
+            if (lostCreditError) {
+              console.error("[v0] Error anulando credito Colecciona al cancelar:", lostCreditError);
+            }
+          } catch (err) {
+            console.error("[v0] Error en bloque perdida de credito:", err);
+          }
+        }
         break;
       }
 

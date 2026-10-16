@@ -64,7 +64,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Cómo funciona el crédito que genera mi cuota mensual?",
         answer:
-          "Todo lo que pagas en cuotas de membresía mientras estás en Modo Colecciona se acumula como crédito (Private Purchase Credit) hacia el precio del bolso. El crédito no es dinero, no es reembolsable ni transferible. Solo puede aplicarse a una compra y no se combina con otras promociones, salvo que Semzo Privé lo indique expresamente. Consulta el detalle en nuestras Condiciones de Membresía.",
+          "Todo lo que pagas en cuotas de membresía mientras estás en Modo Colecciona se acumula como crédito (Private Purchase Credit) hacia el precio del bolso. En modo alquiler, la cuota es de uso mensual y no genera crédito. El crédito se pierde si cancelas la membresía. El crédito no es dinero, no es reembolsable ni transferible. Solo puede aplicarse a una compra y no se combina con otras promociones, salvo que Semzo Privé lo indique expresamente. Consulta el detalle en nuestras Condiciones de Membresía.",
       },
     ],
   },
@@ -128,7 +128,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Cómo devuelvo un bolso cuando termine de usarlo?",
         answer:
-          "La devolución se realiza automáticamente al finalizar tu mes de membresía. Debes devolver el bolso con todos los elementos originales (dust bag, tarjetas de autenticidad, etc.) usando la etiqueta de envío prepagada que recibiste junto al bolso. Una vez enviado, recibirás confirmación de recepción en 24-48 horas.",
+          "La devolución se realiza automáticamente al finalizar tu mes de membresía. Debes devolver el bolso con todos los elementos originales (dust bag, tarjetas de autenticidad, etc.) usando la etiqueta de envío prepagada que recibiste junto al bolso. Una vez enviado, recibirás confirmación de recepci��n en 24-48 horas.",
       },
       {
         question: "¿Cómo sé que mi bolso ha sido devuelto con éxito?",
@@ -229,12 +229,12 @@ export const faqCategoriesDataEn: FaqCategoryData[] = [
       {
         question: "Can I change my bag whenever I want?",
         answer:
-          "Yes. In Discover Mode you can request a change whenever you want, within the limits of your membership. In Collect Mode the bag is yours from day one, so it stays with you until you decide to make it definitively yours or give it up.",
+          "Yes. In Discover Mode you can request a change whenever you want, within the limits of your membership. In Collect Mode the bag is reserved for you and does not rotate: it stays with you until you decide to buy it or give it up. It remains the property of SEMZO PRIVÉ until you complete the purchase and payment is confirmed.",
       },
       {
         question: "How long does it take for a bag to become mine?",
         answer:
-          "Each bag has a set purchase price. Your monthly fee adds up towards that price until it is completed. You can also bring the purchase forward at any time by paying the outstanding difference from your member panel.",
+          "Each bag has a set purchase price. Every monthly fee you pay in Collect Mode builds up as purchase credit toward that price. To make it yours, complete the purchase from your member panel: you see the breakdown (price, credit applied and amount due), accept the purchase terms and pay the difference with your saved card.",
       },
       {
         question: "What happens if I cancel my membership while in Collect Mode?",
@@ -244,12 +244,12 @@ export const faqCategoriesDataEn: FaqCategoryData[] = [
       {
         question: "Is there insurance or coverage for the bag?",
         answer:
-          "Discover Mode: included in your monthly fee. It covers wear from normal use (small scratches, surface dirt, etc.). It does not cover negligence, loss, unreported theft or serious damage caused by misuse. Collect Mode: responsibility for the bag is yours while you have it in the purchase process, just as with any instalment purchase. If you decide to abandon the purchase, you lose the credit accumulated up to that point.",
+          "Discover Mode: included in your monthly fee. It covers wear from normal use (small scratches, surface dirt, etc.). It does not cover negligence, loss, unreported theft or serious damage caused by misuse. Collect Mode: while the bag is reserved for you, its custody is your responsibility, as it remains the property of SEMZO PRIVÉ until you complete the purchase. If you decide not to buy it, you lose the credit accumulated up to that point.",
       },
       {
         question: "Can I switch from one mode to the other?",
         answer:
-          "Yes. If you are in Discover Mode and fall in love with the bag you're carrying, you can convert it to Collect Mode from your panel: credit starts accumulating from that moment. If you are in Collect Mode and prefer to change bags, you can give it up and return to Discover Mode (you lose the credit accumulated on that bag).",
+          "Yes. If you are in Discover Mode and fall in love with the bag you're carrying, you can convert it to Collect Mode from your panel: credit starts accumulating from that moment with every fee you pay. In rental mode, your fee is a monthly usage fee and generates no credit. If you are in Collect Mode and prefer to change bags, you can give it up and return to Discover Mode (you lose the credit accumulated on that bag).",
       },
       {
         question: "Is the certificate of authenticity real?",
@@ -257,9 +257,9 @@ export const faqCategoriesDataEn: FaqCategoryData[] = [
           "Yes. All our bags go through professional verification (Entrupy and equivalent partners). Members in Collect Mode can view and download the certificate from their panel from day one.",
       },
       {
-        question: "Is there a limit to the credit generated by my monthly fee?",
+        question: "How does the credit generated by my monthly fee work?",
         answer:
-          "Yes. The credit accumulated through your membership fees (Private Purchase Credit) is not money and is not refundable or transferable. It can only be applied to a single purchase and cannot be combined with other promotions, unless expressly stated otherwise by Semzo Privé. See the full details in our Membership Terms.",
+          "Everything you pay in membership fees while in Collect Mode builds up as credit (Private Purchase Credit) toward the bag's price. In rental mode, your fee is a monthly usage fee and generates no credit. The credit is lost if you cancel your membership. It is not money and is not refundable or transferable. It can only be applied to a single purchase and cannot be combined with other promotions, unless expressly stated otherwise by Semzo Privé. See the full details in our Membership Terms.",
       },
     ],
   },
