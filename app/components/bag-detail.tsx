@@ -43,7 +43,7 @@ interface BagDetailProps {
     condition: string
     year: string
     availability: {
-      status: "available" | "rented"
+      status: "available" | "rented" | "maintenance"
       returnDate?: string
     }
     rating: number
@@ -248,6 +248,12 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   color: "text-[#1a2c4e]",
   bgColor: "bg-rose-50",
   message: t("rentedMsg"),
+  },
+  maintenance: {
+  label: t("maintenance"),
+  color: "text-slate-600",
+  bgColor: "bg-slate-100",
+  message: t("maintenanceMsg"),
   },
   colecciona: {
   label: t("coleccionaBadge"),
@@ -647,6 +653,13 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
                   <div className="text-center text-white">
                     <p className="text-2xl font-serif mb-2">{t("outWithMember")}</p>
+                  </div>
+                </div>
+              )}
+              {bag.availability.status === "maintenance" && (
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <p className="text-2xl font-serif mb-2">{t("inMaintenance")}</p>
                   </div>
                 </div>
               )}
