@@ -1,6 +1,7 @@
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
+import { isIdentityVerified } from "@/lib/identity-status"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -149,16 +150,7 @@ export async function syncMembershipFromStripe(
   const paymentOk = isStripeActive
 
   // Condicion 2: identidad verificada (fuente: identity_verifications)
-  const { data: identityRecord } = await supabase
-    .from("identity_verifications")
-    .select("status")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  const hasIdentityVerified =
-    identityRecord?.status === "verified" || identityRecord?.status === "approved"
+  const hasIdentityVerified = await isIdentityVerified(supabase, userId)
 
   // Condicion 3: mandato SEPA (fuente: profiles.sepa_payment_method_id)
   const { data: profilePayment } = await supabase
@@ -240,16 +232,23 @@ export async function syncMembershipFromStripe(
     // Cerrar el intent vigente para que no se quede en un estado intermedio
     // cuando la activacion no pasa por resume-onboarding. Best-effort.
     try {
-      const { data: openIntent } = await supabase
+      // Solo intents del MISMO plan de la suscripcion y aun sin cerrar. Se
+      // prefiere el pagado (paid_pending_verification) sobre uno "initiated",
+      // aunque este ultimo sea mas reciente.
+      const { data: candidateIntents } = await supabase
         .from("membership_intents")
-        .select("id, status, activated_at")
+        .select("id, status, activated_at, created_at")
         .eq("user_id", userId)
-        .not("status", "in", "(expired,canceled)")
+        .eq("membership_type", membershipType)
+        .in("status", ["paid_pending_verification", "initiated"])
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
 
-      if (openIntent && (openIntent.status !== "active" || !openIntent.activated_at)) {
+      const openIntent =
+        candidateIntents?.find((i) => i.status === "paid_pending_verification") ||
+        candidateIntents?.find((i) => i.status === "initiated") ||
+        null
+
+      if (openIntent) {
         const now = new Date().toISOString()
         await supabase
           .from("membership_intents")
