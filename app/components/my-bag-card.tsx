@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { getAmountDue, getAppliedCredit, getCreditCap } from "@/lib/ownership-credit"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,11 +56,19 @@ export function MyBagCard() {
   const [busy, setBusy] = useState<null | "complete" | "cancel" | "convert">(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [confirmConvert, setConfirmConvert] = useState(false)
+  const [confirmPurchase, setConfirmPurchase] = useState(false)
+  const [acceptedContract, setAcceptedContract] = useState(false)
+  const [acceptedCondition, setAcceptedCondition] = useState(false)
 
-  const handleComplete = async () => {
+  const handleComplete = async (expectedAmount: number) => {
     setBusy("complete")
+    setConfirmPurchase(false)
     try {
-      const res = await fetch("/api/user/ownership/complete", { method: "POST" })
+      const res = await fetch("/api/user/ownership/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted_terms: true, expected_amount: expectedAmount }),
+      })
       const json = await res.json()
       if (res.ok && json.success) {
         toast({
@@ -163,8 +173,10 @@ export function MyBagCard() {
   const mode = ownership?.mode ?? "discover"
   const accumulated = ownership?.accumulated ?? 0
   const targetPrice = ownership?.purchase_price_snapshot ?? bag.purchase_price ?? 0
-  const remaining = Math.max(targetPrice - accumulated, 0)
-  const progressPct = targetPrice > 0 ? Math.min((accumulated / targetPrice) * 100, 100) : 0
+  const creditCap = getCreditCap(targetPrice)
+  const appliedCredit = getAppliedCredit(accumulated, targetPrice)
+  const amountDue = getAmountDue(accumulated, targetPrice)
+  const progressPct = creditCap > 0 ? Math.min((appliedCredit / creditCap) * 100, 100) : 0
 
   return (
     <Card className="overflow-hidden border-slate-200">
@@ -211,9 +223,9 @@ export function MyBagCard() {
             {mode === "collect" && targetPrice > 0 && (
               <div className="mt-5">
                 <div className="mb-2 flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-slate-600">Progreso hacia la compra</span>
+                  <span className="text-sm text-slate-600">Crédito acumulado</span>
                   <span className="font-serif text-base text-indigo-dark">
-                    {formatEUR(accumulated)} <span className="text-slate-400">/ {formatEUR(targetPrice)}</span>
+                    {formatEUR(appliedCredit)} <span className="text-slate-400">/ {formatEUR(creditCap)} máx.</span>
                   </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-rose-nude">
@@ -223,14 +235,17 @@ export function MyBagCard() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  {remaining > 0
-                    ? `Faltan ${formatEUR(remaining)} para que sea tuyo`
-                    : "¡Has completado el precio! Puedes finalizar la compra."}
+                  El crédito está limitado al 20% del precio ({formatEUR(targetPrice)}). Si compras hoy, pagarías{" "}
+                  {formatEUR(amountDue)}.
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button
-                    onClick={handleComplete}
+                    onClick={() => {
+                      setAcceptedContract(false)
+                      setAcceptedCondition(false)
+                      setConfirmPurchase(true)
+                    }}
                     disabled={busy !== null}
                     className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
                   >
@@ -304,6 +319,74 @@ export function MyBagCard() {
         </div>
       </CardContent>
 
+      {/* Confirmación: finalizar la compra (contrato + importe) */}
+      <AlertDialog open={confirmPurchase} onOpenChange={setConfirmPurchase}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar compra de {bag.brand} {bag.name}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-slate-600">
+                <dl className="space-y-1">
+                  <div className="flex justify-between">
+                    <dt>Precio del bolso</dt>
+                    <dd>{formatEUR(targetPrice)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Crédito aplicado (máx. 20%)</dt>
+                    <dd>- {formatEUR(appliedCredit)}</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200 pt-1 font-medium text-indigo-dark">
+                    <dt>Se cobrará a tu tarjeta guardada</dt>
+                    <dd>{formatEUR(amountDue)}</dd>
+                  </div>
+                </dl>
+                <p>
+                  Es una compra definitiva. No se admiten devoluciones por cambio de opinión; para seguir probando
+                  bolsos está la membresía mensual. Quedan a salvo los derechos que la ley reconoce a las personas
+                  consumidoras.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 text-sm text-slate-700">
+              <Checkbox
+                checked={acceptedContract}
+                onCheckedChange={(v) => setAcceptedContract(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                He leído y acepto las condiciones de compra y los{" "}
+                <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline">
+                  Términos y Condiciones
+                </a>
+                .
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm text-slate-700">
+              <Checkbox
+                checked={acceptedCondition}
+                onCheckedChange={(v) => setAcceptedCondition(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Conozco el bolso por haberlo usado durante mi membresía y acepto su estado actual.
+              </span>
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!acceptedContract || !acceptedCondition}
+              onClick={() => handleComplete(amountDue)}
+              className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
+            >
+              Pagar {formatEUR(amountDue)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirmación: renunciar a Colecciona */}
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
         <AlertDialogContent>
@@ -328,8 +411,10 @@ export function MyBagCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Quieres hacer tuyo este bolso?</AlertDialogTitle>
             <AlertDialogDescription>
-              A partir de hoy, cada cuota que pagues acumulará crédito hacia su compra. Las cuotas anteriores no cuentan.
-              Cuando completes {bag.purchase_price ? formatEUR(bag.purchase_price) : "el precio"}, será tuyo.
+              A partir de hoy, cada cuota que pagues acumulará crédito hacia su compra, hasta un máximo del 20% del
+              precio{bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}. Las cuotas anteriores no cuentan.
+              El bolso solo pasa a ser tuyo cuando finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
+              de SEMZO PRIVÉ.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

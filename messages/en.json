@@ -577,9 +577,9 @@
     "collect": {
       "tag": "Collect Mode",
       "title": "Make it yours",
-      "desc": "Fallen in love? Reserve the bag you never want to let go. Each payment counts toward its purchase. Once you complete its price, it's yours forever.",
-      "feature1": "The bag is exclusively yours from day one",
-      "feature2": "Each month counts toward ownership",
+      "desc": "Fallen in love? Reserve the bag you never want to let go. Your payments build a purchase credit of up to 20% of its price. When you decide to buy it, you pay the difference and it's yours.",
+      "feature1": "The bag is reserved exclusively for you",
+      "feature2": "Your payments build credit (up to 20% of the price)",
       "feature3": "Certificate of authenticity from the start"
     },
     "cta": "Become a member",

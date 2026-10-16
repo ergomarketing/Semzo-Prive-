@@ -8,7 +8,7 @@ import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
 import MembershipActivatedEmail from "@/emails/templates/membership-activated";
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
-import OwnershipCompletedEmail from "@/emails/templates/ownership-completed";
+import { getCreditCap } from "@/lib/ownership-credit";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -695,63 +695,28 @@ export async function POST(req: NextRequest) {
                 .maybeSingle();
 
               if (progress?.id && progress.purchase_price != null) {
+                // El crédito nunca completa la compra por sí solo: se acumula
+                // hasta el tope (20% del precio, Términos cláusula 18). El resto
+                // lo paga la socia al finalizar la compra desde su panel.
                 const paidEuros = invoice.amount_paid / 100;
-                const newAccumulated = Number(progress.accumulated || 0) + paidEuros;
-                const target = Number(progress.purchase_price);
-                const isCompleted = newAccumulated >= target;
+                const creditCap = getCreditCap(Number(progress.purchase_price));
+                const previous = Number(progress.accumulated || 0);
+                const newAccumulated = Math.min(previous + paidEuros, creditCap);
 
-                await supabase
-                  .from("ownership_progress")
-                  .update({
-                    accumulated: isCompleted ? target : newAccumulated,
-                    status: isCompleted ? "completed" : "active",
-                    completed_at: isCompleted ? now : null,
-                    updated_at: now,
-                  })
-                  .eq("id", progress.id);
+                if (newAccumulated > previous) {
+                  await supabase
+                    .from("ownership_progress")
+                    .update({ accumulated: newAccumulated, updated_at: now })
+                    .eq("id", progress.id);
+                }
 
                 console.log("[v0] ownership_progress credit:", {
                   user_id: mem.user_id,
                   bag_id: progress.bag_id,
                   added: paidEuros,
-                  total: isCompleted ? target : newAccumulated,
-                  completed: isCompleted,
+                  total: newAccumulated,
+                  cap: creditCap,
                 });
-
-                // Si se completa, notificar a la socia
-                if (isCompleted) {
-                  const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("full_name, email")
-                    .eq("id", mem.user_id)
-                    .single();
-
-                  if (profile?.email) {
-                    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
-                    const emailService = EmailServiceProduction.getInstance();
-                    await emailService.sendWithResend({
-                      to: profile.email,
-                      subject: "Tu bolso ya es tuyo — Semzo Privé",
-                      html: await render(
-                        <OwnershipCompletedEmail
-                          name={profile.full_name || ""}
-                          ctaUrl={`${siteUrl}/dashboard`}
-                          ctaLabel="Finalizar la compra"
-                        />,
-                      ),
-                    })
-                      .then((sent) =>
-                        logEmail({
-                          recipientEmail: profile.email,
-                          recipientName: profile.full_name || null,
-                          subject: "Tu bolso ya es tuyo — Semzo Privé",
-                          emailType: "ownership_completed",
-                          status: sent ? "sent" : "failed",
-                        }),
-                      )
-                      .catch((err) => console.error("[stripe-webhook] Error enviando email de bolso completado:", err));
-                  }
-                }
               }
             }
           }

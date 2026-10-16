@@ -993,6 +993,17 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       return
                     }
 
+                    const acceptRes = await fetch("/api/legal/accept", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ context: "cart_terms" }),
+                    })
+                    if (!acceptRes.ok) {
+                      toast.error("No se pudo registrar la aceptación de los términos. Inténtalo de nuevo.")
+                      setCheckoutLoading(false)
+                      return
+                    }
+
                     // Verificar que el perfil existe en la base de datos
                     const supabase = getSupabaseBrowser()
                     const { data: profileCheck, error: profileError } = await supabase

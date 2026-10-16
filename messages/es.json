@@ -577,9 +577,9 @@
     "collect": {
       "tag": "Modo Colecciona",
       "title": "Hazlo tuyo",
-      "desc": "¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Cada cuota suma hacia su compra. Cuando completes su precio, es tuyo para siempre.",
-      "feature1": "El bolso es solo tuyo desde el día uno",
-      "feature2": "Cada mes suma hacia su propiedad",
+      "desc": "¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Tus cuotas generan un crédito de compra de hasta el 20% de su precio. Cuando decidas comprarlo, pagas la diferencia y es tuyo.",
+      "feature1": "El bolso queda reservado solo para ti",
+      "feature2": "Tus cuotas suman crédito (hasta el 20% del precio)",
       "feature3": "Certificado de autenticidad desde el inicio"
     },
     "cta": "Hazte socia",

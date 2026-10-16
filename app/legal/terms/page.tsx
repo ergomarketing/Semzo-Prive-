@@ -38,8 +38,8 @@ export default function TermsPage() {
             </p>
             <p className="text-slate-700 mb-4">
               {es
-                ? "En ningún caso el servicio prestado por SEMZO PRIVÉ podrá interpretarse como una venta, cesión definitiva, leasing financiero, arrendamiento con opción de compra, ni como cualquier otra figura jurídica que implique la transmisión de la propiedad, posesión permanente o expectativa de adquisición del bolso."
-                : "Under no circumstances may the service provided by SEMZO PRIVÉ be interpreted as a sale, definitive transfer, financial lease, hire-purchase, or any other legal form implying transfer of ownership, permanent possession or expectation of acquiring the bag."}
+                ? "El servicio de alquiler por suscripción no podrá interpretarse como una venta, cesión definitiva, leasing financiero, arrendamiento con opción de compra, ni como cualquier otra figura jurídica que implique la transmisión de la propiedad o la posesión permanente del bolso. La única vía para adquirir un bolso es el Modo Colecciona, que se formaliza como una compraventa independiente y separada del alquiler: la propiedad se transmite únicamente cuando la clienta acepta expresamente las condiciones de compra y se confirma el pago íntegro del importe correspondiente."
+                : "The subscription rental service may not be interpreted as a sale, definitive transfer, financial lease, hire-purchase, or any other legal form implying transfer of ownership or permanent possession of the bag. The only way to acquire a bag is Collect Mode, which is formalised as a sale independent of and separate from the rental: ownership is transferred only when the member expressly accepts the purchase conditions and payment of the full amount due is confirmed."}
             </p>
             <p className="text-slate-700 mb-4">
               {es
