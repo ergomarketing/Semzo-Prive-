@@ -118,6 +118,18 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
         // Resolver el user_id efectivo: del intent si existe, si no del metadata
         const effectiveUserId = intent?.user_id || userId
 
+  // Mantener la copia en profiles alineada con identity_verifications (fuente de verdad).
+  if (effectiveUserId) {
+    const verifiedAt = new Date().toISOString()
+    const { error: profileSyncError } = await supabase
+      .from("profiles")
+      .update({ identity_verified: true, identity_verified_at: verifiedAt, updated_at: verifiedAt })
+      .eq("id", effectiveUserId)
+    if (profileSyncError) {
+      console.error("[identity-webhook] Error sincronizando profiles.identity_verified:", profileSyncError.message)
+    }
+  }
+
         // BLINDAJE ANTIFRAUDE: detectar el mismo documento de identidad verificado
         // en dos cuentas distintas (socia con reserva vencida abriendo cuenta nueva
         // para seguir reservando sin devolver el bolso anterior).

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/app/lib/supabase/server"
 import Stripe from "stripe"
 import { syncMembershipFromStripe } from "../activate/orchestrator"
+import { isIdentityVerified } from "@/lib/identity-status"
+import { supabaseAdmin } from "@/app/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
@@ -70,14 +72,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] 📋 Reconcile: Found intent:", intent.id)
 
-    // CONDICIÓN 1: identity_verified === true
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("identity_verified")
-      .eq("id", user.id)
-      .single()
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
 
-    if (!profile?.identity_verified) {
+    // CONDICIÓN 1: identidad verificada (fuente de verdad: identity_verifications)
+    const identityVerified = await isIdentityVerified(supabaseAdmin, user.id)
+
+    if (!identityVerified) {
       console.log("[v0] ⏳ Reconcile: Identity not verified yet")
       return NextResponse.json({
         success: false,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { isIdentityVerified } from "@/lib/identity-status"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,7 +11,7 @@ const supabase = createClient(
  * CHECK VERIFICATION STATUS
  * 
  * Solo consulta estado real:
- * - profiles.identity_verified
+ * - identity_verifications.status (verificacion mas reciente)
  * - user_memberships.status
  * 
  * NO activa membresias.
@@ -24,16 +25,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "userId required" }, { status: 400 })
   }
 
-  // 1. Verificar identity desde profiles
+  // 1. Comprobar que el perfil existe
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("identity_verified")
+    .select("id")
     .eq("id", userId)
     .single()
 
   if (profileError || !profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 })
   }
+
+  // Identidad: fuente de verdad = identity_verifications
+  const identityVerified = await isIdentityVerified(supabase, userId)
 
   // 2. Verificar membresia desde user_memberships
   const { data: membership } = await supabase
@@ -44,7 +48,7 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   return NextResponse.json({
-    identity_verified: profile.identity_verified === true,
+    identity_verified: identityVerified,
     membership_active: membership?.status === "active",
     membership_type: membership?.membership_type || null,
   })

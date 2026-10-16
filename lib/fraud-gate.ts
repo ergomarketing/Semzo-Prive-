@@ -1,11 +1,24 @@
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
+import { isIdentityVerified } from "@/lib/identity-status"
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 })
+
+// Estados de user_memberships en los que la usuaria NO puede contratar otra
+// membresia. "cancelled" queda fuera a proposito: puede volver a contratar.
+const BLOCKING_MEMBERSHIP_STATUSES = [
+  "active",
+  "cancelled_active",
+  "past_due",
+  "paused",
+  "limited_access",
+  "paid_pending_verification",
+  "pending_verification",
+] as const
 
 export interface FraudGateResult {
   passed: boolean
@@ -88,10 +101,11 @@ async function checkDuplicateMembership(userId: string) {
   console.log(`[FraudGate] Checking for duplicate memberships for user ${userId}`)
 
   const { data: existingMembership, error } = await supabaseAdmin
-    .from("profiles")
-    .select("membership_status, membership_plan, membership_type")
-    .eq("id", userId)
-    .single()
+  .from("user_memberships")
+  .select("status, membership_type")
+  .eq("user_id", userId)
+  .in("status", [...BLOCKING_MEMBERSHIP_STATUSES])
+  .maybeSingle()
 
   if (error) {
     console.error("[FraudGate] Error checking duplicates:", error)
@@ -103,20 +117,17 @@ async function checkDuplicateMembership(userId: string) {
     }
   }
 
-  // Check if user already has an active or pending membership
-  const hasActiveMembership =
-    existingMembership?.membership_status === "active" ||
-    existingMembership?.membership_status === "pending_verification"
-
-  if (hasActiveMembership) {
+  // La consulta ya filtra por estados bloqueantes: si hay fila, la usuaria tiene
+  // una membresia viva (o a medio activar) y no puede contratar otra.
+  if (existingMembership) {
     console.warn(`[FraudGate] BLOCKED: User ${userId} already has active membership`)
     return {
       type: "duplicate_membership",
       passed: false,
       message: "El usuario ya tiene una membresía activa",
       details: {
-        currentStatus: existingMembership.membership_status,
-        currentPlan: existingMembership.membership_plan,
+        currentStatus: existingMembership.status,
+        currentPlan: existingMembership.membership_type,
       },
     }
   }
@@ -266,9 +277,11 @@ async function checkUserRiskProfile(userId: string, amount: number) {
     // Get user profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("created_at, email, full_name, identity_verified")
+      .select("created_at, email, full_name")
       .eq("id", userId)
       .single()
+
+    const identityVerified = await isIdentityVerified(supabaseAdmin, userId)
 
     if (!profile) {
       return {
@@ -300,7 +313,7 @@ async function checkUserRiskProfile(userId: string, amount: number) {
     }
 
     // No identity verification
-    if (!profile.identity_verified) {
+    if (!identityVerified) {
       riskScore += 10
       flags.push("Sin verificación de identidad completada")
     }
@@ -330,7 +343,7 @@ async function checkUserRiskProfile(userId: string, amount: number) {
         riskScore,
         accountAgeHours: Math.round(accountAgeHours),
         flags,
-        identityVerified: profile.identity_verified,
+        identityVerified,
       },
     }
   } catch (error: any) {

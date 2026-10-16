@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase"
+import { isIdentityVerified } from "@/lib/identity-status"
 import { adminNotifications } from "@/lib/admin-notifications"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -79,18 +80,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Nombre verificado por identidad (fuente de verdad: profiles.full_name,
-    // solo tiene valor real de comparación si identity_verified = true)
+    // solo tiene valor real de comparación si identity_verifications está verified)
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("full_name, first_name, last_name, email, identity_verified")
+      .select("full_name, first_name, last_name, email")
       .eq("id", user.id)
       .maybeSingle()
+
+    const identityVerified = await isIdentityVerified(supabaseAdmin, user.id)
 
     const verifiedName =
       profile?.full_name || `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || null
 
     let sepaNameMatchStatus: "match" | "mismatch" | "not_checked" = "not_checked"
-    if (profile?.identity_verified && verifiedName && sepaHolderName) {
+    if (identityVerified && verifiedName && sepaHolderName) {
       sepaNameMatchStatus = namesLikelyMatch(verifiedName, sepaHolderName) ? "match" : "mismatch"
     }
 

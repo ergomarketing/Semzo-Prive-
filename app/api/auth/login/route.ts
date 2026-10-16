@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseBrowser } from "@/lib/supabase"
+import { getSupabaseBrowser, supabaseAdmin } from "@/lib/supabase"
+import { isIdentityVerified } from "@/lib/identity-status"
 import { loginLimiter } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
@@ -101,6 +102,9 @@ export async function POST(request: NextRequest) {
       .eq("status", "active")
       .maybeSingle()
 
+    // Fuente de verdad de identidad: identity_verifications (no profiles.identity_verified)
+    const identityVerified = await isIdentityVerified(supabaseAdmin, data.user.id)
+
     loginLimiter.reset(ip)
 
     return NextResponse.json({
@@ -112,7 +116,7 @@ export async function POST(request: NextRequest) {
         firstName: data.user.user_metadata?.first_name || "",
         lastName: data.user.user_metadata?.last_name || "",
         membershipActive: !!activeMembership,
-        identityVerified: profile?.identity_verified === true,
+        identityVerified,
       },
       session: data.session,
     })
