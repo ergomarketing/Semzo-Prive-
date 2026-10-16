@@ -678,7 +678,7 @@
     "eyebrow": "Más que una membresía",
     "title": "Accede hoy.",
     "titleItalic": "Hazlo tuyo cuando estés segura.",
-    "body1": "Cuando activas el modo Colecciona sobre un bolso, todo lo que pagas en cuotas se acumula como crédito hacia su compra. En modo alquiler, tu cuota es de uso mensual y no genera crédito.",
+    "body1": "Cuando activas el modo Colecciona sobre un bolso, todo lo que pagas en cuotas se acumula como crédito hacia su compra. En modo alquiler, tu cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler que ya hayas pagado en tu membresía actual se suman como crédito.",
     "body2": "No tienes que decidir nada ahora. No hay plazos. No hay presión.",
     "body3": "Pero si un día llevas un bolso y sientes que no quieres devolverlo — que es tuyo — el crédito está ahí esperándote.",
     "body4": "Es la forma más inteligente de acceder al lujo: probar antes de comprometerte, y comprometerte solo cuando estás segura.",
@@ -950,7 +950,7 @@
     "faqTitle1": "Preguntas sobre",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "En modo Colecciona, el 100% de tu cuota mensual se acumula como crédito mientras tu membresía está activa. En modo alquiler, la cuota es de uso mensual y no genera crédito." },
+      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "En modo Colecciona, el 100% de tu cuota mensual se acumula como crédito mientras tu membresía está activa. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito." },
       { "q": "¿Puedo usar el crédito en cualquier bolso, no solo el que llevo?", "a": "No. El crédito se acumula hacia el bolso que tienes en modo Colecciona y solo puede aplicarse a su compra." },
       { "q": "¿El crédito caduca si cancelo mi membresía?", "a": "Sí. Si cancelas la membresía, el crédito acumulado se pierde: no es dinero ni es reembolsable." },
       { "q": "¿Tengo que decidir en algún momento si compro o no?", "a": "No. Colecciona no tiene plazos ni obligación de compra. Puedes seguir disfrutando de tu membresía indefinidamente sin usar el crédito, o hacerlo tuyo el día que lo sientas." },

@@ -140,7 +140,7 @@ export function MyBagCard() {
       if (res.ok && json.success) {
         toast({
           title: "Modo Colecciona activado",
-          description: "A partir de hoy cada cuota suma hacia la compra.",
+          description: "Tus cuotas pagadas y las nuevas suman hacia la compra.",
         })
         mutate()
       } else {
@@ -410,8 +410,8 @@ export function MyBagCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Quieres hacer tuyo este bolso?</AlertDialogTitle>
             <AlertDialogDescription>
-              A partir de hoy, cada cuota que pagues se sumará como crédito hacia su precio
-              {bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}. Las cuotas anteriores no cuentan.
+              Las cuotas de alquiler que ya has pagado en tu membresía actual se suman como crédito hacia su precio
+              {bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}, y cada cuota nueva que pagues también.
               El bolso solo pasa a ser tuyo cuando finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
               de SEMZO PRIVÉ.
             </AlertDialogDescription>

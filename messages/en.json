@@ -678,7 +678,7 @@
     "eyebrow": "More than a membership",
     "title": "Access it today.",
     "titleItalic": "Make it yours when you're sure.",
-    "body1": "When you switch a bag to Collect Mode, everything you pay in fees builds up as credit toward buying it. In rental mode, your fee is a monthly usage fee and does not generate credit.",
+    "body1": "When you switch a bag to Collect Mode, everything you pay in fees builds up as credit toward buying it. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit.",
     "body2": "You don't have to decide anything now. No deadlines. No pressure.",
     "body3": "But if one day you're carrying a bag and you feel you don't want to give it back — that it's yours — the credit is already there, waiting for you.",
     "body4": "It's the smartest way to access luxury: try before you commit, and commit only when you're sure.",
@@ -951,7 +951,7 @@
     "faqTitle1": "Questions about",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "What portion of my fee becomes credit?", "a": "In Collect Mode, 100% of your monthly fee builds up as credit while your membership stays active. In rental mode, your fee is a monthly usage fee and does not generate credit." },
+      { "q": "What portion of my fee becomes credit?", "a": "In Collect Mode, 100% of your monthly fee builds up as credit while your membership stays active. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit." },
       { "q": "Can I use the credit on any bag, not just the one I'm carrying?", "a": "No. Credit builds up toward the bag you have in Collect Mode and can only be applied to its purchase." },
       { "q": "Does the credit expire if I cancel my membership?", "a": "Yes. If you cancel your membership, the accumulated credit is lost: it is not money and is not refundable." },
       { "q": "Do I have to decide at some point whether to buy or not?", "a": "No. Colecciona has no deadlines or purchase obligation. You can keep enjoying your membership indefinitely without using the credit, or make it yours the day you feel ready." },
