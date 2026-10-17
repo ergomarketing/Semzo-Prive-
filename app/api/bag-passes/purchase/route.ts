@@ -1,4 +1,5 @@
 import { getSupabaseServer } from "@/lib/supabase-server"
+import { registerOwnershipMode } from "@/lib/ownership-register-mode"
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
       stripePaymentId,
       giftCardCode,
       paymentId, // legacy
+      ownershipMode, // 'collect' si la socia eligio Modo Colecciona en el catalogo
     } = body
 
     // Usar passTier o bagPassTier
@@ -363,6 +365,15 @@ export async function POST(request: Request) {
             bag_id: bagId,
             pass_id: firstPass.id,
           })
+
+          // Modo Colecciona elegido en el catalogo: se registra ahora que la reserva existe.
+          // Best-effort: la socia ya tiene pase y reserva; si falla podra usar "Convertir en mio".
+          if (ownershipMode === "collect") {
+            const registered = await registerOwnershipMode(supabase, finalUserId, bagId, "collect")
+            if (!registered.ok) {
+              console.error("[v0] [purchase] No se pudo activar Colecciona (no bloquea)", registered.message)
+            }
+          }
         }
       } catch (resvErr: any) {
         console.error("[v0] [purchase] reserva auto exception (continua)", {

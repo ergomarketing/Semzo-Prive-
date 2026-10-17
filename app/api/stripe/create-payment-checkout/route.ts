@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { amountCents, productName, intentId, bagId } = body
+    // Modo elegido en el catalogo para este bolso. Solo 'collect' se transporta: el webhook
+    // registra el Colecciona cuando crea la reserva del pase (Descubre es el modo por defecto).
+    const ownershipMode: "collect" | undefined = body.ownershipMode === "collect" ? "collect" : undefined
     // Acepta gift_card_id (snake_case desde CartClient) o giftCardId (legacy camelCase)
     const giftCardId: string | undefined = body.gift_card_id || body.giftCardId
     // giftCardAmountEuros: cuánto cubre la gift card (en euros, del CartClient)
@@ -217,6 +220,7 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         ...(giftCardId ? { gift_card_id: giftCardId } : {}),
         ...(bagId ? { bag_id: bagId, type: "bag_pass" } : {}),
+        ...(bagId && ownershipMode ? { ownership_mode: ownershipMode } : {}),
       },
       payment_intent_data: {
         metadata: {
@@ -224,6 +228,7 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           ...(giftCardId ? { gift_card_id: giftCardId } : {}),
           ...(bagId ? { bag_id: bagId, type: "bag_pass" } : {}),
+          ...(bagId && ownershipMode ? { ownership_mode: ownershipMode } : {}),
         },
       },
       success_url: `${baseUrl}/post-checkout?session_id={CHECKOUT_SESSION_ID}`,

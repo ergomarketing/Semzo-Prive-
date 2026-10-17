@@ -122,7 +122,7 @@ export function ModeSelectorDialog({
             <h3 className="font-serif text-lg text-indigo-dark mb-1">Modo Colecciona</h3>
             <p className="text-sm text-slate-600 mb-3">
               {canCollect
-                ? "Cada cuota suma hacia su compra. Cuando completes el precio, es tuyo."
+                ? "Cada cuota y cada pase que pagues suman hacia su compra. Cuando completes el precio, es tuyo."
                 : "No disponible para este bolso."}
             </p>
             {canCollect && (

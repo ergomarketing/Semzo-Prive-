@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { startCollectProgress } from "@/lib/ownership-collect-start"
+import { registerOwnershipMode } from "@/lib/ownership-register-mode"
 
 /**
  * POST /api/user/ownership-progress
@@ -72,53 +72,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabase()
 
-    // Idempotencia: si ya existe un registro activo para este user+bag, devolverlo
-    const { data: existing } = await supabase
-      .from("ownership_progress")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("bag_id", bag_id)
-      .eq("status", "active")
-      .maybeSingle()
-
-    if (existing && (mode === "discover" || existing.mode === "collect")) {
-      return NextResponse.json({ success: true, ownership_progress: existing, reused: true })
+    // Registro idempotente del modo (Colecciona siempre pasa por startCollectProgress).
+    const result = await registerOwnershipMode(supabase, userId, bag_id, mode)
+    if (!result.ok) {
+      return NextResponse.json({ error: result.message, code: result.code }, { status: result.status })
     }
-
-    // Colecciona siempre se empieza con la funcion unica (reclama facturas elegibles en el libro)
-    if (mode === "collect") {
-      const result = await startCollectProgress(userId, bag_id, { supabase })
-      if (!result.ok) {
-        return NextResponse.json({ error: result.message, code: result.code }, { status: result.status })
-      }
+    if (result.collect) {
       return NextResponse.json({
         success: true,
         ownership_progress: result.progress,
         reused: false,
-        initial_credit: result.initial_credit,
-        ready_to_finalize: result.ready_to_finalize,
+        initial_credit: result.collect.initial_credit,
+        ready_to_finalize: result.collect.ready_to_finalize,
       })
     }
-
-    const { data: created, error: insertErr } = await supabase
-      .from("ownership_progress")
-      .insert({
-        user_id: userId,
-        bag_id,
-        mode,
-        purchase_price: null,
-        accumulated: 0,
-        status: "active",
-      })
-      .select()
-      .single()
-
-    if (insertErr) {
-      console.error("[v0] Error creating ownership_progress:", insertErr)
-      return NextResponse.json({ error: "Error al registrar el modo elegido" }, { status: 500 })
-    }
-
-    return NextResponse.json({ success: true, ownership_progress: created, reused: false })
+    return NextResponse.json({ success: true, ownership_progress: result.progress, reused: result.reused })
   } catch (error) {
     console.error("[v0] Unexpected error in ownership-progress POST:", error)
     return NextResponse.json(

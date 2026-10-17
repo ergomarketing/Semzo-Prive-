@@ -95,6 +95,7 @@ function analyzeCartItems(items: any[]) {
           name: bagPassItem.name,
           itemType: bagPassItem.itemType,
           bagId: bagPassItem.bagId || null,
+          ownershipMode: (bagPassItem as any).ownershipMode === "collect" ? "collect" : null,
         }
       : null,
     membershipType,
@@ -1077,6 +1078,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                             userId: user.id,
                             passTier: cartAnalysis.bagPassTier,
                             bagId: cartAnalysis.bagPassItem.bagId || null,
+                            ownershipMode: cartAnalysis.bagPassItem.ownershipMode || null,
                             quantity: 1,
                             giftCardCode: appliedGiftCard.code,
                             paymentMethod: "gift_card",
@@ -1180,6 +1182,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       checkoutBody.productName = cartBagPass.name || "Pase de Bolso"
                       if ((cartBagPass as any).bagId) {
                         checkoutBody.bagId = (cartBagPass as any).bagId
+                        if ((cartBagPass as any).ownershipMode === "collect") {
+                          checkoutBody.ownershipMode = "collect"
+                        }
                       }
                       if (appliedGiftCard) {
                         checkoutBody.gift_card_id = appliedGiftCard.id
