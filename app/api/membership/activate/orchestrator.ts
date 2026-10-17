@@ -210,7 +210,12 @@ export async function syncMembershipFromStripe(
       .eq("user_id", userId)
       .maybeSingle()
 
-    becameActive = existingMembership?.status !== "active"
+    // Solo altas nuevas, pendientes de verificar y reincorporaciones. NO la recuperacion de
+    // un impago (past_due -> active) ni un resync de una membresia que ya estaba activa.
+    const previousStatus = existingMembership?.status
+    becameActive =
+      !previousStatus ||
+      ["pending_verification", "cancelled", "canceled", "expired", "incomplete"].includes(previousStatus)
 
     if (!existingMembership?.onboarding_sequence_started_at) {
       shouldStartOnboarding = true
