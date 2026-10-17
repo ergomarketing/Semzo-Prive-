@@ -35,6 +35,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -129,10 +130,7 @@ export async function POST(req: NextRequest) {
   try {
     const invoice = event.data.object as Stripe.Invoice
     const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id
-    const subscriptionId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id
+    const subscriptionId = getInvoiceSubscriptionId(invoice)
 
     if (!customerId || !subscriptionId) {
       await supabase
