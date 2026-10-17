@@ -2,6 +2,7 @@ import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 import { isIdentityVerified } from "@/lib/identity-status"
+import { sendMembershipActivatedEmails } from "@/lib/membership-activated-email"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -200,12 +201,16 @@ export async function syncMembershipFromStripe(
   // se enrola la PRIMERA vez que la membresia llega a "active". Se lee ANTES
   // del upsert para saber si ya se habia enrolado en una activacion anterior.
   let shouldStartOnboarding = false
+  // Correo "membresia activa": solo cuando pasa a 'active' desde otro estado (no en cada resync).
+  let becameActive = false
   if (allConditionsMet) {
     const { data: existingMembership } = await supabase
       .from("user_memberships")
-      .select("onboarding_sequence_started_at")
+      .select("onboarding_sequence_started_at, status")
       .eq("user_id", userId)
       .maybeSingle()
+
+    becameActive = existingMembership?.status !== "active"
 
     if (!existingMembership?.onboarding_sequence_started_at) {
       shouldStartOnboarding = true
@@ -272,6 +277,19 @@ export async function syncMembershipFromStripe(
       }
     } catch (err) {
       console.error("[ORCHESTRATOR] Error cerrando membership_intent:", err)
+    }
+  }
+
+  // Correo "Tu membresia esta activa" + aviso al admin: best-effort, nunca bloquea la activacion.
+  if (becameActive) {
+    try {
+      await sendMembershipActivatedEmails(supabase, {
+        userId,
+        membershipType,
+        subscriptionId: subscription.id,
+      })
+    } catch (emailErr) {
+      console.error("[ORCHESTRATOR] Error enviando correo de membresia activa:", emailErr)
     }
   }
 
