@@ -25,8 +25,8 @@ export async function GET() {
     const { data: expiringMemberships } = await supabase
       .from("user_memberships")
       .select("id, user_id, membership_type, end_date")
-      .in("status", ["active", "cancelled_active"])
-      .eq("cancel_at_period_end", true)
+      .in("status", ["active", "cancelling", "cancelled"])
+      .or("cancel_at_period_end.eq.true,status.in.(cancelling,cancelled)")
       .not("end_date", "is", null)
       .lte("end_date", in7Days.toISOString())
       .gte("end_date", now.toISOString())
