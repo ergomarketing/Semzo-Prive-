@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { isIdentityVerified } from "@/lib/identity-status"
+
+// Estados de onboarding que son normales mientras falten condiciones
+// (pago + identidad + mandato SEPA). Solo son anomalia si ya se cumplen las 3.
+const TRANSIENT_ONBOARDING_STATES = ["paid_pending_verification", "pending_verification", "pending_sepa"]
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
@@ -61,7 +66,7 @@ export async function GET() {
     const userIds = [...new Set(memberships.map((m) => m.user_id).filter(Boolean))]
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name, email, sepa_payment_method_id")
       .in("id", userIds)
 
     if (profilesError) {
@@ -106,7 +111,18 @@ export async function GET() {
         // Comparacion de match: si Stripe dice "active" y nosotros tambien
         // contamos como match. Para gift card directa no hay nada que
         // comparar, asi que lo damos como match.
-        const statusMatch =
+        const profileRow = profilesMap.get(m.user_id)
+        const stripeIsActive = stripeVerifiedStatus === "active" || stripeVerifiedStatus === "trialing"
+        const hasSepaMandate = Boolean(profileRow?.sepa_payment_method_id)
+        let hasIdentityVerified = false
+        try {
+          hasIdentityVerified = await isIdentityVerified(supabaseAdmin, m.user_id)
+        } catch (e: any) {
+          console.log(`[admin/subscriptions] isIdentityVerified failed for ${m.user_id}:`, e?.message)
+        }
+        const onboardingConditionsMet = stripeIsActive && hasIdentityVerified && hasSepaMandate
+
+        const baseMatch =
           stripeVerifiedStatus === "direct_payment" ||
           stripeVerifiedStatus === "error" ||
           stripeVerifiedStatus === m.status ||
@@ -123,6 +139,12 @@ export async function GET() {
           // (dos L). Es el mismo estado, solo difiere la ortografia.
           (stripeVerifiedStatus === "canceled" &&
             (m.status === "cancelled" || m.status === "cancelled_active"))
+
+        // Estado transitorio con Stripe activa: es normal si faltan condiciones;
+        // discrepancia solo si ya cumple las 3 y la BD no esta "active".
+        const isTransientWithActiveStripe =
+          stripeIsActive && TRANSIENT_ONBOARDING_STATES.includes(m.status)
+        const statusMatch = isTransientWithActiveStripe ? !onboardingConditionsMet : baseMatch
 
         return {
           id: m.id,
@@ -145,6 +167,9 @@ export async function GET() {
           stripe_verified_status: stripeVerifiedStatus,
           status_match: statusMatch,
           stripe_data: stripeData,
+          has_identity_verified: hasIdentityVerified,
+          has_sepa_mandate: hasSepaMandate,
+          onboarding_conditions_met: onboardingConditionsMet,
         }
       }),
     )
