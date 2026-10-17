@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
         first_name: data.user.user_metadata?.first_name || "",
         last_name: data.user.user_metadata?.last_name || "",
         phone: data.user.user_metadata?.phone || "",
-        is_active: true,
         email_confirmed: true,
       })
 

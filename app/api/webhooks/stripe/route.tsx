@@ -888,23 +888,34 @@ export async function POST(req: NextRequest) {
           .in("status", ["active", "overdue"])
           .or("is_admin_rent.is.null,is_admin_rent.eq.false");
 
-        await supabase
-          .from("payment_history")
-          .upsert(
-            {
+        // payment_history no tiene UNIQUE en stripe_invoice_id (el upsert con
+        // onConflict fallaba en silencio) y amount es integer: se guarda en centimos.
+        // Es solo historial: un fallo aqui no debe romper la renovacion.
+        try {
+          const { data: existingPayment } = await supabase
+            .from("payment_history")
+            .select("id")
+            .eq("stripe_invoice_id", invoice.id)
+            .maybeSingle();
+
+          if (!existingPayment) {
+            const { error: paymentHistoryError } = await supabase.from("payment_history").insert({
               user_id: membership.user_id,
               stripe_invoice_id: invoice.id,
-              stripe_subscription_id: subscriptionId,
-              amount: invoice.amount_paid
-                ? invoice.amount_paid / 100
-                : 0,
+              amount: invoice.amount_paid || 0,
               currency: invoice.currency,
               status: "paid",
+              description: invoice.number ? `Factura ${invoice.number}` : "Renovacion de membresia",
               payment_date: now,
               created_at: now,
-            },
-            { onConflict: "stripe_invoice_id" }
-          );
+            });
+            if (paymentHistoryError) {
+              console.warn("[WEBHOOK] No se pudo guardar payment_history (no bloquea):", paymentHistoryError.message);
+            }
+          }
+        } catch (paymentHistoryErr) {
+          console.warn("[WEBHOOK] payment_history fallo (no bloquea):", paymentHistoryErr);
+        }
 
         // EMAIL AL USUARIO: Renovación confirmada
         const { data: renewProfile } = await supabase

@@ -35,7 +35,7 @@ export async function GET() {
     const bagIds = completed.map((c) => c.bag_id)
     const { data: bags } = await supabase
       .from("bags")
-      .select("id, name, brand, model, images, authenticity_certificate_url")
+      .select("id, name, brand, images, authenticity_certificate_url")
       .in("id", bagIds)
 
     const bagMap = new Map((bags || []).map((b) => [b.id, b]))
@@ -48,7 +48,7 @@ export async function GET() {
         bag_id: c.bag_id,
         name: bag?.name || "",
         brand: bag?.brand || "",
-        model: bag?.model || "",
+        model: "",
         image_url: images[0]?.url || images[0] || null,
         purchase_price: c.purchase_price != null ? Number(c.purchase_price) : null,
         paid_total: c.accumulated != null ? Number(c.accumulated) : null,

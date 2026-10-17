@@ -23,15 +23,16 @@ export async function GET() {
     // Leer membresías desde user_memberships (FUENTE DE VERDAD)
     const { data: expiringMemberships } = await supabase
       .from("user_memberships")
-      .select("id, user_id, membership_type, ends_at, profiles!user_memberships_user_id_fkey(full_name, email)")
-      .eq("status", "active")
-      .not("ends_at", "is", null)
-      .lte("ends_at", in7Days.toISOString())
-      .gte("ends_at", now.toISOString())
+      .select("id, user_id, membership_type, end_date, profiles!user_memberships_user_id_fkey(full_name, email)")
+      .in("status", ["active", "cancelled_active"])
+      .eq("cancel_at_period_end", true)
+      .not("end_date", "is", null)
+      .lte("end_date", in7Days.toISOString())
+      .gte("end_date", now.toISOString())
 
     for (const member of expiringMemberships || []) {
       const daysRemaining = Math.ceil(
-        (new Date(member.ends_at).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        (new Date(member.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       )
       alerts.push({
         id: `expiring-${member.id}`,
