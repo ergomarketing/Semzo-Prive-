@@ -12,6 +12,9 @@ interface CartItem {
   brand: string
   itemType?: "membership" | "bag-pass"
   period?: "weekly" | "monthly" | "quarterly"
+  /** Solo pases de bolso: bolso elegido y modo (solo "collect" se transporta; Descubre es el defecto). */
+  bagId?: string
+  ownershipMode?: "collect"
 }
 
 interface CartContextType {

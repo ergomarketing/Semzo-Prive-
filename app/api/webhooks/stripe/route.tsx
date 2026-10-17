@@ -15,6 +15,8 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import { claimStripeEvent, markStripeEventDone, markStripeEventFailed } from "@/lib/stripe-event-state";
 import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
 import { closeColeccionaSale } from "@/lib/ownership-sale-close";
+import { registerOwnershipMode } from "@/lib/ownership-register-mode";
+import { creditPassPurchase } from "@/lib/ownership-pass-credit";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -401,6 +403,7 @@ export async function POST(req: NextRequest) {
             // RESERVA AUTOMATICA: si la compra incluyo bagId, crear reserva
             // vinculando el pase recien creado al bolso elegido.
             const bagId = (session.metadata as any)?.bag_id;
+            let passReservationCreated = false;
             if (bagId && insertedPass?.id && !insertedPass.used_for_reservation_id) {
               try {
                 const startDate = new Date();
@@ -436,6 +439,7 @@ export async function POST(req: NextRequest) {
                     });
                   }
                 } else {
+                  passReservationCreated = true;
                   console.log("[v0] [bag_pass_webhook] reserva auto creada OK", {
                     session_id: session.id,
                     reservation_id: reservationId,
@@ -449,6 +453,41 @@ export async function POST(req: NextRequest) {
                   error: resvErr?.message,
                 });
               }
+            }
+
+            // --- MODO COLECCIONA con pases ---
+            // 1) Si la socia eligio Colecciona en el catalogo, se registra ahora que la reserva existe.
+            // 2) Todo pase pagado con dinero suma al Colecciona activo (incluido el de este bolso).
+            // Un fallo aqui no debe tumbar el webhook (el pase y la reserva ya estan hechos): se avisa al admin.
+            try {
+              const chosenMode = (session.metadata as any)?.ownership_mode;
+              if (passReservationCreated && bagId && chosenMode === "collect") {
+                const registered = await registerOwnershipMode(supabase, userId, bagId, "collect");
+                if (!registered.ok) {
+                  throw new Error(`No se pudo activar Colecciona (${registered.code || registered.status}): ${registered.message}`);
+                }
+              }
+              const passCredit = await creditPassPurchase(supabase, {
+                userId,
+                sessionId: session.id,
+                amountPaidCents: session.amount_total || 0,
+              });
+              if (passCredit.credited) {
+                console.log("[v0] [bag_pass_webhook] crédito Colecciona por pase", {
+                  session_id: session.id,
+                  added: passCredit.added,
+                  accumulated: passCredit.accumulated,
+                });
+              }
+            } catch (ownershipErr: any) {
+              console.error("[v0] [bag_pass_webhook] Colecciona (pase) falló:", ownershipErr?.message);
+              await supabase.from("admin_notifications").insert({
+                type: "colecciona_pass_error",
+                priority: "high",
+                title: "Colecciona: no se pudo registrar el modo o el crédito de un pase",
+                message: `Sesión ${session.id} (usuario ${userId}): ${ownershipErr?.message}. Revisa y corrige a mano.`,
+                metadata: { stripe_session_id: session.id, user_id: userId, bag_id: bagId },
+              });
             }
           } else {
             console.error("[v0] [bag_pass_webhook] missing user_id in session metadata", {

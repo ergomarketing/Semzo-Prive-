@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 const BAG_SELECT_COLS =
-  "id, slug, name, brand, color, description, retail_price, image_url, images, category, condition, status, membership_type"
+  "id, slug, name, brand, color, description, retail_price, image_url, images, category, condition, status, membership_type, purchase_price"
 
 async function fetchInitialBags() {
   try {

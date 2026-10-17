@@ -8,8 +8,8 @@
  *
  * Que hace:
  *  1. ownership_progress -> completed (accumulated = precio)
- *  2. reservas abiertas de esa socia con ese bolso -> completed (antes que el bolso: ver trigger abajo)
- *  3. bags.status -> "colecciona" (sale del inventario de alquiler)
+ *  2. bags.status -> "colecciona" (sale del inventario de alquiler)
+ *  3. reservas abiertas de esa socia con ese bolso -> completed
  *  4. (solo la primera vez) aviso al admin + email a la socia y al admin
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -61,21 +61,11 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
     if (error) throw new Error(`ownership_progress: ${error.message}`)
   }
 
-  // 2. Reservas abiertas de esta socia con este bolso: ya no hay nada que devolver.
-  // IMPORTANTE: va ANTES de marcar el bolso como vendido. El trigger
-  // release_bag_on_reservation_end de la BD pone bags.status = 'available' cuando una
-  // reserva pasa a 'completed'; si el bolso se marcara antes, volveria al catalogo.
-  const { error: resError } = await supabase
-    .from("reservations")
-    .update({ status: "completed", updated_at: now })
-    .eq("user_id", progress.user_id)
-    .eq("bag_id", progress.bag_id)
-    .in("status", OPEN_RESERVATION_STATUSES)
-  if (resError) throw new Error(`reservations: ${resError.message}`)
-
-  // 3. Bolso vendido (siempre el ULTIMO paso sobre bags). Si la fila cambia es la
-  // primera vez que se cierra; la actualizacion es atomica, asi que solo una de las
-  // llamadas concurrentes (webhook / pantalla de confirmacion) ve firstClose = true.
+  // 2. Bolso vendido PRIMERO. Si la fila cambia es la primera vez que se cierra; la
+  // actualizacion es atomica, asi que solo una de las llamadas concurrentes (webhook /
+  // pantalla de confirmacion) ve firstClose = true. Con el bolso ya en 'colecciona', el
+  // trigger release_bag_on_reservation_end no lo libera ni avisa a la lista de espera
+  // cuando la reserva pase a 'completed' (ver scripts/colecciona-sold-bag-and-pass-credit.sql).
   const { data: soldRows, error: bagError } = await supabase
     .from("bags")
     .update({ status: "colecciona", current_renter: null, rented_until: null, updated_at: now })
@@ -84,6 +74,24 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
     .select("id")
   if (bagError) throw new Error(`bags: ${bagError.message}`)
   const firstClose = (soldRows?.length ?? 0) > 0
+
+  // 3. Reservas abiertas de esta socia con este bolso: ya no hay nada que devolver.
+  const { error: resError } = await supabase
+    .from("reservations")
+    .update({ status: "completed", updated_at: now })
+    .eq("user_id", progress.user_id)
+    .eq("bag_id", progress.bag_id)
+    .in("status", OPEN_RESERVATION_STATUSES)
+  if (resError) throw new Error(`reservations: ${resError.message}`)
+
+  // Red de seguridad: si la guarda del trigger no estuviera aplicada en esta base de
+  // datos, el bolso habria vuelto a 'available'. Se reafirma como vendido (idempotente).
+  const { error: reassertError } = await supabase
+    .from("bags")
+    .update({ status: "colecciona", updated_at: now })
+    .eq("id", progress.bag_id)
+    .neq("status", "colecciona")
+  if (reassertError) throw new Error(`bags (reafirmar): ${reassertError.message}`)
 
   const { data: bag } = await supabase.from("bags").select("brand, name").eq("id", progress.bag_id).maybeSingle()
   const bagLabel = `${bag?.brand || ""} ${bag?.name || ""}`.trim() || "tu bolso"

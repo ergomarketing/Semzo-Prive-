@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
  * stripe_invoice_id UNIQUE y todas las altas usan ON CONFLICT DO NOTHING.
  */
 
-export type CreditSource = "rental_conversion" | "collect_invoice"
+export type CreditSource = "rental_conversion" | "collect_invoice" | "collect_pass"
 
 export interface LedgerRow {
   ownership_progress_id: string

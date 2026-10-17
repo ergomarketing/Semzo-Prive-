@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,6 +14,7 @@ import { useCart } from "@/app/contexts/cart-context"
 import { useRouter } from "next/navigation"
 import { LoginModal } from "@/app/components/login-modal"
 import { UpgradeMembershipDialog } from "@/app/components/upgrade-membership-dialog"
+import { ModeSelectorDialog } from "@/app/components/mode-selector-dialog"
 import { useTranslations, useLocale } from "next-intl"
 
 interface BagItem {
@@ -28,6 +29,8 @@ interface BagItem {
   status: string
   membership_type: string
   images?: string[]
+  /** Precio de compra en Modo Colecciona; null/0 = el bolso no se ofrece en Colecciona. */
+  purchase_price?: number | null
 }
 
 const MEMBERSHIP_PRICES: Record<string, number> = {
@@ -63,7 +66,7 @@ export default function CatalogSection({ initialBags = [] }: { initialBags?: Bag
 
       try {
         const selectCols =
-          "id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type"
+          "id, name, brand, description, retail_price, image_url, images, category, condition, status, membership_type, purchase_price"
 
         // Intento 1: ordenar por display_order (manual desde admin)
         let { data, error } = await supabase
@@ -350,6 +353,12 @@ function BagCard({
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
+  // Modo Colecciona: selector Descubre/Colecciona (mismo que en la ficha del bolso).
+  // selectedModeRef = lo que acaba de elegir en el selector (se consume al reintentar la reserva);
+  // activeModeRef = el modo con el que sigue la reserva en curso (pase, carrito o reserva directa).
+  const [showModeSelector, setShowModeSelector] = useState(false)
+  const selectedModeRef = useRef<"discover" | "collect" | null>(null)
+  const activeModeRef = useRef<"discover" | "collect" | null>(null)
   const [upgradeRequiredTier, setUpgradeRequiredTier] = useState<string>("prive")
   const [activeBagDialog, setActiveBagDialog] = useState<{ open: boolean; bagLabel: string }>({
     open: false,
@@ -462,6 +471,17 @@ function BagCard({
       }
     }
 
+    // Modo Colecciona: si el bolso se ofrece en Colecciona, la socia elige modo ANTES de reservar
+    // o de comprar el pase (esta ruta no pasaba por el selector, solo la ficha del bolso).
+    const hasCollectOption = bag.purchase_price != null && Number(bag.purchase_price) > 0
+    const pickedMode = selectedModeRef.current
+    selectedModeRef.current = null
+    if (hasCollectOption && !pickedMode) {
+      setShowModeSelector(true)
+      return
+    }
+    activeModeRef.current = hasCollectOption ? pickedMode : null
+
     const needsPass = await checkIfNeedsPass()
 
     if (needsPass) {
@@ -483,6 +503,7 @@ function BagCard({
         brand: bag.brand,
         itemType: "bag-pass" as const,
         bagId: bag.id,
+        ...(activeModeRef.current === "collect" ? { ownershipMode: "collect" as const } : {}),
       }
 
         addItem(bagPassItem)
@@ -572,6 +593,32 @@ function BagCard({
           ? `${data.error || t("reservationError")} (${data.details})`
           : data.error || t("reservationError")
         throw new Error(fullMsg)
+      }
+
+      // Modo Colecciona elegido: se registra ahora que la reserva existe. Si falla, la reserva
+      // sigue en pie (modo Descubre) y la socia puede usar "Convertir en mio" en su panel.
+      if (activeModeRef.current === "collect") {
+        try {
+          const modeRes = await fetch("/api/user/ownership-progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bag_id: bag.id, mode: "collect" }),
+          })
+          if (!modeRes.ok) {
+            const modeJson = await modeRes.json().catch(() => ({}))
+            toast({
+              variant: "destructive",
+              title: "Modo Colecciona no activado",
+              description:
+                modeJson.error ||
+                "Tu reserva está hecha, pero no pudimos activar Colecciona. Puedes hacerlo desde tu panel con «Convertir en mío».",
+              duration: 6000,
+            })
+          }
+        } catch {
+          // la reserva ya esta creada; no se bloquea
+        }
+        activeModeRef.current = null
       }
 
       setShowSuccess(true)
@@ -826,6 +873,22 @@ function BagCard({
         </DialogContent>
       </Dialog>
 
+      {/* Selector Descubre / Colecciona */}
+      <ModeSelectorDialog
+        open={showModeSelector}
+        onOpenChange={setShowModeSelector}
+        bagName={bag.name}
+        bagBrand={bag.brand}
+        purchasePrice={bag.purchase_price != null ? Number(bag.purchase_price) : null}
+        // Para Petite no se estima en meses: su crédito mezcla cuota y pases.
+        monthlyPrice={userMembership === "petite" ? null : monthlyPrice}
+        onSelect={(mode) => {
+          selectedModeRef.current = mode
+          setShowModeSelector(false)
+          handleQuickReserve()
+        }}
+      />
+
       {/* Login Modal */}
       <LoginModal
         open={showLoginModal}
@@ -877,6 +940,7 @@ function BagCard({
                   brand: bag.brand,
                   itemType: "bag-pass" as const,
                   bagId: bag.id,
+                  ...(activeModeRef.current === "collect" ? { ownershipMode: "collect" as const } : {}),
                 }
           addItem(bagPassItem)
           toast({
