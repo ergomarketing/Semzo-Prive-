@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { promoteStuckMemberships } from "@/lib/membership-safety-net"
 
 // CRITICAL: No cache - cron job
 export const dynamic = "force-dynamic"
@@ -134,10 +135,20 @@ export async function GET(request: Request) {
       }
     }
 
+    // Red de seguridad: promueve membresias atascadas que ya cumplen las 3 condiciones.
+    // Aislada para que un fallo aqui no afecte a los recordatorios anteriores.
+    let safetyNet = null
+    try {
+      safetyNet = await promoteStuckMemberships()
+    } catch (safetyErr: any) {
+      console.error("[v0] Safety net failed:", safetyErr?.message)
+    }
+
     return NextResponse.json({
       success: true,
       reminders_sent: pendingIntents?.length || 0,
       limited_access_applied: expiredIntents?.length || 0,
+      safety_net: safetyNet,
     })
   } catch (error: any) {
     console.error("[v0] Error in check-pending-verifications cron:", error)
