@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { fetchProfilesById } from "@/lib/profile-lookup"
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
     // renueva sola no "expira": avisarla confundiria a la socia.
     const { data: expiringMemberships, error } = await supabase
       .from("user_memberships")
-      .select("id, user_id, membership_type, end_date, profiles!user_memberships_user_id_fkey(full_name, email)")
+      .select("id, user_id, membership_type, end_date")
       .in("status", ["active", "cancelled_active"])
       .eq("cancel_at_period_end", true)
       .not("end_date", "is", null)
@@ -32,10 +33,13 @@ export async function GET(request: Request) {
 
     let emailsSent = 0
 
-    for (const member of (expiringMemberships || []) as any[]) {
+    // user_memberships apunta a auth.users, no a profiles: los perfiles se leen aparte.
+    const profilesById = await fetchProfilesById(supabase, (expiringMemberships || []).map((m) => m.user_id))
+
+    for (const member of expiringMemberships || []) {
       const endDate = new Date(member.end_date)
       const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles
+      const profile = profilesById[member.user_id]
 
       if (profile?.email && (daysRemaining === 7 || daysRemaining === 3 || daysRemaining === 1)) {
         await emailService.sendMembershipExpiringEmail({

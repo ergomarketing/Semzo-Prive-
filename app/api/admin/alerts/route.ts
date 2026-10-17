@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { fetchProfilesById } from "@/lib/profile-lookup"
 
 function getServiceClient() {
   return createClient(
@@ -23,14 +24,26 @@ export async function GET() {
     // Leer membresías desde user_memberships (FUENTE DE VERDAD)
     const { data: expiringMemberships } = await supabase
       .from("user_memberships")
-      .select("id, user_id, membership_type, end_date, profiles!user_memberships_user_id_fkey(full_name, email)")
+      .select("id, user_id, membership_type, end_date")
       .in("status", ["active", "cancelled_active"])
       .eq("cancel_at_period_end", true)
       .not("end_date", "is", null)
       .lte("end_date", in7Days.toISOString())
       .gte("end_date", now.toISOString())
 
+    // user_memberships apunta a auth.users, no a profiles: los perfiles se leen aparte.
+    const { data: failedPayments } = await supabase
+      .from("user_memberships")
+      .select("id, user_id, membership_type")
+      .eq("status", "past_due")
+
+    const profilesById = await fetchProfilesById(supabase, [
+      ...(expiringMemberships || []).map((m) => m.user_id),
+      ...(failedPayments || []).map((m) => m.user_id),
+    ])
+
     for (const member of expiringMemberships || []) {
+      const profile = profilesById[member.user_id]
       const daysRemaining = Math.ceil(
         (new Date(member.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       )
@@ -39,21 +52,17 @@ export async function GET() {
         type: "membership_expiring",
         severity: daysRemaining <= 3 ? "high" : "medium",
         title: `Membresía expirando en ${daysRemaining} día(s)`,
-        description: `La membresía ${member.membership_type} de ${member.profiles?.full_name} expira pronto`,
+        description: `La membresía ${member.membership_type} de ${profile?.full_name} expira pronto`,
         user_id: member.user_id,
-        user_name: member.profiles?.full_name,
-        user_email: member.profiles?.email,
+        user_name: profile?.full_name,
+        user_email: profile?.email,
         created_at: new Date().toISOString(),
       })
     }
 
-    // Buscar pagos fallidos en user_memberships (fuente de verdad)
-    const { data: failedPayments } = await supabase
-      .from("user_memberships")
-      .select("id, user_id, membership_type, profiles(full_name, email)")
-      .eq("status", "past_due")
-
+    // Pagos fallidos (user_memberships es la fuente de verdad)
     for (const sub of failedPayments || []) {
+      const profile = profilesById[sub.user_id]
       alerts.push({
         id: `payment-failed-${sub.id}`,
         type: "payment_failed",
@@ -61,8 +70,8 @@ export async function GET() {
         title: "Pago fallido",
         description: `El pago de la membresía ${sub.membership_type} ha fallado`,
         user_id: sub.user_id,
-        user_name: sub.profiles?.full_name,
-        user_email: sub.profiles?.email,
+        user_name: profile?.full_name,
+        user_email: profile?.email,
         created_at: new Date().toISOString(),
       })
     }
