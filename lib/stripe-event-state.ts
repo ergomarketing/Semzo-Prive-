@@ -6,10 +6,15 @@ const TABLE = "stripe_processed_events"
 // (la funcion murio o hizo timeout) y puede reclamarse en un reintento.
 export const STALE_PROCESSING_MS = 5 * 60 * 1000
 
+// Tras este numero de intentos fallidos el evento se da por agotado: se deja de reintentar
+// (Stripe seguiria insistiendo durante dias) y se avisa al admin para revisarlo a mano.
+export const MAX_EVENT_ATTEMPTS = 5
+
 export type ClaimResult =
   | { action: "process"; attempt: number }
   | { action: "skip_done" }
   | { action: "skip_in_progress" }
+  | { action: "skip_exhausted" }
 
 export async function claimStripeEvent(
   supabase: SupabaseClient,
@@ -38,6 +43,9 @@ export async function claimStripeEvent(
   if (!row) return { action: "skip_in_progress" }
 
   if (row.status === "done") return { action: "skip_done" }
+
+  // Fallido y ya agotados los intentos: no se vuelve a procesar.
+  if (row.status === "failed" && (row.attempts ?? 1) >= MAX_EVENT_ATTEMPTS) return { action: "skip_exhausted" }
 
   const isFreshProcessing =
     row.status === "processing" &&

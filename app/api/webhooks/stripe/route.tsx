@@ -8,11 +8,15 @@ import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
 import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
-import MembershipActivatedEmail from "@/emails/templates/membership-activated";
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
 import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
-import { claimStripeEvent, markStripeEventDone, markStripeEventFailed } from "@/lib/stripe-event-state";
+import {
+  claimStripeEvent,
+  markStripeEventDone,
+  markStripeEventFailed,
+  MAX_EVENT_ATTEMPTS,
+} from "@/lib/stripe-event-state";
 import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
 import { closeColeccionaSale } from "@/lib/ownership-sale-close";
 import { registerOwnershipMode } from "@/lib/ownership-register-mode";
@@ -127,6 +131,11 @@ export async function POST(req: NextRequest) {
 
   if (claim.action === "skip_in_progress") {
     return NextResponse.json({ error: "Event is being processed" }, { status: 409 });
+  }
+
+  // Agotados los intentos: 200 para que Stripe deje de reintentar (el aviso al admin ya salio).
+  if (claim.action === "skip_exhausted") {
+    return NextResponse.json({ received: true, skipped: "max_attempts_reached" });
   }
 
   if (claim.attempt > 1) {
@@ -715,77 +724,10 @@ export async function POST(req: NextRequest) {
           console.error("[WEBHOOK] promocion tras checkout fallo:", syncErr?.message);
         }
 
-        // EMAIL AL USUARIO: Membresía activada — pago confirmado
-        const { data: userProfile } = await supabase
-          .from("profiles")
-          .select("full_name, email")
-          .eq("id", userId)
-          .single();
-
-        const membershipLabels: Record<string, string> = {
-          petite: "Petite",
-          essentiel: "L'Essentiel",
-          signature: "Signature",
-          prive: "Privé",
-        };
-        const membershipLabel = membershipLabels[membershipType] || membershipType;
-
-        if (userProfile?.email) {
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
-          const emailService = EmailServiceProduction.getInstance();
-          await emailService.sendWithResend({
-            to: userProfile.email,
-            subject: `Bienvenida a Semzo Privé — Tu membresía ${membershipLabel} está activa`,
-            html: await render(
-              <MembershipActivatedEmail
-                name={userProfile.full_name || ""}
-                membershipLabel={membershipLabel}
-                dashboardUrl={`${siteUrl}/dashboard`}
-              />,
-            ),
-          })
-            .then((sent) =>
-              logEmail({
-                recipientEmail: userProfile.email,
-                recipientName: userProfile.full_name || null,
-                subject: "Tu membresía está activa — Semzo Privé",
-                emailType: "membership_activated",
-                status: sent ? "sent" : "failed",
-                metadata: { subscriptionId: subscription.id },
-              }),
-            )
-            .catch((err) => console.error("[stripe-webhook] Error enviando email de membresía activada:", err)); // No bloquear el webhook si falla el email
-
-          // Notificar al admin de nueva membresía activada
-          await emailService
-            .sendWithResend({
-              to: "mailbox@semzoprive.com",
-              subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
-              html: await render(
-                <AdminNotificationEmail
-                  title="Nueva membresía activada"
-                  rows={[
-                    { label: "Nombre", value: userProfile.full_name || "N/A" },
-                    { label: "Email", value: userProfile.email },
-                    { label: "Plan", value: membershipLabel },
-                    { label: "Suscripción Stripe", value: subscription.id },
-                    { label: "Fecha", value: new Date().toLocaleString("es-ES") },
-                  ]}
-                />,
-              ),
-            })
-            .then((sent) =>
-              logEmail({
-                recipientEmail: "mailbox@semzoprive.com",
-                recipientName: "Admin",
-                subject: `[Admin] Nueva membresía activada — ${userProfile.full_name || userProfile.email}`,
-                emailType: "admin_membership_activated",
-                status: sent ? "sent" : "failed",
-                metadata: { subscriptionId: subscription.id },
-              }),
-            )
-            .catch((err) => console.error("[stripe-webhook] Error notificando membresía activada al admin:", err));
-        }
+        // El correo "Tu membresía está activa" (y el aviso al admin) ya NO sale aquí:
+        // antes se mandaba en cuanto se cobraba, aunque faltara verificar la identidad.
+        // Ahora lo envía el orquestador cuando la membresía pasa de verdad a 'active'
+        // (lib/membership-activated-email.tsx).
 
         console.log("✅ Membership ACTIVATED:", userId);
         break;
@@ -1804,6 +1746,26 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
     await markStripeEventFailed(supabase, event.id, error);
+
+    // Ultimo intento permitido: avisar al admin y cortar los reintentos (200).
+    // El evento queda 'failed' en stripe_processed_events con su ultimo error.
+    if (claim.attempt >= MAX_EVENT_ATTEMPTS) {
+      const reason = error instanceof Error ? error.message : String(error);
+      await supabase
+        .from("admin_notifications")
+        .insert({
+          type: "stripe_event_exhausted",
+          priority: "high",
+          title: `Evento de Stripe sin procesar tras ${MAX_EVENT_ATTEMPTS} intentos (${event.type})`,
+          message: `El evento ${event.id} (${event.type}) falló ${MAX_EVENT_ATTEMPTS} veces y se dejó de reintentar. Último error: ${reason.slice(0, 300)}. Revísalo en Stripe y reprocésalo a mano si hace falta.`,
+          metadata: { stripe_event_id: event.id, event_type: event.type, last_error: reason.slice(0, 1000) },
+        })
+        .then(({ error: notifyError }) => {
+          if (notifyError) console.error("[stripe-webhook] No se pudo avisar del evento agotado:", notifyError.message);
+        });
+      return NextResponse.json({ received: true, skipped: "max_attempts_reached" });
+    }
+
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }
