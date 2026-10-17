@@ -11,7 +11,7 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
  * UNICA via para empezar Modo Colecciona. La usan convert-to-collect y
  * ownership-progress (POST con mode='collect').
  *
- * 0) Exige membresia 'active' o 'cancelled_active' (403 membership_required). Solo al crear.
+ * 0) Exige membresia 'active' (403 membership_required). Solo al crear.
  * 1) Calcula las facturas pagadas elegibles (previewRentalConversion).
  * 2) Crea el progreso 'active'.
  * 3) Las registra en ownership_credit_entries (source='rental_conversion').
@@ -48,8 +48,9 @@ export type StartCollectResult =
       progress_id?: string
     }
 
-// cancelled_active sigue dentro del periodo ya pagado. No se restringe por tipo de membresia.
-const COLLECT_ALLOWED_MEMBERSHIP_STATUSES: readonly string[] = ["active", "cancelled_active"]
+// Solo 'active': una socia con cancelacion programada perderia el Colecciona al vencer el periodo.
+// No se restringe por tipo de membresia (decision de Erika: se afinara tras las pruebas).
+const COLLECT_ALLOWED_MEMBERSHIP_STATUSES: readonly string[] = ["active"]
 
 interface Deps {
   supabase?: SupabaseClient
