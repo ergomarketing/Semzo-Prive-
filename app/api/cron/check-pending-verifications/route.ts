@@ -1,6 +1,7 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { promoteStuckMemberships } from "@/lib/membership-safety-net"
+import { fetchProfilesById } from "@/lib/profile-lookup"
 
 // CRITICAL: No cache - cron job
 export const dynamic = "force-dynamic"
@@ -15,14 +16,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const supabase = await createClient()
+    // Cliente de servicio: un cron no tiene sesion y con la clave anonima RLS
+    // devolvia 0 filas. membership_intents no tiene relacion con profiles, asi que
+    // los perfiles se leen aparte (fetchProfilesById).
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+    // Red de seguridad: promueve membresias atascadas que ya cumplen las 3 condiciones.
+    // Va PRIMERO y aislada: es lo critico y no debe depender de que los recordatorios
+    // de abajo funcionen (antes un error de consulta devolvia 500 y nunca llegaba aqui).
+    let safetyNet = null
+    try {
+      safetyNet = await promoteStuckMemberships()
+    } catch (safetyErr: any) {
+      console.error("[v0] Safety net failed:", safetyErr?.message)
+    }
 
     // Buscar membresías con pending_identity_verification hace más de 72h
     const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
 
     const { data: pendingIntents, error } = await supabase
       .from("membership_intents")
-      .select("id, user_id, membership_type, created_at, profiles(full_name, email)")
+      .select("id, user_id, membership_type, created_at")
       .eq("status", "pending_identity_verification")
       .lt("created_at", seventyTwoHoursAgo)
 
@@ -33,9 +47,11 @@ export async function GET(request: Request) {
 
     console.log(`[v0] Found ${pendingIntents?.length || 0} users pending verification > 72h`)
 
+    const pendingProfiles = await fetchProfilesById(supabase, (pendingIntents || []).map((i) => i.user_id))
+
     // Enviar recordatorio a cada usuario
     for (const intent of pendingIntents || []) {
-      const profile = intent.profiles as any
+      const profile = pendingProfiles[intent.user_id]
 
       if (!profile?.email) continue
 
@@ -78,13 +94,14 @@ export async function GET(request: Request) {
 
     const { data: expiredIntents, error: expiredError } = await supabase
       .from("membership_intents")
-      .select("id, user_id, profiles(full_name, email)")
+      .select("id, user_id")
       .eq("status", "pending_identity_verification")
       .lt("created_at", sevenDaysAgo)
 
     if (expiredError) {
       console.error("Error fetching expired verifications:", expiredError)
     } else {
+      const expiredProfiles = await fetchProfilesById(supabase, (expiredIntents || []).map((i) => i.user_id))
       for (const intent of expiredIntents || []) {
         // Marcar como acceso limitado
         await supabase
@@ -95,7 +112,7 @@ export async function GET(request: Request) {
           })
           .eq("id", intent.id)
 
-        const profile = intent.profiles as any
+        const profile = expiredProfiles[intent.user_id]
 
         if (profile?.email) {
           // Enviar email de acceso limitado
@@ -133,15 +150,6 @@ export async function GET(request: Request) {
 
         console.log(`[v0] Marked user ${intent.user_id} as limited_access (7+ days without verification)`)
       }
-    }
-
-    // Red de seguridad: promueve membresias atascadas que ya cumplen las 3 condiciones.
-    // Aislada para que un fallo aqui no afecte a los recordatorios anteriores.
-    let safetyNet = null
-    try {
-      safetyNet = await promoteStuckMemberships()
-    } catch (safetyErr: any) {
-      console.error("[v0] Safety net failed:", safetyErr?.message)
     }
 
     return NextResponse.json({

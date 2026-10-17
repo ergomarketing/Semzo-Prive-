@@ -153,7 +153,7 @@ export async function GET(request: Request) {
         type: "cron_cleanup",
         title: "Bolsos huérfanos liberados",
         message: `Se liberaron ${releasedCount} bolso(s) que estaban bloqueados sin reserva activa: ${releasedBags?.map((b) => b.name).join(", ")}`,
-        severity: "info",
+        priority: "low",
         metadata: {
           released_bags: releasedBags,
           job_duration_ms: Date.now() - startTime,

@@ -30,13 +30,8 @@ export default function OnboardingPage() {
   const completeOnboarding = async () => {
     if (!user) return
 
-    await supabase
-      .from("profiles")
-      .update({
-        onboarding_completed: true,
-      })
-      .eq("id", user.id)
-
+    // profiles no tiene columna onboarding_completed y nada la lee: el onboarding
+    // es solo una guia visual, no hace falta persistir nada.
     router.push("/catalog")
   }
 

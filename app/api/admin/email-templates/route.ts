@@ -21,10 +21,10 @@ async function isAdmin() {
     if (!user) return false
     const { data } = await adminSupabase
       .from("profiles")
-      .select("role")
+      .select("is_admin")
       .eq("id", user.id)
       .single()
-    return data?.role === "admin"
+    return data?.is_admin === true
   } catch {
     return false
   }

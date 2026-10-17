@@ -300,8 +300,8 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
             type: "identity_failed",
             title: "Verificación de identidad rechazada",
             message: `Usuario ${session.metadata.user_id} falló verificación: ${session.last_error?.reason || "Documento no válido"}`,
-            severity: "warning",
-            user_id: session.metadata.user_id,
+            priority: "normal",
+            metadata: { user_id: session.metadata.user_id },
           })
         }
         break
@@ -348,8 +348,8 @@ async function processWebhookAsync(event: Stripe.Event, session: Stripe.Identity
         type: "system_error",
         title: "Error técnico en verificación de identidad",
         message: `Error procesando verificación para usuario ${session.metadata.user_id}: ${error.message}`,
-        severity: "error",
-        user_id: session.metadata.user_id,
+        priority: "high",
+        metadata: { user_id: session.metadata.user_id },
       })
     }
   }
