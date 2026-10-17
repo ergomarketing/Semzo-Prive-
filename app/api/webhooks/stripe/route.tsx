@@ -13,6 +13,7 @@ import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
 import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import { claimStripeEvent, markStripeEventDone, markStripeEventFailed } from "@/lib/stripe-event-state";
+import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -53,38 +54,6 @@ function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number | n
   if (typeof item?.current_period_end === "number") return item.current_period_end;
   const rootPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end;
   return typeof rootPeriodEnd === "number" ? rootPeriodEnd : null;
-}
-
-/**
- * Id de la suscripcion de una factura. Stripe lo envia de dos formas segun la
- * version de API del webhook:
- *  - clasica: invoice.subscription
- *  - nueva (basil, 2025-03-31 en adelante): invoice.parent.subscription_details.subscription
- *    (y en invoice.lines.data[n]). Si solo se lee la clasica y el webhook usa la nueva,
- *    el manejador de renovaciones sale sin hacer nada (sin error visible).
- */
-function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
-  type Ref = string | { id?: string } | null | undefined;
-  const inv = invoice as unknown as {
-    subscription?: Ref;
-    parent?: { subscription_details?: { subscription?: Ref } | null } | null;
-    lines?: {
-      data?: Array<{
-        subscription?: Ref;
-        parent?: { subscription_item_details?: { subscription?: Ref } | null } | null;
-      }>;
-    };
-  };
-  const pick = (value: Ref): string | null =>
-    typeof value === "string" ? value : value?.id ?? null;
-  const firstLine = inv.lines?.data?.[0];
-  return (
-    pick(inv.subscription) ??
-    pick(inv.parent?.subscription_details?.subscription) ??
-    pick(firstLine?.subscription) ??
-    pick(firstLine?.parent?.subscription_item_details?.subscription) ??
-    null
-  );
 }
 
 function getSubscriptionPeriodStart(subscription: Stripe.Subscription): number | null {
