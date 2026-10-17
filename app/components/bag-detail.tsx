@@ -460,11 +460,21 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
   // No bloquea la reserva si falla: la socia ha aceptado, y reintentamos en background.
   const registerOwnershipMode = async (mode: "discover" | "collect") => {
     try {
-      await fetch("/api/user/ownership-progress", {
+      const res = await fetch("/api/user/ownership-progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bag_id: bag.id, mode }),
       })
+      if (!res.ok && mode === "collect") {
+        const json = await res.json().catch(() => ({}))
+        if (json.code === "membership_required") {
+          toast({
+            title: "Modo Colecciona no activado",
+            description: json.error || "Necesitas una membresía activa para empezar el Modo Colecciona.",
+            variant: "destructive",
+          })
+        }
+      }
     } catch (err) {
       console.error("[v0] Error registering ownership mode:", err)
     }

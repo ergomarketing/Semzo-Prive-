@@ -11,6 +11,7 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
  * UNICA via para empezar Modo Colecciona. La usan convert-to-collect y
  * ownership-progress (POST con mode='collect').
  *
+ * 0) Exige membresia 'active' o 'cancelled_active' (403 membership_required). Solo al crear.
  * 1) Calcula las facturas pagadas elegibles (previewRentalConversion).
  * 2) Crea el progreso 'active'.
  * 3) Las registra en ownership_credit_entries (source='rental_conversion').
@@ -24,6 +25,7 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
 export type StartCollectFailureCode =
   | "bag_not_collectable"
   | "already_collect"
+  | "membership_required"
   | "ledger_unavailable"
   | "invoices_unavailable"
   | "insert_failed"
@@ -45,6 +47,9 @@ export type StartCollectResult =
       message: string
       progress_id?: string
     }
+
+// cancelled_active sigue dentro del periodo ya pagado. No se restringe por tipo de membresia.
+const COLLECT_ALLOWED_MEMBERSHIP_STATUSES: readonly string[] = ["active", "cancelled_active"]
 
 interface Deps {
   supabase?: SupabaseClient
@@ -96,6 +101,24 @@ export async function startCollectProgress(
     .maybeSingle()
   if (existingCollect) {
     return fail("already_collect", 409, "Ya estás en Modo Colecciona con este bolso", existingCollect.id)
+  }
+
+  // Solo al crear: un Colecciona ya activo no se ve afectado por cambios posteriores de la membresia.
+  const { data: membership, error: membershipErr } = await supabase
+    .from("user_memberships")
+    .select("status")
+    .eq("user_id", userId)
+    .maybeSingle()
+  if (membershipErr) {
+    console.error("[v0] startCollectProgress no se pudo leer la membresia:", membershipErr)
+    return fail("membership_required", 503, "No se pudo comprobar tu membresía. Inténtalo de nuevo.")
+  }
+  if (!membership || !COLLECT_ALLOWED_MEMBERSHIP_STATUSES.includes(membership.status)) {
+    return fail(
+      "membership_required",
+      403,
+      "Necesitas una membresía activa para empezar el Modo Colecciona",
+    )
   }
 
   let preview
