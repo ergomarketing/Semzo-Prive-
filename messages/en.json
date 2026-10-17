@@ -577,9 +577,9 @@
     "collect": {
       "tag": "Collect Mode",
       "title": "Make it yours",
-      "desc": "Fallen in love? Reserve the bag you never want to let go. Each payment counts toward its purchase. Once you complete its price, it's yours forever.",
-      "feature1": "The bag is exclusively yours from day one",
-      "feature2": "Each month counts toward ownership",
+      "desc": "Fallen in love? Reserve the bag you never want to let go. Everything you pay in fees accumulates as purchase credit. When you decide to buy it, you pay the difference and it's yours.",
+      "feature1": "The bag is reserved exclusively for you",
+      "feature2": "Everything you pay in fees accumulates as credit",
       "feature3": "Certificate of authenticity from the start"
     },
     "cta": "Become a member",
@@ -678,7 +678,7 @@
     "eyebrow": "More than a membership",
     "title": "Access it today.",
     "titleItalic": "Make it yours when you're sure.",
-    "body1": "Every month you're part of SEMZO PRIVÉ, a portion of your fee builds up as credit toward buying any piece from our collection.",
+    "body1": "When you switch a bag to Collect Mode, everything you pay in fees builds up as credit toward buying it. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit.",
     "body2": "You don't have to decide anything now. No deadlines. No pressure.",
     "body3": "But if one day you're carrying a bag and you feel you don't want to give it back — that it's yours — the credit is already there, waiting for you.",
     "body4": "It's the smartest way to access luxury: try before you commit, and commit only when you're sure.",
@@ -863,7 +863,7 @@
       },
       {
         "title": "Make it yours if you fall in love.",
-        "desc": "With Colecciona mode, part of your monthly fee builds up as credit toward buying any piece from the collection. You don't have to decide now. But if the day comes when you don't want to give it back — the credit is there.",
+        "desc": "With Colecciona mode, everything you pay in fees builds up as credit toward buying the bag. In rental mode, your fee is a monthly usage fee. You don't have to decide now. But if the day comes when you don't want to give it back — switch to Colecciona.",
         "features": [
           "Your fee works for you every month",
           "Buy when you're sure, no pressure or deadlines"
@@ -917,26 +917,26 @@
     "eyebrow": "Colecciona",
     "heroTitle": "Try before you commit.",
     "heroTitleItalic": "Commit when you're sure.",
-    "heroSubtitle": "Every month you carry a bag with SEMZO PRIVÉ, your full monthly fee builds up as credit toward buying it. No deadlines. No pressure. Only when it feels right.",
+    "heroSubtitle": "In Collect Mode, your full monthly fee builds up as credit toward buying the bag. In rental mode, your fee is a monthly usage fee. No pressure. Only when it feels right.",
     "howTitle1": "How it",
     "howTitle2": "works",
     "howSteps": [
       {
         "title": "Choose your membership and carry it.",
-        "desc": "Subscribe to any of our monthly memberships and receive your bag at home. From day one, you start building credit."
+        "desc": "Subscribe to any of our monthly memberships and receive your bag at home. In rental mode, your fee is a monthly usage fee."
       },
       {
-        "title": "Your fee becomes credit.",
-        "desc": "100% of every monthly fee you pay builds up as credit toward buying any piece from the collection — not just the one you're carrying."
+        "title": "Switch to Colecciona and your fee becomes credit.",
+        "desc": "From the moment you activate Collect Mode on a bag, 100% of every monthly fee you pay builds up as credit toward buying it."
       },
       {
         "title": "Decide whenever you're ready.",
-        "desc": "There's no deadline or obligation to buy. If one day you feel you don't want to give it back, use your accumulated credit and make it yours."
+        "desc": "There's no deadline or obligation to buy. If one day you feel you don't want to give it back, pay the difference with your accumulated credit and make it yours."
       }
     ],
     "creditTitle1": "Your credit,",
     "creditTitle2": "plan by plan",
-    "creditSubtitle": "Example of accumulated credit after 6 months of active membership. Credit keeps growing every month you continue.",
+    "creditSubtitle": "Example of accumulated credit after 6 months in Collect Mode. Credit keeps growing every month you continue.",
     "creditPlans": [
       { "name": "Petite", "monthly": "€19.99", "credit": "€119.94" },
       { "name": "L'Essentiel", "monthly": "€59", "credit": "€354" },
@@ -945,15 +945,15 @@
     ],
     "creditPerMonth": "/month",
     "creditAfter": "credit after 6 months",
-    "creditNote": "Accumulated credit applies toward the sale price of any piece you choose to buy, not just the one you currently have. Check your exact credit balance from your private member area.",
+    "creditNote": "Accumulated credit applies toward the sale price of the bag in Collect Mode. If you cancel your membership, the credit is lost. Check your exact balance from your private member area.",
     "quoteText": "True luxury isn't about having more. It's about choosing better.",
     "quoteAuthor": "Erika, Founder of SEMZO PRIVÉ",
     "faqTitle1": "Questions about",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "What portion of my fee becomes credit?", "a": "100% of your monthly fee builds up as credit while your membership stays active. No fine print, no reduced percentages." },
-      { "q": "Can I use the credit on any bag, not just the one I'm carrying?", "a": "Yes. Accumulated credit applies to the sale price of any piece available for purchase in the collection, not only the one currently on loan to you." },
-      { "q": "Does the credit expire if I cancel my membership?", "a": "Credit accumulates while your membership stays active. If you cancel, contact our team to learn about the conditions of your accumulated balance." },
+      { "q": "What portion of my fee becomes credit?", "a": "In Collect Mode, 100% of your monthly fee builds up as credit while your membership stays active. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit." },
+      { "q": "Can I use the credit on any bag, not just the one I'm carrying?", "a": "No. Credit builds up toward the bag you have in Collect Mode and can only be applied to its purchase." },
+      { "q": "Does the credit expire if I cancel my membership?", "a": "Yes. If you cancel your membership, the accumulated credit is lost: it is not money and is not refundable." },
       { "q": "Do I have to decide at some point whether to buy or not?", "a": "No. Colecciona has no deadlines or purchase obligation. You can keep enjoying your membership indefinitely without using the credit, or make it yours the day you feel ready." },
       { "q": "Where can I see how much credit I've accumulated?", "a": "Your exact, up-to-date Colecciona credit balance is available in your private member area, inside your account dashboard." }
     ],

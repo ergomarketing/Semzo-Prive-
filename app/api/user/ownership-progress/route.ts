@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { startCollectProgress } from "@/lib/ownership-collect-start"
 
 /**
  * POST /api/user/ownership-progress
@@ -80,31 +81,23 @@ export async function POST(request: NextRequest) {
       .eq("status", "active")
       .maybeSingle()
 
-    if (existing) {
+    if (existing && (mode === "discover" || existing.mode === "collect")) {
       return NextResponse.json({ success: true, ownership_progress: existing, reused: true })
     }
 
-    // Si modo collect: snapshot del precio del bolso
-    let purchasePrice: number | null = null
+    // Colecciona siempre se empieza con la funcion unica (reclama facturas elegibles en el libro)
     if (mode === "collect") {
-      const { data: bag, error: bagErr } = await supabase
-        .from("bags")
-        .select("purchase_price")
-        .eq("id", bag_id)
-        .single()
-
-      if (bagErr || !bag) {
-        return NextResponse.json({ error: "Bolso no encontrado" }, { status: 404 })
+      const result = await startCollectProgress(userId, bag_id, { supabase })
+      if (!result.ok) {
+        return NextResponse.json({ error: result.message, code: result.code }, { status: result.status })
       }
-
-      if (bag.purchase_price == null || Number(bag.purchase_price) <= 0) {
-        return NextResponse.json(
-          { error: "Este bolso no esta disponible en modo Colecciona" },
-          { status: 400 },
-        )
-      }
-
-      purchasePrice = Number(bag.purchase_price)
+      return NextResponse.json({
+        success: true,
+        ownership_progress: result.progress,
+        reused: false,
+        initial_credit: result.initial_credit,
+        ready_to_finalize: result.ready_to_finalize,
+      })
     }
 
     const { data: created, error: insertErr } = await supabase
@@ -113,7 +106,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         bag_id,
         mode,
-        purchase_price: purchasePrice,
+        purchase_price: null,
         accumulated: 0,
         status: "active",
       })

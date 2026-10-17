@@ -577,9 +577,9 @@
     "collect": {
       "tag": "Modo Colecciona",
       "title": "Hazlo tuyo",
-      "desc": "¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Cada cuota suma hacia su compra. Cuando completes su precio, es tuyo para siempre.",
-      "feature1": "El bolso es solo tuyo desde el día uno",
-      "feature2": "Cada mes suma hacia su propiedad",
+      "desc": "¿Te has enamorado? Reserva el bolso que ya no quieres soltar. Todo lo que pagas en cuotas se acumula como crédito de compra. Cuando decidas comprarlo, pagas la diferencia y es tuyo.",
+      "feature1": "El bolso queda reservado solo para ti",
+      "feature2": "Todo lo que pagas en cuotas se acumula como crédito",
       "feature3": "Certificado de autenticidad desde el inicio"
     },
     "cta": "Hazte socia",
@@ -678,7 +678,7 @@
     "eyebrow": "Más que una membresía",
     "title": "Accede hoy.",
     "titleItalic": "Hazlo tuyo cuando estés segura.",
-    "body1": "Cada mes que formas parte de SEMZO PRIVÉ, una parte de tu cuota se acumula como crédito hacia la compra de cualquier pieza de nuestra colección.",
+    "body1": "Cuando activas el modo Colecciona sobre un bolso, todo lo que pagas en cuotas se acumula como crédito hacia su compra. En modo alquiler, tu cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler que ya hayas pagado en tu membresía actual se suman como crédito.",
     "body2": "No tienes que decidir nada ahora. No hay plazos. No hay presión.",
     "body3": "Pero si un día llevas un bolso y sientes que no quieres devolverlo — que es tuyo — el crédito está ahí esperándote.",
     "body4": "Es la forma más inteligente de acceder al lujo: probar antes de comprometerte, y comprometerte solo cuando estás segura.",
@@ -863,7 +863,7 @@
       },
       {
         "title": "Hazlo tuyo si te enamoras.",
-        "desc": "Con el modo Colecciona, parte de tu cuota mensual se acumula como crédito hacia la compra de cualquier pieza de la colección. No tienes que decidir ahora. Pero si llega el día en que no quieres devolverlo — el crédito está ahí.",
+        "desc": "Con el modo Colecciona, todo lo que pagas en cuotas se acumula como crédito hacia la compra del bolso. En modo alquiler, tu cuota es de uso mensual. No tienes que decidir ahora. Pero si llega el día en que no quieres devolverlo — pasa a Colecciona.",
         "features": [
           "Tu cuota trabaja para ti cada mes",
           "Compra cuando estés segura, sin presión ni plazos"
@@ -917,26 +917,26 @@
     "eyebrow": "Colecciona",
     "heroTitle": "Prueba antes de comprometerte.",
     "heroTitleItalic": "Compromete cuando estés segura.",
-    "heroSubtitle": "Cada mes que llevas un bolso con SEMZO PRIVÉ, tu cuota mensual completa se acumula como crédito hacia comprarlo. Sin plazos. Sin presión. Solo cuando lo sientas.",
+    "heroSubtitle": "En modo Colecciona, tu cuota mensual completa se acumula como crédito hacia la compra del bolso. En modo alquiler, la cuota es de uso mensual. Sin presión. Solo cuando lo sientas.",
     "howTitle1": "Cómo",
     "howTitle2": "funciona",
     "howSteps": [
       {
         "title": "Elige tu membresía y llévalo.",
-        "desc": "Suscríbete a cualquiera de nuestras membresías mensuales y recibe tu bolso en casa. Desde el primer día, empieza a acumular crédito."
+        "desc": "Suscríbete a cualquiera de nuestras membresías mensuales y recibe tu bolso en casa. En modo alquiler, tu cuota es de uso mensual."
       },
       {
-        "title": "Tu cuota se convierte en crédito.",
-        "desc": "El 100% de cada cuota mensual que pagas se acumula como crédito hacia la compra de cualquier pieza de la colección — no solo la que llevas."
+        "title": "Pasa a Colecciona y tu cuota se convierte en crédito.",
+        "desc": "Desde que activas el modo Colecciona sobre un bolso, el 100% de cada cuota mensual que pagas se acumula como crédito hacia su compra."
       },
       {
         "title": "Decide cuando estés lista.",
-        "desc": "No hay plazo límite ni obligación de comprar. Si un día sientes que no quieres devolverlo, usa el crédito acumulado y hazlo tuyo."
+        "desc": "No hay plazo límite ni obligación de comprar. Si un día sientes que no quieres devolverlo, paga la diferencia con tu crédito acumulado y hazlo tuyo."
       }
     ],
     "creditTitle1": "Tu crédito,",
     "creditTitle2": "plan a plan",
-    "creditSubtitle": "Ejemplo de crédito acumulado tras 6 meses de membresía activa. El crédito sigue creciendo cada mes que continúas.",
+    "creditSubtitle": "Ejemplo de crédito acumulado tras 6 meses en modo Colecciona. El crédito sigue creciendo cada mes que continúas.",
     "creditPlans": [
       { "name": "L'Essentiel", "monthly": "59€", "credit": "354€" },
       { "name": "Signature", "monthly": "149€", "credit": "894€" },
@@ -944,15 +944,15 @@
     ],
     "creditPerMonth": "/mes",
     "creditAfter": "crédito tras 6 meses",
-    "creditNote": "El crédito acumulado se aplica sobre el precio de venta de la pieza que elijas comprar, no solo la que tienes en ese momento. Consulta el saldo exacto de tu crédito desde tu área privada de socia.",
+    "creditNote": "El crédito acumulado se aplica sobre el precio de venta del bolso en Colecciona. Si cancelas la membresía, el crédito se pierde. Consulta el saldo exacto desde tu área privada de socia.",
     "quoteText": "El verdadero lujo no consiste en tener más. Consiste en elegir mejor.",
     "quoteAuthor": "Erika, Fundadora de SEMZO PRIVÉ",
     "faqTitle1": "Preguntas sobre",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "El 100% de tu cuota mensual se acumula como crédito mientras tu membresía está activa. No hay letra pequeña ni porcentajes reducidos." },
-      { "q": "¿Puedo usar el crédito en cualquier bolso, no solo el que llevo?", "a": "Sí. El crédito acumulado se aplica al precio de venta de cualquier pieza de la colección disponible para compra, no solo a la que tienes en préstamo en ese momento." },
-      { "q": "¿El crédito caduca si cancelo mi membresía?", "a": "El crédito se acumula mientras tu membresía permanece activa. Si cancelas, contacta con nuestro equipo para conocer las condiciones de tu saldo acumulado." },
+      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "En modo Colecciona, el 100% de tu cuota mensual se acumula como crédito mientras tu membresía está activa. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito." },
+      { "q": "¿Puedo usar el crédito en cualquier bolso, no solo el que llevo?", "a": "No. El crédito se acumula hacia el bolso que tienes en modo Colecciona y solo puede aplicarse a su compra." },
+      { "q": "¿El crédito caduca si cancelo mi membresía?", "a": "Sí. Si cancelas la membresía, el crédito acumulado se pierde: no es dinero ni es reembolsable." },
       { "q": "¿Tengo que decidir en algún momento si compro o no?", "a": "No. Colecciona no tiene plazos ni obligación de compra. Puedes seguir disfrutando de tu membresía indefinidamente sin usar el crédito, o hacerlo tuyo el día que lo sientas." },
       { "q": "¿Dónde veo cuánto crédito tengo acumulado?", "a": "El saldo exacto y actualizado de tu crédito Colecciona está disponible en tu área privada de socia, dentro del dashboard de tu cuenta." }
     ],

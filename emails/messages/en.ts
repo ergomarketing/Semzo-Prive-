@@ -45,11 +45,12 @@ export const en: Messages = {
     cta: "View my account",
   },
   ownershipCompleted: {
-    subject: "Your bag is now yours — Semzo Privé",
-    eyebrow: "Ownership transferred",
-    heading: "Your bag is now yours",
-    intro: (bag: string) => `The ${bag} bag is now part of your personal collection.`,
-    cta: "View my collection",
+  subject: "You can now complete your purchase — Semzo Privé",
+  eyebrow: "Purchase ready to complete",
+  heading: "You can now complete your purchase",
+  intro: (bag: string) =>
+    `Your accumulated credit now covers the price of ${bag}. Confirm the purchase from your dashboard to complete it; until then the bag does not move to your collection.`,
+  cta: "Complete purchase",
   },
   giftCardRecipient: {
     subject: (amount: string) => `You've received a Semzo Privé Gift Card - €${amount}`,
