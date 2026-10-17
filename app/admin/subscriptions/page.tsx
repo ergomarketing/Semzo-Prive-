@@ -31,6 +31,10 @@ interface Subscription {
   current_period_start: string
   current_period_end: string
   cancel_at_period_end: boolean
+  can_make_reservations: boolean | null
+  has_identity_verified: boolean
+  has_sepa_mandate: boolean
+  onboarding_conditions_met: boolean
   created_at: string
   profiles: {
     id: string
@@ -57,6 +61,8 @@ export default function SubscriptionsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [tableMessage, setTableMessage] = useState<string | null>(null)
+  const [resyncingId, setResyncingId] = useState<string | null>(null)
+  const [resyncFeedback, setResyncFeedback] = useState<{ ok: boolean; text: string } | null>(null)
 
   const fetchSubscriptions = async () => {
     try {
@@ -87,6 +93,30 @@ export default function SubscriptionsPage() {
   const handleRefresh = () => {
     setRefreshing(true)
     fetchSubscriptions()
+  }
+
+  const handleResync = async (sub: Subscription) => {
+    setResyncingId(sub.id)
+    setResyncFeedback(null)
+    try {
+      const response = await fetch("/api/admin/subscriptions/resync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ membership_id: sub.id }),
+      })
+      const data = await response.json().catch(() => ({}))
+      const email = sub.profiles?.email || sub.id
+      if (response.ok && data?.success) {
+        setResyncFeedback({ ok: true, text: `Resincronizada: ${email}` })
+        await fetchSubscriptions()
+      } else {
+        setResyncFeedback({ ok: false, text: `No se pudo resincronizar ${email}: ${data?.error || response.status}` })
+      }
+    } catch (error: any) {
+      setResyncFeedback({ ok: false, text: `Error de red al resincronizar: ${error?.message || "desconocido"}` })
+    } finally {
+      setResyncingId(null)
+    }
   }
 
   const getStatusBadge = (status: string, verified: string | null, match: boolean) => {
@@ -193,6 +223,12 @@ export default function SubscriptionsPage() {
           </Alert>
         )}
 
+        {resyncFeedback && (
+          <Alert className="mb-6" variant={resyncFeedback.ok ? "default" : "destructive"} role="status">
+            <AlertDescription>{resyncFeedback.text}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -289,8 +325,10 @@ export default function SubscriptionsPage() {
                   <TableHead>Plan</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Verificado Stripe</TableHead>
+                  <TableHead>Reservas</TableHead>
                   <TableHead>Próximo cobro</TableHead>
                   <TableHead>ID Stripe</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,10 +363,27 @@ export default function SubscriptionsPage() {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       ) : sub.stripe_verified_status === "error" ? (
                         <XCircle className="h-5 w-5 text-gray-400" />
+                      ) : sub.stripe_verified_status &&
+                        sub.status_match &&
+                        sub.stripe_verified_status !== sub.status ? (
+                        <Badge variant="outline" className="text-xs" title="Faltan condiciones de onboarding (identidad o SEPA)">
+                          En onboarding
+                        </Badge>
                       ) : sub.stripe_verified_status ? (
                         <AlertTriangle className="h-5 w-5 text-red-600" />
                       ) : (
                         <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {sub.can_make_reservations ? (
+                        <Badge variant="default" className="text-xs">
+                          Si
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          No
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -346,6 +401,17 @@ export default function SubscriptionsPage() {
                           ? `${sub.stripe_subscription_id.substring(0, 15)}...`
                           : "—"}
                       </code>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!sub.stripe_subscription_id || resyncingId === sub.id}
+                        onClick={() => handleResync(sub)}
+                      >
+                        <RefreshCw className={`mr-2 h-3 w-3 ${resyncingId === sub.id ? "animate-spin" : ""}`} />
+                        Resincronizar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
