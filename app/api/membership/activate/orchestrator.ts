@@ -194,8 +194,6 @@ export async function syncMembershipFromStripe(
   if (pm.paymentMethodId) {
     upsertPayload.stripe_payment_method_id = pm.paymentMethodId
     upsertPayload.payment_method_verified = pm.verified
-    if (pm.last4) upsertPayload.payment_method_last4 = pm.last4
-    if (pm.brand) upsertPayload.payment_method_brand = pm.brand
   }
 
   // Guard de idempotencia para el onboarding post-activacion (Fase 3): solo
@@ -224,6 +222,19 @@ export async function syncMembershipFromStripe(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // last4/brand son solo informativos: se guardan aparte y sin bloquear. Si las
+  // columnas no existen en la BD, la activacion NO debe fallar por ello
+  // (asi fue el 422 de ergomara2).
+  if (pm.last4 || pm.brand) {
+    const cardInfo: Record<string, string> = {}
+    if (pm.last4) cardInfo.payment_method_last4 = pm.last4
+    if (pm.brand) cardInfo.payment_method_brand = pm.brand
+    const { error: cardError } = await supabase.from("user_memberships").update(cardInfo).eq("user_id", userId)
+    if (cardError) {
+      console.warn("[ORCHESTRATOR] No se pudo guardar last4/brand (no bloquea):", cardError.message)
+    }
   }
 
   if (allConditionsMet) {
