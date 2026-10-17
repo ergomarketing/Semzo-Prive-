@@ -14,6 +14,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { logEmail } from "@/lib/email-logger"
 
 export interface CloseSaleInput {
   progressId: string
@@ -114,19 +115,38 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
       })
 
       const emailService = EmailServiceProduction.getInstance()
+      const logMeta = { ownership_progress_id: progress.id, payment_ref: input.paymentRef }
       if (profile?.email) {
-        await emailService.sendWithResend({
+        const memberSubject = `${bagLabel} ya es tuyo · Semzo Privé`
+        const sent = await emailService.sendWithResend({
           to: profile.email,
-          subject: `${bagLabel} ya es tuyo · Semzo Privé`,
+          subject: memberSubject,
           html: buildMemberEmail(profile.full_name || "", bagLabel, paid),
         })
+        await logEmail({
+          recipientEmail: profile.email,
+          recipientName: profile.full_name,
+          subject: memberSubject,
+          emailType: "colecciona_sale_member",
+          status: sent ? "sent" : "failed",
+          metadata: logMeta,
+        })
       }
-      await emailService.sendWithResend({
+      const adminSubject = `Venta Colecciona: ${bagLabel} (${paid})`
+      const adminSent = await emailService.sendWithResend({
         to: ADMIN_EMAIL,
-        subject: `Venta Colecciona: ${bagLabel} (${paid})`,
+        subject: adminSubject,
         html: `<p>${memberName} (${profile?.email || "sin email"}) ha comprado <strong>${bagLabel}</strong> en Modo Colecciona.</p>
 <p>Cobrado: <strong>${paid}</strong>. Referencia de pago: ${input.paymentRef}.</p>
 <p>El bolso ya figura como vendido (status "colecciona") y su reserva se ha cerrado. Pendiente: factura y entrega.</p>`,
+      })
+      await logEmail({
+        recipientEmail: ADMIN_EMAIL,
+        recipientName: "Admin",
+        subject: adminSubject,
+        emailType: "colecciona_sale_admin",
+        status: adminSent ? "sent" : "failed",
+        metadata: logMeta,
       })
     } catch (notifyErr) {
       console.error("[colecciona-sale] Avisos fallidos (la venta SI esta cerrada):", notifyErr)
