@@ -10,6 +10,7 @@ import MembershipActivatedEmail from "@/emails/templates/membership-activated";
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
 import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
+import { claimStripeEvent, markStripeEventDone, markStripeEventFailed } from "@/lib/stripe-event-state";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -78,22 +79,27 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  // IDEMPOTENCIA: si este evento ya fue procesado, ignorar
-  const { data: alreadyProcessed } = await supabase
-    .from("stripe_processed_events")
-    .select("event_id")
-    .eq("event_id", event.id)
-    .maybeSingle();
+  // IDEMPOTENCIA: el evento solo queda 'done' tras procesarse bien.
+  // 'failed' y 'processing' abandonado se reintentan; 'done' se ignora.
+  let claim;
+  try {
+    claim = await claimStripeEvent(supabase, event);
+  } catch (claimErr) {
+    console.error("❌ No se pudo registrar el evento:", event.id, claimErr);
+    return NextResponse.json({ error: "Event registration failed" }, { status: 500 });
+  }
 
-  if (alreadyProcessed) {
+  if (claim.action === "skip_done") {
     return NextResponse.json({ received: true, skipped: "already_processed" });
   }
 
-  // Registrar el evento ANTES de procesarlo para evitar doble ejecución en retries simultáneos
-  await supabase.from("stripe_processed_events").insert({
-    event_id: event.id,
-    event_type: event.type,
-  }).throwOnError();
+  if (claim.action === "skip_in_progress") {
+    return NextResponse.json({ error: "Event is being processed" }, { status: 409 });
+  }
+
+  if (claim.attempt > 1) {
+    console.warn("[stripe-webhook] Reintentando evento", event.id, event.type, "intento", claim.attempt);
+  }
 
   try {
     switch (event.type) {
@@ -1645,10 +1651,12 @@ export async function POST(req: NextRequest) {
         break;
     }
 
+    await markStripeEventDone(supabase, event.id);
     return NextResponse.json({ received: true });
 
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
+    await markStripeEventFailed(supabase, event.id, error);
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }
