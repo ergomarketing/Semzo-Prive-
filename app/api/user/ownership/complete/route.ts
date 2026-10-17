@@ -9,6 +9,7 @@ import {
   getAppliedCredit,
 } from "@/lib/ownership-credit"
 import { recordLegalAcceptance } from "@/lib/legal-acceptance"
+import { closeColeccionaSale } from "@/lib/ownership-sale-close"
 
 export const dynamic = "force-dynamic"
 
@@ -211,17 +212,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 5. Marcar progreso como completed
-    const now = new Date().toISOString()
-    await supabaseAdmin
-      .from("ownership_progress")
-      .update({
-        accumulated: target,
-        status: "completed",
-        completed_at: now,
-        updated_at: now,
-      })
-      .eq("id", progress.id)
+    // 5. Cerrar la venta: progreso completado, bolso vendido, reserva cerrada y avisos
+    //    (mismo cierre que usa el pago por Checkout; es idempotente).
+    const closed = await closeColeccionaSale(supabaseAdmin, {
+      progressId: progress.id,
+      amountPaidCents: amountCents,
+      paymentRef: pi.id,
+    })
+    if (!closed.ok) {
+      console.error("[v0] ownership/complete: cobro hecho pero no se pudo cerrar la venta", closed.reason, pi.id)
+    }
 
     return NextResponse.json({
       success: true,

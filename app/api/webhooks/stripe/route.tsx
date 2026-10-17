@@ -14,6 +14,7 @@ import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/l
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import { claimStripeEvent, markStripeEventDone, markStripeEventFailed } from "@/lib/stripe-event-state";
 import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
+import { closeColeccionaSale } from "@/lib/ownership-sale-close";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
@@ -31,6 +32,32 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Cierra la venta de una compra Colecciona pagada por Checkout (idempotente).
+// Si algo falla se lanza el error: el webhook devuelve 500 y Stripe reintenta.
+async function closeColeccionaSaleFromSession(session: Stripe.Checkout.Session) {
+  const progressId = session.metadata?.ownership_progress_id;
+  if (!progressId) {
+    console.error("[colecciona_purchase] sesión sin ownership_progress_id", { session_id: session.id });
+    return;
+  }
+  const result = await closeColeccionaSale(supabase, {
+    progressId,
+    amountPaidCents: session.amount_total || 0,
+    paymentRef: session.id,
+  });
+  if (!result.ok) {
+    // Pago recibido pero no se puede cerrar la venta: avisar al admin, no reintentar en bucle.
+    console.error("[colecciona_purchase] no se pudo cerrar la venta", { session_id: session.id, reason: result.reason });
+    await supabase.from("admin_notifications").insert({
+      type: "colecciona_sale_error",
+      priority: "high",
+      title: "Pago Colecciona recibido pero la venta no se pudo cerrar",
+      message: `Sesión ${session.id}: ${result.reason}. Revisa el pago en Stripe y cierra la venta a mano.`,
+      metadata: { stripe_session_id: session.id, reason: result.reason, ownership_progress_id: progressId },
+    });
+  }
+}
 
 // Protege contra epoch null/undefined devuelto por Stripe
 function safeTimestamp(epoch: number | null | undefined): string {
@@ -114,6 +141,21 @@ export async function POST(req: NextRequest) {
        */
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // --- COMPRA DEL BOLSO EN MODO COLECCIONA (Checkout, pago único) ---
+        // Si el pago es asíncrono (payment_status != paid) se cierra en
+        // checkout.session.async_payment_succeeded.
+        if (session.mode === "payment" && session.metadata?.type === "colecciona_purchase") {
+          if (session.payment_status === "paid") {
+            await closeColeccionaSaleFromSession(session);
+          } else {
+            console.log("[colecciona_purchase] pago aún no confirmado, se espera async_payment_succeeded", {
+              session_id: session.id,
+              payment_status: session.payment_status,
+            });
+          }
+          break;
+        }
 
         // --- COMPRA DIRECTA DE BOLSO COLECCIONA (mode: payment, pago único) ---
         if (
@@ -707,6 +749,16 @@ export async function POST(req: NextRequest) {
         }
 
         console.log("✅ Membership ACTIVATED:", userId);
+        break;
+      }
+
+      // Pagos con confirmación diferida (algunos métodos de pago a plazos/transferencia):
+      // la compra Colecciona se cierra cuando Stripe confirma el cobro.
+      case "checkout.session.async_payment_succeeded": {
+        const asyncSession = event.data.object as Stripe.Checkout.Session;
+        if (asyncSession.mode === "payment" && asyncSession.metadata?.type === "colecciona_purchase") {
+          await closeColeccionaSaleFromSession(asyncSession);
+        }
         break;
       }
 

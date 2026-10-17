@@ -64,27 +64,17 @@ export function MyBagCard() {
     setBusy("complete")
     setConfirmPurchase(false)
     try {
-      const res = await fetch("/api/user/ownership/complete", {
+      // El pago se hace en Stripe Checkout (tarjeta u otros métodos según importe).
+      // La venta se cierra al volver, en /post-checkout/colecciona.
+      const res = await fetch("/api/user/ownership/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted_terms: true, expected_amount: expectedAmount }),
       })
       const json = await res.json()
-      if (res.ok && json.success) {
-        toast({
-          title: "¡Felicidades!",
-          description: `El bolso ya es tuyo. Cargo: ${new Intl.NumberFormat("es-ES", {
-            style: "currency",
-            currency: "EUR",
-          }).format(json.paid_amount)}`,
-        })
-        mutate()
-      } else if (json.requires_action) {
-        toast({
-          title: "Confirmación requerida",
-          description: "Tu banco solicita verificación. Inténtalo de nuevo o cambia el método de pago.",
-          variant: "destructive",
-        })
+      if (res.ok && json.url) {
+        window.location.href = json.url
+        return
       } else {
         toast({
           title: "No se pudo completar la compra",
@@ -341,10 +331,11 @@ export function MyBagCard() {
                     <dd>- {formatEUR(appliedCredit)}</dd>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-1 font-medium text-indigo-dark">
-                    <dt>Se cobrará a tu tarjeta guardada</dt>
+                    <dt>Importe a pagar</dt>
                     <dd>{formatEUR(amountDue)}</dd>
                   </div>
                 </dl>
+                <p>En la siguiente pantalla elegirás cómo pagar, con los métodos disponibles para este importe.</p>
                 <p>
                   Es una compra definitiva. No se admiten devoluciones por cambio de opinión; para seguir probando
                   bolsos está la membresía mensual. Quedan a salvo los derechos que la ley reconoce a las personas
@@ -386,7 +377,7 @@ export function MyBagCard() {
               onClick={() => handleComplete(amountDue)}
               className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
             >
-              Pagar {formatEUR(amountDue)}
+              Continuar al pago · {formatEUR(amountDue)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
