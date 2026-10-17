@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse, after } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator"
@@ -48,8 +48,18 @@ export async function GET(req: NextRequest) {
       session.subscription as string
     )
 
-    // Sincronizar en background — no bloquear la respuesta
-    syncMembershipFromStripe(subscription).catch(() => {})
+    // Sincronizar sin bloquear la respuesta. after() mantiene viva la funcion
+    // serverless hasta que termine, y el error se registra en vez de tragarse.
+    after(async () => {
+      try {
+        const result = await syncMembershipFromStripe(subscription)
+        if (!result.success) {
+          console.error("[verify-session] syncMembershipFromStripe failed:", result.error)
+        }
+      } catch (err: any) {
+        console.error("[verify-session] syncMembershipFromStripe threw:", err?.message)
+      }
+    })
 
     // Prioridad: client_reference_id > session.metadata > subscription.metadata
     const userId =

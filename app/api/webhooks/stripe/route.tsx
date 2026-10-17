@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { render } from "@react-email/components";
 import { EmailServiceProduction } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
+import { isIdentityVerified } from "@/lib/identity-status";
+import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
 import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
 import MembershipActivatedEmail from "@/emails/templates/membership-activated";
@@ -482,6 +484,12 @@ export async function POST(req: NextRequest) {
               status: "paid_pending_verification",
               start_date: startDate.toISOString(),
               end_date: endDate.toISOString(),
+              // Una recontratacion reutiliza la fila: limpiar el rastro de la
+              // suscripcion anterior (cancelacion programada, periodo y reservas).
+              cancel_at_period_end: false,
+              canceled_at: null,
+              current_period_end: endDate.toISOString(),
+              can_make_reservations: false,
               failed_payment_count: 0,
               dunning_status: null,
               updated_at: now,
@@ -582,6 +590,41 @@ export async function POST(req: NextRequest) {
             created_at: now,
             updated_at: now,
           });
+        }
+
+        // Recontratacion con identidad y SEPA ya hechos: no llegara otro evento
+        // de identidad, asi que se promueve aqui con el orquestador existente
+        // (unica fuente de reglas). Si falta identidad o SEPA se mantiene
+        // "paid_pending_verification" y resume-onboarding sigue siendo el camino.
+        try {
+          const stripeActive =
+            subscription.status === "active" || subscription.status === "trialing";
+
+          if (stripeActive) {
+            const hasIdentity = await isIdentityVerified(supabase, userId);
+            const { data: sepaProfile } = await supabase
+              .from("profiles")
+              .select("sepa_payment_method_id")
+              .eq("id", userId)
+              .maybeSingle();
+            const hasSepa = !!sepaProfile?.sepa_payment_method_id;
+
+            console.log("[WEBHOOK] checkout.session.completed: pre-check promocion", {
+              userId,
+              stripe_active: stripeActive,
+              identity_verified: hasIdentity,
+              sepa_mandate: hasSepa,
+            });
+
+            if (hasIdentity && hasSepa) {
+              const synced = await syncMembershipFromStripe(subscription);
+              if (!synced.success) {
+                console.error("[WEBHOOK] syncMembershipFromStripe failed:", synced.error);
+              }
+            }
+          }
+        } catch (syncErr: any) {
+          console.error("[WEBHOOK] promocion tras checkout fallo:", syncErr?.message);
         }
 
         // EMAIL AL USUARIO: Membresía activada — pago confirmado
