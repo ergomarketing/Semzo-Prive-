@@ -55,6 +55,38 @@ function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number | n
   return typeof rootPeriodEnd === "number" ? rootPeriodEnd : null;
 }
 
+/**
+ * Id de la suscripcion de una factura. Stripe lo envia de dos formas segun la
+ * version de API del webhook:
+ *  - clasica: invoice.subscription
+ *  - nueva (basil, 2025-03-31 en adelante): invoice.parent.subscription_details.subscription
+ *    (y en invoice.lines.data[n]). Si solo se lee la clasica y el webhook usa la nueva,
+ *    el manejador de renovaciones sale sin hacer nada (sin error visible).
+ */
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  type Ref = string | { id?: string } | null | undefined;
+  const inv = invoice as unknown as {
+    subscription?: Ref;
+    parent?: { subscription_details?: { subscription?: Ref } | null } | null;
+    lines?: {
+      data?: Array<{
+        subscription?: Ref;
+        parent?: { subscription_item_details?: { subscription?: Ref } | null } | null;
+      }>;
+    };
+  };
+  const pick = (value: Ref): string | null =>
+    typeof value === "string" ? value : value?.id ?? null;
+  const firstLine = inv.lines?.data?.[0];
+  return (
+    pick(inv.subscription) ??
+    pick(inv.parent?.subscription_details?.subscription) ??
+    pick(firstLine?.subscription) ??
+    pick(firstLine?.parent?.subscription_item_details?.subscription) ??
+    null
+  );
+}
+
 function getSubscriptionPeriodStart(subscription: Stripe.Subscription): number | null {
   const item = subscription.items?.data?.[0] as unknown as { current_period_start?: number } | undefined;
   if (typeof item?.current_period_start === "number") return item.current_period_start;
@@ -716,6 +748,7 @@ export async function POST(req: NextRequest) {
        */
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
+        const invoiceSubscriptionId = getInvoiceSubscriptionId(invoice);
 
         // ============================================================
         // MODO COLECCIONA — Acumular credito hacia la compra del bolso
@@ -723,8 +756,8 @@ export async function POST(req: NextRequest) {
         // Se ejecuta SIEMPRE que haya pago exitoso (incluida 1a cuota).
         // No bloquea ni interfiere con el flujo de renovacion de abajo.
         try {
-          if (invoice.subscription && invoice.amount_paid && invoice.amount_paid > 0) {
-            const subId = invoice.subscription as string;
+          if (invoiceSubscriptionId && invoice.amount_paid && invoice.amount_paid > 0) {
+            const subId = invoiceSubscriptionId;
 
             const { data: mem } = await supabase
               .from("user_memberships")
@@ -798,12 +831,12 @@ export async function POST(req: NextRequest) {
 
         if (
           invoice.billing_reason === "subscription_create" ||
-          !invoice.subscription
+          !invoiceSubscriptionId
         ) {
           break;
         }
 
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = invoiceSubscriptionId as string;
 
         // 🔒 Resolver user_id desde DB (NO desde metadata)
         const { data: membership } = await supabase
