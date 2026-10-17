@@ -121,6 +121,10 @@ export async function startCollectProgress(
     })
     .select("id")
     .single()
+  if (insertErr?.code === "23505") {
+    // Índice único uniq_active_collect_per_user: un solo Colecciona activo por socia.
+    return fail("already_collect", 409, "Ya tienes un bolso en Modo Colecciona activo")
+  }
   if (insertErr || !created) {
     console.error("[v0] startCollectProgress insert error:", insertErr)
     return fail("insert_failed", 500, "No se pudo crear el progreso")
