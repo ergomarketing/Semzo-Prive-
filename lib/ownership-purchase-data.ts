@@ -90,6 +90,8 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
   const conditionsAccepted = !!accepted && accepted.length > 0
 
   const memberName = member.full_name || member.email
+  // Los saltos de linea de la ficha no se ven en el PDF ni en una celda: se unen con "; ".
+  const oneLine = (text: string | undefined) => (text ?? "").replace(/\s*[\r\n]+\s*/g, "; ").trim()
   const vars: ContractVars = {
     nombre_completo_socia: memberName,
     email_socia: member.email,
@@ -101,12 +103,12 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
     credito_aplicado: formatAmount(credit),
     importe_final: formatAmount(due),
     version_condiciones_colecciona: COLECCIONA_CONDITIONS_VERSION,
-    estado_exterior: report?.exterior ?? "",
-    estado_esquinas: report?.esquinas ?? "",
-    estado_asas: report?.asas ?? "",
-    estado_herrajes: report?.herrajes ?? "",
-    estado_interior: report?.interior ?? "",
-    accesorios: report?.accesorios ?? "",
+    estado_exterior: oneLine(report?.exterior),
+    estado_esquinas: oneLine(report?.esquinas),
+    estado_asas: oneLine(report?.asas),
+    estado_herrajes: oneLine(report?.herrajes),
+    estado_interior: oneLine(report?.interior),
+    accesorios: oneLine(report?.accesorios),
     url_galeria_fotos: `${siteUrl()}/catalog/${bag.slug || bag.id}`,
   }
 
