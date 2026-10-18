@@ -55,6 +55,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updateData.authenticity_certificate_url = url ? url : null
     }
 
+    // Ficha del estado (Anexo I del contrato Colecciona): seis apartados de texto corto.
+    if (body.condition_report !== undefined) {
+      const keys = ["exterior", "esquinas", "asas", "herrajes", "interior", "accesorios"]
+      const raw = body.condition_report && typeof body.condition_report === "object" ? body.condition_report : {}
+      const report: Record<string, string> = {}
+      let anyFilled = false
+      for (const key of keys) {
+        const value = typeof raw[key] === "string" ? raw[key].trim().slice(0, 600) : ""
+        report[key] = value
+        if (value) anyFilled = true
+      }
+      // Todo vacio = sin ficha (null). Si hay algo, se guarda con la fecha de actualizacion.
+      updateData.condition_report = anyFilled ? { ...report, updated_at: new Date().toISOString() } : null
+    }
+
     if (body.image_url !== undefined && body.image_url !== "") {
       updateData.image_url = body.image_url
     }

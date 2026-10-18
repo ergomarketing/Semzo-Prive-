@@ -50,6 +50,7 @@ interface BagInventory {
   serial_number?: string
   purchase_price?: string
   authenticity_certificate_url?: string
+  condition_report?: Record<string, string> | null
   image_url?: string
   category?: string
   images: string[]
@@ -131,6 +132,7 @@ export default function InventorySystem() {
           serial_number: bag.serial_number || undefined,
           purchase_price: bag.purchase_price != null ? String(bag.purchase_price) : undefined,
           authenticity_certificate_url: bag.authenticity_certificate_url || undefined,
+          condition_report: bag.condition_report || undefined,
             image_url: bag.image_url,
             category: bag.category,
             images: bag.images || [],
@@ -895,6 +897,15 @@ function BagForm({
     serial_number: bag?.serial_number || "",
     purchase_price: bag?.purchase_price || "",
     authenticity_certificate_url: bag?.authenticity_certificate_url || "",
+    // Ficha del estado (Anexo I del contrato de compraventa Colecciona)
+    condition_report: {
+      exterior: bag?.condition_report?.exterior || "",
+      esquinas: bag?.condition_report?.esquinas || "",
+      asas: bag?.condition_report?.asas || "",
+      herrajes: bag?.condition_report?.herrajes || "",
+      interior: bag?.condition_report?.interior || "",
+      accesorios: bag?.condition_report?.accesorios || "",
+    } as Record<string, string>,
     condition: bag?.condition || "excellent",
     status: bag?.status || "available",
     image_url: bag?.image_url || "",
@@ -1189,6 +1200,54 @@ function BagForm({
               className="hidden"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Ficha del estado: Anexo I del contrato. La socia la ve y la acepta antes de pagar. */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+        <div className="mb-1 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-[#1a1a4b]">Ficha del estado (Anexo I del contrato)</h4>
+          {Object.values(formData.condition_report).every((value) => value.trim()) ? (
+            <Badge className="bg-emerald-100 text-[10px] text-emerald-800 hover:bg-emerald-100">Completa</Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] text-amber-700">
+              Incompleta: sin ella no se puede vender
+            </Badge>
+          )}
+        </div>
+        <p className="mb-3 text-xs text-slate-600">
+          Describe con detalle las marcas de uso reales del bolso (rozaduras, arañazos, desgaste, olor…). Lo que no
+          figure aquí cuenta como falta de conformidad. Si no hay marcas, escribe «Sin marcas de uso visibles». Las
+          fotografías son las de la galería de este bolso: añade fotos de detalle en «Imágenes del Bolso».
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            ["exterior", "Exterior (piel / tejido)"],
+            ["esquinas", "Esquinas y bordes"],
+            ["asas", "Asas, cadena o correa"],
+            ["herrajes", "Herrajes y cierre"],
+            ["interior", "Interior y forro"],
+            ["accesorios", "Accesorios incluidos"],
+          ].map(([key, label]) => (
+            <div key={key}>
+              <Label htmlFor={`report_${key}`} className="text-[#1a1a4b]">
+                {label}
+              </Label>
+              <Textarea
+                id={`report_${key}`}
+                rows={2}
+                maxLength={600}
+                value={formData.condition_report[key]}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    condition_report: { ...formData.condition_report, [key]: e.target.value },
+                  })
+                }
+                className="border-slate-300 focus:border-[#1a1a4b] focus:ring-[#1a1a4b]"
+              />
+            </div>
+          ))}
         </div>
       </div>
 

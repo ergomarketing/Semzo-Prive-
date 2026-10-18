@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
+import { ColeccionaPurchaseDialog, type PurchaseConfirmation } from "@/app/components/colecciona-purchase-dialog"
 import { getAmountDue, getAppliedCredit } from "@/lib/ownership-credit"
 import {
   AlertDialog,
@@ -57,25 +57,24 @@ export function MyBagCard() {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [confirmConvert, setConfirmConvert] = useState(false)
   const [confirmPurchase, setConfirmPurchase] = useState(false)
-  const [acceptedContract, setAcceptedContract] = useState(false)
-  const [acceptedCondition, setAcceptedCondition] = useState(false)
 
-  const handleComplete = async (expectedAmount: number) => {
+  const handleComplete = async (payload: PurchaseConfirmation) => {
     setBusy("complete")
-    setConfirmPurchase(false)
     try {
       // El pago se hace en Stripe Checkout (tarjeta u otros métodos según importe).
       // La venta se cierra al volver, en /post-checkout/colecciona.
       const res = await fetch("/api/user/ownership/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accepted_terms: true, expected_amount: expectedAmount }),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (res.ok && json.url) {
         window.location.href = json.url
         return
       } else {
+        // Si el importe cambio o falta algo, se cierra el diálogo para que la socia lo vuelva a abrir y lo revise
+        if (json.code === "amount_mismatch" || json.code === "condition_report_missing") setConfirmPurchase(false)
         toast({
           title: "No se pudo completar la compra",
           description: json.error || "Inténtalo de nuevo.",
@@ -314,74 +313,13 @@ export function MyBagCard() {
         </div>
       </CardContent>
 
-      {/* Confirmación: finalizar la compra (contrato + importe) */}
-      <AlertDialog open={confirmPurchase} onOpenChange={setConfirmPurchase}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar compra de {bag.brand} {bag.name}</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 text-sm text-slate-600">
-                <dl className="space-y-1">
-                  <div className="flex justify-between">
-                    <dt>Precio del bolso</dt>
-                    <dd>{formatEUR(targetPrice)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>Crédito acumulado</dt>
-                    <dd>- {formatEUR(appliedCredit)}</dd>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-200 pt-1 font-medium text-indigo-dark">
-                    <dt>Importe a pagar</dt>
-                    <dd>{formatEUR(amountDue)}</dd>
-                  </div>
-                </dl>
-                <p>En la siguiente pantalla elegirás cómo pagar, con los métodos disponibles para este importe.</p>
-                <p>
-                  Tienes derecho a desistir de la compra en los 14 días naturales siguientes al pago, sin dar motivo,
-                  devolviendo el bolso en el estado en que lo recibiste, conforme a tu contrato de compraventa. Quedan
-                  a salvo los demás derechos que la ley reconoce a las personas consumidoras.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-3">
-            <label className="flex items-start gap-3 text-sm text-slate-700">
-              <Checkbox
-                checked={acceptedContract}
-                onCheckedChange={(v) => setAcceptedContract(v === true)}
-                className="mt-0.5"
-              />
-              <span>
-                He leído y acepto las condiciones de compra y los{" "}
-                <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline">
-                  Términos y Condiciones
-                </a>
-                .
-              </span>
-            </label>
-            <label className="flex items-start gap-3 text-sm text-slate-700">
-              <Checkbox
-                checked={acceptedCondition}
-                onCheckedChange={(v) => setAcceptedCondition(v === true)}
-                className="mt-0.5"
-              />
-              <span>
-                Conozco el bolso por haberlo usado durante mi membresía y acepto su estado actual.
-              </span>
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!acceptedContract || !acceptedCondition}
-              onClick={() => handleComplete(amountDue)}
-              className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
-            >
-              Continuar al pago · {formatEUR(amountDue)}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Compra: importes, contrato, Anexo I y aceptaciones (todo se ve antes de pagar) */}
+      <ColeccionaPurchaseDialog
+        open={confirmPurchase}
+        onOpenChange={setConfirmPurchase}
+        busy={busy === "complete"}
+        onConfirm={handleComplete}
+      />
 
       {/* Confirmación: renunciar a Colecciona */}
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
