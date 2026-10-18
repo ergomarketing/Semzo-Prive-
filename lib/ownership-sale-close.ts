@@ -17,6 +17,7 @@ import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { BRAND, emailDetailList, emailInfoBox, renderAdminEmail, renderBrandEmail } from "@/app/lib/email-layout"
 import { archiveColeccionaContract, type ArchivedContract } from "@/lib/ownership-contract-archive"
 import { logEmail } from "@/lib/email-logger"
+import { klaviyoTrackForUser } from "@/lib/klaviyo"
 
 export interface CloseSaleInput {
   progressId: string
@@ -202,6 +203,15 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
     } catch (notifyErr) {
       console.error("[colecciona-sale] Avisos fallidos (la venta SI esta cerrada):", notifyErr)
     }
+
+    // Klaviyo: evento "Colecciona Purchased" con el importe pagado (best-effort)
+    await klaviyoTrackForUser(supabase, progress.user_id, {
+      metric: "Colecciona Purchased",
+      properties: { bag: bagLabel, bag_id: progress.bag_id },
+      value: input.amountPaidCents / 100,
+      currency: "EUR",
+      uniqueId: `colecciona_purchased:${progress.id}`,
+    })
   }
 
   return { ok: true, firstClose, bagLabel }

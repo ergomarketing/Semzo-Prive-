@@ -83,6 +83,20 @@ export async function POST(request: NextRequest) {
       console.error("[v0] Error sending new user notification:", notifError)
     }
 
+    // Klaviyo: perfil + evento "Signed Up" (best-effort; no suscribe a ninguna lista)
+    try {
+      const { klaviyoTrack } = await import("@/lib/klaviyo")
+      await klaviyoTrack({
+        email: email.toLowerCase().trim(),
+        metric: "Signed Up",
+        properties: { source: "register_free" },
+        uniqueId: `signed_up:${data.user.id}`,
+        profile: { firstName: firstName || null, lastName: lastName || null },
+      })
+    } catch {
+      // nunca bloquea el registro
+    }
+
     // Meter en el embudo de leads (secuencia de 5 emails)
     try {
       const { enrollLead } = await import("@/lib/leads/enroll")

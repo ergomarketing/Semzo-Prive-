@@ -19,6 +19,7 @@ import {
 } from "@/lib/stripe-event-state";
 import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
 import { closeColeccionaSale } from "@/lib/ownership-sale-close";
+import { klaviyoTrackForUser } from "@/lib/klaviyo";
 import { registerOwnershipMode } from "@/lib/ownership-register-mode";
 import { creditPassPurchase } from "@/lib/ownership-pass-credit";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
@@ -1213,6 +1214,14 @@ export async function POST(req: NextRequest) {
           } catch (err) {
             console.error("[v0] Error en bloque perdida de credito:", err);
           }
+
+          // Klaviyo: evento "Membership Cancelled" (best-effort)
+          await klaviyoTrackForUser(supabase, membership.user_id, {
+            metric: "Membership Cancelled",
+            properties: { subscription_id: subscription.id },
+            uniqueId: `membership_cancelled:${subscription.id}`,
+            profile: { properties: { membership_status: "cancelled" } },
+          });
         }
         break;
       }

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 import { isIdentityVerified } from "@/lib/identity-status"
 import { sendMembershipActivatedEmails } from "@/lib/membership-activated-email"
+import { klaviyoTrackForUser } from "@/lib/klaviyo"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -295,6 +296,18 @@ export async function syncMembershipFromStripe(
       })
     } catch (emailErr) {
       console.error("[ORCHESTRATOR] Error enviando correo de membresia activa:", emailErr)
+    }
+
+    // Klaviyo: evento "Membership Activated" (best-effort)
+    try {
+      await klaviyoTrackForUser(supabase, userId, {
+        metric: "Membership Activated",
+        properties: { plan: membershipType, billing_cycle: billingCycle },
+        uniqueId: `membership_activated:${userId}:${subscription.id}`,
+        profile: { properties: { membership_plan: membershipType, membership_status: "active" } },
+      })
+    } catch {
+      // nunca bloquea la activacion
     }
   }
 
