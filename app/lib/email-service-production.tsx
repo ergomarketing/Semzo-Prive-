@@ -18,6 +18,8 @@ interface EmailData {
   bagName?: string
   reservationDate?: string
   reservationId?: string
+  /** Adjuntos (Resend): contenido en base64. */
+  attachments?: Array<{ filename: string; content: string }>
 }
 
 import { render } from "@react-email/components"
@@ -105,6 +107,7 @@ export class EmailServiceProduction {
               "List-Unsubscribe": `<${unsubscribeUrl}>`,
               "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
             },
+            ...(data.attachments && data.attachments.length > 0 ? { attachments: data.attachments } : {}),
           }),
         })
 
