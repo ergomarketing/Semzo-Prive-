@@ -337,9 +337,9 @@ export function MyBagCard() {
                 </dl>
                 <p>En la siguiente pantalla elegirás cómo pagar, con los métodos disponibles para este importe.</p>
                 <p>
-                  Es una compra definitiva. No se admiten devoluciones por cambio de opinión; para seguir probando
-                  bolsos está la membresía mensual. Quedan a salvo los derechos que la ley reconoce a las personas
-                  consumidoras.
+                  Tienes derecho a desistir de la compra en los 14 días naturales siguientes al pago, sin dar motivo,
+                  devolviendo el bolso en el estado en que lo recibiste, conforme a tu contrato de compraventa. Quedan
+                  a salvo los demás derechos que la ley reconoce a las personas consumidoras.
                 </p>
               </div>
             </AlertDialogDescription>

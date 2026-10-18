@@ -115,7 +115,8 @@ export async function POST(req: NextRequest) {
       textSnapshot:
         `Compra definitiva del bolso ${bagLabel}. Precio ${target.toFixed(2)} EUR; crédito aplicado ` +
         `${appliedCredit.toFixed(2)} EUR; importe a pagar ${amountDue.toFixed(2)} EUR. La socia declara conocer y ` +
-        `aceptar el estado del bolso tras su uso durante la membresía y que no se admiten devoluciones por cambio de opinión.`,
+        `aceptar el estado del bolso tras su uso durante la membresía. Conserva el derecho de desistimiento de 14 días ` +
+        `naturales y la garantía legal.`,
       request: req,
       metadata: { bag_id: progress.bag_id, price: target, credit: appliedCredit, amount_due: amountDue },
     })
