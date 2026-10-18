@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Heart, FileCheck, Calendar } from "lucide-react"
+import { Heart, FileCheck, Calendar, FileText, Receipt } from "lucide-react"
 
 interface OwnedBag {
   id: string
@@ -96,6 +96,32 @@ export function OwnedBagsSection() {
                 {bag.purchase_price != null && (
                   <p className="text-xs text-slate-500">Precio: {formatEUR(bag.purchase_price)}</p>
                 )}
+              </div>
+
+              {/* Documentos de la compra: contrato firmado (PDF) y factura de Stripe */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-indigo-dark/30 text-indigo-dark hover:bg-rose-nude/30 bg-transparent"
+                >
+                  <a href={`/api/user/ownership/contract?progress_id=${bag.id}`} target="_blank" rel="noopener noreferrer">
+                    <FileText className="mr-1.5 h-3.5 w-3.5" />
+                    Contrato
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-indigo-dark/30 text-indigo-dark hover:bg-rose-nude/30 bg-transparent"
+                >
+                  <a href={`/api/user/ownership/invoice?progress_id=${bag.id}`} target="_blank" rel="noopener noreferrer">
+                    <Receipt className="mr-1.5 h-3.5 w-3.5" />
+                    Factura
+                  </a>
+                </Button>
               </div>
 
               {bag.authenticity_certificate_url && (

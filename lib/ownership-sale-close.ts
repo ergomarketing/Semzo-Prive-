@@ -14,6 +14,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { BRAND, emailDetailList, emailInfoBox, renderAdminEmail, renderBrandEmail } from "@/app/lib/email-layout"
+import { archiveColeccionaContract, type ArchivedContract } from "@/lib/ownership-contract-archive"
 import { logEmail } from "@/lib/email-logger"
 
 export interface CloseSaleInput {
@@ -96,8 +98,29 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
   const { data: bag } = await supabase.from("bags").select("brand, name").eq("id", progress.bag_id).maybeSingle()
   const bagLabel = `${bag?.brand || ""} ${bag?.name || ""}`.trim() || "tu bolso"
 
-  // 4. Avisos: solo la primera vez. Un fallo aqui NO debe deshacer ni reintentar la venta.
+  // 4. Contrato firmado + avisos: solo la primera vez. Un fallo aqui NO debe deshacer ni reintentar la venta.
   if (firstClose) {
+    // 4a. Archivar el contrato (PDF) y localizar la factura de Stripe
+    let archived: ArchivedContract | null = null
+    try {
+      const archive = await archiveColeccionaContract(supabase, {
+        progressId: progress.id,
+        paymentRef: input.paymentRef,
+      })
+      if (archive.ok) archived = archive.archived
+      else throw new Error(archive.reason)
+    } catch (archiveErr) {
+      console.error("[colecciona-sale] No se pudo archivar el contrato:", archiveErr)
+      await supabase.from("admin_notifications").insert({
+        type: "colecciona_contract_error",
+        priority: "high",
+        title: `No se pudo generar el contrato PDF de ${bagLabel}`,
+        message: `La venta está cerrada pero el contrato PDF no se generó (${archiveErr instanceof Error ? archiveErr.message : archiveErr}). Referencia de pago: ${input.paymentRef}. La socia puede descargarlo luego desde su panel (se reintenta al pedirlo).`,
+        metadata: { ownership_progress_id: progress.id, payment_ref: input.paymentRef },
+      })
+    }
+
+    // 4b. Avisos y correos
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -105,13 +128,15 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
         .eq("id", progress.user_id)
         .maybeSingle()
       const memberName = profile?.full_name || profile?.email || progress.user_id
+      const firstName = (profile?.full_name || "").trim().split(/\s+/)[0] || ""
       const paid = formatEUR(input.amountPaidCents)
+      const invoiceUrl = archived?.invoiceUrl ?? null
 
       await supabase.from("admin_notifications").insert({
         type: "colecciona_sale",
         priority: "high",
         title: `Venta Colecciona — ${bagLabel}`,
-        message: `${memberName} ha comprado ${bagLabel} (Modo Colecciona). Cobrado: ${paid}. Prepara factura y entrega.`,
+        message: `${memberName} ha comprado ${bagLabel} (Modo Colecciona). Cobrado: ${paid}. Contrato PDF ${archived ? "archivado" : "PENDIENTE"}${invoiceUrl ? "; factura de Stripe generada" : ""}.`,
         metadata: {
           user_id: progress.user_id,
           email: profile?.email,
@@ -119,17 +144,24 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
           ownership_progress_id: progress.id,
           amount_paid_cents: input.amountPaidCents,
           payment_ref: input.paymentRef,
+          invoice_url: invoiceUrl,
+          contract_sha256: archived?.sha256 ?? null,
         },
       })
 
+      const attachments = archived
+        ? [{ filename: archived.filename, content: Buffer.from(archived.pdf).toString("base64") }]
+        : undefined
       const emailService = EmailServiceProduction.getInstance()
       const logMeta = { ownership_progress_id: progress.id, payment_ref: input.paymentRef }
+
       if (profile?.email) {
         const memberSubject = `${bagLabel} ya es tuyo · Semzo Privé`
         const sent = await emailService.sendWithResend({
           to: profile.email,
           subject: memberSubject,
-          html: buildMemberEmail(profile.full_name || "", bagLabel, paid),
+          html: buildMemberEmail({ firstName, bagLabel, paid, invoiceUrl, hasContract: !!archived }),
+          attachments,
         })
         await logEmail({
           recipientEmail: profile.email,
@@ -137,16 +169,27 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
           subject: memberSubject,
           emailType: "colecciona_sale_member",
           status: sent ? "sent" : "failed",
-          metadata: logMeta,
+          metadata: { ...logMeta, contract_attached: !!archived },
         })
       }
+
       const adminSubject = `Venta Colecciona: ${bagLabel} (${paid})`
       const adminSent = await emailService.sendWithResend({
         to: ADMIN_EMAIL,
         subject: adminSubject,
-        html: `<p>${memberName} (${profile?.email || "sin email"}) ha comprado <strong>${bagLabel}</strong> en Modo Colecciona.</p>
-<p>Cobrado: <strong>${paid}</strong>. Referencia de pago: ${input.paymentRef}.</p>
-<p>El bolso ya figura como vendido (status "colecciona") y su reserva se ha cerrado. Pendiente: factura y entrega.</p>`,
+        html: renderAdminEmail({
+          title: "Venta Colecciona",
+          intro: `${memberName} ha comprado un bolso en Modo Colecciona. El bolso figura como vendido y su reserva está cerrada.`,
+          rows: [
+            { label: "Socia", value: `${memberName} (${profile?.email || "sin email"})` },
+            { label: "Bolso", value: bagLabel },
+            { label: "Cobrado", value: paid },
+            { label: "Pago", value: input.paymentRef },
+            { label: "Factura", value: invoiceUrl ? `<a href="${invoiceUrl}">Ver factura en Stripe</a>` : "Se genera en Stripe (revisa el pago)" },
+            { label: "Contrato", value: archived ? "PDF adjunto (archivado)" : "PENDIENTE: no se generó" },
+          ],
+        }),
+        attachments,
       })
       await logEmail({
         recipientEmail: ADMIN_EMAIL,
@@ -164,21 +207,39 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
   return { ok: true, firstClose, bagLabel }
 }
 
-function buildMemberEmail(name: string, bagLabel: string, paid: string): string {
-  return `<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#f9f8f9;font-family:Georgia,serif;">
-<table align="center" width="100%" style="max-width:600px;background:#ffffff;margin:0 auto;border-collapse:collapse;">
-<tr><td style="padding:36px 30px 8px;text-align:center;">
-<p style="margin:0;font-size:12px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;">Semzo Privé · Colecciona</p>
-<h1 style="margin:14px 0 0;font-size:28px;font-weight:400;color:#1a1a4b;">Enhorabuena${name ? `, ${name}` : ""}</h1>
-<div style="width:40px;height:2px;background:#c9a96e;margin:16px auto;"></div>
-</td></tr>
-<tr><td style="padding:0 36px 8px;color:#1a1a4b;font-size:16px;line-height:1.8;">
-<p style="margin:0 0 16px;"><strong>${bagLabel}</strong> es ahora tuyo.</p>
-<p style="margin:0 0 16px;">Hemos recibido tu pago de <strong>${paid}</strong>. Te escribiremos en breve para coordinar la entrega de tu factura y los detalles del bolso.</p>
-<p style="margin:0 0 16px;">Tu membresía sigue activa y puedes seguir disfrutando de otros bolsos con ella.</p>
-</td></tr>
-<tr><td style="padding:16px 30px 36px;text-align:center;">
-<a href="https://semzoprive.com/dashboard" style="display:inline-block;background:#1a1a4b;color:#ffffff;text-decoration:none;padding:16px 44px;font-size:14px;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Ir a mi cuenta</a>
-<p style="margin:24px 0 0;font-size:13px;color:#7a7a94;">¿Dudas? Escríbenos a soporte@semzoprive.com</p>
-</td></tr></table></body></html>`
+function buildMemberEmail(input: {
+  firstName: string
+  bagLabel: string
+  paid: string
+  invoiceUrl: string | null
+  hasContract: boolean
+}): string {
+  const { firstName, bagLabel, paid, invoiceUrl, hasContract } = input
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
+  return renderBrandEmail({
+    preheader: `${bagLabel} es ahora tuyo. Adjuntamos tu contrato.`,
+    eyebrow: "Compra confirmada",
+    heading: `Enhorabuena${firstName ? `, ${firstName}` : ""}`,
+    bodyHtml: `
+      <p style="margin:0 0 8px 0;"><strong>${bagLabel}</strong> es ahora tuyo. Hemos recibido tu pago.</p>
+      ${emailDetailList([
+        { label: "Bolso", value: bagLabel },
+        { label: "Importe pagado", value: paid },
+      ])}
+      ${emailInfoBox(
+        `${
+          hasContract
+            ? "Adjuntamos tu <strong>contrato de compraventa</strong> firmado en PDF. También lo tienes siempre disponible en tu panel, en «Mis bolsos».<br>"
+            : "Tu contrato de compraventa estará disponible en tu panel, en «Mis bolsos».<br>"
+        }${
+          invoiceUrl
+            ? `Tu <strong>factura</strong>: <a href="${invoiceUrl}" style="color:${BRAND.navy};">ver y descargar factura</a>.`
+            : "Tu <strong>factura</strong> estará disponible en tu panel en unos minutos."
+        }`,
+      )}
+      <p style="margin:0 0 8px 0;">Dispones de <strong>14 días naturales</strong> para desistir de la compra si lo deseas; el formulario está en el Anexo II del contrato. Tu membresía sigue activa como siempre.</p>
+    `,
+    cta: { label: "Ir a mi cuenta", url: `${site}/dashboard` },
+    footerNote: "¿Dudas? Escríbenos a info@semzoprive.com.",
+  })
 }
