@@ -85,6 +85,27 @@ export async function POST(request: Request) {
       console.error("[catalog-access] enrollLead error:", e)
     }
 
+    // Klaviyo: perfil + evento "Catalog Access". Sin consentimiento de marketing en este formulario,
+    // NO se suscribe a ninguna lista: solo queda registrado el perfil y su actividad.
+    try {
+      const { klaviyoTrack } = await import("@/lib/klaviyo")
+      const [first, ...rest] = (full_name?.trim() || "").split(/\s+/)
+      await klaviyoTrack({
+        email: normalizedEmail,
+        metric: "Catalog Access",
+        properties: {
+          source: "catalog_gate",
+          utm_source: utm_source || null,
+          utm_medium: utm_medium || null,
+          utm_campaign: utm_campaign || null,
+        },
+        uniqueId: `catalog_access:${normalizedEmail}`,
+        profile: { firstName: first || null, lastName: rest.join(" ") || null, phone: whatsapp?.trim() || null },
+      })
+    } catch {
+      // nunca bloquea el acceso al catalogo
+    }
+
     // Set cookie de acceso
     const cookieStore = await cookies()
     cookieStore.set(COOKIE_NAME, "1", {
