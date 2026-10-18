@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
 import { loadPurchaseContext } from "@/lib/ownership-purchase-data"
+import { normalizeSpanishId } from "@/lib/spanish-id"
 import {
   COLECCIONA_ANNEX_PHRASE,
   COLECCIONA_CONDITIONS_VERSION,
@@ -63,6 +64,7 @@ export async function GET() {
       reason: sold ? "already_sold" : reportComplete ? null : "condition_report_missing",
       bag_label: `${context.bag.brand} ${context.bag.name}`.trim(),
       amounts: context.amounts,
+      needs_document: !normalizeSpanishId(context.member.document_number).ok,
       conditions_accepted: context.conditionsAccepted,
       conditions_version: COLECCIONA_CONDITIONS_VERSION,
       contract_version: COLECCIONA_CONTRACT_VERSION,

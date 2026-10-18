@@ -18,7 +18,9 @@ import {
   buildConditionsBlocks,
   buildContractBlocks,
 } from "@/lib/colecciona-legal"
-import { formatAcceptanceMoment, loadPurchaseContext, siteUrl } from "@/lib/ownership-purchase-data"
+import { formatAcceptanceMoment, loadPurchaseContext } from "@/lib/ownership-purchase-data"
+import { normalizeSpanishId } from "@/lib/spanish-id"
+import { ensureInclusiveVat21 } from "@/lib/stripe-vat"
 
 export const dynamic = "force-dynamic"
 
@@ -99,6 +101,19 @@ export async function POST(req: NextRequest) {
 
     const { price, credit, due } = context.amounts
     const amountCents = Math.round(due * 100)
+    const priceCents = Math.round(price * 100)
+    const creditCents = priceCents - amountCents
+
+    // La factura completa (compras por encima de 400 €) necesita el DNI/NIE de la compradora.
+    // Se usa el guardado en su perfil o el que acaba de escribir; se valida formato y letra.
+    const storedId = normalizeSpanishId(context.member.document_number)
+    const documentId = storedId.ok ? storedId : normalizeSpanishId(body?.document_number)
+    if (!documentId.ok) {
+      return NextResponse.json(
+        { error: "Introduce un DNI o NIE válido para emitir tu factura.", code: "document_required" },
+        { status: 400 },
+      )
+    }
 
     if (Math.abs(Math.round(expectedAmount * 100) - amountCents) > 1) {
       return NextResponse.json(
@@ -185,9 +200,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No se pudo registrar tu aceptación. No se ha cobrado nada." }, { status: 500 })
     }
 
+    if (!storedId.ok) {
+      const { error: documentError } = await supabaseAdmin
+        .from("profiles")
+        .update({ document_number: documentId.value, updated_at: new Date().toISOString() })
+        .eq("id", user.id)
+      if (documentError) console.error("[colecciona-checkout] No se pudo guardar el documento:", documentError.message)
+    }
+
     const progress = { id: context.progress.id, bag_id: context.progress.bag_id }
     const bag = { images: context.bag.images, image_url: context.bag.image_url }
-    const appliedCredit = credit
 
     // Customer de Stripe: el de la membresia (donde esta la tarjeta guardada) o el del perfil
     const { data: mem } = await supabaseAdmin
@@ -231,6 +253,30 @@ export async function POST(req: NextRequest) {
       legal_acceptance_id: acceptanceId,
     }
 
+    // Precio COMPLETO con el IVA del 21 % incluido y el credito como DESCUENTO en linea aparte:
+    // asi la factura de Stripe muestra precio, descuento, base imponible, IVA e importe final
+    // (el IVA se calcula sobre el importe final, como dice el contrato).
+    const vatRateId = await ensureInclusiveVat21(stripe)
+    let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined
+    if (creditCents > 0) {
+      const coupon = await stripe.coupons.create(
+        {
+          amount_off: creditCents,
+          currency: "eur",
+          duration: "once",
+          max_redemptions: 1,
+          name: "Crédito Colecciona",
+          metadata: { type: "colecciona_credit", ownership_progress_id: progress.id, user_id: user.id },
+        },
+        { idempotencyKey: `colecciona-coupon-${acceptanceId}` },
+      )
+      discounts = [{ coupon: coupon.id }]
+    }
+
+    const sellerFooter =
+      "SEMZO PRIVÉ · Erika González Ortiz · NIE Y8738588M · Calle Tales de Mileto 1, Urbanización Banana Beach, " +
+      "bloque C3, piso 2 FW, 29603 Marbella (Málaga) · info@semzoprive.com"
+
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
@@ -242,22 +288,35 @@ export async function POST(req: NextRequest) {
               currency: "eur",
               product_data: {
                 name: bagLabel || "Bolso Semzo Privé",
-                description:
-                  appliedCredit > 0
-                    ? `Compra definitiva — Colecciona (crédito aplicado: ${appliedCredit.toFixed(2)} €)`
-                    : "Compra definitiva — Colecciona Semzo Privé",
+                description: "Compra definitiva — Colecciona Semzo Privé",
                 ...(typeof productImage === "string" && productImage.startsWith("http") ? { images: [productImage] } : {}),
               },
-              unit_amount: amountCents,
+              unit_amount: priceCents,
             },
             quantity: 1,
+            tax_rates: [vatRateId],
           },
         ],
+        ...(discounts ? { discounts } : {}),
+        invoice_creation: {
+          enabled: true,
+          invoice_data: {
+            description: `Compra Colecciona — ${bagLabel}`,
+            footer: sellerFooter,
+            custom_fields: [
+              { name: "DNI/NIE", value: documentId.value },
+              { name: "Referencia del bolso", value: String(context.bag.reference).slice(0, 30) },
+            ],
+            metadata,
+            rendering_options: { amount_tax_display: "include_inclusive_tax" },
+          },
+        },
         metadata,
         payment_intent_data: { metadata },
         success_url: `${baseUrl}/post-checkout/colecciona?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/dashboard?colecciona=cancelled`,
-        billing_address_collection: "auto",
+        // Factura completa: nombre y direccion de la compradora obligatorios.
+        billing_address_collection: "required",
         customer_update: { address: "auto", name: "auto" },
       },
       { idempotencyKey: `colecciona-checkout-${acceptanceId}` },

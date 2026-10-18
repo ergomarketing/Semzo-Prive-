@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { LegalDoc } from "@/app/components/legal-doc"
 import type { DocBlock } from "@/lib/colecciona-legal"
 
@@ -13,6 +15,7 @@ interface PurchasePreview {
   reason: "already_sold" | "condition_report_missing" | null
   bag_label: string
   amounts: { price: number; credit: number; due: number }
+  needs_document: boolean
   conditions_accepted: boolean
   conditions_version: string
   contract_version: string
@@ -28,6 +31,7 @@ export interface PurchaseConfirmation {
   accepted_conditions: boolean
   accepted_contract: boolean
   accepted_annex: boolean
+  document_number?: string
 }
 
 const formatEUR = (value: number) =>
@@ -55,6 +59,7 @@ export function ColeccionaPurchaseDialog({
   const [acceptedConditions, setAcceptedConditions] = useState(false)
   const [acceptedContract, setAcceptedContract] = useState(false)
   const [acceptedAnnex, setAcceptedAnnex] = useState(false)
+  const [documentNumber, setDocumentNumber] = useState("")
 
   useEffect(() => {
     if (!open) return
@@ -65,6 +70,7 @@ export function ColeccionaPurchaseDialog({
     setAcceptedConditions(false)
     setAcceptedContract(false)
     setAcceptedAnnex(false)
+    setDocumentNumber("")
     fetch("/api/user/ownership/purchase-preview")
       .then(async (res) => {
         const json = await res.json().catch(() => ({}))
@@ -80,7 +86,9 @@ export function ColeccionaPurchaseDialog({
   }, [open])
 
   const needsConditions = !!preview && !preview.conditions_accepted
-  const canPay = !!preview?.ready && acceptedContract && acceptedAnnex && (!needsConditions || acceptedConditions) && !busy
+  const documentOk = !preview?.needs_document || documentNumber.trim().length >= 8
+  const canPay =
+    !!preview?.ready && acceptedContract && acceptedAnnex && (!needsConditions || acceptedConditions) && documentOk && !busy
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -158,6 +166,25 @@ export function ColeccionaPurchaseDialog({
               )}
             </section>
 
+            {preview.needs_document && (
+              <div className="rounded-lg border border-slate-200 p-4">
+                <Label htmlFor="colecciona-document" className="text-indigo-dark">
+                  DNI o NIE para tu factura
+                </Label>
+                <Input
+                  id="colecciona-document"
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  placeholder="12345678Z"
+                  autoComplete="off"
+                  className="mt-1 max-w-xs uppercase"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  La factura de una compra de este importe debe identificarte. Se guarda en tu perfil.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {needsConditions && (
                 <label className="flex items-start gap-3 text-sm text-slate-700">
@@ -211,6 +238,7 @@ export function ColeccionaPurchaseDialog({
                   accepted_conditions: acceptedConditions || preview.conditions_accepted,
                   accepted_contract: acceptedContract,
                   accepted_annex: acceptedAnnex,
+                  ...(preview.needs_document ? { document_number: documentNumber.trim() } : {}),
                 })
               }
               className="bg-indigo-dark text-white hover:bg-indigo-dark/90"
