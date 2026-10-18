@@ -2,13 +2,23 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
+import { getClientIp, recordLegalAcceptance } from "@/lib/legal-acceptance"
 import {
-  COLECCIONA_PURCHASE_DOCUMENT,
-  COLECCIONA_PURCHASE_VERSION,
-  getAmountDue,
-  getAppliedCredit,
-} from "@/lib/ownership-credit"
-import { recordLegalAcceptance } from "@/lib/legal-acceptance"
+  COLECCIONA_ANNEX_DOCUMENT,
+  COLECCIONA_ANNEX_PHRASE,
+  COLECCIONA_CONDITIONS_DOCUMENT,
+  COLECCIONA_CONDITIONS_VERSION,
+  COLECCIONA_CONTEXT_ANNEX,
+  COLECCIONA_CONTEXT_CONDITIONS,
+  COLECCIONA_CONTEXT_CONTRACT,
+  COLECCIONA_CONTRACT_DOCUMENT,
+  COLECCIONA_CONTRACT_VERSION,
+  blocksToPlainText,
+  buildAnnexBlocks,
+  buildConditionsBlocks,
+  buildContractBlocks,
+} from "@/lib/colecciona-legal"
+import { formatAcceptanceMoment, loadPurchaseContext, siteUrl } from "@/lib/ownership-purchase-data"
 
 export const dynamic = "force-dynamic"
 
@@ -26,9 +36,11 @@ const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
  * activados en Stripe (Klarna, Scalapay, seQura...), segun importe y pais. No se fijan
  * payment_method_types a proposito: Checkout usa los metodos del Dashboard.
  *
- * Body: { accepted_terms: true, expected_amount: number }
- * Misma validacion y misma aceptacion legal que el cobro off-session; la venta se
- * cierra cuando Stripe confirma el pago (webhook o /api/user/ownership/verify-purchase).
+ * Body: { accepted_conditions?, accepted_contract: true, accepted_annex: true, expected_amount: number }
+ * Antes de crear el pago se guardan, con el texto exacto, la fecha, la hora y la IP:
+ *  1) Condiciones del Programa Colecciona (solo si la socia no las habia aceptado en esta version),
+ *  2) Contrato de compraventa (v2) y 3) Anexo I — estado del bolso, esta ultima en casilla SEPARADA.
+ * La venta se cierra cuando Stripe confirma el pago (webhook o /api/user/ownership/verify-purchase).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -39,52 +51,61 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    if (body?.accepted_terms !== true) {
-      return NextResponse.json(
-        { error: "Debes aceptar las condiciones de compra antes de pagar", code: "terms_required" },
-        { status: 400 },
-      )
-    }
     const expectedAmount = Number(body?.expected_amount)
     if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
       return NextResponse.json({ error: "Importe a confirmar no válido", code: "amount_required" }, { status: 400 })
     }
 
-    const { data: progress } = await supabaseAdmin
-      .from("ownership_progress")
-      .select("id, bag_id, accumulated, purchase_price")
-      .eq("user_id", user.id)
-      .eq("mode", "collect")
-      .eq("status", "active")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const loaded = await loadPurchaseContext(supabaseAdmin, user.id)
+    if (!loaded.ok) {
+      const status = loaded.code === "price_missing" ? 400 : 404
+      return NextResponse.json({ error: loaded.message, code: loaded.code }, { status })
+    }
+    const { context } = loaded
 
-    if (!progress) return NextResponse.json({ error: "No hay compra en curso" }, { status: 404 })
-    if (progress.purchase_price == null) return NextResponse.json({ error: "Precio no disponible" }, { status: 400 })
-
-    const { data: bag } = await supabaseAdmin
-      .from("bags")
-      .select("brand, name, status, images, image_url")
-      .eq("id", progress.bag_id)
-      .maybeSingle()
-    if (!bag) return NextResponse.json({ error: "Bolso no encontrado" }, { status: 404 })
-    if (bag.status === "colecciona") {
+    if (context.bag.status === "colecciona") {
       return NextResponse.json({ error: "Este bolso ya ha sido vendido", code: "already_sold" }, { status: 409 })
     }
 
-    const accumulated = Number(progress.accumulated || 0)
-    const target = Number(progress.purchase_price)
-    const appliedCredit = getAppliedCredit(accumulated, target)
-    const amountDue = getAmountDue(accumulated, target)
-    const amountCents = Math.round(amountDue * 100)
+    // Sin la ficha del estado (Anexo I) completa no se puede vender: el contrato no seria valido.
+    if (!context.report) {
+      await supabaseAdmin.from("admin_notifications").insert({
+        type: "colecciona_report_missing",
+        priority: "high",
+        title: `Falta la ficha del estado para vender ${context.bag.brand} ${context.bag.name}`.trim(),
+        message: `${context.member.full_name} quiere comprar ${context.bag.brand} ${context.bag.name} en Colecciona, pero la ficha del estado (Anexo I) no está completa. Rellénala en Inventario → editar bolso → Modo Colecciona.`,
+        metadata: { user_id: user.id, bag_id: context.bag.id },
+      })
+      return NextResponse.json(
+        {
+          error: "Estamos terminando la ficha del estado de tu bolso. Te avisaremos en cuanto puedas completar la compra.",
+          code: "condition_report_missing",
+        },
+        { status: 409 },
+      )
+    }
+
+    // Aceptaciones: contrato y Anexo I SIEMPRE (casillas separadas); Condiciones del Programa si faltan.
+    const missing: string[] = []
+    if (body?.accepted_contract !== true) missing.push("accepted_contract")
+    if (body?.accepted_annex !== true) missing.push("accepted_annex")
+    if (!context.conditionsAccepted && body?.accepted_conditions !== true) missing.push("accepted_conditions")
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: "Debes aceptar las condiciones, el contrato y el estado del bolso antes de pagar", code: "terms_required", missing },
+        { status: 400 },
+      )
+    }
+
+    const { price, credit, due } = context.amounts
+    const amountCents = Math.round(due * 100)
 
     if (Math.abs(Math.round(expectedAmount * 100) - amountCents) > 1) {
       return NextResponse.json(
         {
           error: "El importe ha cambiado. Revisa el detalle y confirma de nuevo.",
           code: "amount_mismatch",
-          amount_due: amountDue,
+          amount_due: due,
         },
         { status: 409 },
       )
@@ -95,34 +116,78 @@ export async function POST(req: NextRequest) {
       .from("legal_acceptances")
       .select("id")
       .eq("user_id", user.id)
-      .eq("context", "colecciona_purchase")
-      .eq("reference_id", progress.id)
+      .eq("context", COLECCIONA_CONTEXT_CONTRACT)
+      .eq("reference_id", context.progress.id)
       .gte("accepted_at", new Date(Date.now() - 30_000).toISOString())
       .limit(1)
     if (recent && recent.length > 0) {
       return NextResponse.json({ error: "Ya hay un pago en curso. Espera unos segundos." }, { status: 429 })
     }
 
-    const bagLabel = `${bag.brand || ""} ${bag.name || ""}`.trim()
+    const bagLabel = `${context.bag.brand} ${context.bag.name}`.trim()
+    const stamp = {
+      fecha_hora_aceptacion: formatAcceptanceMoment(),
+      ip_aceptacion: getClientIp(req) || "no disponible",
+    }
 
-    // La aceptacion se guarda ANTES de crear el pago; si no se puede guardar, no se sigue
+    // Las aceptaciones se guardan ANTES de crear el pago; si alguna no se puede guardar, no se sigue.
+    if (!context.conditionsAccepted) {
+      const conditionsId = await recordLegalAcceptance(supabaseAdmin, {
+        userId: user.id,
+        context: COLECCIONA_CONTEXT_CONDITIONS,
+        document: COLECCIONA_CONDITIONS_DOCUMENT,
+        documentVersion: COLECCIONA_CONDITIONS_VERSION,
+        referenceId: context.progress.id,
+        textSnapshot: blocksToPlainText(buildConditionsBlocks()),
+        request: req,
+        metadata: { bag_id: context.bag.id },
+      })
+      if (!conditionsId) {
+        return NextResponse.json({ error: "No se pudo registrar tu aceptación. No se ha cobrado nada." }, { status: 500 })
+      }
+    }
+
+    const annexId = await recordLegalAcceptance(supabaseAdmin, {
+      userId: user.id,
+      context: COLECCIONA_CONTEXT_ANNEX,
+      document: COLECCIONA_ANNEX_DOCUMENT,
+      documentVersion: COLECCIONA_CONTRACT_VERSION,
+      referenceId: context.progress.id,
+      textSnapshot: `${blocksToPlainText(buildAnnexBlocks(context.vars))}\n\n${COLECCIONA_ANNEX_PHRASE}`,
+      request: req,
+      metadata: { bag_id: context.bag.id, report: context.report },
+    })
+    if (!annexId) {
+      return NextResponse.json({ error: "No se pudo registrar tu aceptación. No se ha cobrado nada." }, { status: 500 })
+    }
+
     const acceptanceId = await recordLegalAcceptance(supabaseAdmin, {
       userId: user.id,
-      context: "colecciona_purchase",
-      document: COLECCIONA_PURCHASE_DOCUMENT,
-      documentVersion: COLECCIONA_PURCHASE_VERSION,
-      referenceId: progress.id,
-      textSnapshot:
-        `Compra definitiva del bolso ${bagLabel}. Precio ${target.toFixed(2)} EUR; crédito aplicado ` +
-        `${appliedCredit.toFixed(2)} EUR; importe a pagar ${amountDue.toFixed(2)} EUR. La socia declara conocer y ` +
-        `aceptar el estado del bolso tras su uso durante la membresía. Conserva el derecho de desistimiento de 14 días ` +
-        `naturales y la garantía legal.`,
+      context: COLECCIONA_CONTEXT_CONTRACT,
+      document: COLECCIONA_CONTRACT_DOCUMENT,
+      documentVersion: COLECCIONA_CONTRACT_VERSION,
+      referenceId: context.progress.id,
+      textSnapshot: blocksToPlainText(buildContractBlocks(context.vars, stamp)),
       request: req,
-      metadata: { bag_id: progress.bag_id, price: target, credit: appliedCredit, amount_due: amountDue },
+      // vars + stamp bastan para reconstruir el PDF identico tras el pago
+      metadata: {
+        bag_id: context.bag.id,
+        price,
+        credit,
+        amount_due: due,
+        conditions_version: COLECCIONA_CONDITIONS_VERSION,
+        annex_acceptance_id: annexId,
+        vars: context.vars,
+        stamp,
+      },
     })
     if (!acceptanceId) {
       return NextResponse.json({ error: "No se pudo registrar tu aceptación. No se ha cobrado nada." }, { status: 500 })
     }
+
+    const progress = { id: context.progress.id, bag_id: context.progress.bag_id }
+    const bag = { images: context.bag.images, image_url: context.bag.image_url }
+    const appliedCredit = credit
 
     // Customer de Stripe: el de la membresia (donde esta la tarjeta guardada) o el del perfil
     const { data: mem } = await supabaseAdmin
