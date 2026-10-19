@@ -18,6 +18,8 @@ interface EmailData {
   bagName?: string
   reservationDate?: string
   reservationId?: string
+  /** true solo para marketing: añade la cabecera de baja (List-Unsubscribe). Los correos de servicio no la llevan. */
+  marketing?: boolean
   /** Adjuntos (Resend): contenido en base64. */
   attachments?: Array<{ filename: string; content: string }>
 }
@@ -103,10 +105,16 @@ export class EmailServiceProduction {
             subject: data.subject,
             html: data.html,
             text: data.text || data.subject,
-            headers: {
-              "List-Unsubscribe": `<${unsubscribeUrl}>`,
-              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-            },
+            // Los correos de servicio (recibos, confirmaciones, avisos de cuenta) NO llevan List-Unsubscribe:
+            // Gmail los mostraba como "lista de correos" con "Cancelar suscripcion".
+            ...(data.marketing
+              ? {
+                  headers: {
+                    "List-Unsubscribe": `<${unsubscribeUrl}>`,
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                  },
+                }
+              : {}),
             ...(data.attachments && data.attachments.length > 0 ? { attachments: data.attachments } : {}),
           }),
         })

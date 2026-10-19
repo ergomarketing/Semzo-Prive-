@@ -22,7 +22,7 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
 
 export async function sendMembershipActivatedEmails(
   supabase: SupabaseClient,
-  input: { userId: string; membershipType: string; subscriptionId: string },
+  input: { userId: string; membershipType: string; subscriptionId: string; returning?: boolean },
 ): Promise<void> {
   const { data: profile } = await supabase
     .from("profiles")
@@ -36,15 +36,19 @@ export async function sendMembershipActivatedEmails(
   const emailService = EmailServiceProduction.getInstance()
   const metadata = { subscriptionId: input.subscriptionId }
 
-  const memberSubject = `Bienvenida a Semzo Privé — Tu membresía ${label} está activa`
+  const firstName = (profile.full_name || "").trim().split(/\s+/)[0] || ""
+  const memberSubject = input.returning
+    ? `Tu membresía ${label} vuelve a estar activa — Semzo Privé`
+    : `Bienvenida a Semzo Privé — Tu membresía ${label} está activa`
   const memberSent = await emailService.sendWithResend({
     to: profile.email,
     subject: memberSubject,
     html: await render(
       <MembershipActivatedEmail
-        name={profile.full_name || ""}
+        name={firstName}
         membershipLabel={label}
-        dashboardUrl={`${siteUrl}/dashboard`}
+        returning={input.returning}
+        dashboardUrl={`${siteUrl}/catalog`}
       />,
     ),
   })
