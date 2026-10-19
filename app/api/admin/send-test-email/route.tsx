@@ -7,6 +7,18 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
+import WelcomeEmail from "@/emails/templates/welcome"
+import MembershipActivatedEmail from "@/emails/templates/membership-activated"
+import MembershipRenewedEmail from "@/emails/templates/membership-renewed"
+import DunningEmail from "@/emails/templates/dunning"
+import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient"
+import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
+import SepaExecutionEmail from "@/emails/templates/sepa-execution"
+import OwnershipCompletedEmail from "@/emails/templates/ownership-completed"
+import { getMessages } from "@/emails/messages"
+import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
+import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
+import { buildBagPassPurchaseUserEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -20,12 +32,30 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 const resend = new Resend(getResendApiKey())
 const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
-// Emails "de código" (no viven en lifecycle_email_templates).
+// Emails "de código" (no viven en lifecycle_email_templates), agrupados por tema. Cada uno se prueba con
+// su diseño REAL actual y datos de ejemplo. Los marcados (borrador) aun no existen: son un punto de partida
+// para sustituirlos por la plantilla nueva.
 const CODE_EMAILS = [
-  { key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
-  { key: "shipment_delivered", label: "Entrega confirmada" },
-  { key: "membership_cancelled", label: "Cancelación de membresía" },
-  { key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },
+  { group: "Cuenta y membresía", key: "welcome", label: "Bienvenida de registro (confirmar cuenta)" },
+  { group: "Cuenta y membresía", key: "membership_activated", label: "Membresía activa" },
+  { group: "Cuenta y membresía", key: "membership_returning", label: "Membresía vuelve a estar activa" },
+  { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar" },
+  { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
+  { group: "Pagos", key: "payment_receipt", label: "Recibo de pago (borrador nuevo)" },
+  { group: "Pagos", key: "refund", label: "Reembolso (borrador nuevo)" },
+  { group: "Pagos", key: "membership_renewed", label: "Recibo de renovación" },
+  { group: "Pagos", key: "payment_failed_1", label: "Pago fallido · aviso 1" },
+  { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2" },
+  { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3" },
+  { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo" },
+  { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida" },
+  { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA" },
+  { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado" },
+  { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)" },
+  { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
+  { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
+  { group: "Envíos y devoluciones", key: "shipment_delivered", label: "Entrega confirmada" },
+  { group: "Envíos y devoluciones", key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },
 ] as const
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
@@ -57,6 +87,184 @@ function extractPlaceholders(...texts: string[]): string[] {
     for (const match of text.matchAll(/\{\{(\w+)\}\}/g)) keys.add(match[1])
   }
   return Array.from(keys)
+}
+
+const TEST_SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
+
+/** Construye {asunto, html} de los correos de servicio con datos de ejemplo. */
+async function buildServiceTestEmail(key: string): Promise<{ subject: string; html: string } | null> {
+  const t = getMessages("es")
+  switch (key) {
+    case "welcome":
+      return {
+        subject: t.welcome.subject,
+        html: await render(<WelcomeEmail name="Erika" confirmationUrl={`${TEST_SITE}/auth/confirm`} />),
+      }
+    case "membership_activated":
+      return {
+        subject: "Bienvenida a Semzo Privé — Tu membresía Petite está activa",
+        html: await render(<MembershipActivatedEmail name="Erika" membershipLabel="Petite" dashboardUrl={`${TEST_SITE}/catalog`} />),
+      }
+    case "membership_returning":
+      return {
+        subject: "Tu membresía Petite vuelve a estar activa — Semzo Privé",
+        html: await render(
+          <MembershipActivatedEmail name="Erika" membershipLabel="Petite" returning dashboardUrl={`${TEST_SITE}/catalog`} />,
+        ),
+      }
+    case "membership_expiring": {
+      const service = new EmailServiceProduction()
+      return {
+        subject: "Tu membresía Petite expira pronto - Semzo Privé",
+        html: service.renderMembershipExpiringHtml({
+          userName: "Erika Ejemplo",
+          membershipType: "Petite",
+          endDate: "17 de noviembre de 2026",
+          daysRemaining: 3,
+        }),
+      }
+    }
+    case "membership_renewed":
+      return {
+        subject: "Tu factura de Semzo Privé · J3QQFECB-0055",
+        html: await render(
+          <MembershipRenewedEmail
+            name="Erika"
+            amount="19,99"
+            invoiceNumber="J3QQFECB-0055"
+            invoiceUrl={`${TEST_SITE}/dashboard`}
+            dashboardUrl={`${TEST_SITE}/dashboard`}
+          />,
+        ),
+      }
+    case "payment_failed_1":
+    case "payment_failed_2":
+    case "payment_failed_3": {
+      const step = Number(key.slice(-1)) as 1 | 2 | 3
+      const copy = step === 1 ? t.dunning.e1 : step === 2 ? t.dunning.e2 : t.dunning.e3
+      return {
+        subject: copy.subject,
+        html: await render(
+          <DunningEmail
+            step={step}
+            name="Erika"
+            membershipLabel="Petite"
+            bagName="Chanel Classic Flap"
+            updatePaymentUrl={`${TEST_SITE}/dashboard/membresia`}
+          />,
+        ),
+      }
+    }
+    case "bag_pass_purchased":
+      return buildBagPassPurchaseUserEmail({
+        userName: "Erika Ejemplo",
+        passTier: "lessentiel",
+        quantity: 1,
+        totalPrice: 52,
+        paymentMethod: "card",
+      })
+    case "gift_card_recipient":
+      return {
+        subject: t.giftCardRecipient.subject("100"),
+        html: await render(
+          <GiftCardRecipientEmail
+            recipientName="Erika"
+            personalMessage="Para que elijas el bolso que más te guste."
+            code="SEMZO-EJEMPLO-1234"
+            amountEuros="100"
+            redeemUrl={`${TEST_SITE}/dashboard/gift-cards`}
+          />,
+        ),
+      }
+    case "sepa_pre_execution":
+      return {
+        subject: "Aviso Previo a Ejecución de Mandato SEPA - Acción Requerida",
+        html: await render(
+          <SepaPreExecutionEmail
+            customerName="Erika"
+            bagName="Chanel Classic Flap"
+            rentalEndDate="viernes, 20 de septiembre"
+            amountDue={2950}
+            reservationId="00000000-0000-0000-0000-000000000000"
+            termsUrl={`${TEST_SITE}/legal/terms`}
+            dashboardUrl={`${TEST_SITE}/dashboard/mis-reservas`}
+          />,
+        ),
+      }
+    case "sepa_execution":
+      return {
+        subject: "Confirmación de Cargo SEPA Ejecutado - Semzo Privé",
+        html: await render(
+          <SepaExecutionEmail
+            customerName="Erika"
+            bagName="Chanel Classic Flap"
+            amountCharged={2950}
+            reservationId="00000000-0000-0000-0000-000000000000"
+            paymentIntentId="pi_ejemplo"
+            termsUrl={`${TEST_SITE}/legal/terms`}
+          />,
+        ),
+      }
+    case "colecciona_sale":
+      return {
+        subject: "Chanel 2.55 Reissue ya es tuyo · Semzo Privé",
+        html: renderColeccionaSaleMemberEmail({
+          firstName: "Erika",
+          bagLabel: "Chanel 2.55 Reissue",
+          paid: "4.360,50 €",
+          invoiceUrl: `${TEST_SITE}/dashboard`,
+          hasContract: true,
+        }),
+      }
+    case "colecciona_ready":
+      return {
+        subject: t.ownershipCompleted.subject,
+        html: await render(
+          <OwnershipCompletedEmail name="Erika" bagBrand="Chanel" bagName="2.55 Reissue" ctaUrl={`${TEST_SITE}/dashboard`} />,
+        ),
+      }
+    case "payment_receipt":
+      // BORRADOR: este correo aun no existe (hoy el recibo lo manda Stripe). Punto de partida para tu plantilla.
+      return {
+        subject: "Recibo de tu pago · Semzo Privé",
+        html: renderBrandEmail({
+          preheader: "Hemos recibido tu pago.",
+          eyebrow: "Recibo de pago",
+          heading: "Hemos recibido tu pago",
+          bodyHtml: `
+            <p style="margin:0 0 8px 0;">Hola Erika, este es el resumen de tu pago.</p>
+            ${emailDetailList([
+              { label: "Concepto", value: "Pase Bolso L'Essentiel" },
+              { label: "Importe", value: "52,00 €" },
+              { label: "Fecha", value: "19 de octubre de 2026" },
+              { label: "Método de pago", value: "Tarjeta" },
+            ])}
+            ${emailInfoBox("Puedes descargar tu factura desde el botón de abajo.")}
+          `,
+          cta: { label: "Ver mi factura", url: `${TEST_SITE}/dashboard` },
+        }),
+      }
+    case "refund":
+      // BORRADOR: este correo aun no existe (no hay manejo de reembolsos). Punto de partida para tu plantilla.
+      return {
+        subject: "Tu reembolso está en camino · Semzo Privé",
+        html: renderBrandEmail({
+          preheader: "Hemos emitido tu reembolso.",
+          eyebrow: "Reembolso",
+          heading: "Hemos emitido tu reembolso",
+          bodyHtml: `
+            <p style="margin:0 0 8px 0;">Hola Erika, hemos emitido el reembolso de tu pago.</p>
+            ${emailDetailList([
+              { label: "Importe reembolsado", value: "52,00 €" },
+              { label: "Plazo", value: "5-10 días hábiles, según tu banco" },
+            ])}
+          `,
+          cta: { label: "Ir a mi cuenta", url: `${TEST_SITE}/dashboard` },
+        }),
+      }
+    default:
+      return null
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -185,8 +393,18 @@ export async function POST(request: NextRequest) {
           if (sendError) return NextResponse.json({ error: JSON.stringify(sendError) }, { status: 500 })
           return NextResponse.json({ ok: true })
         }
-        default:
-          return NextResponse.json({ error: "codeKey desconocido" }, { status: 400 })
+        default: {
+          const built = await buildServiceTestEmail(codeKey || "")
+          if (!built) return NextResponse.json({ error: "codeKey desconocido" }, { status: 400 })
+          const { error: sendError } = await resend.emails.send({
+            from: FROM_EMAIL,
+            to,
+            subject: `[PRUEBA] ${built.subject}`,
+            html: built.html,
+          })
+          if (sendError) return NextResponse.json({ error: JSON.stringify(sendError) }, { status: 500 })
+          return NextResponse.json({ ok: true })
+        }
       }
     }
 
