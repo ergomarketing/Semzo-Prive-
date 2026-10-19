@@ -94,10 +94,17 @@ const TEST_SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 async function buildServiceTestEmail(key: string): Promise<{ subject: string; html: string } | null> {
   const t = getMessages("es")
   switch (key) {
-    case "welcome":
-      return buildAccountConfirmationEmail({
+    case "welcome": {
+      const built = buildAccountConfirmationEmail({
         confirmationUrl: `${TEST_SITE}/auth/callback?token_hash=EJEMPLO&type=signup`,
       })
+      // Aviso visible solo en la PRUEBA: el enlace del boton es de ejemplo y nunca funciona. Un registro real manda uno valido.
+      const note =
+        '<div style="background:#fff3cd;color:#7a5a00;font:13px Arial,sans-serif;padding:10px 16px;text-align:center;">' +
+        "PRUEBA: el botón lleva un enlace de ejemplo y no funciona. Un registro real envía un enlace válido." +
+        "</div>"
+      return { subject: built.subject, html: built.html.replace(/(<body[^>]*>)/i, `$1${note}`) }
+    }
     case "membership_activated":
       return {
         subject: "Bienvenida a Semzo Privé — Tu membresía Petite está activa",
