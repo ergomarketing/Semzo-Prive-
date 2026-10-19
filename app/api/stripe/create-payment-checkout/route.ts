@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@/app/lib/supabase/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
+import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
 
 export const dynamic = "force-dynamic"
 
@@ -96,24 +97,17 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // 1) Reserva en curso = cualquiera NO completada ni cancelada (cubre
-      //    active, overdue, shipped, delivered, in_use, returning...).
-      const { data: ongoingReservations, error: resError } = await supabase
-        .from("reservations")
-        .select("id, status")
-        .eq("user_id", userId)
-        .not("status", "in", "(completed,cancelled,canceled)")
-
-      if (resError) {
-        console.error("[v0][create-payment-checkout] error reservations:", resError)
-      }
-
-      if (ongoingReservations && ongoingReservations.length > 0) {
+      // 1) Con un bolso en curso solo se puede comprar el pase de su "proximo bolso" (ultimos 7 dias del ciclo).
+      const nextBag = await getNextBagState(supabase, userId)
+      if ((nextBag.hasBagInHand && !nextBag.canQueue) || nextBag.queued) {
         return NextResponse.json(
           {
-            error:
-              "Tienes un bolso en curso. Para reservar uno nuevo, primero completa la devolucion del bolso actual desde tu dashboard.",
+            error: nextBag.hasBagInHand
+              ? nextBagBlockMessage(nextBag)
+              : `Ya tienes tu próximo bolso reservado (${nextBag.queued?.bagLabel}).`,
             code: "ACTIVE_RESERVATION",
+            reason: nextBag.reason,
+            nextBagWindowOpensAt: nextBag.windowOpensAt,
           },
           { status: 409 }
         )

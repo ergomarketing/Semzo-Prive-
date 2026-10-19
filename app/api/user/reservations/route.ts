@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
+import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
 
 // Cliente de servicio para operaciones de escritura que requieren service role.
 function getSupabase() {
@@ -256,33 +257,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // BLOQUEO UNIVERSAL: 1 bolso a la vez
+    // BLOQUEO UNIVERSAL: 1 bolso a la vez.
     // Aplica a TODAS las membresias (petite, essentiel, signature, prive).
-    // Si la socia ya tiene una reserva en curso (pending/confirmed/active/overdue),
-    // no puede reservar otro bolso hasta que devuelva el actual. La reserva solo
-    // pasa a 'completed' cuando logistica confirma la devolucion fisica.
-    // 'overdue' = bolso vencido pero todavia en poder de la socia.
-    // En curso = cualquier reserva que NO este completada ni cancelada.
-    // Cubre pending/confirmed/active/shipped/delivered/in_use/returning/overdue.
-    const { data: ongoingReservation } = await supabase
-      .from("reservations")
-      .select("id, bag_id, end_date, status, bags(name, brand)")
-      .eq("user_id", userId)
-      .not("status", "in", "(completed,cancelled,canceled)")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // Si la socia ya tiene una reserva en curso (pending/confirmed/active/overdue), no puede reservar otro bolso
+    // hasta devolver el actual... SALVO la regla del "proximo bolso": en los ultimos 7 dias de su ciclo puede
+    // reservar UNO mas, que queda en cola ('queued') y solo sale cuando Logistica confirma la devolucion del actual.
+    // La reserva solo pasa a 'completed' cuando logistica confirma la devolucion fisica.
+    // 'overdue' = bolso vencido pero todavia en poder de la socia (no puede encolar).
+    const nextBag = await getNextBagState(supabase, userId)
+    const queueMode = nextBag.hasBagInHand
 
-    if (ongoingReservation) {
-      const bagInfo = (ongoingReservation as any).bags
-      const bagLabel = bagInfo
-        ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
-        : "tu bolso actual"
+    if (queueMode && !nextBag.canQueue) {
       return NextResponse.json(
         {
-          error: `Tienes una reserva en curso con ${bagLabel}. Para reservar un nuevo bolso, primero envia el actual a Semzo Privé. En cuanto recibamos la devolución podrás elegir tu siguiente bolso.`,
-          code: "ACTIVE_RESERVATION_IN_PROGRESS",
-          activeReservationId: ongoingReservation.id,
+          error: nextBagBlockMessage(nextBag),
+          code: nextBag.reason === "already_queued" ? "NEXT_BAG_ALREADY_QUEUED" : "ACTIVE_RESERVATION_IN_PROGRESS",
+          activeReservationId: nextBag.ongoing?.id,
+          reason: nextBag.reason,
+          nextBagWindowOpensAt: nextBag.windowOpensAt,
+        },
+        { status: 409 },
+      )
+    }
+
+    if (!queueMode && nextBag.queued) {
+      // Defensa: hay una reserva en cola pero ya no hay bolso en curso (la devolucion se cerro y no se activo).
+      return NextResponse.json(
+        {
+          error: `Ya tienes tu próximo bolso reservado (${nextBag.queued.bagLabel}). Lo prepararemos en breve.`,
+          code: "NEXT_BAG_ALREADY_QUEUED",
         },
         { status: 409 },
       )
@@ -300,7 +303,7 @@ export async function POST(request: NextRequest) {
     // - Prive monthly       : 1 bolso/mes.
     // - Prive quarterly     : 3 bolsos/trimestre.
     const planForLimit = (membership.membership_type || "").toLowerCase()
-    if (["essentiel", "lessentiel", "signature", "prive"].includes(planForLimit)) {
+    if (!queueMode && ["essentiel", "lessentiel", "signature", "prive"].includes(planForLimit)) {
       const cycleRaw = (membership.billing_cycle || "monthly").toLowerCase()
       const isQuarterly = cycleRaw === "quarterly" || cycleRaw === "trimestral"
       const cycleDays = isQuarterly ? 90 : 30
@@ -319,12 +322,21 @@ export async function POST(request: NextRequest) {
       }
       const cycleStart = new Date(cycleStartMs).toISOString()
 
-      // Contar TODAS las reservas del ciclo, incluidas las canceladas
-      const { count: cycleReservations } = await supabase
+      // Contar TODAS las reservas del ciclo, incluidas las canceladas. Una reserva creada en cola cuenta para el
+      // ciclo SIGUIENTE: se cuenta desde 7 dias antes del inicio del ciclo, y no cuenta en el ciclo en que se creo.
+      const { count: directCount } = await supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
+        .eq("queued_from_prev_cycle", false)
         .gte("created_at", cycleStart)
+      const { count: queuedOriginCount } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("queued_from_prev_cycle", true)
+        .gte("created_at", new Date(cycleStartMs - 7 * 24 * 60 * 60 * 1000).toISOString())
+      const cycleReservations = (directCount || 0) + (queuedOriginCount || 0)
 
       if ((cycleReservations || 0) >= maxBagsPerCycle) {
         const errorMsg = isQuarterly
@@ -629,6 +641,7 @@ export async function POST(request: NextRequest) {
       p_end_date: endDate.toISOString(),
       p_membership_type: userMembershipPlan,
       p_rental_days: rentalDays,
+      p_status: queueMode ? "queued" : "confirmed",
     })
 
     if (rpcError) {
@@ -721,10 +734,11 @@ export async function POST(request: NextRequest) {
 
     try {
       await notifyAdmin(
-        `Nueva Reserva - ${bag.brand} ${bag.name}`,
+        `${queueMode ? "Próximo bolso EN COLA (no enviar aún)" : "Nueva Reserva"} - ${bag.brand} ${bag.name}`,
         `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a4b;">Nueva Reserva Creada</h2>
+        <h2 style="color: #1a1a4b;">${queueMode ? "Próximo bolso en cola" : "Nueva Reserva Creada"}</h2>
+        ${queueMode ? '<p style="background:#fff3cd;padding:12px;border-radius:6px;">La socia todavía tiene otro bolso. <strong>No enviar</strong>: esta reserva sale sola cuando confirmes la devolución del bolso actual.</p>' : ""}
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="color: #1a1a4b; margin-top: 0;">Información del Cliente</h3>
           <p><strong>Nombre:</strong> ${userProfile?.full_name || "N/A"}</p>
@@ -737,7 +751,7 @@ export async function POST(request: NextRequest) {
           <p><strong>Fechas:</strong> ${startDate.toLocaleDateString("es-ES")} - ${endDate.toLocaleDateString("es-ES")}</p>
           <p><strong>Duración:</strong> ${days} días</p>
           <p><strong>Monto adicional:</strong> ${totalAmount}€ ${totalAmount === 0 ? "(incluido en membresía)" : ""}</p>
-          <p><strong>Estado:</strong> <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px;">Confirmada</span></p>
+          <p><strong>Estado:</strong> <span style="background: ${queueMode ? "#d97706" : "#10b981"}; color: white; padding: 2px 8px; border-radius: 4px;">${queueMode ? "En cola" : "Confirmada"}</span></p>
           <p><strong>Fecha de creación:</strong> ${new Date().toLocaleString("es-ES")}</p>
         </div>
         ${bag.image_url ? `<img src="${bag.image_url}" alt="${bag.name}" style="max-width: 200px; border-radius: 8px; margin: 20px 0;" />` : ""}
@@ -756,7 +770,8 @@ export async function POST(request: NextRequest) {
     // Cubre TANTO reservas por membresía (Essentiel/Signature/Privé) como
     // reservas hechas con un Pase de Bolso (Petite): ambas pasan por este
     // mismo endpoint, la unica diferencia es el valor de {{plan}}.
-    try {
+    // En cola: no se manda "Reserva confirmada / de camino" (aun no sale). Aviso propio de "próximo bolso" pendiente de plantilla.
+    if (!queueMode) try {
       const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
       const emailService = EmailServiceProduction.getInstance()
 
@@ -994,7 +1009,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Reserva creada exitosamente",
+      message: queueMode
+        ? "Tu próximo bolso está reservado. Saldrá hacia ti en cuanto recibamos el que tienes ahora."
+        : "Reserva creada exitosamente",
+      queued: queueMode,
       reservation,
     })
   } catch (error) {

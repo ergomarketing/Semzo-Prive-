@@ -118,6 +118,7 @@ export default function ReservationsPage() {
       completed: "Completada",
       cancelled: "Cancelada",
       overdue: "Devolución vencida",
+      queued: "En cola · próximo bolso (no enviar)",
     }
     const isCancelled = status === "cancelled"
     const isOverdue = status === "overdue"

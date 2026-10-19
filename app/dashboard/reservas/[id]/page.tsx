@@ -90,6 +90,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
   },
   completed: { label: "Completada", color: "bg-slate-100 text-slate-800", icon: <CheckCircle2 className="h-4 w-4" /> },
   cancelled: { label: "Cancelada", color: "bg-[#fff0f3] text-[#1a1a4b]", icon: <XCircle className="h-4 w-4" /> },
+  queued: { label: "Próximo bolso (en cola)", color: "bg-amber-100 text-amber-800", icon: <Clock className="h-4 w-4" /> },
   overdue: { label: "Devolución pendiente", color: "bg-red-100 text-red-800", icon: <Clock className="h-4 w-4" /> },
 }
 

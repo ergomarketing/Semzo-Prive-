@@ -16,6 +16,7 @@ import { LoginModal } from "@/app/components/login-modal"
 import { UpgradeMembershipDialog } from "@/app/components/upgrade-membership-dialog"
 import { ModeSelectorDialog } from "@/app/components/mode-selector-dialog"
 import { useTranslations, useLocale } from "next-intl"
+import { useNextBag } from "@/hooks/use-next-bag"
 
 interface BagItem {
   id: string
@@ -360,10 +361,17 @@ function BagCard({
   const selectedModeRef = useRef<"discover" | "collect" | null>(null)
   const activeModeRef = useRef<"discover" | "collect" | null>(null)
   const [upgradeRequiredTier, setUpgradeRequiredTier] = useState<string>("prive")
-  const [activeBagDialog, setActiveBagDialog] = useState<{ open: boolean; bagLabel: string }>({
+  const [activeBagDialog, setActiveBagDialog] = useState<{ open: boolean; bagLabel: string; opensAt?: string | null }>({
     open: false,
     bagLabel: "",
+    opensAt: null,
   })
+  // "Proximo bolso": con un bolso en curso y en los ultimos 7 dias del ciclo, se puede reservar UNO mas que queda
+  // en cola y sale cuando recibimos la devolucion del actual (ver lib/next-bag-queue.ts).
+  const { nextBag, refreshNextBag } = useNextBag(user?.id)
+  const [showQueueConfirm, setShowQueueConfirm] = useState(false)
+  const queueConfirmedRef = useRef(false)
+  const [wasQueued, setWasQueued] = useState(false)
 
   const t = useTranslations("catalog")
   const locale = useLocale()
@@ -449,9 +457,24 @@ function BagCard({
       return
     }
 
-    // BLOQUEO: si la socia ya tiene un bolso en curso, no puede reservar otro.
-    // Aplica a todas las membresias (Petite, L'Essentiel, Signature, Prive).
-    if (supabase) {
+    // BLOQUEO: si la socia ya tiene un bolso en curso, no puede reservar otro... salvo su "proximo bolso" en los
+    // ultimos 7 dias del ciclo (queda en cola). Aplica a todas las membresias (Petite, L'Essentiel, Signature, Prive).
+    const queueMode = !!nextBag?.canQueue
+    if (nextBag?.hasBagInHand && !queueMode) {
+      setActiveBagDialog({
+        open: true,
+        bagLabel: nextBag.ongoing?.bagLabel || t("currentBagFallback"),
+        opensAt: nextBag.reason === "window_closed" ? nextBag.windowOpensAt : null,
+      })
+      return
+    }
+    if (queueMode && !queueConfirmedRef.current) {
+      setShowQueueConfirm(true)
+      return
+    }
+    queueConfirmedRef.current = false
+    if (!nextBag && supabase) {
+      // Sin estado del servidor (fallo de red): comprobacion basica de bolso activo.
       const { data: ongoing } = await supabase
         .from("reservations")
         .select("id, bags(name, brand)")
@@ -466,14 +489,15 @@ function BagCard({
         const bagLabel = bagInfo
           ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim()
           : t("currentBagFallback")
-        setActiveBagDialog({ open: true, bagLabel })
+        setActiveBagDialog({ open: true, bagLabel, opensAt: null })
         return
       }
     }
 
     // Modo Colecciona: si el bolso se ofrece en Colecciona, la socia elige modo ANTES de reservar
     // o de comprar el pase (esta ruta no pasaba por el selector, solo la ficha del bolso).
-    const hasCollectOption = bag.purchase_price != null && Number(bag.purchase_price) > 0
+    // (En "proximo bolso" no se ofrece Colecciona: se puede activar desde el panel cuando el bolso llegue.)
+    const hasCollectOption = !queueMode && bag.purchase_price != null && Number(bag.purchase_price) > 0
     const pickedMode = selectedModeRef.current
     selectedModeRef.current = null
     if (hasCollectOption && !pickedMode) {
@@ -585,7 +609,11 @@ function BagCard({
         // Bolso ya en posesion: modal centrado
         if (data.code === "ACTIVE_RESERVATION_IN_PROGRESS") {
           setIsReserving(false)
-          setActiveBagDialog({ open: true, bagLabel: t("currentBagFallback") })
+          setActiveBagDialog({
+            open: true,
+            bagLabel: t("currentBagFallback"),
+            opensAt: data.reason === "window_closed" ? data.nextBagWindowOpensAt : null,
+          })
           return
         }
 
@@ -597,7 +625,7 @@ function BagCard({
 
       // Modo Colecciona elegido: se registra ahora que la reserva existe. Si falla, la reserva
       // sigue en pie (modo Descubre) y la socia puede usar "Convertir en mio" en su panel.
-      if (activeModeRef.current === "collect") {
+      if (activeModeRef.current === "collect" && !data.queued) {
         try {
           const modeRes = await fetch("/api/user/ownership-progress", {
             method: "POST",
@@ -621,17 +649,20 @@ function BagCard({
         activeModeRef.current = null
       }
 
+      queueConfirmedRef.current = false
+      setWasQueued(!!data.queued)
       setShowSuccess(true)
       setIsReserving(false)
+      refreshNextBag()
 
       toast({
-        title: t("toastReserveCreatedTitle"),
-        description: t("toastReserveCreatedDesc"),
+        title: data.queued ? t("nextBagSuccessTitle") : t("toastReserveCreatedTitle"),
+        description: data.queued ? t("nextBagSuccessSub") : t("toastReserveCreatedDesc"),
         duration: 2000,
       })
 
       setTimeout(() => {
-        window.location.href = "/dashboard/reservas"
+        window.location.href = data.queued ? "/dashboard" : "/dashboard/reservas"
       }, 1500)
     } catch (error: any) {
       setIsReserving(false)
@@ -730,8 +761,12 @@ function BagCard({
 
           {showSuccess && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-              <p className="text-sm text-green-800 font-medium">{t("reserveSuccessTitle")}</p>
-              <p className="text-xs text-green-600 mt-1">{t("reserveSuccessSub")}</p>
+              <p className="text-sm text-green-800 font-medium">
+                {wasQueued ? t("nextBagSuccessTitle") : t("reserveSuccessTitle")}
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                {wasQueued ? t("nextBagSuccessSub") : t("reserveSuccessSub")}
+              </p>
             </div>
           )}
 
@@ -763,7 +798,7 @@ function BagCard({
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4 mr-2" />
-                    {t("reserve")}
+                    {nextBag?.canQueue ? t("reserveNext") : t("reserve")}
                   </>
                 )}
               </Button>
@@ -952,6 +987,35 @@ function BagCard({
         }}
       />
 
+      {/* Dialog: confirmar "proximo bolso" (reserva en cola) */}
+      <Dialog open={showQueueConfirm} onOpenChange={setShowQueueConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">{t("nextBagTitle")}</DialogTitle>
+            <DialogDescription className="pt-2 leading-relaxed text-foreground/80">
+              {t.rich("nextBagDesc", {
+                label: `${bag.brand} ${bag.name}`.trim(),
+                b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setShowQueueConfirm(false)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              onClick={() => {
+                queueConfirmedRef.current = true
+                setShowQueueConfirm(false)
+                handleQuickReserve()
+              }}
+            >
+              {t("nextBagConfirm")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog: bolso ya en posesion (todas las membresias) */}
       <Dialog
         open={activeBagDialog.open}
@@ -967,6 +1031,15 @@ function BagCard({
                 label: activeBagDialog.bagLabel,
                 b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
               })}
+              {activeBagDialog.opensAt && (
+                <>
+                  {" "}
+                  {t.rich("activeBagWindowDesc", {
+                    date: new Date(activeBagDialog.opensAt).toLocaleDateString(locale, { day: "numeric", month: "long" }),
+                    b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+                  })}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">

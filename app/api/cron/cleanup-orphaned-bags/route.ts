@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         .from("reservations")
         .select("id, status, is_admin_rent")
         .eq("bag_id", bag.id)
-        .in("status", ["confirmed", "active", "pending", "in_progress", "preparing"])
+        .in("status", ["confirmed", "active", "pending", "in_progress", "preparing", "queued"])
         .limit(1)
         .maybeSingle()
 
