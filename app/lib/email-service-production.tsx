@@ -47,6 +47,40 @@ function esDate(value: string): string {
   return isNaN(d.getTime()) ? value : d.toLocaleDateString("es-ES")
 }
 
+/** Correo "Pase Bolso listo" (socia). Exportado para usarlo tambien en la prueba de /admin/email-preview. */
+export function buildBagPassPurchaseUserEmail(data: {
+  userName: string
+  passTier: string
+  quantity: number
+  totalPrice: number
+  paymentMethod: string
+}): { subject: string; html: string } {
+  const tierLabel =
+    data.passTier === "lessentiel" || data.passTier === "essentiel"
+      ? "L'Essentiel"
+      : data.passTier.charAt(0).toUpperCase() + data.passTier.slice(1)
+  const paymentLabel = data.paymentMethod === "gift_card" ? "Gift Card" : "Tarjeta"
+  return {
+    subject: `Tu Pase Bolso ${tierLabel} está listo - Semzo Privé`,
+    html: renderBrandEmail({
+      preheader: "Tu Pase Bolso está listo. Ya puedes reservar.",
+      eyebrow: "Pase Bolso",
+      heading: "Tu Pase Bolso está listo",
+      bodyHtml: `
+        <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, tu compra se ha procesado correctamente. Ya puedes reservar tu bolso.</p>
+        ${emailDetailList([
+          { label: "Pase", value: tierLabel },
+          { label: "Cantidad", value: String(data.quantity) },
+          { label: "Total", value: `€${data.totalPrice.toFixed(2)}` },
+          { label: "Método de pago", value: paymentLabel },
+        ])}
+        <p style="margin:0;">Recuerda: cada pase te permite disfrutar de un bolso durante 1 semana.</p>
+      `,
+      cta: { label: "Reservar mi bolso", url: `${BRAND.site}/catalog`, accent: "gold" },
+    }),
+  }
+}
+
 export class EmailServiceProduction {
   private static instance: EmailServiceProduction
   private config: EmailConfig
@@ -631,6 +665,11 @@ export class EmailServiceProduction {
       ],
       accent: "success",
     })
+  }
+
+  /** Para la prueba de /admin/email-preview: el mismo HTML que recibe la socia. */
+  renderMembershipExpiringHtml(data: { userName: string; membershipType: string; endDate: string; daysRemaining: number }): string {
+    return this.generateMembershipExpiringHTML(data)
   }
 
   private generateMembershipExpiringHTML(data: {
@@ -1544,25 +1583,11 @@ export class EmailServiceProduction {
         : data.passTier.charAt(0).toUpperCase() + data.passTier.slice(1)
     const paymentLabel = data.paymentMethod === "gift_card" ? "Gift Card" : "Tarjeta"
 
+    const built = buildBagPassPurchaseUserEmail(data)
     const userEmailData: EmailData = {
       to: data.userEmail,
-      subject: `Tu Pase Bolso ${tierLabel} está listo - Semzo Privé`,
-      html: renderBrandEmail({
-        preheader: "Tu Pase Bolso está listo. Ya puedes reservar.",
-        eyebrow: "Pase Bolso",
-        heading: "Tu Pase Bolso está listo",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, tu compra se ha procesado correctamente. Ya puedes reservar tu bolso.</p>
-          ${emailDetailList([
-            { label: "Pase", value: tierLabel },
-            { label: "Cantidad", value: String(data.quantity) },
-            { label: "Total", value: `€${data.totalPrice.toFixed(2)}` },
-            { label: "Método de pago", value: paymentLabel },
-          ])}
-          <p style="margin:0;">Recuerda: cada pase te permite disfrutar de un bolso durante 1 semana.</p>
-        `,
-        cta: { label: "Reservar mi bolso", url: `${BRAND.site}/catalogo`, accent: "gold" },
-      }),
+      subject: built.subject,
+      html: built.html,
     }
 
     const adminEmailData: EmailData = {

@@ -161,7 +161,7 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
         const sent = await emailService.sendWithResend({
           to: profile.email,
           subject: memberSubject,
-          html: buildMemberEmail({ firstName, bagLabel, paid, invoiceUrl, hasContract: !!archived }),
+          html: renderColeccionaSaleMemberEmail({ firstName, bagLabel, paid, invoiceUrl, hasContract: !!archived }),
           attachments,
         })
         await logEmail({
@@ -217,7 +217,7 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
   return { ok: true, firstClose, bagLabel }
 }
 
-function buildMemberEmail(input: {
+export function renderColeccionaSaleMemberEmail(input: {
   firstName: string
   bagLabel: string
   paid: string

@@ -17,6 +17,7 @@ interface LifecycleTemplate {
 interface CodeEmail {
   key: string
   label: string
+  group?: string
 }
 
 type SendResult = { status: "sending" | "success" | "error"; message?: string }
@@ -118,39 +119,48 @@ export default function EmailPreviewPage() {
         </div>
       ) : (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Mail className="h-5 w-5 mr-2" />
-                Emails transaccionales
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {codeEmails.map((email) => {
-                const resultKey = `code:${email.key}`
-                return (
-                  <div
-                    key={email.key}
-                    className="flex items-center justify-between border border-slate-200 rounded-lg p-4"
-                  >
-                    <p className="font-medium text-slate-900">{email.label}</p>
-                    <div className="flex items-center gap-3">
-                      {renderResultBadge(resultKey)}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={results[resultKey]?.status === "sending"}
-                        onClick={() => sendTest(resultKey, { kind: "code", codeKey: email.key })}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Enviar prueba
-                      </Button>
+          {Object.entries(
+            codeEmails.reduce<Record<string, CodeEmail[]>>((acc, email) => {
+              const group = email.group || "Otros"
+              acc[group] = acc[group] || []
+              acc[group].push(email)
+              return acc
+            }, {}),
+          ).map(([group, emails]) => (
+            <Card key={group}>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mail className="h-5 w-5 mr-2" />
+                  Emails de servicio · {group}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {emails.map((email) => {
+                  const resultKey = `code:${email.key}`
+                  return (
+                    <div
+                      key={email.key}
+                      className="flex items-center justify-between border border-slate-200 rounded-lg p-4"
+                    >
+                      <p className="font-medium text-slate-900">{email.label}</p>
+                      <div className="flex items-center gap-3">
+                        {renderResultBadge(resultKey)}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={results[resultKey]?.status === "sending"}
+                          onClick={() => sendTest(resultKey, { kind: "code", codeKey: email.key })}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar prueba
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          ))}
 
           {Object.entries(groupedLifecycle).map(([sequenceKey, steps]) => (
             <Card key={sequenceKey}>
