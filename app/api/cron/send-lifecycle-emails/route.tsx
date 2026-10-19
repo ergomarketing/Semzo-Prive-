@@ -110,6 +110,7 @@ export async function GET(req: NextRequest) {
     const vars: Record<string, string> = {
       // Solo el primer nombre: "Hola Erika," y no "Hola Erika González,".
       name: (row.recipient_name || "").trim().split(/\s+/)[0] || "",
+      nombre: (row.recipient_name || "").trim().split(/\s+/)[0] || "", // alias: las plantillas nuevas usan {{nombre}}
       app_url: appUrl,
       ...(row.metadata || {}),
     }
