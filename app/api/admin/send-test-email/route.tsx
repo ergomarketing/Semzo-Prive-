@@ -46,7 +46,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado" },
   { group: "Pagos", key: "sepa_charge_failed", label: "Cargo SEPA rechazado (fondos insuficientes)" },
   { group: "Pagos", key: "suspended_return", label: "Membresía suspendida con bolso en casa: devolución (texto provisional)" },
-  { group: "Pagos", key: "sepa_manual_paid", label: "Pago manual recibido tras cargo rechazado (texto provisional)" },
+  { group: "Pagos", key: "sepa_manual_paid", label: "Pago manual recibido tras cargo rechazado" },
   { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)" },
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
