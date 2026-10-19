@@ -32,6 +32,14 @@ import { COLECCIONA_READY_HTML, COLECCIONA_READY_SUBJECT } from "@/lib/service-e
 import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-emails/member-welcome"
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
+import {
+  MEMBERSHIP_RENEWED,
+  PAYMENT_FAILED_1,
+  PAYMENT_FAILED_2,
+  PAYMENT_FAILED_3,
+  PAYMENT_RECEIPT,
+  REFUND,
+} from "@/lib/service-emails/payment-family"
 import { renderBrandEmail, renderAdminEmail, emailInfoBox, emailDetailList, BRAND } from "./email-layout"
 import DunningEmail from "@/emails/templates/dunning"
 import ReturnReminderEmail from "@/emails/templates/return-reminder"
@@ -77,6 +85,100 @@ export function buildMembershipCancelledEmail(data: { userName: string; membersh
       },
       ["enlace_volver"],
     ),
+  }
+}
+
+const TIER_LABELS: Record<string, string> = {
+  petite: "Petite",
+  lessentiel: "L'Essentiel",
+  essentiel: "L'Essentiel",
+  signature: "Signature",
+  prive: "Privé",
+}
+
+/** "petite" -> "Petite", "prive" -> "Privé"; si ya viene con nombre de marca, se deja igual. */
+export function membershipTierLabel(value: string | null | undefined): string {
+  const raw = (value || "").trim()
+  return TIER_LABELS[raw.toLowerCase()] || raw || "Semzo Privé"
+}
+
+/** 52 -> "52,00" (formato de los importes en los correos: "{{importe}}€"). */
+export function formatEuroAmount(value: number | string): string {
+  const n = typeof value === "number" ? value : Number(String(value).replace(",", "."))
+  return Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : String(value)
+}
+
+/** Pago fallido, avisos 1, 2 y 3 (dunning). Enlace del boton: pantalla para cambiar el metodo de pago. */
+export function buildPaymentFailedEmail(
+  step: 1 | 2 | 3,
+  data: { fullName: string | null; membershipType: string | null | undefined; updatePaymentUrl?: string },
+): { subject: string; html: string } {
+  const template = step === 1 ? PAYMENT_FAILED_1 : step === 2 ? PAYMENT_FAILED_2 : PAYMENT_FAILED_3
+  return {
+    subject: template.subject,
+    html: renderServiceTemplate(
+      template.html,
+      {
+        nombre: firstNameOf(data.fullName),
+        tier: membershipTierLabel(data.membershipType),
+        url_actualizar_pago: data.updatePaymentUrl || `${BRAND.site}/dashboard/payment-method`,
+      },
+      ["url_actualizar_pago"],
+    ),
+  }
+}
+
+/** Recibo de pago (aun sin evento que lo dispare: se lista en /admin/email-preview). */
+export function buildPaymentReceiptEmail(data: {
+  fullName: string | null
+  amount: number | string
+  paymentDate: string
+  concept: string
+  paymentMethod: string
+}): { subject: string; html: string } {
+  return {
+    subject: PAYMENT_RECEIPT.subject,
+    html: renderServiceTemplate(PAYMENT_RECEIPT.html, {
+      nombre: firstNameOf(data.fullName),
+      importe: formatEuroAmount(data.amount),
+      fecha_pago: data.paymentDate,
+      concepto: data.concept,
+      metodo_pago: data.paymentMethod,
+    }),
+  }
+}
+
+/** Reembolso procesado (aun sin evento que lo dispare). */
+export function buildRefundEmail(data: {
+  fullName: string | null
+  amount: number | string
+  concept: string
+}): { subject: string; html: string } {
+  return {
+    subject: REFUND.subject,
+    html: renderServiceTemplate(REFUND.html, {
+      nombre: firstNameOf(data.fullName),
+      importe: formatEuroAmount(data.amount),
+      concepto: data.concept,
+    }),
+  }
+}
+
+/** Recibo de renovacion de la membresia (lo manda el webhook de Stripe al cobrar la cuota). */
+export function buildMembershipRenewedEmail(data: {
+  fullName: string | null
+  membershipType: string | null | undefined
+  amount: number | string
+  nextRenewalDate: string
+}): { subject: string; html: string } {
+  return {
+    subject: MEMBERSHIP_RENEWED.subject,
+    html: renderServiceTemplate(MEMBERSHIP_RENEWED.html, {
+      nombre: firstNameOf(data.fullName),
+      tier: membershipTierLabel(data.membershipType),
+      importe: formatEuroAmount(data.amount),
+      fecha_renovacion: data.nextRenewalDate,
+    }),
   }
 }
 
@@ -1218,19 +1320,11 @@ export class EmailServiceProduction {
     membershipType?: string
     bagName?: string
   }): Promise<boolean> {
-    const t = getMessages("es")
+    const built = buildPaymentFailedEmail(1, { fullName: data.userName, membershipType: data.membershipType })
     const userEmailData: EmailData = {
       to: data.userEmail,
-      subject: t.dunning.e1.subject,
-      html: await render(
-        <DunningEmail
-          step={1}
-          name={data.userName}
-          membershipLabel={data.membershipType || "Semzo Privé"}
-          bagName={data.bagName}
-          updatePaymentUrl={`${BRAND.site}/dashboard/membresia`}
-        />,
-      ),
+      subject: built.subject,
+      html: built.html,
     }
 
     const adminEmailData: EmailData = {
