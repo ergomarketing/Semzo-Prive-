@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { render } from "@react-email/components"
-import { buildPaymentFailedEmail } from "@/app/lib/email-service-production"
+import { buildPaymentFailedEmail, buildSuspendedReturnEmail } from "@/app/lib/email-service-production"
+import { SUSPEND_AFTER_DAYS, SUSPENDED_RETURN_DAYS } from "@/lib/delinquency"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   const { data: memberships, error } = await supabase
     .from("user_memberships")
-    .select("id, user_id, membership_type, status, dunning_status, failed_payment_count, updated_at")
+    .select("id, user_id, membership_type, status, dunning_status, failed_payment_count, updated_at, past_due_since")
     .in("dunning_status", ["e1_sent", "e2_sent"])
     .in("status", ["past_due", "unpaid"])
 
@@ -62,11 +63,13 @@ export async function GET(request: NextRequest) {
   let skipped = 0
 
   for (const membership of memberships || []) {
-    const dunningStart = new Date(membership.updated_at)
+    // Dias desde el INICIO del impago (past_due_since). Antes se contaba desde updated_at, que se reinicia con
+    // cualquier escritura de la fila. Correo 2 a los 3 dias, correo 3 a los 7.
+    const dunningStart = new Date(membership.past_due_since || membership.updated_at)
     const daysSince = Math.floor((now.getTime() - dunningStart.getTime()) / (1000 * 60 * 60 * 24))
 
     const shouldSendE2 = membership.dunning_status === "e1_sent" && daysSince >= 3
-    const shouldSendE3 = membership.dunning_status === "e2_sent" && daysSince >= 4
+    const shouldSendE3 = membership.dunning_status === "e2_sent" && daysSince >= 7
 
     if (!shouldSendE2 && !shouldSendE3) {
       skipped++
@@ -172,10 +175,94 @@ export async function GET(request: NextRequest) {
     console.log(`[dunning-cron] E${step} enviado a:`, profile.email)
   }
 
+
+  // --- SUSPENSION: 24 h despues del correo 3 (SUSPEND_AFTER_DAYS desde el inicio del impago) ---
+  let suspended = 0
+  const suspendCutoff = new Date(now.getTime() - SUSPEND_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const { data: toSuspend } = await supabase
+    .from("user_memberships")
+    .select("id, user_id, membership_type, past_due_since")
+    .in("status", ["past_due", "unpaid"])
+    .eq("dunning_status", "e3_sent")
+    .is("suspended_at", null)
+    .not("past_due_since", "is", null)
+    .lte("past_due_since", suspendCutoff)
+
+  for (const membership of toSuspend || []) {
+    const { error: suspendError } = await supabase
+      .from("user_memberships")
+      .update({ suspended_at: now.toISOString(), can_make_reservations: false, updated_at: now.toISOString() })
+      .eq("id", membership.id)
+      .is("suspended_at", null)
+    if (suspendError) {
+      console.error("[dunning-cron] No se pudo suspender", membership.id, suspendError.message)
+      continue
+    }
+    suspended++
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, full_name, email")
+      .eq("id", membership.user_id)
+      .maybeSingle()
+    const memberName =
+      profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "socia"
+
+    // ¿Tiene un bolso en casa? (reserva en curso: ni completada, ni cancelada, ni en cola)
+    const { data: held } = await supabase
+      .from("reservations")
+      .select("id, bags(name, brand)")
+      .eq("user_id", membership.user_id)
+      .not("status", "in", "(completed,cancelled,canceled,queued)")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const heldBag = (held as any)?.bags
+    const heldLabel = heldBag ? `${heldBag.brand} ${heldBag.name}`.trim() : null
+
+    if (heldLabel && profile?.email) {
+      const deadline = new Date(now.getTime() + SUSPENDED_RETURN_DAYS * 24 * 60 * 60 * 1000)
+      const built = buildSuspendedReturnEmail({
+        fullName: memberName,
+        membershipType: membership.membership_type,
+        bagName: heldLabel,
+        returnDeadline: deadline.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }),
+        panelUrl: `${SITE_URL}/dashboard`,
+      })
+      const { error: sendErr } = await resend.emails.send({
+        from: `Semzo Privé <${FROM_EMAIL}>`,
+        to: profile.email,
+        subject: built.subject,
+        html: built.html,
+      })
+      await logEmail({
+        recipientEmail: profile.email,
+        recipientName: memberName,
+        subject: built.subject,
+        emailType: "membership_suspended_return",
+        status: sendErr ? "failed" : "sent",
+        errorMessage: sendErr ? String((sendErr as any)?.message || sendErr) : undefined,
+        metadata: { membershipId: membership.id, reservationId: held?.id },
+      })
+    }
+
+    await supabase.from("admin_notifications").insert({
+      type: "membership_suspended",
+      priority: "high",
+      title: `Membresía suspendida por impago — ${memberName}`,
+      message: heldLabel
+        ? `${memberName} lleva ${SUSPEND_AFTER_DAYS} días sin pagar y se ha suspendido su acceso. TIENE EN CASA ${heldLabel}: se le ha pedido la devolución en ${SUSPENDED_RETURN_DAYS} días.`
+        : `${memberName} lleva ${SUSPEND_AFTER_DAYS} días sin pagar y se ha suspendido su acceso. No tiene ningún bolso en casa.`,
+      metadata: { user_id: membership.user_id, membership_id: membership.id, reservation_id: held?.id ?? null },
+    })
+    console.log(`[dunning-cron] Suspendida ${memberName}${heldLabel ? ` (bolso en casa: ${heldLabel})` : ""}`)
+  }
+
   return NextResponse.json({
     ok: true,
     e2Sent,
     e3Sent,
+    suspended,
     skipped,
     processed: (memberships || []).length,
   })

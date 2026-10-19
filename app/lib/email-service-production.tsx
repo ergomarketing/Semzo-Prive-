@@ -34,6 +34,7 @@ import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/s
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
   COLECCIONA_SALE,
+  SUSPENDED_RETURN,
   SEPA_CHARGE_FAILED,
   SEPA_MANUAL_PAID,
   SEPA_EXECUTION,
@@ -206,6 +207,30 @@ export function buildSepaPreNoticeEmail(data: {
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
     }),
+  }
+}
+
+/** Membresia suspendida por impago con un bolso en casa: se pide la devolucion. */
+export function buildSuspendedReturnEmail(data: {
+  fullName: string | null
+  membershipType: string | null | undefined
+  bagName: string
+  returnDeadline: string
+  panelUrl?: string
+}): { subject: string; html: string } {
+  return {
+    subject: SUSPENDED_RETURN.subject,
+    html: renderServiceTemplate(
+      SUSPENDED_RETURN.html,
+      {
+        nombre: firstNameOf(data.fullName),
+        tier: membershipTierLabel(data.membershipType),
+        nombre_bolso: data.bagName,
+        fecha_limite: data.returnDeadline,
+        url_panel: data.panelUrl || `${BRAND.site}/dashboard`,
+      },
+      ["url_panel"],
+    ),
   }
 }
 

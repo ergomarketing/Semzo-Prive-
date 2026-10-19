@@ -964,6 +964,8 @@ export async function POST(req: NextRequest) {
           end_date: renewalEnd.toISOString(),
           failed_payment_count: 0,
           dunning_status: null,
+          past_due_since: null,
+          suspended_at: null,
           updated_at: now,
         };
         if (isRecoveringFromDelinquency) {
@@ -1095,7 +1097,7 @@ export async function POST(req: NextRequest) {
 
         const { data: membership } = await supabase
           .from("user_memberships")
-          .select("user_id, status")
+          .select("user_id, status, past_due_since")
           .eq("stripe_subscription_id", subscription.id)
           .single();
 
@@ -1165,6 +1167,10 @@ export async function POST(req: NextRequest) {
           ) {
             updatePayload.can_make_reservations = false;
           }
+          // Inicio del impago (para el periodo de gracia y los avisos). Solo la primera vez.
+          if (internalStatus === "past_due" && !(membership as any).past_due_since) {
+            updatePayload.past_due_since = now;
+          }
           // Recuperacion de morosidad: limpiar contadores de dunning y
           // restaurar el permiso de reservar. IMPORTANTE: tambien hay que
           // sincronizar end_date con current_period_end aqui, porque
@@ -1174,6 +1180,8 @@ export async function POST(req: NextRequest) {
           if (wasRecoveringFromDelinquency) {
             updatePayload.failed_payment_count = 0;
             updatePayload.dunning_status = null;
+            updatePayload.past_due_since = null;
+            updatePayload.suspended_at = null;
             updatePayload.can_make_reservations = true;
             if (stripeCurrentPeriodEnd) {
               updatePayload.end_date = stripeCurrentPeriodEnd;
@@ -1559,6 +1567,7 @@ export async function POST(req: NextRequest) {
             .update({
               failed_payment_count: failedCount,
               dunning_status: newDunningStatus,
+              ...(isFirstFailure ? { past_due_since: now } : {}),
               updated_at: now,
             })
             .eq("user_id", failedMembership.user_id);
@@ -1714,6 +1723,7 @@ export async function POST(req: NextRequest) {
               .update({
                 failed_payment_count: piFailedCount,
                 dunning_status: piNewDunningStatus,
+                ...(piIsFirstFailure ? { past_due_since: now } : {}),
                 updated_at: now,
               })
               .eq("user_id", piUserId);
