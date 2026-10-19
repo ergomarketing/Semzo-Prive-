@@ -35,6 +35,7 @@ import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
   COLECCIONA_SALE,
   SEPA_CHARGE_FAILED,
+  SEPA_MANUAL_PAID,
   SEPA_EXECUTION,
   SEPA_PRE_NOTICE,
   MEMBERSHIP_RENEWED,
@@ -204,6 +205,22 @@ export function buildSepaPreNoticeEmail(data: {
       importe: formatEuroAmount(data.amount),
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
+    }),
+  }
+}
+
+/** Pago manual recibido tras un cargo SEPA rechazado (la socia paga desde su panel). */
+export function buildSepaManualPaidEmail(data: {
+  fullName: string | null
+  bagName: string
+  amount: number | string
+}): { subject: string; html: string } {
+  return {
+    subject: SEPA_MANUAL_PAID.subject,
+    html: renderServiceTemplate(SEPA_MANUAL_PAID.html, {
+      nombre: firstNameOf(data.fullName),
+      nombre_bolso: data.bagName,
+      importe: formatEuroAmount(data.amount),
     }),
   }
 }

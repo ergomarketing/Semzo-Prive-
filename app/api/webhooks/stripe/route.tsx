@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { render } from "@react-email/components";
-import { EmailServiceProduction, buildMembershipRenewedEmail, buildSepaChargeFailedEmail } from "@/app/lib/email-service-production";
+import { EmailServiceProduction, buildMembershipRenewedEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
@@ -177,6 +177,41 @@ export async function POST(req: NextRequest) {
                 message: `La socia ha completado a mano el pago de ${(session.amount_total || 0) / 100} € (reserva ${manualReservationId}, sesión ${session.id}). Revisa el bolso y la factura.`,
                 metadata: { reservation_id: manualReservationId, stripe_session_id: session.id },
               });
+
+              // Confirmacion a la socia (variante "pago manual"); una sola vez gracias al .is(null) de arriba.
+              const { data: paidRes } = await supabase
+                .from("reservations")
+                .select("user_id, bags(brand, name)")
+                .eq("id", manualReservationId)
+                .maybeSingle();
+              const { data: paidProfile } = await supabase
+                .from("profiles")
+                .select("email, full_name, first_name, last_name")
+                .eq("id", paidRes?.user_id || "")
+                .maybeSingle();
+              if (paidProfile?.email) {
+                const paidBag = (paidRes as any)?.bags;
+                const paidName =
+                  paidProfile.full_name || `${paidProfile.first_name || ""} ${paidProfile.last_name || ""}`.trim() || "Cliente";
+                const paidEmail = buildSepaManualPaidEmail({
+                  fullName: paidName,
+                  bagName: paidBag ? `${paidBag.brand} ${paidBag.name}`.trim() : "tu bolso",
+                  amount: (session.amount_total || 0) / 100,
+                });
+                const paidSent = await EmailServiceProduction.getInstance().sendWithResend({
+                  to: paidProfile.email,
+                  subject: paidEmail.subject,
+                  html: paidEmail.html,
+                });
+                await logEmail({
+                  recipientEmail: paidProfile.email,
+                  recipientName: paidName,
+                  subject: paidEmail.subject,
+                  emailType: "sepa_manual_paid",
+                  status: paidSent ? "sent" : "failed",
+                  metadata: { reservationId: manualReservationId },
+                });
+              }
             }
           }
           break;

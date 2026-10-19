@@ -490,3 +490,31 @@ export const SEPA_CHARGE_FAILED = {
     ctaHref: "{{url_pago}}",
   }),
 }
+
+/**
+ * Pago manual recibido de un cargo por no devolución que el banco había rechazado (variante de "Cargo por no
+ * devolución" para cuando la socia paga ella misma con tarjeta u otro método desde su panel).
+ * Variables: {{nombre}} {{nombre_bolso}} {{importe}}. Boton: "Ir a mi cuenta".
+ * TEXTO PROVISIONAL (basado en el de "cargo ejecutado"): pendiente de la redacción final de Erika.
+ */
+export const SEPA_MANUAL_PAID = {
+  subject: "Pago recibido · SEMZO PRIVÉ",
+  html: shell({
+    title: "Pago recibido",
+    eyebrow: "Notificación financiera",
+    headingHtml: "Pago recibido",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te confirmamos que hemos recibido el pago correspondiente al valor de tu <strong>{{nombre_bolso}}</strong>. Gracias por regularizarlo."),
+      '<p style="margin:0 0 24px 0;">A partir de este momento, el bolso pasa a ser de tu propiedad y consideramos cerrada la incidencia de devolución.</p>',
+      dataTable([
+        ["Concepto", "Compra {{nombre_bolso}}"],
+        ["Importe pagado", "{{importe}}€"],
+        ["Estado", "Procesado"],
+      ]),
+      P("El justificante de pago te llega por separado desde Stripe. Si tienes cualquier duda sobre este proceso, nuestro equipo está a tu disposición."),
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+  }),
+}
