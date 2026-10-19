@@ -19,7 +19,9 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import Stripe from "stripe"
 import { sendSepaPreExecutionEmail } from "@/lib/emails/send-sepa-pre-execution-email"
+import { SEPA_PRENOTICE_DAYS } from "@/lib/sepa-notice"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
         total_amount,
         status,
         sepa_pre_notice_sent_at,
-        profiles!inner(id, email, full_name, first_name, last_name),
+        profiles!inner(id, email, full_name, first_name, last_name, sepa_payment_method_id),
         bags!inner(id, name, brand, status, retail_price)
       `,
       )
@@ -156,6 +158,25 @@ export async function GET(request: NextRequest) {
 
         console.log(`[SEPA CRON] Enviando aviso SEPA a ${profile.email} para reserva ${reservation.id}`)
 
+        // Cuenta de cargo (solo el final del IBAN) y fecha desde la que se puede cobrar
+        let ibanMasked = "tu cuenta con mandato SEPA"
+        try {
+          if (profile.sepa_payment_method_id && process.env.STRIPE_SECRET_KEY) {
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+            const pm = await stripe.paymentMethods.retrieve(profile.sepa_payment_method_id)
+            if (pm.sepa_debit?.last4) ibanMasked = `${pm.sepa_debit.country || "ES"}·· ···· ···· ···· ${pm.sepa_debit.last4}`
+          }
+        } catch (ibanErr) {
+          console.warn(`[SEPA CRON] No se pudo leer el IBAN de ${profile.email} (se usa texto genérico):`, ibanErr)
+        }
+        const chargeDate = new Date(now)
+        chargeDate.setDate(chargeDate.getDate() + SEPA_PRENOTICE_DAYS)
+        const chargeDateFormatted = chargeDate.toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+
         // Enviar email
         const emailResult = await sendSepaPreExecutionEmail({
           to: profile.email,
@@ -164,6 +185,8 @@ export async function GET(request: NextRequest) {
           rentalEndDate: endDateFormatted,
           amountDue: bag.retail_price || reservation.total_amount || 500, // Valor real del bolso; fallback al precio de alquiler o 500€
           reservationId: reservation.id,
+          ibanMasked,
+          chargeDate: chargeDateFormatted,
         })
 
         if (emailResult.success) {

@@ -11,9 +11,8 @@
  * - Guarda auditoría en DB: sepa_pre_notice_sent_at
  */
 
-import { render } from "@react-email/components"
 import { getResendApiKey } from "@/lib/resend-api-key"
-import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
+import { buildSepaPreNoticeEmail } from "@/app/lib/email-service-production"
 
 interface SendSepaPreExecutionEmailParams {
   to: string
@@ -22,6 +21,10 @@ interface SendSepaPreExecutionEmailParams {
   rentalEndDate: string // formato: "15 de enero de 2025"
   amountDue: number // en euros
   reservationId: string
+  /** "IBAN ···· 1234" (solo el final de la cuenta) */
+  ibanMasked: string
+  /** Fecha desde la que se puede ejecutar el cargo, ya formateada */
+  chargeDate: string
 }
 
 export async function sendSepaPreExecutionEmail({
@@ -31,6 +34,8 @@ export async function sendSepaPreExecutionEmail({
   rentalEndDate,
   amountDue,
   reservationId,
+  ibanMasked,
+  chargeDate,
 }: SendSepaPreExecutionEmailParams): Promise<{ success: boolean; emailId?: string; error?: string }> {
   try {
     const apiKey = getResendApiKey()
@@ -45,17 +50,15 @@ export async function sendSepaPreExecutionEmail({
 
     const emailFrom = process.env.FROM_EMAIL || "SEMZO PRIVÉ <hola@semzoprive.com>"
 
-    const htmlContent = await render(
-      <SepaPreExecutionEmail
-        customerName={customerName}
-        bagName={bagName}
-        rentalEndDate={rentalEndDate}
-        amountDue={amountDue}
-        reservationId={reservationId}
-        termsUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/legal/terms`}
-        dashboardUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/mis-reservas`}
-      />,
-    )
+    // Plantilla de Erika (lib/service-emails/payment-family.ts)
+    const built = buildSepaPreNoticeEmail({
+      fullName: customerName,
+      bagName,
+      deadline: rentalEndDate,
+      amount: amountDue,
+      ibanMasked,
+      chargeDate,
+    })
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -66,8 +69,8 @@ export async function sendSepaPreExecutionEmail({
       body: JSON.stringify({
         from: emailFrom,
         to: [to],
-        subject: "⚠️ Aviso Previo a Ejecución de Mandato SEPA - Acción Requerida",
-        html: htmlContent,
+        subject: built.subject,
+        html: built.html,
         tags: [
           {
             name: "category",

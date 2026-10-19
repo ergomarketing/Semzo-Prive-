@@ -1244,6 +1244,45 @@ export async function POST(req: NextRequest) {
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
 
+        // --- CARGO SEPA POR NO DEVOLUCION confirmado por el banco ---
+        // Es cuando se avisa a la socia (antes, con el cobro aun "processing", seria prematuro: puede fallar).
+        if (pi.metadata?.reason === "non_return_sepa_mandate" && pi.metadata?.reservation_id) {
+          const sepaReservationId = pi.metadata.reservation_id;
+          const { data: sepaRes } = await supabase
+            .from("reservations")
+            .select("id, sepa_execution_email_sent_at, bags(name, brand)")
+            .eq("id", sepaReservationId)
+            .maybeSingle();
+          if (sepaRes && !sepaRes.sepa_execution_email_sent_at) {
+            const { data: sepaProfile } = await supabase
+              .from("profiles")
+              .select("email, full_name, first_name, last_name")
+              .eq("id", pi.metadata?.user_id || "")
+              .maybeSingle();
+            if (sepaProfile?.email) {
+              const sepaBag = (sepaRes as any).bags;
+              const { sendSepaExecutionEmail } = await import("@/lib/emails/send-sepa-execution-email");
+              const sent = await sendSepaExecutionEmail({
+                to: sepaProfile.email,
+                customerName:
+                  sepaProfile.full_name ||
+                  `${sepaProfile.first_name || ""} ${sepaProfile.last_name || ""}`.trim() ||
+                  "Cliente",
+                bagName: sepaBag ? `${sepaBag.brand} ${sepaBag.name}`.trim() : "tu bolso",
+                amountCharged: pi.amount / 100,
+                reservationId: sepaReservationId,
+                paymentIntentId: pi.id,
+              });
+              if (sent.success) {
+                await supabase
+                  .from("reservations")
+                  .update({ sepa_execution_email_sent_at: now })
+                  .eq("id", sepaReservationId);
+              }
+            }
+          }
+        }
+
         // --- GIFT CARD PURCHASE ---
         if (pi.metadata?.type === "gift_card") {
           const purchaserId = pi.metadata?.user_id;

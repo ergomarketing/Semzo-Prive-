@@ -13,7 +13,7 @@
 
 import { render } from "@react-email/components"
 import { getResendApiKey } from "@/lib/resend-api-key"
-import SepaExecutionEmail from "@/emails/templates/sepa-execution"
+import { buildSepaExecutionEmail } from "@/app/lib/email-service-production"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 
 interface SendSepaExecutionEmailParams {
@@ -72,21 +72,13 @@ export async function sendSepaExecutionEmail({
   reservationId,
   paymentIntentId,
 }: SendSepaExecutionEmailParams): Promise<{ success: boolean; emailId?: string; error?: string }> {
-  const htmlContent = await render(
-    <SepaExecutionEmail
-      customerName={customerName}
-      bagName={bagName}
-      amountCharged={amountCharged}
-      reservationId={reservationId}
-      paymentIntentId={paymentIntentId}
-      termsUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/legal/terms`}
-    />,
-  )
+  // Plantilla de Erika (lib/service-emails/payment-family.ts)
+  const built = buildSepaExecutionEmail({ fullName: customerName, bagName, amount: amountCharged })
 
   return sendResendEmail({
     to,
-    subject: "Confirmación de Cargo SEPA Ejecutado - Semzo Privé",
-    html: htmlContent,
+    subject: built.subject,
+    html: built.html,
     tags: [
       { name: "category", value: "sepa_execution" },
       { name: "reservation_id", value: reservationId },

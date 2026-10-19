@@ -24,6 +24,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { sendSepaExecutionEmail, sendSepaExecutionAdminEmail } from "@/lib/emails/send-sepa-execution-email"
 import { adminNotifications } from "@/lib/admin-notifications"
+import { SEPA_PRENOTICE_DAYS } from "@/lib/sepa-notice"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -68,6 +69,8 @@ export async function GET(request: NextRequest) {
       )
       .in("status", ["overdue"])
       .not("sepa_pre_notice_sent_at", "is", null)
+      // No se cobra hasta que ha pasado el plazo anunciado en el aviso previo (lib/sepa-notice.ts)
+      .lte("sepa_pre_notice_sent_at", new Date(Date.now() - SEPA_PRENOTICE_DAYS * 24 * 60 * 60 * 1000).toISOString())
       .is("sepa_charged_at", null)
       .is("sepa_charge_payment_intent_id", null)
 
@@ -190,8 +193,11 @@ export async function GET(request: NextRequest) {
             })
             .eq("id", reservation.id)
 
-          if (profile.email) {
-            await sendSepaExecutionEmail({
+          // El SEPA suele quedar "processing" varios dias y puede fallar despues (fondos insuficientes):
+          // a la socia NO se le dice "cargo ejecutado / el bolso es tuyo" hasta que Stripe confirma el cobro
+          // (webhook payment_intent.succeeded). Solo si ya viene confirmado se avisa aqui.
+          if (profile.email && paymentIntent.status === "succeeded") {
+            const emailResult = await sendSepaExecutionEmail({
               to: profile.email,
               customerName,
               bagName,
@@ -199,6 +205,12 @@ export async function GET(request: NextRequest) {
               reservationId: reservation.id,
               paymentIntentId: paymentIntent.id,
             })
+            if (emailResult.success) {
+              await supabaseAdmin
+                .from("reservations")
+                .update({ sepa_execution_email_sent_at: new Date().toISOString() })
+                .eq("id", reservation.id)
+            }
           }
 
           await sendSepaExecutionAdminEmail({
