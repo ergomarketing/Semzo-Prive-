@@ -12,7 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -42,8 +42,8 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3" },
   { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo" },
   { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
-  { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
-  { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },
+  { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA" },
+  { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado" },
   { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)" },
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
@@ -142,34 +142,16 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         ),
       }
     case "sepa_pre_execution":
-      return {
-        subject: "Aviso Previo a Ejecución de Mandato SEPA - Acción Requerida",
-        html: await render(
-          <SepaPreExecutionEmail
-            customerName="Erika"
-            bagName="Chanel Classic Flap"
-            rentalEndDate="viernes, 20 de septiembre"
-            amountDue={2950}
-            reservationId="00000000-0000-0000-0000-000000000000"
-            termsUrl={`${TEST_SITE}/legal/terms`}
-            dashboardUrl={`${TEST_SITE}/dashboard/mis-reservas`}
-          />,
-        ),
-      }
+      return buildSepaPreNoticeEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        deadline: "viernes, 20 de septiembre",
+        amount: 2950,
+        ibanMasked: "ES·· ···· ···· ···· 1234",
+        chargeDate: "4 de octubre de 2026",
+      })
     case "sepa_execution":
-      return {
-        subject: "Confirmación de Cargo SEPA Ejecutado - Semzo Privé",
-        html: await render(
-          <SepaExecutionEmail
-            customerName="Erika"
-            bagName="Chanel Classic Flap"
-            amountCharged={2950}
-            reservationId="00000000-0000-0000-0000-000000000000"
-            paymentIntentId="pi_ejemplo"
-            termsUrl={`${TEST_SITE}/legal/terms`}
-          />,
-        ),
-      }
+      return buildSepaExecutionEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
     case "colecciona_sale":
       return buildColeccionaSaleEmail({
         fullName: "ROSA Gonzalez",

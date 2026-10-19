@@ -34,6 +34,8 @@ import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/s
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
   COLECCIONA_SALE,
+  SEPA_EXECUTION,
+  SEPA_PRE_NOTICE,
   MEMBERSHIP_RENEWED,
   PAYMENT_FAILED_1,
   PAYMENT_FAILED_2,
@@ -179,6 +181,44 @@ export function buildMembershipRenewedEmail(data: {
       tier: membershipTierLabel(data.membershipType),
       importe: formatEuroAmount(data.amount),
       fecha_renovacion: data.nextRenewalDate,
+    }),
+  }
+}
+
+/** Aviso previo de cargo SEPA (bolso no devuelto). Lo usa el cron check-overdue-returns y la prueba del admin. */
+export function buildSepaPreNoticeEmail(data: {
+  fullName: string | null
+  bagName: string
+  deadline: string
+  amount: number | string
+  ibanMasked: string
+  chargeDate: string
+}): { subject: string; html: string } {
+  return {
+    subject: SEPA_PRE_NOTICE.subject,
+    html: renderServiceTemplate(SEPA_PRE_NOTICE.html, {
+      nombre: firstNameOf(data.fullName),
+      nombre_bolso: data.bagName,
+      fecha_limite: data.deadline,
+      importe: formatEuroAmount(data.amount),
+      iban_masked: data.ibanMasked,
+      fecha_cargo: data.chargeDate,
+    }),
+  }
+}
+
+/** Cargo SEPA ejecutado por no devolucion (solo tras confirmarse el cobro en Stripe). */
+export function buildSepaExecutionEmail(data: {
+  fullName: string | null
+  bagName: string
+  amount: number | string
+}): { subject: string; html: string } {
+  return {
+    subject: SEPA_EXECUTION.subject,
+    html: renderServiceTemplate(SEPA_EXECUTION.html, {
+      nombre: firstNameOf(data.fullName),
+      nombre_bolso: data.bagName,
+      importe: formatEuroAmount(data.amount),
     }),
   }
 }

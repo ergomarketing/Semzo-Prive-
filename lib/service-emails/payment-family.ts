@@ -412,3 +412,55 @@ export const COLECCIONA_SALE = {
     ctaNote: '¿Dudas? Escríbenos a <a href="mailto:info@semzoprive.com" style="color:#1a1a4b;text-decoration:underline;">info@semzoprive.com</a>.',
   }),
 }
+
+/**
+ * Aviso previo de cargo SEPA (bolso no devuelto). Variables: {{nombre}} {{nombre_bolso}} {{fecha_limite}} {{importe}}
+ * {{iban_masked}} {{fecha_cargo}}. Boton: "Contactar con soporte" (mailto).
+ */
+export const SEPA_PRE_NOTICE = {
+  subject: "Aviso previo de cargo · SEMZO PRIVÉ",
+  html: shell({
+    title: "Aviso de cargo pendiente",
+    eyebrow: "Gestión de contrato",
+    headingHtml: "Aviso previo de cargo",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te escribimos para informarte de que no hemos registrado la devolución de tu bolso <strong>{{nombre_bolso}}</strong>, cuya fecha límite era el {{fecha_limite}}."),
+      '<p style="margin:0 0 24px 0;">Tal y como se estipula en los Términos y Condiciones de tu membresía, al no haber recibido la pieza, procederemos a ejecutar el cargo correspondiente al valor del bolso a través de tu mandato SEPA.</p>',
+      dataTable([
+        ["Bolso", "{{nombre_bolso}}"],
+        ["Importe a cobrar", "{{importe}}€"],
+        ["Cuenta de cargo", "{{iban_masked}}"],
+      ]),
+      P("Si ya has enviado el bolso, por favor, ignora este mensaje. Si necesitas asistencia para la recogida, responde a este email antes del {{fecha_cargo}}."),
+    ].join("\n"),
+    ctaLabel: "Contactar con soporte",
+    ctaHref: "mailto:soporte@semzoprive.com",
+  }),
+}
+
+/**
+ * Cargo SEPA ejecutado por no devolución ("Cargo por no devolución"). Variables: {{nombre}} {{nombre_bolso}}
+ * {{importe}}. Boton: "Ir a mi cuenta". Solo se envía cuando Stripe CONFIRMA el cobro.
+ */
+export const SEPA_EXECUTION = {
+  subject: "Cargo por no devolución · SEMZO PRIVÉ",
+  html: shell({
+    title: "Cargo por no devolución",
+    eyebrow: "Notificación financiera",
+    headingHtml: "Cargo por no devolución",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te confirmamos que se ha ejecutado el cargo correspondiente al valor de tu <strong>{{nombre_bolso}}</strong> a través de tu cuenta bancaria."),
+      '<p style="margin:0 0 24px 0;">A partir de este momento, el bolso pasa a ser de tu propiedad y consideramos cerrada la incidencia de devolución.</p>',
+      dataTable([
+        ["Concepto", "Compra {{nombre_bolso}}"],
+        ["Importe cobrado", "{{importe}}€"],
+        ["Estado", "Procesado"],
+      ]),
+      P("Adjuntamos la factura correspondiente a tu panel de usuario. Si tienes cualquier duda sobre este proceso, nuestro equipo está a tu disposición."),
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+  }),
+}
