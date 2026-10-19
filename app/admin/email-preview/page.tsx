@@ -18,6 +18,7 @@ interface CodeEmail {
   key: string
   label: string
   group?: string
+  pending?: boolean
 }
 
 type SendResult = { status: "sending" | "success" | "error"; message?: string }
@@ -142,13 +143,14 @@ export default function EmailPreviewPage() {
                       key={email.key}
                       className="flex items-center justify-between border border-slate-200 rounded-lg p-4"
                     >
-                      <p className="font-medium text-slate-900">{email.label}</p>
+                      <p className={email.pending ? "font-medium text-slate-400" : "font-medium text-slate-900"}>{email.label}</p>
                       <div className="flex items-center gap-3">
+                        {email.pending && <span className="text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">Pendiente de plantilla</span>}
                         {renderResultBadge(resultKey)}
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={results[resultKey]?.status === "sending"}
+                          disabled={email.pending || results[resultKey]?.status === "sending"}
                           onClick={() => sendTest(resultKey, { kind: "code", codeKey: email.key })}
                         >
                           <Send className="h-4 w-4 mr-2" />
