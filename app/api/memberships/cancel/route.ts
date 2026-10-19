@@ -6,6 +6,9 @@ import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
+// "31 de diciembre de 2026": el formato que lleva el correo de cancelacion.
+const LONG_DATE = { day: "numeric", month: "long", year: "numeric" } as const
+
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies()
@@ -50,13 +53,13 @@ export async function POST(req: Request) {
         const subscription = await stripe.subscriptions.update(subId, {
           cancel_at_period_end: true,
         })
-        cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES")
+        cancelDate = new Date(subscription.current_period_end * 1000).toLocaleDateString("es-ES", LONG_DATE)
       } catch (stripeError: any) {
         console.error("[memberships/cancel] Stripe error:", stripeError.message)
         // Continuar con BD update aunque Stripe falle (p.ej. sub ya cancelada)
         cancelDate = membership.end_date
-          ? new Date(membership.end_date).toLocaleDateString("es-ES")
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("es-ES")
+          ? new Date(membership.end_date).toLocaleDateString("es-ES", LONG_DATE)
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("es-ES", LONG_DATE)
       }
 
       // Update BD: cancelled con acceso vigente hasta end_date.
@@ -86,8 +89,8 @@ export async function POST(req: Request) {
         .eq("id", membership.id)
 
       cancelDate = endDate
-        ? endDate.toLocaleDateString("es-ES")
-        : new Date().toLocaleDateString("es-ES")
+        ? endDate.toLocaleDateString("es-ES", LONG_DATE)
+        : new Date().toLocaleDateString("es-ES", LONG_DATE)
     }
 
     // Enviar emails (usuario + admin)

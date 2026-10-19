@@ -16,7 +16,7 @@ import OwnershipCompletedEmail from "@/emails/templates/ownership-completed"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -37,7 +37,7 @@ const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "welcome", label: "1 · Activación de cuenta: confirmar correo (antes lo mandaba Supabase)" },
   { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Bienvenida de socia (membresía activa, también al reactivar)" },
   { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar", pending: true },
-  { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía", pending: true },
+  { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
   { group: "Pagos", key: "payment_receipt", label: "Recibo de pago", pending: true },
   { group: "Pagos", key: "refund", label: "Reembolso", pending: true },
   { group: "Pagos", key: "membership_renewed", label: "Recibo de renovación", pending: true },
@@ -105,6 +105,8 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
     }
     case "membership_activated":
       return buildMemberWelcomeEmail({ name: "Erika", tier: "Petite" })
+    case "membership_cancelled":
+      return buildMembershipCancelledEmail({ userName: "Erika Ejemplo", membershipType: "L'Essentiel", endDate: "31 de diciembre de 2026" })
     case "membership_expiring": {
       const service = new EmailServiceProduction()
       return {
@@ -363,15 +365,6 @@ export async function POST(request: NextRequest) {
             membershipEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           })
           if (!ok) return NextResponse.json({ error: "El envío falló" }, { status: 500 })
-          return NextResponse.json({ ok: true })
-        }
-        case "membership_cancelled": {
-          await emailService.sendMembershipCancelledEmail({
-            userName: "Erika Ejemplo",
-            userEmail: to,
-            membershipType: "Essentiel",
-            endDate: "31 de diciembre de 2026",
-          })
           return NextResponse.json({ ok: true })
         }
         case "return_reminder": {
