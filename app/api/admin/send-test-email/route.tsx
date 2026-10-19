@@ -74,6 +74,9 @@ function sampleValueFor(key: string): string {
     end_date: "31 de diciembre de 2026",
     amount: "59,00€",
     days_remaining: "3",
+    tier: "Petite",
+    precio: "59",
+    fecha_renovacion: "17 de noviembre de 2026",
   }
   return known[key] || "Ejemplo"
 }
