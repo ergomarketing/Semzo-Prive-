@@ -28,9 +28,10 @@ import { render } from "@react-email/components"
 import { emailQueue } from "./email-queue"
 import { BAG_PASS_PURCHASED_HTML } from "@/lib/service-emails/bag-pass-purchased"
 import { MEMBERSHIP_CANCELLED_HTML, MEMBERSHIP_CANCELLED_SUBJECT } from "@/lib/service-emails/membership-cancelled"
+import { COLECCIONA_READY_HTML, COLECCIONA_READY_SUBJECT } from "@/lib/service-emails/colecciona-ready"
 import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-emails/member-welcome"
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
-import { renderServiceTemplate } from "@/lib/service-emails/render"
+import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import { renderBrandEmail, renderAdminEmail, emailInfoBox, emailDetailList, BRAND } from "./email-layout"
 import DunningEmail from "@/emails/templates/dunning"
 import ReturnReminderEmail from "@/emails/templates/return-reminder"
@@ -75,6 +76,30 @@ export function buildMembershipCancelledEmail(data: { userName: string; membersh
         enlace_volver: `${BRAND.site}/membresias?utm_source=email&utm_campaign=winback-cancelacion`,
       },
       ["enlace_volver"],
+    ),
+  }
+}
+
+/** Correo Colecciona "Ya puedes finalizar tu compra". Lo usan el envio real y la prueba de /admin/email-preview. */
+export function buildColeccionaReadyEmail(data: {
+  fullName: string | null
+  bagBrand: string
+  bagName: string
+  imageUrl: string | null
+  panelUrl: string
+}): { subject: string; html: string } {
+  return {
+    subject: COLECCIONA_READY_SUBJECT,
+    html: renderServiceTemplate(
+      COLECCIONA_READY_HTML,
+      {
+        nombre: firstNameOf(data.fullName),
+        nombre_bolso: data.bagName,
+        marca_bolso: data.bagBrand,
+        imagen_bolso: data.imageUrl || `${BRAND.site}/images/logo-semzo-prive.png`,
+        url_panel: data.panelUrl,
+      },
+      ["imagen_bolso", "url_panel"],
     ),
   }
 }

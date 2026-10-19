@@ -6,6 +6,12 @@
 const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 
+/** Primer nombre con mayuscula inicial: "ROSA gonzalez" -> "Rosa". */
+export function firstNameOf(fullName: string | null | undefined): string {
+  const first = (fullName || "").trim().split(/\s+/)[0] || ""
+  return first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : ""
+}
+
 /**
  * Sustituye {{clave}} por su valor. `raw` son claves cuyo valor ya es seguro (p. ej. una URL propia):
  * se insertan sin escapar el '&' de la URL para no romper el enlace; el resto se escapa.
