@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { render } from "@react-email/components";
-import { EmailServiceProduction } from "@/app/lib/email-service-production";
+import { EmailServiceProduction, buildMembershipRenewedEmail } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
@@ -977,18 +977,20 @@ export async function POST(req: NextRequest) {
           const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || "";
           const invoiceNumber = invoice.number || "";
           const emailService = EmailServiceProduction.getInstance();
+          // Plantilla de Erika (lib/service-emails/payment-family.ts). Fecha de la proxima renovacion = fin del periodo.
+          const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+          const renewedEmail = buildMembershipRenewedEmail({
+            fullName: renewProfile.full_name,
+            membershipType: membership.membership_type,
+            amount,
+            nextRenewalDate: periodEnd
+              ? new Date(periodEnd * 1000).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+              : "—",
+          });
           await emailService.sendWithResend({
             to: renewProfile.email,
-            subject: `Tu factura de Semzo Privé${invoiceNumber ? ` · ${invoiceNumber}` : ""}`,
-            html: await render(
-              <MembershipRenewedEmail
-                name={renewProfile.full_name || ""}
-                amount={amount}
-                invoiceNumber={invoiceNumber}
-                invoiceUrl={invoiceUrl || undefined}
-                dashboardUrl={`${siteUrl}/dashboard`}
-              />,
-            ),
+            subject: renewedEmail.subject,
+            html: renewedEmail.html,
           })
             .then((sent) =>
               logEmail({

@@ -7,15 +7,13 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
-import MembershipRenewedEmail from "@/emails/templates/membership-renewed"
-import DunningEmail from "@/emails/templates/dunning"
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient"
 import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -37,12 +35,12 @@ const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Bienvenida de socia (membresía activa, también al reactivar)" },
   { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar", pending: true },
   { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
-  { group: "Pagos", key: "payment_receipt", label: "Recibo de pago", pending: true },
-  { group: "Pagos", key: "refund", label: "Reembolso", pending: true },
-  { group: "Pagos", key: "membership_renewed", label: "Recibo de renovación", pending: true },
-  { group: "Pagos", key: "payment_failed_1", label: "Pago fallido · aviso 1", pending: true },
-  { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2", pending: true },
-  { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3", pending: true },
+  { group: "Pagos", key: "payment_receipt", label: "Recibo de pago" },
+  { group: "Pagos", key: "refund", label: "Reembolso" },
+  { group: "Pagos", key: "membership_renewed", label: "Recibo de renovación" },
+  { group: "Pagos", key: "payment_failed_1", label: "Pago fallido · aviso 1" },
+  { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2" },
+  { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3" },
   { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo" },
   { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
   { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
@@ -123,37 +121,6 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         }),
       }
     }
-    case "membership_renewed":
-      return {
-        subject: "Tu factura de Semzo Privé · J3QQFECB-0055",
-        html: await render(
-          <MembershipRenewedEmail
-            name="Erika"
-            amount="19,99"
-            invoiceNumber="J3QQFECB-0055"
-            invoiceUrl={`${TEST_SITE}/dashboard`}
-            dashboardUrl={`${TEST_SITE}/dashboard`}
-          />,
-        ),
-      }
-    case "payment_failed_1":
-    case "payment_failed_2":
-    case "payment_failed_3": {
-      const step = Number(key.slice(-1)) as 1 | 2 | 3
-      const copy = step === 1 ? t.dunning.e1 : step === 2 ? t.dunning.e2 : t.dunning.e3
-      return {
-        subject: copy.subject,
-        html: await render(
-          <DunningEmail
-            step={step}
-            name="Erika"
-            membershipLabel="Petite"
-            bagName="Chanel Classic Flap"
-            updatePaymentUrl={`${TEST_SITE}/dashboard/membresia`}
-          />,
-        ),
-      }
-    }
     case "bag_pass_purchased":
       return buildBagPassPurchaseUserEmail({
         userName: "Erika Ejemplo",
@@ -223,45 +190,31 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         imageUrl: "https://h0ayghjex33jktep.public.blob.vercel-storage.com/bags/1764264118420-furla-marfil-alquiler.jpg",
         panelUrl: `${TEST_SITE}/dashboard`,
       })
+    case "payment_failed_1":
+    case "payment_failed_2":
+    case "payment_failed_3":
+      return buildPaymentFailedEmail(Number(key.slice(-1)) as 1 | 2 | 3, {
+        fullName: "ROSA Gonzalez",
+        membershipType: "petite",
+        updatePaymentUrl: `${TEST_SITE}/dashboard/payment-method`,
+      })
     case "payment_receipt":
-      // BORRADOR: este correo aun no existe (hoy el recibo lo manda Stripe). Punto de partida para tu plantilla.
-      return {
-        subject: "Recibo de tu pago · Semzo Privé",
-        html: renderBrandEmail({
-          preheader: "Hemos recibido tu pago.",
-          eyebrow: "Recibo de pago",
-          heading: "Hemos recibido tu pago",
-          bodyHtml: `
-            <p style="margin:0 0 8px 0;">Hola Erika, este es el resumen de tu pago.</p>
-            ${emailDetailList([
-              { label: "Concepto", value: "Pase Bolso L'Essentiel" },
-              { label: "Importe", value: "52,00 €" },
-              { label: "Fecha", value: "19 de octubre de 2026" },
-              { label: "Método de pago", value: "Tarjeta" },
-            ])}
-            ${emailInfoBox("Puedes descargar tu factura desde el botón de abajo.")}
-          `,
-          cta: { label: "Ver mi factura", url: `${TEST_SITE}/dashboard` },
-        }),
-      }
+      return buildPaymentReceiptEmail({
+        fullName: "ROSA Gonzalez",
+        amount: 59,
+        paymentDate: "19 de octubre de 2026",
+        concept: "Membresía L'Essentiel",
+        paymentMethod: "Mastercard ···· 2029",
+      })
     case "refund":
-      // BORRADOR: este correo aun no existe (no hay manejo de reembolsos). Punto de partida para tu plantilla.
-      return {
-        subject: "Tu reembolso está en camino · Semzo Privé",
-        html: renderBrandEmail({
-          preheader: "Hemos emitido tu reembolso.",
-          eyebrow: "Reembolso",
-          heading: "Hemos emitido tu reembolso",
-          bodyHtml: `
-            <p style="margin:0 0 8px 0;">Hola Erika, hemos emitido el reembolso de tu pago.</p>
-            ${emailDetailList([
-              { label: "Importe reembolsado", value: "52,00 €" },
-              { label: "Plazo", value: "5-10 días hábiles, según tu banco" },
-            ])}
-          `,
-          cta: { label: "Ir a mi cuenta", url: `${TEST_SITE}/dashboard` },
-        }),
-      }
+      return buildRefundEmail({ fullName: "ROSA Gonzalez", amount: 1, concept: "tu compra del Furla Club 2 Mini" })
+    case "membership_renewed":
+      return buildMembershipRenewedEmail({
+        fullName: "ROSA Gonzalez",
+        membershipType: "essentiel",
+        amount: 59,
+        nextRenewalDate: "19 de noviembre de 2026",
+      })
     default:
       return null
   }

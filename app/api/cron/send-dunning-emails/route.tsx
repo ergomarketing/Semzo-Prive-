@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { render } from "@react-email/components"
-import DunningEmail from "@/emails/templates/dunning"
+import { buildPaymentFailedEmail } from "@/app/lib/email-service-production"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
@@ -94,18 +94,18 @@ export async function GET(request: NextRequest) {
 
     const bag = activeReservation?.bags as any
     const bagName = bag ? `${bag.brand} ${bag.name}` : undefined
-    const updatePaymentUrl = `${SITE_URL}/dashboard/membresia`
+    const updatePaymentUrl = `${SITE_URL}/dashboard/payment-method`
     const step = shouldSendE2 ? 2 : 3
     const membershipLabel = capitalize(membership.membership_type)
 
-    const userHtml = await render(
-      <DunningEmail step={step as 2 | 3} name={userName} membershipLabel={membershipLabel} bagName={bagName} updatePaymentUrl={updatePaymentUrl} />,
-    )
-
-    const subject =
-      step === 2
-        ? "¿Actualizamos juntas tu método de pago? — Semzo Privé"
-        : "Seguimos aquí para ayudarte con tu membresía — Semzo Privé"
+    // Plantillas de Erika (lib/service-emails/payment-family.ts): aviso 2 y aviso 3
+    const built = buildPaymentFailedEmail(step as 2 | 3, {
+      fullName: userName,
+      membershipType: membership.membership_type,
+      updatePaymentUrl,
+    })
+    const userHtml = built.html
+    const subject = built.subject
 
     const { error: sendErr } = await resend.emails.send({
       from: `Semzo Privé <${FROM_EMAIL}>`,
