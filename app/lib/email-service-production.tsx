@@ -34,6 +34,7 @@ import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/s
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
   COLECCIONA_SALE,
+  SEPA_CHARGE_FAILED,
   SEPA_EXECUTION,
   SEPA_PRE_NOTICE,
   MEMBERSHIP_RENEWED,
@@ -204,6 +205,28 @@ export function buildSepaPreNoticeEmail(data: {
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
     }),
+  }
+}
+
+/** Cargo SEPA por no devolucion RECHAZADO por el banco: pide completar el pago a mano desde el panel. */
+export function buildSepaChargeFailedEmail(data: {
+  fullName: string | null
+  bagName: string
+  amount: number | string
+  payUrl?: string
+}): { subject: string; html: string } {
+  return {
+    subject: SEPA_CHARGE_FAILED.subject,
+    html: renderServiceTemplate(
+      SEPA_CHARGE_FAILED.html,
+      {
+        nombre: firstNameOf(data.fullName),
+        nombre_bolso: data.bagName,
+        importe: formatEuroAmount(data.amount),
+        url_pago: data.payUrl || `${BRAND.site}/dashboard`,
+      },
+      ["url_pago"],
+    ),
   }
 }
 

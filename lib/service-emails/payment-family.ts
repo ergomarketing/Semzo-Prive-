@@ -464,3 +464,29 @@ export const SEPA_EXECUTION = {
     ctaHref: "https://semzoprive.com/dashboard",
   }),
 }
+
+/**
+ * Cargo SEPA por no devolución RECHAZADO por el banco (p. ej. fondos insuficientes). Variables: {{nombre}}
+ * {{nombre_bolso}} {{importe}} {{url_pago}}. Boton: "Completar el pago" -> pago manual desde su panel.
+ */
+export const SEPA_CHARGE_FAILED = {
+  subject: "No hemos podido procesar el cargo · SEMZO PRIVÉ",
+  html: shell({
+    title: "Pago pendiente",
+    eyebrow: "Aviso de pago pendiente",
+    headingHtml: "No hemos podido procesar el cargo",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te escribimos para informarte de que el intento de cobro correspondiente al bolso <strong>{{nombre_bolso}}</strong> (que no fue devuelto en el plazo acordado) ha sido rechazado por tu entidad bancaria."),
+      '<p style="margin:0 0 24px 0;">Para regularizar tu situación y evitar cargos adicionales por demora, necesitamos que completes el pago de forma manual a través de tu panel de usuario. Puedes hacerlo fácilmente con tarjeta u otro método disponible.</p>',
+      dataTable([
+        ["Concepto", "Compra {{nombre_bolso}}"],
+        ["Importe pendiente", "{{importe}}€"],
+        ["Estado", "Pendiente de pago"],
+      ]),
+      P("Si necesitas ayuda para resolverlo o crees que se trata de un error, responde directamente a este correo."),
+    ].join("\n"),
+    ctaLabel: "Completar el pago",
+    ctaHref: "{{url_pago}}",
+  }),
+}
