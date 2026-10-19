@@ -236,17 +236,6 @@ export class EmailServiceProduction {
     return adminSent && userSent
   }
 
-  async sendNewsletterConfirmation(email: string): Promise<boolean> {
-    const emailData: EmailData = {
-      to: email,
-      subject: "¡Bienvenida a nuestro newsletter! - Semzo Privé",
-      html: this.generateNewsletterHTML(email),
-      text: `¡Gracias por suscribirte a nuestro newsletter! Recibirás las últimas novedades de Semzo Privé.`,
-    }
-
-    return await this.sendWithResend(emailData)
-  }
-
   async sendNewsletterEmail(email: string, name: string): Promise<{ success: boolean }> {
     const data = { email, name, phone: undefined, preferences: undefined }
 
@@ -297,37 +286,6 @@ export class EmailServiceProduction {
     return adminSent && userSent
   }
 
-  async sendCancellationNotification(data: {
-    userEmail: string
-    userName: string
-    bagName: string
-    reservationId: string
-    cancellationDate: string
-  }): Promise<boolean> {
-    const adminEmailData: EmailData = {
-      to: this.adminEmail,
-      subject: `Reserva cancelada: ${data.bagName}`,
-      html: this.generateCancellationAdminHTML(data),
-      text: `${data.userName} ha cancelado su reserva de ${data.bagName}`,
-    }
-
-    const userEmailData: EmailData = {
-      to: data.userEmail,
-      subject: `Reserva cancelada: ${data.bagName} - Semzo Privé`,
-      html: this.generateCancellationUserHTML(data),
-      text: `Tu reserva para ${data.bagName} ha sido cancelada.`,
-    }
-
-    const adminSent = await this.sendWithResend(adminEmailData)
-    const userSent = await this.sendWithResend(userEmailData)
-    console.log("[v0] User cancellation email result:", userSent ? "SUCCESS" : "FAILED")
-
-    const bothSent = adminSent && userSent
-    console.log("[v0] Overall cancellation email result:", bothSent ? "SUCCESS" : "PARTIAL/FAILED")
-
-    return bothSent
-  }
-
   async sendPaymentConfirmation(data: {
     userEmail: string
     userName: string
@@ -353,31 +311,6 @@ export class EmailServiceProduction {
     const userSent = await this.sendWithResend(userEmailData)
 
     return adminSent && userSent
-  }
-
-  async sendMembershipCreatedEmail(data: {
-    userName: string
-    userEmail: string
-    membershipType: string
-    startDate: string
-    endDate: string
-    benefits: string[]
-  }) {
-    try {
-      await this.sendEmail({
-        to: data.userEmail,
-        subject: `¡Bienvenida a ${data.membershipType}! - Semzo Privé`,
-        html: this.generateMembershipCreatedHTML(data),
-      })
-
-      await this.sendEmail({
-        to: this.adminEmail,
-        subject: `Nueva membresía activada: ${data.membershipType}`,
-        html: this.generateMembershipCreatedAdminHTML(data),
-      })
-    } catch (error) {
-      console.error("Error sending membership created email:", error)
-    }
   }
 
   async sendMembershipExpiringEmail(data: {
@@ -880,58 +813,6 @@ export class EmailServiceProduction {
   // ENVIO Y DEVOLUCION
   // ==========================================================================
 
-  async sendShipmentCreatedEmail(data: {
-    userEmail: string
-    userName: string
-    trackingNumber: string
-    carrier: string
-    estimatedDelivery?: string
-    bagName?: string
-  }): Promise<boolean> {
-    const trackingUrl =
-      data.carrier === "Correos"
-        ? `https://www.correos.es/es/es/herramientas/localizador/envios/${data.trackingNumber}`
-        : "#"
-
-    const userEmailData: EmailData = {
-      to: data.userEmail,
-      subject: "Tu pedido ha sido enviado - Semzo Privé",
-      html: renderBrandEmail({
-        preheader: "Tu pedido de Semzo Privé está en camino.",
-        eyebrow: "Envío en camino",
-        heading: "Tu pedido está en camino",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, tu pedido${data.bagName ? ` (<strong>${data.bagName}</strong>)` : ""} ha sido enviado.</p>
-          ${emailDetailList([
-            { label: "Transportista", value: data.carrier },
-            { label: "Nº de seguimiento", value: data.trackingNumber },
-            ...(data.estimatedDelivery ? [{ label: "Entrega estimada", value: data.estimatedDelivery }] : []),
-          ])}
-          <p style="margin:0;">Recibirás tu pedido en 1-2 días laborables. Recuerda: tu periodo de disfrute empieza el día de la entrega.</p>
-        `,
-        cta: { label: "Seguir mi envío", url: trackingUrl, accent: "gold" },
-      }),
-    }
-
-    const adminEmailData: EmailData = {
-      to: this.adminEmail,
-      subject: `Envío creado: ${data.trackingNumber}`,
-      html: renderAdminEmail({
-        title: "Nuevo envío creado",
-        rows: [
-          { label: "Cliente", value: `${data.userName} (${data.userEmail})` },
-          { label: "Tracking", value: data.trackingNumber },
-          { label: "Transportista", value: data.carrier },
-          ...(data.bagName ? [{ label: "Producto", value: data.bagName }] : []),
-        ],
-      }),
-    }
-
-    const userSent = await this.sendWithResend(userEmailData)
-    const adminSent = await this.sendWithResend(adminEmailData)
-    return userSent && adminSent
-  }
-
   // Email de marca completo (documento HTML propio, no usa renderBrandEmail)
   // que se dispara en la PRIMERA transicion pending -> in_transit detectada
   // por el cron /api/cron/track-shipments al consultar la API de Correos.
@@ -1415,87 +1296,6 @@ export class EmailServiceProduction {
       subject: "Tu bolso ha llegado - Semzo Privé",
       html,
     })
-  }
-
-  async sendReturnReminderEmail(data: {
-    userEmail: string
-    userName: string
-    bagName: string
-    bagBrand?: string
-    bagImageUrl?: string | null
-    returnDate: string
-    daysRemaining: number
-  }): Promise<boolean> {
-    const userEmailData: EmailData = {
-      to: data.userEmail,
-      subject: `Recordatorio: devolución de ${data.bagName} en ${data.daysRemaining} días`,
-      html: await render(
-        <ReturnReminderEmail
-          name={data.userName}
-          bagBrand={data.bagBrand || ""}
-          bagName={data.bagName}
-          bagImageUrl={data.bagImageUrl}
-          returnByDate={esDate(data.returnDate)}
-          isPetite={false}
-          dashboardUrl={`${BRAND.site}/dashboard/mis-reservas`}
-        />,
-      ),
-    }
-
-    return await this.sendWithResend(userEmailData)
-  }
-
-  async sendReturnInitiatedEmail(data: {
-    userEmail: string
-    userName: string
-    bagName: string
-    trackingNumber?: string
-    returnLabel?: string
-  }): Promise<boolean> {
-    const steps = ["Empaca el bolso en su caja original o similar", "Imprime la etiqueta de envío", "Pega la etiqueta en el paquete", "Déjalo en cualquier oficina de Correos"]
-      .map(
-        (s, i) =>
-          `<tr>
-             <td style="width:26px;vertical-align:top;padding:6px 0;">
-               <span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:${BRAND.navy};color:#fff;font-family:${BRAND.sans};font-size:12px;">${i + 1}</span>
-             </td>
-             <td style="padding:6px 0 6px 10px;font-family:${BRAND.sans};font-size:15px;color:${BRAND.ink};">${s}</td>
-           </tr>`,
-      )
-      .join("")
-
-    const userEmailData: EmailData = {
-      to: data.userEmail,
-      subject: `Etiqueta de devolución - ${data.bagName}`,
-      html: renderBrandEmail({
-        preheader: `Instrucciones para devolver ${data.bagName}.`,
-        eyebrow: "Devolución",
-        heading: "Cómo devolver tu bolso",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, aquí tienes las instrucciones para devolver tu bolso <strong>${data.bagName}</strong>.</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">${steps}</table>
-          ${data.trackingNumber ? emailInfoBox(`<strong style="color:${BRAND.navy};">Nº de seguimiento:</strong> ${data.trackingNumber}`) : ""}
-        `,
-        cta: data.returnLabel ? { label: "Descargar etiqueta", url: data.returnLabel, accent: "gold" } : undefined,
-      }),
-    }
-
-    const adminEmailData: EmailData = {
-      to: this.adminEmail,
-      subject: `Devolución iniciada: ${data.bagName}`,
-      html: renderAdminEmail({
-        title: "Devolución iniciada",
-        rows: [
-          { label: "Cliente", value: `${data.userName} (${data.userEmail})` },
-          { label: "Bolso", value: data.bagName },
-          ...(data.trackingNumber ? [{ label: "Tracking", value: data.trackingNumber }] : []),
-        ],
-      }),
-    }
-
-    const userSent = await this.sendWithResend(userEmailData)
-    const adminSent = await this.sendWithResend(adminEmailData)
-    return userSent && adminSent
   }
 
   async sendReturnReceivedEmail(data: { userEmail: string; userName: string; bagName: string }): Promise<boolean> {

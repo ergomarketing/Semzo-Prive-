@@ -19,7 +19,7 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
  * 5) Cancela el registro Descubre activo del mismo bolso (solo Descubre).
  *
  * Nunca marca 'completed': si el credito cubre el precio queda 'active' y se avisa
- * a la socia de que ya puede finalizar en /ownership/complete.
+ * a la socia de que ya puede finalizar en el webhook de Stripe.
  */
 
 export type StartCollectFailureCode =
