@@ -26,8 +26,9 @@ interface EmailData {
 
 import { render } from "@react-email/components"
 import { emailQueue } from "./email-queue"
+import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
+import { renderServiceTemplate } from "@/lib/service-emails/render"
 import { renderBrandEmail, renderAdminEmail, emailInfoBox, emailDetailList, BRAND } from "./email-layout"
-import WelcomeEmail from "@/emails/templates/welcome"
 import DunningEmail from "@/emails/templates/dunning"
 import ReturnReminderEmail from "@/emails/templates/return-reminder"
 import { getMessages } from "@/emails/messages"
@@ -45,6 +46,14 @@ const CATALOG_URL = `${BRAND.site}/catalog`
 function esDate(value: string): string {
   const d = new Date(value)
   return isNaN(d.getTime()) ? value : d.toLocaleDateString("es-ES")
+}
+
+/** Correo nº 1 · Confirmación de cuenta, con la plantilla de Erika. Lo usan el envío real y /admin/email-preview. */
+export function buildAccountConfirmationEmail(data: { confirmationUrl: string }): { subject: string; html: string } {
+  return {
+    subject: ACCOUNT_CONFIRMATION_SUBJECT,
+    html: renderServiceTemplate(ACCOUNT_CONFIRMATION_HTML, { enlace_confirmacion: data.confirmationUrl }, ["enlace_confirmacion"]),
+  }
 }
 
 /** Correo "Pase Bolso listo" (socia). Exportado para usarlo tambien en la prueba de /admin/email-preview. */
@@ -186,11 +195,12 @@ export class EmailServiceProduction {
   }
 
   async sendWelcomeEmail(email: string, customerName: string, confirmationUrl: string, locale: "es" | "en" = "es"): Promise<boolean> {
-    const t = getMessages(locale)
+    // Plantilla propia de Erika (lib/service-emails/account-confirmation.ts). El idioma por ahora es solo es.
+    const built = buildAccountConfirmationEmail({ confirmationUrl })
     const emailData: EmailData = {
       to: email,
-      subject: t.welcome.subject,
-      html: await render(<WelcomeEmail name={customerName} confirmationUrl={confirmationUrl} locale={locale} />),
+      subject: built.subject,
+      html: built.html,
       text: this.generateWelcomeText(customerName, confirmationUrl),
       customerName,
       confirmationUrl,
