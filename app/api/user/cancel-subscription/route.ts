@@ -92,44 +92,28 @@ export async function POST() {
     try {
       const emailService = EmailServiceProduction.getInstance()
 
-      // Notify admin
-      await emailService.sendWithResend({
-        to: "mailbox@semzoprive.com",
-        subject: `Membresia cancelada: ${profile?.full_name || "Usuario"}`,
-        html: `
-          <h2>Usuario ha cancelado su membresia</h2>
-          <p><strong>Nombre:</strong> ${profile?.full_name || "N/A"}</p>
-          <p><strong>Email:</strong> ${profile?.email || "N/A"}</p>
-          <p><strong>Tipo de membresia:</strong> ${membership.membership_type}</p>
-          <p><strong>Metodo de pago:</strong> ${membership.stripe_subscription_id ? "Stripe" : "Gift Card"}</p>
-          <p><strong>Se cancela el:</strong> ${cancelDate}</p>
-          ${
-            membership.stripe_subscription_id
-              ? "<p>La membresia permanecera activa hasta el final del periodo de facturacion.</p>"
-              : "<p>Membresia activada con Gift Card - cancelada inmediatamente.</p>"
-          }
-        `,
-      })
-
-      // Notify user
+      // Correo de MARCA de cancelacion (al usuario y aviso al admin), el mismo que usa el webhook de Stripe.
+      // Antes esta ruta mandaba un texto sencillo sin marca (<h2>) y un aviso admin aparte.
+      const tierLabels: Record<string, string> = {
+        petite: "Petite",
+        essentiel: "L'Essentiel",
+        signature: "Signature",
+        prive: "Privé",
+      }
       if (profile?.email) {
-        await emailService.sendWithResend({
-          to: profile.email,
-          subject: "Membresia cancelada - Semzo Prive",
-          html: `
-            <h2>Hola ${profile.full_name},</h2>
-            <p>Tu membresia ha sido cancelada.</p>
-            ${
-              membership.stripe_subscription_id
-                ? `<p>Seguiras teniendo acceso completo hasta el <strong>${cancelDate}</strong>.</p>
-                 <p>Si cambias de opinion, puedes reactivarla en cualquier momento desde tu panel.</p>`
-                : `<p>Tu membresia ha sido cancelada efectivamente.</p>
-                 <p>Puedes activar una nueva membresia en cualquier momento desde tu panel.</p>`
-            }
-            <p>Esperamos verte pronto!</p>
-          `,
+        await emailService.sendMembershipCancelledEmail({
+          userName: profile.full_name || "",
+          userEmail: profile.email,
+          membershipType: tierLabels[membership.membership_type] || membership.membership_type,
+          endDate: cancelDate,
         })
       }
+
+      // Marca de enviado: el webhook de Stripe (subscription.updated) NO repite el correo.
+      await supabase
+        .from("user_memberships")
+        .update({ cancellation_email_sent_at: new Date().toISOString() })
+        .eq("id", membership.id)
     } catch (emailError) {
       console.error("Error sending cancellation emails:", emailError)
     }

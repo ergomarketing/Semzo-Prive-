@@ -199,6 +199,13 @@ export async function syncMembershipFromStripe(
     upsertPayload.payment_method_verified = pm.verified
   }
 
+  // Al activarse la membresia se limpia la marca de "correo de cancelacion enviado": si se cancela otra vez
+  // (p. ej. una socia que vuelve y se va de nuevo) debe volver a recibir su aviso. Antes la marca de la
+  // primera cancelacion se quedaba para siempre y bloqueaba el correo de las siguientes.
+  if (allConditionsMet) {
+    upsertPayload.cancellation_email_sent_at = null
+  }
+
   // Guard de idempotencia para el onboarding post-activacion (Fase 3): solo
   // se enrola la PRIMERA vez que la membresia llega a "active". Se lee ANTES
   // del upsert para saber si ya se habia enrolado en una activacion anterior.
