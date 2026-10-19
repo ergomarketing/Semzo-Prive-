@@ -111,6 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { label: "Suscripciones", href: "/admin/subscriptions", icon: <RefreshCw className="h-4 w-4" /> },
         { label: "Pagos", href: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
         { label: "Gift Cards", href: "/admin/gift-cards", icon: <Gift className="h-4 w-4" /> },
+        { label: "Colecciona", href: "/admin/colecciona", icon: <RefreshCw className="h-4 w-4" /> },
         { label: "Referidos", href: "/admin/referrals", icon: <Gift className="h-4 w-4" /> },
         { label: "Partners", href: "/admin/partners", icon: <Handshake className="h-4 w-4" /> },
       ],
