@@ -28,7 +28,7 @@ import { leadSourceFromChannel, sanitizeAttribution, saveAttribution } from "@/l
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, phone, plan, bag, origin, returnUrl } = body
+    const { email, password, firstName, lastName, phone, plan, bag, origin, returnUrl, marketing_consent, locale } = body
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email y contraseña son requeridos" }, { status: 400 })
@@ -173,6 +173,24 @@ export async function POST(request: NextRequest) {
       })
     } catch (notifError) {
       // No bloquear el registro si falla la notificación
+    }
+
+    // Consentimiento de marketing: SOLO si marco la casilla. Guarda la prueba y suscribe a la lista de Klaviyo.
+    if (marketing_consent === true) {
+      try {
+        const { recordMarketingConsent } = await import("@/lib/marketing-consent")
+        await recordMarketingConsent(supabaseService, {
+          email: email.toLowerCase().trim(),
+          userId: authData.user.id,
+          source: "signup",
+          locale,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          request,
+        })
+      } catch {
+        // nunca bloquea el registro
+      }
     }
 
     // Klaviyo: perfil + evento "Signed Up" (best-effort; no suscribe a ninguna lista)

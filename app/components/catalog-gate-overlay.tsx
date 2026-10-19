@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
+import { MarketingConsentCheckbox } from "@/app/components/marketing-consent-checkbox"
 
 interface CatalogGateOverlayProps {
   onUnlock: () => void
@@ -10,6 +11,8 @@ interface CatalogGateOverlayProps {
 
 export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps) {
   const t = useTranslations("catalogGate")
+  const locale = useLocale()
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [whatsapp, setWhatsapp] = useState("")
@@ -42,6 +45,8 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
           utm_source: params.get("utm_source"),
           utm_medium: params.get("utm_medium"),
           utm_campaign: params.get("utm_campaign"),
+          marketing_consent: marketingConsent,
+          locale,
         }),
       })
       if (!res.ok) {
@@ -142,6 +147,13 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
                     disabled={loading}
                   />
                 </div>
+
+                <MarketingConsentCheckbox
+                  id="cg-marketing"
+                  checked={marketingConsent}
+                  onChange={setMarketingConsent}
+                  disabled={loading}
+                />
 
                 {error && (
                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">

@@ -10,7 +10,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 dias
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { email, full_name, whatsapp, utm_source, utm_medium, utm_campaign } = body
+    const { email, full_name, whatsapp, utm_source, utm_medium, utm_campaign, marketing_consent, locale } = body
 
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "Email invalido" }, { status: 400 })
@@ -104,6 +104,25 @@ export async function POST(request: Request) {
       })
     } catch {
       // nunca bloquea el acceso al catalogo
+    }
+
+    // Consentimiento de marketing: SOLO si marco la casilla (expresa, no premarcada). Se guarda la prueba
+    // y se suscribe a la lista de Klaviyo; si no la marco, sigue entrando al catalogo sin marketing.
+    if (marketing_consent === true) {
+      try {
+        const { recordMarketingConsent } = await import("@/lib/marketing-consent")
+        const [first, ...rest] = (full_name?.trim() || "").split(/\s+/)
+        await recordMarketingConsent(supabase, {
+          email: normalizedEmail,
+          source: "catalog_gate",
+          locale,
+          firstName: first || null,
+          lastName: rest.join(" ") || null,
+          request,
+        })
+      } catch (e) {
+        console.error("[catalog-access] consentimiento de marketing:", e)
+      }
     }
 
     // Set cookie de acceso
