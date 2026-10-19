@@ -90,6 +90,15 @@ export function ColeccionaPurchaseDialog({
   const canPay =
     !!preview?.ready && acceptedContract && acceptedAnnex && (!needsConditions || acceptedConditions) && documentOk && !busy
 
+  // Lo que falta para habilitar "Continuar al pago" (antes el boton quedaba gris sin explicar por que).
+  const pending: string[] = []
+  if (preview?.ready) {
+    if (!documentOk) pending.push("escribir tu DNI o NIE")
+    if (needsConditions && !acceptedConditions) pending.push("aceptar las Condiciones del Programa")
+    if (!acceptedContract) pending.push("aceptar el contrato de compraventa")
+    if (!acceptedAnnex) pending.push("aceptar el estado del bolso")
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
@@ -223,6 +232,12 @@ export function ColeccionaPurchaseDialog({
               </label>
             </div>
           </div>
+        )}
+
+        {preview?.ready && pending.length > 0 && !busy && (
+          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+            Para continuar al pago falta: {pending.join(", ")}.
+          </p>
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
