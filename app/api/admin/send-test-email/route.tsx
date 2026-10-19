@@ -7,7 +7,6 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
-import MembershipActivatedEmail from "@/emails/templates/membership-activated"
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed"
 import DunningEmail from "@/emails/templates/dunning"
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient"
@@ -17,7 +16,7 @@ import OwnershipCompletedEmail from "@/emails/templates/ownership-completed"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -36,8 +35,7 @@ const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>
 // para sustituirlos por la plantilla nueva.
 const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "welcome", label: "1 · Activación de cuenta: confirmar correo (antes lo mandaba Supabase)" },
-  { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Membresía activa (pago, identidad y SEPA completados)" },
-  { group: "Cuenta y membresía", key: "membership_returning", label: "2 · Membresía vuelve a estar activa (socia que regresa)" },
+  { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Bienvenida de socia (membresía activa, también al reactivar)" },
   { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar" },
   { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
   { group: "Pagos", key: "payment_receipt", label: "Recibo de pago (borrador nuevo)" },
@@ -106,17 +104,7 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
       return { subject: built.subject, html: built.html.replace(/(<body[^>]*>)/i, `$1${note}`) }
     }
     case "membership_activated":
-      return {
-        subject: "Bienvenida a Semzo Privé — Tu membresía Petite está activa",
-        html: await render(<MembershipActivatedEmail name="Erika" membershipLabel="Petite" dashboardUrl={`${TEST_SITE}/catalog`} />),
-      }
-    case "membership_returning":
-      return {
-        subject: "Tu membresía Petite vuelve a estar activa — Semzo Privé",
-        html: await render(
-          <MembershipActivatedEmail name="Erika" membershipLabel="Petite" returning dashboardUrl={`${TEST_SITE}/catalog`} />,
-        ),
-      }
+      return buildMemberWelcomeEmail({ name: "Erika", tier: "Petite" })
     case "membership_expiring": {
       const service = new EmailServiceProduction()
       return {

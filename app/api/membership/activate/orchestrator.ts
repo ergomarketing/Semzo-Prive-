@@ -306,7 +306,6 @@ export async function syncMembershipFromStripe(
         userId,
         membershipType,
         subscriptionId: subscription.id,
-        returning: isReturningMember,
       })
     } catch (emailErr) {
       console.error("[ORCHESTRATOR] Error enviando correo de membresia activa:", emailErr)
