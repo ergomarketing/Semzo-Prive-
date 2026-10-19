@@ -69,7 +69,7 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
 
   const { data: member } = await supabase
     .from("profiles")
-    .select("id, full_name, email, document_number")
+    .select("id, full_name, email, document_number, shipping_document_number")
     .eq("id", userId)
     .maybeSingle()
   if (!member) return { ok: false, code: "member_not_found", message: "Socia no encontrada" }
@@ -135,7 +135,8 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
         id: member.id,
         full_name: memberName,
         email: member.email,
-        document_number: member.document_number ?? null,
+        // El DNI/NIE de la ficha de envio ("Informacion de Envio") sirve igual si no hay otro guardado.
+        document_number: member.document_number ?? member.shipping_document_number ?? null,
       },
       amounts: { price, credit, due },
       report,
