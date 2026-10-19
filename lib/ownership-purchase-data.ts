@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getAmountDue } from "@/lib/ownership-credit"
+import { normalizeSpanishId } from "@/lib/spanish-id"
 import {
   COLECCIONA_CONDITIONS_VERSION,
   COLECCIONA_CONTEXT_CONDITIONS,
@@ -69,7 +70,9 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
 
   const { data: member } = await supabase
     .from("profiles")
-    .select("id, full_name, email, document_number, shipping_document_number")
+    .select(
+      "id, full_name, email, document_number, shipping_document_type, shipping_document_number, shipping_via_type, shipping_via_name, shipping_number, shipping_portal, shipping_floor, shipping_door, shipping_postal_code, shipping_city, shipping_province, shipping_country",
+    )
     .eq("id", userId)
     .maybeSingle()
   if (!member) return { ok: false, code: "member_not_found", message: "Socia no encontrada" }
@@ -89,6 +92,61 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
     .limit(1)
   const conditionsAccepted = !!accepted && accepted.length > 0
 
+  // Identificacion de la compradora: documento (perfil o ficha de envio) y direccion a la que se envio el bolso.
+  const rawDocument = member.document_number ?? member.shipping_document_number ?? null
+  const parsedDocument = normalizeSpanishId(rawDocument)
+  const documentLabel = parsedDocument.ok
+    ? `${parsedDocument.type.toUpperCase()} ${parsedDocument.value}`
+    : rawDocument
+      ? `${String(member.shipping_document_type || "documento").toUpperCase()} ${String(rawDocument).toUpperCase()}`
+      : "DNI/NIE indicado en el pago"
+
+  const profileAddress = [
+    [member.shipping_via_type, member.shipping_via_name, member.shipping_number].filter(Boolean).join(" "),
+    member.shipping_portal ? `portal ${member.shipping_portal}` : "",
+    member.shipping_floor ? `piso ${member.shipping_floor}` : "",
+    member.shipping_door ? `puerta ${member.shipping_door}` : "",
+    [member.shipping_postal_code, member.shipping_city].filter(Boolean).join(" "),
+    member.shipping_province && member.shipping_province !== member.shipping_city ? member.shipping_province : "",
+    member.shipping_country || "",
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(", ")
+
+  // Direccion REAL del ultimo envio de este bolso a la socia (si hubo); si no, la de su perfil.
+  let shippedAddress = ""
+  const { data: lastReservation } = await supabase
+    .from("reservations")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("bag_id", progress.bag_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (lastReservation?.id) {
+    const { data: shipment } = await supabase
+      .from("shipments")
+      .select("recipient_address, recipient_postal_code, postal_code, recipient_city, city, recipient_country, country")
+      .eq("reservation_id", lastReservation.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (shipment?.recipient_address) {
+      shippedAddress = [
+        shipment.recipient_address,
+        [shipment.recipient_postal_code || shipment.postal_code, shipment.recipient_city || shipment.city]
+          .filter(Boolean)
+          .join(" "),
+        shipment.recipient_country || shipment.country || "",
+      ]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(", ")
+    }
+  }
+  const domicilioEnvio = shippedAddress || profileAddress || "dirección registrada en su perfil de socia"
+
   const memberName = member.full_name || member.email
   // Los saltos de linea de la ficha no se ven en el PDF ni en una celda: se unen con "; ".
   const oneLine = (text: string | undefined) => (text ?? "").replace(/\s*[\r\n]+\s*/g, "; ").trim()
@@ -96,6 +154,8 @@ export async function loadPurchaseContext(supabase: SupabaseClient, userId: stri
     nombre_completo_socia: memberName,
     email_socia: member.email,
     id_socia: memberNumber(userId),
+    documento_socia: documentLabel,
+    domicilio_envio: domicilioEnvio,
     marca: bag.brand || "",
     modelo: bag.name || "",
     referencia_nfc: bag.nfc_uid || bag.serial_number || "—",

@@ -62,6 +62,10 @@ export interface ContractVars {
   nombre_completo_socia: string
   email_socia: string
   id_socia: string
+  /** "NIE Y9167403P" / "DNI 12345678Z": identifica a la compradora. */
+  documento_socia: string
+  /** Direccion a la que se envio el bolso (la del envio; si no hay, la del perfil). */
+  domicilio_envio: string
   marca: string
   modelo: string
   referencia_nfc: string
@@ -119,7 +123,9 @@ export function buildContractMainBlocks(v: ContractVars, stamp?: AcceptanceStamp
       type: "paragraph",
       lead: "Compradora:",
       text:
-        `${v.nombre_completo_socia}, con email ${v.email_socia} y número de socia ${v.id_socia} (en adelante, “la Compradora”), ` +
+        `${v.nombre_completo_socia}, con ${v.documento_socia || "el documento indicado en la factura"}, con domicilio de envío y notificaciones en ` +
+        `${v.domicilio_envio || "la dirección registrada en su perfil de socia"}, ` +
+        `con email ${v.email_socia} y número de socia ${v.id_socia} (en adelante, “la Compradora”), ` +
         "que actúa como persona consumidora.",
     },
     { type: "heading", text: "Cláusulas" },
@@ -202,14 +208,14 @@ export function buildContractMainBlocks(v: ContractVars, stamp?: AcceptanceStamp
         "entrega. Cubre las faltas de conformidad no descritas en el Anexo I que no se deban al uso posterior a la compra. " +
         "Por tratarse de una pieza única, los remedios serán la reparación, la rebaja del precio o la resolución del " +
         "contrato con reembolso del importe pagado y restitución del Crédito Colecciona aplicado. Para reclamar, la " +
-        "Compradora puede escribir a mailbox@semzoprive.com.",
+        "Compradora puede escribir a info@semzoprive.com.",
     },
     {
       type: "paragraph",
       lead: "7. Entrega y transmisión de la propiedad.",
       text:
-        "Como el artículo ya está en poder de la Compradora, la entrega se entiende producida en la fecha de confirmación " +
-        "del pago. En ese momento pasan a la Compradora la propiedad y el riesgo, y el artículo deja de formar parte del " +
+        "El artículo fue enviado a la Compradora a la dirección indicada en el apartado «Partes». Como ya está en su " +
+        "poder, la entrega se entiende producida en la fecha de confirmación del pago. En ese momento pasan a la Compradora la propiedad y el riesgo, y el artículo deja de formar parte del " +
         "servicio de membresía.",
     },
     {
