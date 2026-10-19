@@ -104,14 +104,26 @@ export async function GET(req: NextRequest) {
       continue
     }
 
+    const isMarketing = (MARKETING_LIFECYCLE_SEQUENCES as string[]).includes(row.sequence_key)
+    const unsubscribeUrl = `${appUrl}/api/webhooks/unsubscribe?email=${encodeURIComponent((row.recipient_email || "").toLowerCase())}`
+
     const vars: Record<string, string> = {
-      name: row.recipient_name || "",
+      // Solo el primer nombre: "Hola Erika," y no "Hola Erika González,".
+      name: (row.recipient_name || "").trim().split(/\s+/)[0] || "",
       app_url: appUrl,
       ...(row.metadata || {}),
     }
 
     const subject = renderTemplate(template.subject, vars)
-    const bodyHtml = renderTemplate(template.body_html, vars)
+    // El pie de las plantillas trae "Darse de baja" con href="#" (enlace muerto). En marketing apunta a la baja
+    // real; en correos de servicio (renovacion, tarjeta...) no hay baja posible y se quita.
+    const deadUnsubscribe = /<span>© 2026 SEMZO PRIVÉ · <\/span><a href="#"([^>]*)>Darse de baja<\/a>/g
+    const bodyHtml = renderTemplate(template.body_html, vars).replace(
+      deadUnsubscribe,
+      isMarketing
+        ? `<span>© 2026 SEMZO PRIVÉ · </span><a href="${unsubscribeUrl}"$1>Darse de baja</a>`
+        : "<span>© 2026 SEMZO PRIVÉ</span>",
+    )
     const emailType = `${row.sequence_key}_${row.step_number}`
 
     try {
@@ -125,6 +137,10 @@ export async function GET(req: NextRequest) {
         to: [row.recipient_email],
         subject,
         html,
+        // Baja de un clic (Gmail / Apple Mail) en los correos de marketing.
+        ...(isMarketing
+          ? { headers: { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
+          : {}),
       })
 
       if (resendError) {
