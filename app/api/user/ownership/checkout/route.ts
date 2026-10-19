@@ -139,6 +139,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ya hay un pago en curso. Espera unos segundos." }, { status: 429 })
     }
 
+    // El contrato lleva el DNI/NIE validado (el del perfil/envio o el que acaba de escribir).
+    context.vars = { ...context.vars, documento_socia: `${documentId.type.toUpperCase()} ${documentId.value}` }
+
     const bagLabel = `${context.bag.brand} ${context.bag.name}`.trim()
     const stamp = {
       fecha_hora_aceptacion: formatAcceptanceMoment(),
