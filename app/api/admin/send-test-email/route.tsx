@@ -12,11 +12,10 @@ import DunningEmail from "@/emails/templates/dunning"
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient"
 import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
-import OwnershipCompletedEmail from "@/emails/templates/ownership-completed"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -49,7 +48,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },
   { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)", pending: true },
-  { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra", pending: true },
+  { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
   { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
   { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
@@ -217,12 +216,13 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         }),
       }
     case "colecciona_ready":
-      return {
-        subject: t.ownershipCompleted.subject,
-        html: await render(
-          <OwnershipCompletedEmail name="Erika" bagBrand="Chanel" bagName="2.55 Reissue" ctaUrl={`${TEST_SITE}/dashboard`} />,
-        ),
-      }
+      return buildColeccionaReadyEmail({
+        fullName: "ROSA Gonzalez",
+        bagBrand: "Furla",
+        bagName: "Club 2 Mini",
+        imageUrl: "https://h0ayghjex33jktep.public.blob.vercel-storage.com/bags/1764264118420-furla-marfil-alquiler.jpg",
+        panelUrl: `${TEST_SITE}/dashboard`,
+      })
     case "payment_receipt":
       // BORRADOR: este correo aun no existe (hoy el recibo lo manda Stripe). Punto de partida para tu plantilla.
       return {
