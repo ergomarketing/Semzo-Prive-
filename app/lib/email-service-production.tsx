@@ -26,6 +26,7 @@ interface EmailData {
 
 import { render } from "@react-email/components"
 import { emailQueue } from "./email-queue"
+import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-emails/member-welcome"
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { renderServiceTemplate } from "@/lib/service-emails/render"
 import { renderBrandEmail, renderAdminEmail, emailInfoBox, emailDetailList, BRAND } from "./email-layout"
@@ -53,6 +54,14 @@ export function buildAccountConfirmationEmail(data: { confirmationUrl: string })
   return {
     subject: ACCOUNT_CONFIRMATION_SUBJECT,
     html: renderServiceTemplate(ACCOUNT_CONFIRMATION_HTML, { enlace_confirmacion: data.confirmationUrl }, ["enlace_confirmacion"]),
+  }
+}
+
+/** Correo nº 2 · Bienvenida de socia (alta y reactivacion). Lo usan el envio real y la prueba de /admin/email-preview. */
+export function buildMemberWelcomeEmail(data: { name: string; tier: string }): { subject: string; html: string } {
+  return {
+    subject: MEMBER_WELCOME_SUBJECT,
+    html: renderServiceTemplate(MEMBER_WELCOME_HTML, { nombre: data.name, tier: data.tier }),
   }
 }
 

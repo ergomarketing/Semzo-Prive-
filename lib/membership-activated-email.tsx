@@ -8,9 +8,8 @@
  */
 import { render } from "@react-email/components"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { EmailServiceProduction, buildMemberWelcomeEmail } from "@/app/lib/email-service-production"
 import { logEmail } from "@/lib/email-logger"
-import MembershipActivatedEmail from "@/emails/templates/membership-activated"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
@@ -22,7 +21,7 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
 
 export async function sendMembershipActivatedEmails(
   supabase: SupabaseClient,
-  input: { userId: string; membershipType: string; subscriptionId: string; returning?: boolean },
+  input: { userId: string; membershipType: string; subscriptionId: string },
 ): Promise<void> {
   const { data: profile } = await supabase
     .from("profiles")
@@ -32,30 +31,16 @@ export async function sendMembershipActivatedEmails(
   if (!profile?.email) return
 
   const label = MEMBERSHIP_LABELS[input.membershipType] || input.membershipType
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
   const emailService = EmailServiceProduction.getInstance()
   const metadata = { subscriptionId: input.subscriptionId }
 
   const firstName = (profile.full_name || "").trim().split(/\s+/)[0] || ""
-  const memberSubject = input.returning
-    ? `Tu membresía ${label} vuelve a estar activa — Semzo Privé`
-    : `Bienvenida a Semzo Privé — Tu membresía ${label} está activa`
-  const memberSent = await emailService.sendWithResend({
-    to: profile.email,
-    subject: memberSubject,
-    html: await render(
-      <MembershipActivatedEmail
-        name={firstName}
-        membershipLabel={label}
-        returning={input.returning}
-        dashboardUrl={`${siteUrl}/catalog`}
-      />,
-    ),
-  })
+  const welcome = buildMemberWelcomeEmail({ name: firstName, tier: label })
+  const memberSent = await emailService.sendWithResend({ to: profile.email, subject: welcome.subject, html: welcome.html })
   await logEmail({
     recipientEmail: profile.email,
     recipientName: profile.full_name || null,
-    subject: "Tu membresía está activa — Semzo Privé",
+    subject: welcome.subject,
     emailType: "membership_activated",
     status: memberSent ? "sent" : "failed",
     metadata,
