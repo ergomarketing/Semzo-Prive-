@@ -4,6 +4,7 @@ import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 import { isIdentityVerified } from "@/lib/identity-status"
 import { sendMembershipActivatedEmails } from "@/lib/membership-activated-email"
 import { klaviyoTrackForUser } from "@/lib/klaviyo"
+import { cancelPendingLifecycle } from "@/lib/lifecycle-emails/enroll"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -204,6 +205,7 @@ export async function syncMembershipFromStripe(
   let shouldStartOnboarding = false
   // Correo "membresia activa": solo cuando pasa a 'active' desde otro estado (no en cada resync).
   let becameActive = false
+  let isReturningMember = false
   if (allConditionsMet) {
     const { data: existingMembership } = await supabase
       .from("user_memberships")
@@ -217,8 +219,12 @@ export async function syncMembershipFromStripe(
     becameActive =
       !previousStatus ||
       ["pending_verification", "cancelled", "canceled", "expired", "incomplete"].includes(previousStatus)
+    // Socia que VUELVE (tenia una membresia que se cancelo o caduco): no es nueva, no se le manda la
+    // bienvenida de onboarding. (Antes solo se miraba onboarding_sequence_started_at, que en membresias
+    // antiguas estaba vacio.)
+    isReturningMember = !!previousStatus && ["cancelled", "canceled", "expired"].includes(previousStatus)
 
-    if (!existingMembership?.onboarding_sequence_started_at) {
+    if (!existingMembership?.onboarding_sequence_started_at && !isReturningMember) {
       shouldStartOnboarding = true
       upsertPayload.onboarding_sequence_started_at = new Date().toISOString()
     }
@@ -296,6 +302,25 @@ export async function syncMembershipFromStripe(
       })
     } catch (emailErr) {
       console.error("[ORCHESTRATOR] Error enviando correo de membresia activa:", emailErr)
+    }
+
+    // Al activarse, dejan de tener sentido los correos pendientes de "te echamos de menos", pago abandonado
+    // y pausa. Si ademas es una socia que vuelve, tampoco le toca el onboarding de nuevas.
+    try {
+      const { data: owner } = await supabase.from("profiles").select("email").eq("id", userId).maybeSingle()
+      await cancelPendingLifecycle({
+        userId,
+        email: owner?.email,
+        sequenceKeys: [
+          "winback",
+          "pause_reactivation",
+          "checkout_abandoned",
+          ...(isReturningMember ? (["membership_onboarding"] as const) : []),
+        ],
+        reason: isReturningMember ? "membresia reactivada (socia que vuelve)" : "membresia activada",
+      })
+    } catch {
+      // nunca bloquea la activacion
     }
 
     // Klaviyo: evento "Membership Activated" (best-effort)
