@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { logEmail } from "@/lib/email-logger"
+import { MARKETING_LIFECYCLE_SEQUENCES } from "@/lib/lifecycle-emails/enroll"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
 
@@ -23,6 +24,19 @@ import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
  */
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const resend = new Resend(getResendApiKey())
+
+async function isUnsubscribed(email: string | null): Promise<boolean> {
+  const address = (email || "").toLowerCase().trim()
+  if (!address) return false
+  const { data: lead } = await supabase.from("leads").select("status").eq("email", address).maybeSingle()
+  if (lead?.status === "unsubscribed") return true
+  const { data: newsletter } = await supabase
+    .from("newsletter_subscriptions")
+    .select("status")
+    .eq("email", address)
+    .maybeSingle()
+  return newsletter?.status === "unsubscribed"
+}
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce((str, [key, value]) => str.replaceAll(`{{${key}}}`, value), template)
@@ -73,6 +87,16 @@ export async function GET(req: NextRequest) {
 
   for (const row of pendingEmails) {
     const template = templateMap[`${row.sequence_key}:${row.step_number}`]
+
+    // Red de seguridad: un correo de marketing no sale a quien ya se dio de baja (aunque estuviera programado).
+    if ((MARKETING_LIFECYCLE_SEQUENCES as string[]).includes(row.sequence_key) && (await isUnsubscribed(row.recipient_email))) {
+      await supabase
+        .from("lifecycle_email_log")
+        .update({ status: "skipped", error_message: "baja del correo" })
+        .eq("id", row.id)
+      skipped++
+      continue
+    }
 
     if (!template) {
       await supabase.from("lifecycle_email_log").update({ status: "skipped" }).eq("id", row.id)

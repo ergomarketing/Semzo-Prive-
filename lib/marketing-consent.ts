@@ -1,14 +1,14 @@
 /**
  * Consentimiento de marketing por correo (casilla expresa, nunca premarcada).
  *
- * Guarda la PRUEBA (texto exacto aceptado, fecha, IP, navegador) en marketing_consents y suscribe el
- * correo a la lista de marketing de Klaviyo. Solo se llama cuando la persona ha marcado la casilla.
+ * Guarda la PRUEBA (texto exacto aceptado, fecha, IP, navegador) en marketing_consents y marca el perfil en
+ * Klaviyo (solo analisis). Solo se llama cuando la persona ha marcado la casilla.
  * Nunca lanza: un fallo de Klaviyo no debe impedir el registro ni el acceso al catalogo; el
  * consentimiento queda guardado igualmente y se puede reenviar a Klaviyo despues.
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getClientIp } from "@/lib/legal-acceptance"
-import { klaviyoSubscribe } from "@/lib/klaviyo"
+import { klaviyoTrack } from "@/lib/klaviyo"
 import { MARKETING_CONSENT_TEXT } from "@/lib/marketing-consent-text"
 
 export async function recordMarketingConsent(
@@ -51,14 +51,21 @@ export async function recordMarketingConsent(
     return { recorded: false, subscribed: false }
   }
 
-  const result = await klaviyoSubscribe({
+  // Klaviyo solo sirve para analizar: no se suscribe a ninguna lista de envio. Se marca el perfil para poder
+  // segmentar (quien dio consentimiento expreso) y se deja constancia como evento.
+  const result = await klaviyoTrack({
     email,
-    source: input.source,
-    firstName: input.firstName,
-    lastName: input.lastName,
+    metric: "Marketing Consent Given",
+    properties: { source: input.source, locale },
+    uniqueId: recordId ? `marketing_consent:${recordId}` : undefined,
+    profile: {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      properties: { marketing_consent: true },
+    },
   })
   if (result.ok && recordId) {
     await supabase.from("marketing_consents").update({ klaviyo_synced_at: new Date().toISOString() }).eq("id", recordId)
   }
-  return { recorded: true, subscribed: result.ok }
+  return { recorded: true, subscribed: false }
 }

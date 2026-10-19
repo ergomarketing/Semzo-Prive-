@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { MARKETING_LIFECYCLE_SEQUENCES, cancelPendingLifecycle } from "@/lib/lifecycle-emails/enroll"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,16 +70,35 @@ async function processUnsubscribeRequest({ lid, email }: { lid?: string | null; 
     leadId = lead?.id ?? null
   }
 
+  let address = email ? email.toLowerCase().trim() : null
+
   if (leadId) {
+    // Con solo el id del lead, se recupera su correo para dar de baja tambien la newsletter y los correos pendientes
+    if (!address) {
+      const { data: lead } = await supabase.from("leads").select("email").eq("id", leadId).maybeSingle()
+      address = lead?.email ? String(lead.email).toLowerCase().trim() : null
+    }
     await processUnsubscribe(leadId)
   }
 
   // Baja también de la newsletter si el email coincide, aunque no haya lead asociado.
-  if (email) {
+  if (address) {
+    await supabase.from("newsletter_subscriptions").update({ status: "unsubscribed" }).eq("email", address)
+
+    // Correos de marketing YA PROGRAMADOS (regreso, pago abandonado, pausa): se cancelan. Antes la baja
+    // solo paraba la secuencia de leads y la newsletter, y estos seguian saliendo.
+    await cancelPendingLifecycle({
+      email: address,
+      sequenceKeys: MARKETING_LIFECYCLE_SEQUENCES,
+      reason: "baja del correo",
+    })
+
+    // Y se marca el consentimiento como retirado (prueba de la baja)
     await supabase
-      .from("newsletter_subscriptions")
-      .update({ status: "unsubscribed" })
-      .eq("email", email.toLowerCase().trim())
+      .from("marketing_consents")
+      .update({ withdrawn_at: new Date().toISOString() })
+      .eq("email", address)
+      .is("withdrawn_at", null)
   }
 }
 

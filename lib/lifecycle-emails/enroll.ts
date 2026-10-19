@@ -124,3 +124,42 @@ export async function cancelLifecycleSequence(
     console.error(`[cancelLifecycleSequence] Error cancelando ${sequenceKey}/${entityId}:`, e)
   }
 }
+
+/**
+ * Secuencias de MARKETING del ciclo de vida: se paran si la persona se da de baja. (Las de servicio —
+ * renovacion, tarjeta que caduca— siguen, porque avisan de algo de su cuenta.)
+ */
+export const MARKETING_LIFECYCLE_SEQUENCES: LifecycleSequenceKey[] = ["winback", "checkout_abandoned", "pause_reactivation"]
+
+/**
+ * Cancela los correos PENDIENTES de las secuencias indicadas para una socia (por user_id) o un correo.
+ * Se usa cuando la condicion de negocio deja de aplicar: reactivo la membresia, compro, se dio de baja...
+ * Nunca lanza.
+ */
+export async function cancelPendingLifecycle(opts: {
+  userId?: string | null
+  email?: string | null
+  sequenceKeys: LifecycleSequenceKey[]
+  reason: string
+}): Promise<number> {
+  const email = opts.email ? opts.email.toLowerCase().trim() : null
+  if ((!opts.userId && !email) || opts.sequenceKeys.length === 0) return 0
+  const supabase = getServiceClient()
+  try {
+    const filters: string[] = []
+    if (opts.userId) filters.push(`user_id.eq.${opts.userId}`)
+    if (email) filters.push(`recipient_email.eq.${email}`)
+    const { data, error } = await supabase
+      .from("lifecycle_email_log")
+      .update({ status: "cancelled", error_message: `cancelado: ${opts.reason}` })
+      .in("sequence_key", opts.sequenceKeys)
+      .eq("status", "pending")
+      .or(filters.join(","))
+      .select("id")
+    if (error) throw error
+    return data?.length ?? 0
+  } catch (e) {
+    console.error(`[cancelPendingLifecycle] (${opts.reason}) fallo:`, e)
+    return 0
+  }
+}
