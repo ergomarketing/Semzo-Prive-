@@ -44,7 +44,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "payment_failed_1", label: "Pago fallido · aviso 1", pending: true },
   { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2", pending: true },
   { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3", pending: true },
-  { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo", pending: true },
+  { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo" },
   { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
   { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },

@@ -26,6 +26,7 @@ interface EmailData {
 
 import { render } from "@react-email/components"
 import { emailQueue } from "./email-queue"
+import { BAG_PASS_PURCHASED_HTML } from "@/lib/service-emails/bag-pass-purchased"
 import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-emails/member-welcome"
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { renderServiceTemplate } from "@/lib/service-emails/render"
@@ -76,25 +77,18 @@ export function buildBagPassPurchaseUserEmail(data: {
   const tierLabel =
     data.passTier === "lessentiel" || data.passTier === "essentiel"
       ? "L'Essentiel"
-      : data.passTier.charAt(0).toUpperCase() + data.passTier.slice(1)
+      : data.passTier === "prive"
+        ? "Privé"
+        : data.passTier.charAt(0).toUpperCase() + data.passTier.slice(1)
   const paymentLabel = data.paymentMethod === "gift_card" ? "Gift Card" : "Tarjeta"
   return {
     subject: `Tu Pase Bolso ${tierLabel} está listo - Semzo Privé`,
-    html: renderBrandEmail({
-      preheader: "Tu Pase Bolso está listo. Ya puedes reservar.",
-      eyebrow: "Pase Bolso",
-      heading: "Tu Pase Bolso está listo",
-      bodyHtml: `
-        <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, tu compra se ha procesado correctamente. Ya puedes reservar tu bolso.</p>
-        ${emailDetailList([
-          { label: "Pase", value: tierLabel },
-          { label: "Cantidad", value: String(data.quantity) },
-          { label: "Total", value: `€${data.totalPrice.toFixed(2)}` },
-          { label: "Método de pago", value: paymentLabel },
-        ])}
-        <p style="margin:0;">Recuerda: cada pase te permite disfrutar de un bolso durante 1 semana.</p>
-      `,
-      cta: { label: "Reservar mi bolso", url: `${BRAND.site}/catalog`, accent: "gold" },
+    html: renderServiceTemplate(BAG_PASS_PURCHASED_HTML, {
+      nombre: data.userName?.split(" ")[0] || "",
+      pase: tierLabel,
+      cantidad: String(data.quantity),
+      total: `€${data.totalPrice.toFixed(2)}`,
+      metodo_pago: paymentLabel,
     }),
   }
 }
