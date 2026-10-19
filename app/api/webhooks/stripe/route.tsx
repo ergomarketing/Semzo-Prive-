@@ -809,7 +809,7 @@ export async function POST(req: NextRequest) {
                       total: result.accumulated,
                       ready_to_finalize: result.reachedPrice,
                     });
-                    // Nunca se marca completed aqui: solo /ownership/complete, con la aceptacion.
+                    // Nunca se marca completed aqui: solo el cierre de la venta (ownership-sale-close).
                     if (result.reachedPrice) {
                       await notifyReadyToFinalize(supabase, mem.user_id, progress.bag_id);
                     }

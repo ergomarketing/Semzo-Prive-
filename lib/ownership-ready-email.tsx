@@ -7,7 +7,7 @@ import { getMessages } from "@/emails/messages"
 
 /**
  * Avisa a la socia de que su crédito ya cubre el precio y puede finalizar la compra.
- * No la marca como propietaria: la compra solo se cierra en /ownership/complete.
+ * No la marca como propietaria: la compra solo se cierra en el webhook de Stripe.
  * Best-effort: nunca lanza.
  */
 export async function notifyReadyToFinalize(

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic"
  * Toda la logica (facturas elegibles, libro de credito, accumulated) vive en
  * startCollectProgress. Si ya existe un progreso Colecciona activo para ese
  * usuario+bolso no se cancela ni se recrea nada: responde 409 { code: 'already_collect' }.
- * Nunca marca 'completed': la compra se cierra en /ownership/complete.
+ * Nunca marca 'completed': la compra se cierra en el webhook de Stripe.
  */
 export async function POST(req: NextRequest) {
   try {
