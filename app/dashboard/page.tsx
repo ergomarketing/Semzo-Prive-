@@ -13,6 +13,7 @@ import { IdentityVerificationModal } from "@/app/components/identity-verificatio
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
 import { MyBagCard } from "@/app/components/my-bag-card"
 import { NextBagCard } from "@/app/components/next-bag-card"
+import { PendingChargeCard } from "@/app/components/pending-charge-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { PetitePassBanner } from "@/app/components/petite-pass-banner"
 import HowFoundPrompt from "@/app/components/how-found-prompt"
@@ -358,6 +359,11 @@ export default function DashboardHome() {
           <SubscriptionSummaryCard />
         </div>
       )}
+
+      {/* Pago pendiente: cargo por no devolucion rechazado por el banco (solo si hay alguno). */}
+      <div className="mb-6 empty:hidden">
+        <PendingChargeCard />
+      </div>
 
       {/* Mi bolso actual: card con vista condicional Descubre / Colecciona.
           El propio componente decide si renderizar según la reserva activa. */}

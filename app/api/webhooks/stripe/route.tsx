@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { render } from "@react-email/components";
-import { EmailServiceProduction, buildMembershipRenewedEmail } from "@/app/lib/email-service-production";
+import { EmailServiceProduction, buildMembershipRenewedEmail, buildSepaChargeFailedEmail } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
@@ -154,6 +154,33 @@ export async function POST(req: NextRequest) {
        */
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // --- PAGO MANUAL de un cargo por no devolucion que el banco rechazo (desde el panel de la socia) ---
+        if (session.mode === "payment" && session.metadata?.type === "non_return_manual_payment") {
+          const manualReservationId = session.metadata?.reservation_id;
+          if (session.payment_status === "paid" && manualReservationId) {
+            const { data: paidRows } = await supabase
+              .from("reservations")
+              .update({
+                sepa_manual_paid_at: now,
+                sepa_charged_at: now,
+                sepa_charge_error: null,
+              })
+              .eq("id", manualReservationId)
+              .is("sepa_manual_paid_at", null)
+              .select("id");
+            if (paidRows && paidRows.length > 0) {
+              await supabase.from("admin_notifications").insert({
+                type: "sepa_manual_payment_received",
+                priority: "high",
+                title: "Pago manual recibido por bolso no devuelto",
+                message: `La socia ha completado a mano el pago de ${(session.amount_total || 0) / 100} € (reserva ${manualReservationId}, sesión ${session.id}). Revisa el bolso y la factura.`,
+                metadata: { reservation_id: manualReservationId, stripe_session_id: session.id },
+              });
+            }
+          }
+          break;
+        }
 
         // --- COMPRA DEL BOLSO EN MODO COLECCIONA (Checkout, pago único) ---
         // Si el pago es asíncrono (payment_status != paid) se cierra en
@@ -1557,11 +1584,14 @@ export async function POST(req: NextRequest) {
           const reservationId = pi.metadata.reservation_id;
           const errorDetail = pi.last_payment_error?.message || "Cargo SEPA fallido (fondos insuficientes u otro rechazo del banco)";
 
+          // El cobro NO se hizo: se quita la marca de "cobrado" (la creaba el cron al lanzar el cargo) y, si es la
+          // primera vez, se avisa a la socia para que complete el pago a mano desde su panel.
           await supabase
             .from("reservations")
             .update({
               sepa_charge_failed_at: now,
               sepa_charge_error: errorDetail,
+              sepa_charged_at: null,
             })
             .eq("id", reservationId);
 
@@ -1581,6 +1611,36 @@ export async function POST(req: NextRequest) {
             `${failedProfile?.first_name || ""} ${failedProfile?.last_name || ""}`.trim() ||
             "Socia";
           const failedBag = (failedReservation as any)?.bags;
+
+          const { data: failureFlag } = await supabase
+            .from("reservations")
+            .select("sepa_failure_email_sent_at")
+            .eq("id", reservationId)
+            .maybeSingle();
+          if (failedProfile?.email && !failureFlag?.sepa_failure_email_sent_at) {
+            const failedEmail = buildSepaChargeFailedEmail({
+              fullName: failedCustomerName,
+              bagName: failedBag ? `${failedBag.brand} ${failedBag.name}`.trim() : "tu bolso",
+              amount: pi.amount ? pi.amount / 100 : 0,
+              payUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"}/dashboard`,
+            });
+            const failedSent = await EmailServiceProduction.getInstance().sendWithResend({
+              to: failedProfile.email,
+              subject: failedEmail.subject,
+              html: failedEmail.html,
+            });
+            await logEmail({
+              recipientEmail: failedProfile.email,
+              recipientName: failedCustomerName,
+              subject: failedEmail.subject,
+              emailType: "sepa_charge_failed",
+              status: failedSent ? "sent" : "failed",
+              metadata: { reservationId },
+            });
+            if (failedSent) {
+              await supabase.from("reservations").update({ sepa_failure_email_sent_at: now }).eq("id", reservationId);
+            }
+          }
 
           await adminNotifications
             .notifySepaChargeFailed({
