@@ -118,3 +118,70 @@ export async function klaviyoTrackForUser(
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
+
+/** Lista principal de Klaviyo ("Lista de email"). Se puede cambiar con KLAVIYO_LIST_ID. */
+export const KLAVIYO_DEFAULT_LIST_ID = "RZkyyc"
+
+/**
+ * Suscribe un correo a la lista de marketing de Klaviyo. SOLO se llama cuando la persona ha marcado la
+ * casilla de consentimiento (el consentimiento queda guardado en marketing_consents). Klaviyo envia el
+ * correo de confirmacion/bienvenida que se configure en su flujo de lista; aqui no se manda nada.
+ */
+export async function klaviyoSubscribe(input: {
+  email: string
+  source: string
+  firstName?: string | null
+  lastName?: string | null
+}): Promise<KlaviyoResult> {
+  const apiKey = process.env.KLAVIYO_PRIVATE_API_KEY
+  if (!apiKey) return { ok: false, skipped: true }
+  const email = (input.email || "").toLowerCase().trim()
+  if (!email || !email.includes("@")) return { ok: false, skipped: true }
+
+  const attributes: Record<string, unknown> = {
+    email,
+    subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } },
+  }
+  if (input.firstName) attributes.first_name = input.firstName
+  if (input.lastName) attributes.last_name = input.lastName
+
+  const body = {
+    data: {
+      type: "profile-subscription-bulk-create-job",
+      attributes: {
+        custom_source: `Semzo web: ${input.source}`,
+        profiles: { data: [{ type: "profile", attributes }] },
+      },
+      relationships: {
+        list: { data: { type: "list", id: process.env.KLAVIYO_LIST_ID || KLAVIYO_DEFAULT_LIST_ID } },
+      },
+    },
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const response = await fetch(`${API_URL}/profile-subscription-bulk-create-jobs/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Klaviyo-API-Key ${apiKey}`,
+        revision: API_REVISION,
+        accept: "application/vnd.api+json",
+        "content-type": "application/vnd.api+json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      console.warn(`[klaviyo] suscripcion: HTTP ${response.status} ${text.slice(0, 300)}`)
+      return { ok: false, status: response.status, error: text.slice(0, 300) }
+    }
+    return { ok: true }
+  } catch (err) {
+    console.warn("[klaviyo] suscripcion fallo (no bloquea):", err instanceof Error ? err.message : err)
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    clearTimeout(timer)
+  }
+}

@@ -13,7 +13,8 @@ import { Mail, CheckCircle2, AlertCircle, Phone } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/app/hooks/useAuth"
 import { SMSAuthModal } from "@/app/components/sms-auth-modal"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
+import { MarketingConsentCheckbox } from "@/app/components/marketing-consent-checkbox"
 import { getStoredAttribution, markAttributionSynced } from "@/lib/attribution-client"
 import { SELF_REPORTED_OPTIONS } from "@/lib/attribution"
 
@@ -40,6 +41,9 @@ function SignupContent() {
   // la captura AttributionCapture en el layout; aqui solo va lo que ella declara.
   const [howFound, setHowFound] = useState("")
   const [howFoundDetail, setHowFoundDetail] = useState("")
+  // Consentimiento de marketing: casilla expresa y opcional, nunca premarcada
+  const [marketingConsent, setMarketingConsent] = useState(false)
+  const locale = useLocale()
 
   useEffect(() => {
     const plan = searchParams.get("plan")
@@ -129,6 +133,8 @@ function SignupContent() {
           plan: selectedPlan,
           bag: selectedBag,
           returnUrl: selectedPlan || selectedBag ? "/cart" : undefined,
+          marketing_consent: marketingConsent,
+          locale,
           attribution: {
             ...getStoredAttribution(),
             selfReported: howFound || null,
@@ -439,6 +445,13 @@ function SignupContent() {
               />
             )}
           </div>
+
+          <MarketingConsentCheckbox
+            id="signup-marketing"
+            checked={marketingConsent}
+            onChange={setMarketingConsent}
+            disabled={loading}
+          />
 
           {message && (
             <Alert
