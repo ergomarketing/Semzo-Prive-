@@ -7,7 +7,6 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
-import WelcomeEmail from "@/emails/templates/welcome"
 import MembershipActivatedEmail from "@/emails/templates/membership-activated"
 import MembershipRenewedEmail from "@/emails/templates/membership-renewed"
 import DunningEmail from "@/emails/templates/dunning"
@@ -18,7 +17,7 @@ import OwnershipCompletedEmail from "@/emails/templates/ownership-completed"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildBagPassPurchaseUserEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -96,10 +95,9 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
   const t = getMessages("es")
   switch (key) {
     case "welcome":
-      return {
-        subject: t.welcome.subject,
-        html: await render(<WelcomeEmail name="Erika" confirmationUrl={`${TEST_SITE}/auth/confirm`} />),
-      }
+      return buildAccountConfirmationEmail({
+        confirmationUrl: `${TEST_SITE}/auth/callback?token_hash=EJEMPLO&type=signup`,
+      })
     case "membership_activated":
       return {
         subject: "Bienvenida a Semzo Privé — Tu membresía Petite está activa",
