@@ -67,22 +67,79 @@ export async function POST(request: NextRequest) {
     if (bag) callbackUrl.searchParams.set("bag", bag)
     if (origin) callbackUrl.searchParams.set("origin", origin)
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email.toLowerCase().trim(),
-      password: password,
-      options: {
-        emailRedirectTo: callbackUrl.toString(),
-        data: {
-          first_name: firstName || null,
-          last_name: lastName || null,
-          pending_plan: plan || null,
-          pending_bag: bag || null,
-        },
-      },
-    })
+    const normalizedEmail = email.toLowerCase().trim()
+    const userMetadata = {
+      first_name: firstName || null,
+      last_name: lastName || null,
+      pending_plan: plan || null,
+      pending_bag: bag || null,
+    }
+
+    // El correo de "Confirmar mi cuenta" sale de NUESTRO sistema (Resend, con la plantilla de marca) y no del
+    // de Supabase. Se crea el usuario sin confirmar con admin.generateLink (no envia nada) y se manda el enlace
+    // a /auth/callback con token_hash, que ya lo sabe verificar. Poner SIGNUP_CONFIRMATION_VIA_CODE=0 en Vercel
+    // vuelve al correo de Supabase. Si algo falla al enviar, se reenvia con el de Supabase: nadie se queda sin enlace.
+    let authData: { user: any } | null = null
+    let authError: { message?: string; code?: string } | null = null
+
+    if (process.env.SIGNUP_CONFIRMATION_VIA_CODE !== "0" && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const adminClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      })
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: "signup",
+        email: normalizedEmail,
+        password,
+        options: { data: userMetadata, redirectTo: callbackUrl.toString() },
+      })
+
+      if (linkError || !linkData?.user) {
+        authError = linkError || { message: "No se pudo crear el usuario" }
+      } else {
+        authData = { user: linkData.user }
+
+        let sent = false
+        const tokenHash = linkData.properties?.hashed_token
+        if (tokenHash) {
+          try {
+            const confirmUrl = new URL(callbackUrl.toString())
+            confirmUrl.searchParams.set("token_hash", tokenHash)
+            confirmUrl.searchParams.set("type", "signup")
+            const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
+            sent = await EmailServiceProduction.getInstance().sendWelcomeEmail(
+              normalizedEmail,
+              firstName || "",
+              confirmUrl.toString(),
+            )
+          } catch (sendError) {
+            console.error("[BACKEND] Error enviando confirmacion por Resend:", sendError)
+          }
+        }
+        if (!sent) {
+          console.warn("[BACKEND] Confirmacion por Resend fallo: se reenvia con el correo de Supabase")
+          await supabase.auth.resend({
+            type: "signup",
+            email: normalizedEmail,
+            options: { emailRedirectTo: callbackUrl.toString() },
+          })
+        }
+      }
+    } else {
+      const result = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: password,
+        options: { emailRedirectTo: callbackUrl.toString(), data: userMetadata },
+      })
+      authData = result.data
+      authError = result.error
+    }
 
     if (authError) {
-      if (authError.message?.toLowerCase().includes("already registered")) {
+      const alreadyRegistered =
+        authError.code === "email_exists" ||
+        authError.message?.toLowerCase().includes("already registered") ||
+        authError.message?.toLowerCase().includes("already been registered")
+      if (alreadyRegistered) {
         return NextResponse.json(
           {
             success: false,
