@@ -30,16 +30,30 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 const resend = new Resend(getResendApiKey())
 const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>"
 
-// Emails "de código" (no viven en lifecycle_email_templates), agrupados por tema. Cada uno se prueba con
-// su diseño REAL actual y datos de ejemplo. Aqui solo van los correos con diseño de la marca (de Erika);
-// los genericos se quitaron de la lista y vuelven uno a uno cuando tengan su plantilla.
+// Emails "de código" (no viven en lifecycle_email_templates), agrupados por tema. Los que tienen la plantilla
+// de Erika se prueban con su diseño real. Los marcados pending: true son HUECOS vacios: su plantilla aun no
+// esta cargada (el diseño generico antiguo se apago en la prueba). Se rellenan uno a uno cuando Erika pasa el HTML.
 const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "welcome", label: "1 · Activación de cuenta: confirmar correo (antes lo mandaba Supabase)" },
   { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Bienvenida de socia (membresía activa, también al reactivar)" },
+  { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar", pending: true },
+  { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía", pending: true },
+  { group: "Pagos", key: "payment_receipt", label: "Recibo de pago", pending: true },
+  { group: "Pagos", key: "refund", label: "Reembolso", pending: true },
+  { group: "Pagos", key: "membership_renewed", label: "Recibo de renovación", pending: true },
+  { group: "Pagos", key: "payment_failed_1", label: "Pago fallido · aviso 1", pending: true },
+  { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2", pending: true },
+  { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3", pending: true },
+  { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo", pending: true },
+  { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
+  { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
+  { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },
+  { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)", pending: true },
+  { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra", pending: true },
   { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
   { group: "Envíos y devoluciones", key: "shipment_delivered", label: "Entrega confirmada" },
   { group: "Envíos y devoluciones", key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },
-] as const
+] as { group: string; key: string; label: string; pending?: boolean }[]
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce((str, [key, value]) => str.replaceAll(`{{${key}}}`, value), template)
@@ -326,6 +340,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (kind === "code") {
+      if (CODE_EMAILS.find((e) => e.key === codeKey)?.pending) {
+        return NextResponse.json({ error: "Este correo aun no tiene plantilla cargada." }, { status: 400 })
+      }
       const emailService = new EmailServiceProduction()
 
       switch (codeKey) {
