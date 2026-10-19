@@ -1078,8 +1078,8 @@ export class EmailServiceProduction {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
             <td style="padding:6px 0 0 0;">
-              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/gucci%20jackie%20en%20renta-CUytoQuS4NBdDWiT8KVFKIGFzggvqm.jpeg"
-                   alt="Tu bolso ya está en tus manos, con el sello SEMZO PRIVÉ"
+              <img src="https://h0ayghjex33jktep.public.blob.vercel-storage.com/blog-images/1768579438886-gucci___dior___chanel_alquilar_x_semana.jpg"
+                   alt=""
                    width="600"
                    style="display:block;width:100%;height:auto;border:0;" />
             </td>
@@ -1288,7 +1288,7 @@ export class EmailServiceProduction {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
           <tr>
             <td align="center" style="padding:0 20px 14px 20px;font-size:9px;color:#d0d0d0;letter-spacing:0.3px;">
-              <span>© 2026 SEMZO PRIVÉ · </span><a href="#" style="color:#d0d0d0;text-decoration:none;">Darse de baja</a>
+              <span>© 2026 SEMZO PRIVÉ</span>
             </td>
           </tr>
         </table>
