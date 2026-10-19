@@ -97,16 +97,12 @@ export async function POST(request: NextRequest) {
       // nunca bloquea el registro
     }
 
-    // Meter en el embudo de leads (secuencia de 5 emails)
+    // Registrarse como socia NO mete en la secuencia de leads; si ya estaba como lead, se le paran los correos.
     try {
-      const { enrollLead } = await import("@/lib/leads/enroll")
-      await enrollLead({
-        email: email.toLowerCase().trim(),
-        name: `${firstName} ${lastName}`.trim(),
-        source: "organic_web",
-      })
-    } catch (e) {
-      console.error("[v0] enrollLead error (register-free):", e)
+      const { stopLeadSequenceForMember } = await import("@/lib/leads/enroll")
+      await stopLeadSequenceForMember(email)
+    } catch {
+      // nunca bloquea el registro
     }
 
     // NO enviar emails manuales - Supabase lo hace automáticamente

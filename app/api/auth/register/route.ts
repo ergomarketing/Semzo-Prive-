@@ -264,22 +264,13 @@ export async function POST(request: NextRequest) {
       // nunca bloquea el registro
     }
 
-    // Inscribir en la secuencia de leads (5 emails automáticos)
+    // Registrarse como socia NO mete en la secuencia de leads (esa es para quien deja su correo en el catalogo).
+    // Si ya estaba como lead, se le paran los correos que le quedaban.
     try {
-      const { enrollLead } = await import("@/lib/leads/enroll")
-      await enrollLead({
-        email: email.toLowerCase().trim(),
-        name: fullName || undefined,
-        // Antes siempre "organic_web": ahora refleja el canal real (Google Ads,
-        // redes...) y alimenta el panel de fuentes de /admin/leads.
-        source: leadSourceFromChannel(attributionResult.channel),
-        utm_campaign: attributionTouch?.utm_campaign,
-        utm_medium: attributionTouch?.utm_medium,
-        utm_content: attributionTouch?.utm_content,
-      })
-    } catch (leadError) {
-      // No bloquear el registro si falla el enrol de leads
-      console.error("[register] enrollLead error:", leadError)
+      const { stopLeadSequenceForMember } = await import("@/lib/leads/enroll")
+      await stopLeadSequenceForMember(email)
+    } catch {
+      // nunca bloquea el registro
     }
 
     return NextResponse.json({

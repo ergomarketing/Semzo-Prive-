@@ -232,3 +232,26 @@ async function sendEmailNow(leadId: string, email: string, name: string) {
     .eq("lead_id", leadId)
     .eq("email_number", 1)
 }
+
+/**
+ * Una persona que se REGISTRA COMO SOCIA no pertenece a la secuencia de leads (esa es para quien deja su correo
+ * en el catalogo y aun no se ha registrado). Si ya estaba como lead, se le paran los correos que le quedaban.
+ * Nunca lanza.
+ */
+export async function stopLeadSequenceForMember(email: string): Promise<void> {
+  try {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false },
+    })
+    const address = email.toLowerCase().trim()
+    const { data: lead } = await supabase.from("leads").select("id").eq("email", address).maybeSingle()
+    if (!lead?.id) return
+    await supabase
+      .from("email_sequence_log")
+      .update({ status: "skipped", error_message: "se registro como socia" })
+      .eq("lead_id", lead.id)
+      .eq("status", "pending")
+  } catch (e) {
+    console.error("[stopLeadSequenceForMember] fallo (no bloquea):", e)
+  }
+}

@@ -64,15 +64,12 @@ export async function POST(request: NextRequest) {
       console.error("[v0] register-for-checkout profile upsert error:", profileErr)
     }
 
-    // Inscribir en la secuencia de leads (5 emails automáticos)
+    // Registrarse como socia NO mete en la secuencia de leads; si ya estaba como lead, se le paran los correos.
     try {
-      const { enrollLead } = await import("@/lib/leads/enroll")
-      await enrollLead({
-        email: normalizedEmail,
-        source: "organic_web",
-      })
-    } catch (leadError) {
-      console.error("[register-for-checkout] enrollLead error:", leadError)
+      const { stopLeadSequenceForMember } = await import("@/lib/leads/enroll")
+      await stopLeadSequenceForMember(normalizedEmail)
+    } catch {
+      // nunca bloquea el registro
     }
 
     return NextResponse.json({ success: true, userId: data.user.id })
