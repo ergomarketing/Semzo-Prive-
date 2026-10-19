@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { isWithinDelinquencyGrace } from "@/lib/delinquency"
 
 // CRITICAL: No cache - user-specific authenticated data
 export const dynamic = "force-dynamic"
@@ -48,10 +49,16 @@ export async function GET() {
       : false
 
     const accessGrantingStatuses = ["active", "cancelling", "cancelled", "canceled", "past_due"]
+    // past_due: periodo de gracia real. Acceso al panel durante DELINQUENCY_GRACE_DAYS desde que empezo el impago
+    // (para poder pagar), aunque end_date ya haya pasado; suspendida = sin acceso. Las reservas siguen bloqueadas
+    // desde el dia 0 (canCreateReservations).
+    const inDelinquencyGrace =
+      anyMembership?.status === "past_due" &&
+      isWithinDelinquencyGrace((anyMembership as any)?.past_due_since, (anyMembership as any)?.suspended_at)
     const hasEffectiveAccess =
       !!anyMembership &&
       accessGrantingStatuses.includes(anyMembership.status) &&
-      (anyMembership.status === "active" ? true : hasFutureEnd)
+      (anyMembership.status === "active" ? true : anyMembership.status === "past_due" ? inDelinquencyGrace || (hasFutureEnd && !(anyMembership as any)?.suspended_at) : hasFutureEnd)
 
     // activeMembership: la membresía con derecho efectivo de uso (no solo active)
     const activeMembership = hasEffectiveAccess ? anyMembership : null

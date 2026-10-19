@@ -518,3 +518,26 @@ export const SEPA_MANUAL_PAID = {
     ctaHref: "https://semzoprive.com/dashboard",
   }),
 }
+
+/**
+ * Membresía suspendida por impago CON UN BOLSO EN CASA: se pide la devolución.
+ * Variables: {{nombre}} {{tier}} {{nombre_bolso}} {{fecha_limite}} {{url_panel}}. Boton: "Gestionar la devolución".
+ * TEXTO PROVISIONAL (pendiente de la redacción final de Erika).
+ */
+export const SUSPENDED_RETURN = {
+  subject: "Tu membresía está suspendida: necesitamos tu bolso · SEMZO PRIVÉ",
+  html: shell({
+    title: "Devolución de tu bolso",
+    eyebrow: "Membresía suspendida",
+    headingHtml: "Necesitamos que nos<br />devuelvas tu bolso",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("No hemos podido cobrar tu membresía <strong>{{tier}}</strong> y, tras nuestros avisos, tu acceso ha quedado suspendido."),
+      P("Todavía tienes contigo <strong>{{nombre_bolso}}</strong>. Te pedimos que lo devuelvas antes del <strong>{{fecha_limite}}</strong> desde tu panel; el envío de vuelta va incluido."),
+      P("Si no lo recibimos en ese plazo, aplicaremos lo previsto en los Términos y Condiciones de tu membresía, que incluye el cargo del valor del bolso. Puedes evitarlo regularizando tu pago o devolviendo la pieza."),
+    ].join("\n"),
+    ctaLabel: "Gestionar la devolución",
+    ctaHref: "{{url_panel}}",
+    ctaNote: "Si crees que se trata de un error, responde a este email.",
+  }),
+}
