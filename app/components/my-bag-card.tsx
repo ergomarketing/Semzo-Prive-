@@ -236,8 +236,6 @@ export function MyBagCard() {
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button
                     onClick={() => {
-                      setAcceptedContract(false)
-                      setAcceptedCondition(false)
                       setConfirmPurchase(true)
                     }}
                     disabled={busy !== null}
