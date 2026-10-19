@@ -36,9 +36,9 @@ const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>
 // su diseño REAL actual y datos de ejemplo. Los marcados (borrador) aun no existen: son un punto de partida
 // para sustituirlos por la plantilla nueva.
 const CODE_EMAILS = [
-  { group: "Cuenta y membresía", key: "welcome", label: "Bienvenida de registro (confirmar cuenta)" },
-  { group: "Cuenta y membresía", key: "membership_activated", label: "Membresía activa" },
-  { group: "Cuenta y membresía", key: "membership_returning", label: "Membresía vuelve a estar activa" },
+  { group: "Cuenta y membresía", key: "welcome", label: "1 · Activación de cuenta: confirmar correo (antes lo mandaba Supabase)" },
+  { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Membresía activa (pago, identidad y SEPA completados)" },
+  { group: "Cuenta y membresía", key: "membership_returning", label: "2 · Membresía vuelve a estar activa (socia que regresa)" },
   { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar" },
   { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
   { group: "Pagos", key: "payment_receipt", label: "Recibo de pago (borrador nuevo)" },
