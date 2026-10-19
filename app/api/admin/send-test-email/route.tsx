@@ -50,6 +50,8 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },
   { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)", pending: true },
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra", pending: true },
+  { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
+  { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
   { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
   { group: "Envíos y devoluciones", key: "shipment_delivered", label: "Entrega confirmada" },
   { group: "Envíos y devoluciones", key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },

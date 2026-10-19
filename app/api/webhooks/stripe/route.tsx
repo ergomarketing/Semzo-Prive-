@@ -21,6 +21,7 @@ import { getInvoiceSubscriptionId } from "@/lib/stripe-invoice";
 import { closeColeccionaSale } from "@/lib/ownership-sale-close";
 import { klaviyoTrackForUser } from "@/lib/klaviyo";
 import { registerOwnershipMode } from "@/lib/ownership-register-mode";
+import { getNextBagState } from "@/lib/next-bag-queue";
 import { creditPassPurchase } from "@/lib/ownership-pass-credit";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
@@ -414,7 +415,18 @@ export async function POST(req: NextRequest) {
             // vinculando el pase recien creado al bolso elegido.
             const bagId = (session.metadata as any)?.bag_id;
             let passReservationCreated = false;
-            if (bagId && insertedPass?.id && !insertedPass.used_for_reservation_id) {
+            // "Proximo bolso": si la socia aun tiene otro bolso, la reserva queda EN COLA (sale al confirmar la
+            // devolucion del actual). Si ya no esta en la ventana de 7 dias, el pase queda disponible sin reserva.
+            const nextBagState = bagId && insertedPass?.id ? await getNextBagState(supabase, userId) : null;
+            const skipForQueue = !!nextBagState && nextBagState.hasBagInHand && !nextBagState.canQueue;
+            if (skipForQueue) {
+              console.warn("[v0] [bag_pass_webhook] bolso en curso fuera de ventana: pase queda disponible sin reserva", {
+                session_id: session.id,
+                user_id: userId,
+                reason: nextBagState?.reason,
+              });
+            }
+            if (bagId && insertedPass?.id && !insertedPass.used_for_reservation_id && !skipForQueue) {
               try {
                 const startDate = new Date();
                 const endDate = new Date();
@@ -430,6 +442,7 @@ export async function POST(req: NextRequest) {
                     p_end_date: endDate.toISOString(),
                     p_membership_type: "petite",
                     p_rental_days: 7,
+                    p_status: nextBagState?.hasBagInHand ? "queued" : "confirmed",
                   }
                 );
 
@@ -471,7 +484,7 @@ export async function POST(req: NextRequest) {
             // Un fallo aqui no debe tumbar el webhook (el pase y la reserva ya estan hechos): se avisa al admin.
             try {
               const chosenMode = (session.metadata as any)?.ownership_mode;
-              if (passReservationCreated && bagId && chosenMode === "collect") {
+              if (passReservationCreated && bagId && chosenMode === "collect" && !nextBagState?.hasBagInHand) {
                 const registered = await registerOwnershipMode(supabase, userId, bagId, "collect");
                 if (!registered.ok) {
                   throw new Error(`No se pudo activar Colecciona (${registered.code || registered.status}): ${registered.message}`);

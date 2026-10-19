@@ -4,6 +4,8 @@ import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { reconcileRentalCommission } from "@/lib/partners"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
+import { promoteQueuedReservation } from "@/lib/next-bag-queue"
+import { renderAdminEmail } from "@/app/lib/email-layout"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -287,6 +289,43 @@ export async function PATCH(request: NextRequest) {
               old_values: { status: reservation.status },
               new_values: { status: "completed", trigger: `return_${status}` },
             })
+
+            // "Proximo bolso": si la socia tenia otro bolso reservado en cola, pasa a confirmado y entra en el
+            // flujo normal de envio (o se cancela si su membresia ya no esta activa). Nunca bloquea el cierre.
+            if (reservation.user_id) {
+              const promotion = await promoteQueuedReservation(supabase, reservation.user_id)
+              if (promotion.promoted || promotion.cancelled) {
+                const who = profile?.full_name || profile?.email || reservation.user_id
+                const message = promotion.promoted
+                  ? `${who}: recibida la devolución. Su PRÓXIMO BOLSO (${promotion.bagLabel}) ya está confirmado: prepara el envío.`
+                  : `${who}: recibida la devolución, pero su membresía ya no está activa: se canceló su próximo bolso en cola.`
+                await supabase
+                  .from("admin_notifications")
+                  .insert({
+                    type: promotion.promoted ? "next_bag_ready_to_ship" : "next_bag_cancelled",
+                    priority: "high",
+                    title: promotion.promoted ? "Próximo bolso listo para enviar" : "Próximo bolso cancelado",
+                    message,
+                    metadata: { user_id: reservation.user_id, reservation_id: promotion.reservationId },
+                  })
+                  .then(({ error }) => error && console.error("[Logistics API] admin_notifications próximo bolso:", error.message))
+                await EmailServiceProduction.getInstance()
+                  .sendWithResend({
+                    to: "mailbox@semzoprive.com",
+                    subject: promotion.promoted ? `[Admin] Preparar envío: próximo bolso de ${who}` : `[Admin] Próximo bolso cancelado: ${who}`,
+                    html: renderAdminEmail({
+                      title: promotion.promoted ? "Próximo bolso listo para enviar" : "Próximo bolso cancelado",
+                      intro: message,
+                      rows: [
+                        { label: "Socia", value: String(who) },
+                        ...(promotion.bagLabel ? [{ label: "Bolso", value: promotion.bagLabel }] : []),
+                      ],
+                      accent: promotion.promoted ? "success" : "danger",
+                    }),
+                  })
+                  .catch((err) => console.error("[Logistics API] Error avisando próximo bolso:", err))
+              }
+            }
 
             // Sistema de partners: devolucion OK sin incidencias -> comision
             // liquidable si el cliente aplico un codigo de partner. Idempotente.

@@ -3,6 +3,7 @@ import { registerOwnershipMode } from "@/lib/ownership-register-mode"
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
+import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
 
 export async function POST(request: Request) {
   try {
@@ -146,18 +147,17 @@ export async function POST(request: Request) {
     // En curso = cualquier reserva NO completada ni cancelada. Cubre
     // active, overdue (devolucion pendiente), shipped, delivered, in_use,
     // returning, etc. Una socia con un bolso sin devolver NO puede reservar.
-    const { data: ongoingReservations } = await supabase
-      .from("reservations")
-      .select("id, status")
-      .eq("user_id", finalUserId)
-      .not("status", "in", "(completed,cancelled,canceled)")
-
-    if (ongoingReservations && ongoingReservations.length > 0) {
+    // Con un bolso en curso solo se puede comprar el pase de su "proximo bolso" (ultimos 7 dias del ciclo).
+    const nextBag = await getNextBagState(supabase, finalUserId)
+    if ((nextBag.hasBagInHand && !nextBag.canQueue) || nextBag.queued) {
       return NextResponse.json(
         {
-          error:
-            "Tienes un bolso en curso. Para reservar uno nuevo, primero completa la devolución del bolso actual desde tu dashboard.",
+          error: nextBag.hasBagInHand
+            ? nextBagBlockMessage(nextBag)
+            : `Ya tienes tu próximo bolso reservado (${nextBag.queued?.bagLabel}).`,
           code: "ACTIVE_RESERVATION",
+          reason: nextBag.reason,
+          nextBagWindowOpensAt: nextBag.windowOpensAt,
         },
         { status: 409 }
       )
@@ -345,6 +345,8 @@ export async function POST(request: Request) {
             p_end_date: endDate.toISOString(),
             p_membership_type: "petite",
             p_rental_days: 7,
+            // Con un bolso en curso (ya validado arriba: ultimos 7 dias) la reserva queda en cola.
+            p_status: nextBag.hasBagInHand ? "queued" : "confirmed",
           }
         )
 
@@ -368,7 +370,7 @@ export async function POST(request: Request) {
 
           // Modo Colecciona elegido en el catalogo: se registra ahora que la reserva existe.
           // Best-effort: la socia ya tiene pase y reserva; si falla podra usar "Convertir en mio".
-          if (ownershipMode === "collect") {
+          if (ownershipMode === "collect" && !nextBag.hasBagInHand) {
             const registered = await registerOwnershipMode(supabase, finalUserId, bagId, "collect")
             if (!registered.ok) {
               console.error("[v0] [purchase] No se pudo activar Colecciona (no bloquea)", registered.message)

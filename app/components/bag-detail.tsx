@@ -439,8 +439,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       }
 
       toast({
-        title: t("reservationSuccess"),
-        description: t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
+        title: data.queued ? "Próximo bolso reservado" : t("reservationSuccess"),
+        description: data.queued ? data.message : t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
       })
 
       router.push("/dashboard/reservas")
@@ -551,8 +551,8 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       }
 
       toast({
-        title: t("reservationSuccess"),
-        description: t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
+        title: data.queued ? "Próximo bolso reservado" : t("reservationSuccess"),
+        description: data.queued ? data.message : t("reservationSuccessDesc", { brand: bag.brand, name: bag.name }),
       })
 
       router.push("/dashboard/reservas")

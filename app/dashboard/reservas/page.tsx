@@ -132,6 +132,7 @@ export default function ReservasPage() {
       completed: { label: t("statusCompleted"), className: "bg-slate-100 text-slate-800 border-slate-200" },
       cancelled: { label: t("statusCancelled"), className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
       overdue:   { label: t("statusOverdue"),   className: "bg-red-100 text-red-800 border-red-200" },
+      queued:    { label: "Próximo bolso (en cola)", className: "bg-amber-100 text-amber-800 border-amber-200" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || { label: status, className: "bg-slate-100 text-slate-800 border-slate-200" }

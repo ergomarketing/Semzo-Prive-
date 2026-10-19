@@ -12,6 +12,7 @@ import { mapDBStatusToUI, getStatusLabel, getStatusDescription } from "@/lib/mem
 import { IdentityVerificationModal } from "@/app/components/identity-verification-modal"
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
 import { MyBagCard } from "@/app/components/my-bag-card"
+import { NextBagCard } from "@/app/components/next-bag-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { PetitePassBanner } from "@/app/components/petite-pass-banner"
 import HowFoundPrompt from "@/app/components/how-found-prompt"
@@ -363,6 +364,13 @@ export default function DashboardHome() {
       {membership && membership.status !== "no_membership" && (
         <div className="mb-8">
           <MyBagCard />
+        </div>
+      )}
+
+      {/* Proximo bolso: reserva en cola o aviso de que ya se puede elegir (ultimos 7 dias del ciclo). */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <NextBagCard />
         </div>
       )}
 

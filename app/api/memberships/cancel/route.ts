@@ -2,7 +2,9 @@ import Stripe from "stripe"
 import { NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { cancelQueuedReservation } from "@/lib/next-bag-queue"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -92,6 +94,13 @@ export async function POST(req: Request) {
         ? endDate.toLocaleDateString("es-ES", LONG_DATE)
         : new Date().toLocaleDateString("es-ES", LONG_DATE)
     }
+
+    // Si tenia un "proximo bolso" en cola, se cancela (la membresia no se renueva): libera el bolso y
+    // devuelve el pase si se uso uno. Best-effort.
+    const serviceClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    await cancelQueuedReservation(serviceClient, user.id, "membership_cancelled").catch((err) =>
+      console.error("[memberships/cancel] No se pudo cancelar el próximo bolso en cola:", err),
+    )
 
     // Enviar emails (usuario + admin)
     try {
