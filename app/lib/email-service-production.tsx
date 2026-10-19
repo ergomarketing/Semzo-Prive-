@@ -33,6 +33,7 @@ import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-email
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
+  COLECCIONA_SALE,
   MEMBERSHIP_RENEWED,
   PAYMENT_FAILED_1,
   PAYMENT_FAILED_2,
@@ -179,6 +180,33 @@ export function buildMembershipRenewedEmail(data: {
       importe: formatEuroAmount(data.amount),
       fecha_renovacion: data.nextRenewalDate,
     }),
+  }
+}
+
+/** Correo Colecciona "Compra confirmada" (venta cerrada): con contrato adjunto y enlace a la factura. */
+export function buildColeccionaSaleEmail(data: {
+  fullName: string | null
+  bagLabel: string
+  amountPaid: number
+  invoiceUrl: string | null
+  hasContract: boolean
+}): { subject: string; html: string } {
+  const contractSentence = data.hasContract
+    ? "Adjuntamos tu <strong>contrato de compraventa</strong> firmado en PDF. También lo tienes siempre disponible en tu panel, en «Mis bolsos»."
+    : "Tu <strong>contrato de compraventa</strong> firmado estará disponible en tu panel, en «Mis bolsos»."
+  return {
+    subject: `${data.bagLabel} ya es tuyo · Semzo Privé`,
+    html: renderServiceTemplate(
+      COLECCIONA_SALE.html,
+      {
+        nombre: firstNameOf(data.fullName),
+        nombre_bolso: data.bagLabel,
+        importe: formatEuroAmount(data.amountPaid),
+        url_factura: data.invoiceUrl || `${BRAND.site}/dashboard`,
+        frase_contrato: contractSentence,
+      },
+      ["url_factura", "frase_contrato"],
+    ),
   }
 }
 

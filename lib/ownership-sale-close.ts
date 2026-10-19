@@ -13,7 +13,7 @@
  *  4. (solo la primera vez) aviso al admin + email a la socia y al admin
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { EmailServiceProduction, buildColeccionaSaleEmail } from "@/app/lib/email-service-production"
 import { BRAND, emailDetailList, emailInfoBox, renderAdminEmail, renderBrandEmail } from "@/app/lib/email-layout"
 import { archiveColeccionaContract, type ArchivedContract } from "@/lib/ownership-contract-archive"
 import { logEmail } from "@/lib/email-logger"
@@ -157,11 +157,19 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
       const logMeta = { ownership_progress_id: progress.id, payment_ref: input.paymentRef }
 
       if (profile?.email) {
-        const memberSubject = `${bagLabel} ya es tuyo · Semzo Privé`
+        // Plantilla de Erika (lib/service-emails/payment-family.ts), con el contrato en PDF adjunto
+        const built = buildColeccionaSaleEmail({
+          fullName: profile.full_name,
+          bagLabel,
+          amountPaid: input.amountPaidCents / 100,
+          invoiceUrl,
+          hasContract: !!archived,
+        })
+        const memberSubject = built.subject
         const sent = await emailService.sendWithResend({
           to: profile.email,
           subject: memberSubject,
-          html: renderColeccionaSaleMemberEmail({ firstName, bagLabel, paid, invoiceUrl, hasContract: !!archived }),
+          html: built.html,
           attachments,
         })
         await logEmail({
@@ -217,39 +225,3 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
   return { ok: true, firstClose, bagLabel }
 }
 
-export function renderColeccionaSaleMemberEmail(input: {
-  firstName: string
-  bagLabel: string
-  paid: string
-  invoiceUrl: string | null
-  hasContract: boolean
-}): string {
-  const { firstName, bagLabel, paid, invoiceUrl, hasContract } = input
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
-  return renderBrandEmail({
-    preheader: `${bagLabel} es ahora tuyo. Adjuntamos tu contrato.`,
-    eyebrow: "Compra confirmada",
-    heading: `Enhorabuena${firstName ? `, ${firstName}` : ""}`,
-    bodyHtml: `
-      <p style="margin:0 0 8px 0;"><strong>${bagLabel}</strong> es ahora tuyo. Hemos recibido tu pago.</p>
-      ${emailDetailList([
-        { label: "Bolso", value: bagLabel },
-        { label: "Importe pagado", value: paid },
-      ])}
-      ${emailInfoBox(
-        `${
-          hasContract
-            ? "Adjuntamos tu <strong>contrato de compraventa</strong> firmado en PDF. También lo tienes siempre disponible en tu panel, en «Mis bolsos».<br>"
-            : "Tu contrato de compraventa estará disponible en tu panel, en «Mis bolsos».<br>"
-        }${
-          invoiceUrl
-            ? `Tu <strong>factura</strong>: <a href="${invoiceUrl}" style="color:${BRAND.navy};">ver y descargar factura</a>.`
-            : "Tu <strong>factura</strong> estará disponible en tu panel en unos minutos."
-        }`,
-      )}
-      <p style="margin:0 0 8px 0;">Dispones de <strong>14 días naturales</strong> para desistir de la compra si lo deseas; el formulario está en el Anexo II del contrato. Tu membresía sigue activa como siempre.</p>
-    `,
-    cta: { label: "Ir a mi cuenta", url: `${site}/dashboard` },
-    footerNote: "¿Dudas? Escríbenos a info@semzoprive.com.",
-  })
-}

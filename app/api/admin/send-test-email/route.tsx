@@ -12,8 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { renderColeccionaSaleMemberEmail } from "@/lib/ownership-sale-close"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -45,7 +44,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
   { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA", pending: true },
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado", pending: true },
-  { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)", pending: true },
+  { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)" },
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
   { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
@@ -172,16 +171,13 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         ),
       }
     case "colecciona_sale":
-      return {
-        subject: "Chanel 2.55 Reissue ya es tuyo · Semzo Privé",
-        html: renderColeccionaSaleMemberEmail({
-          firstName: "Erika",
-          bagLabel: "Chanel 2.55 Reissue",
-          paid: "4.360,50 €",
-          invoiceUrl: `${TEST_SITE}/dashboard`,
-          hasContract: true,
-        }),
-      }
+      return buildColeccionaSaleEmail({
+        fullName: "ROSA Gonzalez",
+        bagLabel: "Furla Club 2 Mini",
+        amountPaid: 1,
+        invoiceUrl: `${TEST_SITE}/dashboard`,
+        hasContract: true,
+      })
     case "colecciona_ready":
       return buildColeccionaReadyEmail({
         fullName: "ROSA Gonzalez",

@@ -17,8 +17,12 @@ interface Parts {
   eyebrow: string
   /** Titular (admite <br />) */
   headingHtml: string
+  /** Tamaño del titular en px (por defecto 28) */
+  headingSize?: number
   /** Contenido del cuerpo (párrafos en el estilo serif de 17 px) */
   bodyHtml: string
+  /** Bloques completos (tablas) entre el cuerpo y el botón: p. ej. el bloque rosa (opcional) */
+  afterBodyHtml?: string
   /** Frase central en cursiva, antes del botón (opcional) */
   centralPhrase?: string
   ctaLabel: string
@@ -94,7 +98,7 @@ function shell(p: Parts): string {
           </tr>
           <tr>
             <td align="center" style="padding:12px 30px 8px 30px;">
-              <h1 class="responsive-title" style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:400;font-size:28px;line-height:1.3;color:#1a1a4b;letter-spacing:-0.3px;">
+              <h1 class="responsive-title" style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:400;font-size:${p.headingSize ?? 28}px;line-height:1.3;color:#1a1a4b;letter-spacing:-0.3px;">
                 ${p.headingHtml}
               </h1>
             </td>
@@ -120,7 +124,7 @@ ${p.bodyHtml}
             </td>
           </tr>
         </table>
-${
+${p.afterBodyHtml || ""}${
   p.centralPhrase
     ? `
         <!-- 4. FRASE CENTRAL -->
@@ -342,5 +346,69 @@ export const MEMBERSHIP_RENEWED = {
     ].join("\n"),
     ctaLabel: "Elegir mi próximo bolso",
     ctaHref: "https://semzoprive.com/catalog",
+  }),
+}
+
+/**
+ * Venta Colecciona completada ("Compra confirmada"). Variables: {{nombre}} {{nombre_bolso}} {{importe}} {{url_factura}}
+ * y {{frase_contrato}} (HTML fijo: con el PDF adjunto o, si no se pudo generar, aviso de que estara en el panel).
+ */
+export const COLECCIONA_SALE = {
+  html: shell({
+    title: "Compra confirmada",
+    eyebrow: "Compra confirmada",
+    headingHtml: "Enhorabuena, {{nombre}}",
+    headingSize: 32,
+    bodyHtml: [
+      '<p style="margin:0 0 24px 0;">Hola {{nombre}},</p>',
+      '<p style="margin:0 0 24px 0;"><strong>{{nombre_bolso}}</strong> es ahora tuyo. Hemos recibido tu pago.</p>',
+      `
+                    <!-- TABLA DE DATOS -->
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:12px 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;text-transform:uppercase;color:#7a7a94;letter-spacing:1px;border-bottom:1px solid #f0ebed;width:40%;">Bolso</td>
+                        <td style="padding:12px 0;font-weight:600;color:#1a1a4b;border-bottom:1px solid #f0ebed;">{{nombre_bolso}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;text-transform:uppercase;color:#7a7a94;letter-spacing:1px;border-bottom:1px solid #f0ebed;">Importe pagado</td>
+                        <td style="padding:12px 0;font-weight:600;color:#1a1a4b;border-bottom:1px solid #f0ebed;">{{importe}}€</td>
+                      </tr>
+                    </table>`,
+    ].join("\n"),
+    afterBodyHtml: `
+        <!-- BLOQUE ROSA (Contrato y Factura) -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:0 20px 24px 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;background-color:#fff0f3; border-left:3px solid #c9a96e;">
+                <tr>
+                  <td style="padding:20px;color:#1a1a4b;font-size:15px;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+                    <p style="margin:0 0 12px 0;">{{frase_contrato}}</p>
+                    <p style="margin:0;">Tu factura: <a href="{{url_factura}}" style="color:#1a1a4b;text-decoration:underline;font-weight:600;">ver y descargar factura</a>.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- AVISO DE DESISTIMIENTO -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:0 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:440px;border-collapse:collapse;">
+                <tr>
+                  <td style="color:#1a1a4b;font-family:'Playfair Display',Georgia,serif;font-size:16px;line-height:1.7;padding:0;">
+                    <p style="margin:0 0 24px 0;">Dispones de <strong>14 días naturales</strong> para desistir de la compra si lo deseas; el formulario está en el Anexo II del contrato. Tu membresía sigue activa como siempre.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+`,
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+    ctaNote: '¿Dudas? Escríbenos a <a href="mailto:info@semzoprive.com" style="color:#1a1a4b;text-decoration:underline;">info@semzoprive.com</a>.',
   }),
 }
