@@ -318,6 +318,7 @@ export default function LogisticsPage() {
   // Devoluciones en camino / por verificar (etiqueta de devolucion de Correos con la reserva aun abierta)
   const [returnLegs, setReturnLegs] = useState<any[]>([])
   const [receivingId, setReceivingId] = useState<string | null>(null)
+  const [remindingId, setRemindingId] = useState<string | null>(null)
   // Recogidas a domicilio solicitadas por las socias y aun sin confirmar
   const [pickups, setPickups] = useState<any[]>([])
   const [confirmingPickup, setConfirmingPickup] = useState<string | null>(null)
@@ -890,6 +891,31 @@ export default function LogisticsPage() {
                           {leg.reservation_status === "overdue" ? " · reserva VENCIDA" : ""}
                         </p>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={remindingId === leg.reservation_id}
+                        onClick={async () => {
+                          if (!window.confirm(`¿Enviar a ${leg.member} el recordatorio para entregar ${leg.bag} en Correos?`)) return
+                          setRemindingId(leg.reservation_id)
+                          try {
+                            const res = await fetch("/api/admin/logistics/return-legs/remind", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ reservation_id: leg.reservation_id }),
+                            })
+                            const json = await res.json().catch(() => ({}))
+                            if (!res.ok) throw new Error(json.error || "No se pudo enviar el recordatorio")
+                            window.alert(`Recordatorio enviado a ${json.sentTo}`)
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "No se pudo enviar el recordatorio")
+                          } finally {
+                            setRemindingId(null)
+                          }
+                        }}
+                      >
+                        {remindingId === leg.reservation_id ? "Enviando…" : "Recordar entrega"}
+                      </Button>
                       <Button
                         size="sm"
                         disabled={receivingId === leg.reservation_id}

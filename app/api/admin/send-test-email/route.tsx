@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
       const placeholders = extractPlaceholders(template.subject, template.body_html)
       const vars = Object.fromEntries(placeholders.map((key) => [key, sampleValueFor(key)]))
 
-      const subject = `[PRUEBA] ${renderTemplate(template.subject, vars)}`
+      const subject = renderTemplate(template.subject, vars)
       const bodyHtml = renderTemplate(template.body_html, vars)
       const html = template.is_full_document ? bodyHtml : await render(<LifecycleSequenceEmail bodyHtml={bodyHtml} />)
 
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
           const { error: sendError } = await resend.emails.send({
             from: FROM_EMAIL,
             to,
-            subject: "[PRUEBA] Tu Chanel Classic Flap vuelve en 2 días",
+            subject: "Tu Chanel Classic Flap vuelve en 2 días",
             html,
           })
           if (sendError) return NextResponse.json({ error: JSON.stringify(sendError) }, { status: 500 })
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
           const { error: sendError } = await resend.emails.send({
             from: FROM_EMAIL,
             to,
-            subject: `[PRUEBA] ${built.subject}`,
+            subject: built.subject,
             html: built.html,
           })
           if (sendError) return NextResponse.json({ error: JSON.stringify(sendError) }, { status: 500 })
