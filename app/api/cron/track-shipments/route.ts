@@ -1,18 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
+import { mapCorreosStatus, recordCorreosTracking } from "@/lib/correos-tracking"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
 
-const CORREOS_STATUS_MAP: Record<string, string> = {
-  "EN TRANSITO": "in_transit",
-  ENTREGADO: "delivered",
-  "EN REPARTO": "out_for_delivery",
-  PENDIENTE: "pending",
-}
 
 /**
  * GET /api/cron/track-shipments
@@ -65,7 +60,22 @@ export async function GET(request: NextRequest) {
 
         if (!trackingInfo.estadoEnvio) continue
 
-        const newStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+        const newStatus = mapCorreosStatus(trackingInfo.estadoEnvio)
+        await recordCorreosTracking(supabase, {
+          shipmentId: shipment.id,
+          direction: "outbound",
+          trackingNumber: shipment.tracking_number as string,
+          info: trackingInfo,
+          mappedStatus: newStatus,
+        })
+
+        if (!newStatus) {
+          console.warn(
+            `[track-shipments] Estado de Correos sin mapear "${trackingInfo.estadoEnvio}" (${shipment.tracking_number}); se mantiene el estado actual`,
+          )
+          continue
+        }
+
         const wasPending = shipment.status === "pending"
         const wasDelivered = shipment.status === "delivered"
 
@@ -179,8 +189,23 @@ export async function GET(request: NextRequest) {
 
         if (!trackingInfo.estadoEnvio) continue
 
-        const newReturnStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
-        const wasUntracked = !shipment.return_status
+        const newReturnStatus = mapCorreosStatus(trackingInfo.estadoEnvio)
+        await recordCorreosTracking(supabase, {
+          shipmentId: shipment.id,
+          direction: "return",
+          trackingNumber: shipment.return_tracking_number as string,
+          info: trackingInfo,
+          mappedStatus: newReturnStatus,
+        })
+
+        if (!newReturnStatus) {
+          console.warn(
+            `[track-shipments] Estado de Correos sin mapear "${trackingInfo.estadoEnvio}" (devolucion ${shipment.return_tracking_number}); se mantiene el estado actual`,
+          )
+          continue
+        }
+
+        const wasUntracked = !shipment.return_status || shipment.return_status === "pending"
         const wasReturnDelivered = shipment.return_status === "delivered"
 
         await supabase
