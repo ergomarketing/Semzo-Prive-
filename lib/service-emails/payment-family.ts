@@ -580,24 +580,6 @@ export const RETURN_LABEL_REMINDER = {
   }),
 }
 
-/** Recogida solicitada (aviso de recogida). Variables: {{nombre}} {{nombre_bolso}}. Botón: "Ir a mi cuenta". */
-export const PICKUP_REQUESTED = {
-  subject: "Mensajero solicitado · SEMZO PRIVÉ",
-  html: shell({
-    title: "Mensajero solicitado",
-    eyebrow: "Aviso de recogida",
-    headingHtml: "Mensajero solicitado",
-    bodyHtml: [
-      P("Hola {{nombre}},"),
-      P("Tal y como solicitaste, hemos contactado con nuestra agencia de transporte para coordinar la recogida de tu <strong>{{nombre_bolso}}</strong>."),
-      P("En breve recibirás un mensaje o una llamada de la agencia para confirmarte el día y la hora exacta en la que pasarán a recogerlo. Solo tienes que tenerlo preparado en su funda."),
-      P("El proceso de devolución está en marcha."),
-    ].join("\n"),
-    ctaLabel: "Ir a mi cuenta",
-    ctaHref: "https://semzoprive.com/dashboard",
-  }),
-}
-
 /** Recogida confirmada (día y franja). Variables: {{nombre}} {{nombre_bolso}} {{dia_recogida}} {{franja_horaria}}. */
 export const PICKUP_CONFIRMED = {
   subject: "Tu recogida está confirmada · SEMZO PRIVÉ",

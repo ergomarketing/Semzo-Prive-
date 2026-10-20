@@ -12,7 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildNextBagQueuedEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildNextBagQueuedEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -55,7 +55,6 @@ const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "membership_suspended", label: "Membresía suspendida por impago (sin bolso en casa)", pending: true },
   { group: "Envíos y devoluciones", key: "return_received", label: "Devolución recibida" },
   { group: "Envíos y devoluciones", key: "return_not_dropped", label: "Aviso a la socia: entrega tu paquete en Correos (etiqueta sin escanear)" },
-  { group: "Envíos y devoluciones", key: "pickup_requested", label: "Recogida solicitada: te confirmamos el paso del mensajero" },
   { group: "Envíos y devoluciones", key: "pickup_confirmed", label: "Recogida confirmada (día y franja)" },
   { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en camino · cambio de bolso (devolución recibida)" },
   { group: "Envíos y devoluciones", key: "shipment_in_transit_first", label: "Envío en camino · primer bolso (socia nueva)" },
@@ -175,8 +174,6 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         bagName: "Chanel Classic Flap",
         labelUrl: `${TEST_SITE}/api/return-label?r=EJEMPLO`,
       })
-    case "pickup_requested":
-      return buildPickupRequestedEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap" })
     case "pickup_confirmed":
       return buildPickupConfirmedEmail({
         fullName: "ROSA Gonzalez",
