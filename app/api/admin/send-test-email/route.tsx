@@ -32,7 +32,6 @@ const FROM_EMAIL = process.env.FROM_EMAIL || "SEMZO Privé <hola@semzoprive.com>
 const CODE_EMAILS = [
   { group: "Cuenta y membresía", key: "welcome", label: "1 · Activación de cuenta: confirmar correo (antes lo mandaba Supabase)" },
   { group: "Cuenta y membresía", key: "membership_activated", label: "2 · Bienvenida de socia (membresía activa, también al reactivar)" },
-  { group: "Cuenta y membresía", key: "membership_expiring", label: "Aviso de membresía a punto de terminar", pending: true },
   { group: "Cuenta y membresía", key: "membership_cancelled", label: "Cancelación de membresía" },
   { group: "Pagos", key: "payment_receipt", label: "Recibo de pago" },
   { group: "Pagos", key: "refund", label: "Reembolso" },
@@ -52,7 +51,6 @@ const CODE_EMAILS = [
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)" },
   { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
   { group: "Colecciona", key: "colecciona_withdrawal", label: "Desistimiento: compra anulada y reembolso" },
-  { group: "Cuenta y membresía", key: "membership_suspended", label: "Membresía suspendida por impago (sin bolso en casa)", pending: true },
   { group: "Envíos y devoluciones", key: "return_received", label: "Devolución recibida" },
   { group: "Envíos y devoluciones", key: "return_not_dropped", label: "Aviso a la socia: entrega tu paquete en Correos (etiqueta sin escanear)" },
   { group: "Envíos y devoluciones", key: "pickup_confirmed", label: "Recogida confirmada (día y franja)" },
@@ -117,99 +115,6 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
       return buildMemberWelcomeEmail({ name: "Erika", tier: "Petite" })
     case "membership_cancelled":
       return buildMembershipCancelledEmail({ userName: "Erika Ejemplo", membershipType: "L'Essentiel", endDate: "31 de diciembre de 2026" })
-    case "membership_expiring": {
-      const service = new EmailServiceProduction()
-      return {
-        subject: "Tu membresía Petite expira pronto - Semzo Privé",
-        html: service.renderMembershipExpiringHtml({
-          userName: "Erika Ejemplo",
-          membershipType: "Petite",
-          endDate: "17 de noviembre de 2026",
-          daysRemaining: 3,
-        }),
-      }
-    }
-    case "bag_pass_purchased":
-      return buildBagPassPurchaseUserEmail({
-        userName: "Erika Ejemplo",
-        passTier: "lessentiel",
-        quantity: 1,
-        totalPrice: 52,
-        paymentMethod: "card",
-      })
-    case "gift_card_recipient":
-      return buildGiftCardRecipientEmail({
-        recipientName: "Rosa Gonzalez",
-        purchaserName: "Erika González",
-        amountEuros: 100,
-        code: "SEMZO-AB12-CD34",
-        personalMessage: "Para que disfrutes de lo que más te gusta. Con cariño.",
-        expiresAt: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
-        redeemUrl: `${TEST_SITE}/membresias`,
-      })
-    case "sepa_pre_execution":
-      return buildSepaPreNoticeEmail({
-        fullName: "ROSA Gonzalez",
-        bagName: "Chanel Classic Flap",
-        deadline: "viernes, 20 de septiembre",
-        amount: 2950,
-        ibanMasked: "ES·· ···· ···· ···· 1234",
-        chargeDate: "4 de octubre de 2026",
-      })
-    case "suspended_return":
-      return buildSuspendedReturnEmail({
-        fullName: "ROSA Gonzalez",
-        membershipType: "petite",
-        bagName: "Chanel Classic Flap",
-        returnDeadline: "26 de octubre de 2026",
-        panelUrl: `${TEST_SITE}/dashboard`,
-      })
-    case "colecciona_withdrawal":
-      return buildWithdrawalProcessedEmail({ fullName: "ROSA Gonzalez", bagName: "Furla Club 2 Mini", amount: 1 })
-    case "return_received":
-      return buildReturnReceivedEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap" })
-    case "return_not_dropped":
-      return buildReturnLabelReminderEmail({
-        fullName: "ROSA Gonzalez",
-        bagName: "Chanel Classic Flap",
-        labelUrl: `${TEST_SITE}/api/return-label?r=EJEMPLO`,
-      })
-    case "pickup_confirmed":
-      return buildPickupConfirmedEmail({
-        fullName: "ROSA Gonzalez",
-        bagName: "Chanel Classic Flap",
-        pickupDay: "martes, 21 de octubre de 2026",
-        timeSlot: "Mañana (9:00 - 14:00)",
-      })
-    case "next_bag_queued":
-      return buildNextBagQueuedEmail({ fullName: "Rosa Gonzalez", bagName: "Chanel Classic Flap" })
-    case "sepa_manual_paid":
-      return buildSepaManualPaidEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
-    case "sepa_charge_failed":
-      return buildSepaChargeFailedEmail({
-        fullName: "ROSA Gonzalez",
-        bagName: "Chanel Classic Flap",
-        amount: 2950,
-        payUrl: `${TEST_SITE}/dashboard`,
-      })
-    case "sepa_execution":
-      return buildSepaExecutionEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
-    case "colecciona_sale":
-      return buildColeccionaSaleEmail({
-        fullName: "ROSA Gonzalez",
-        bagLabel: "Furla Club 2 Mini",
-        amountPaid: 1,
-        invoiceUrl: `${TEST_SITE}/dashboard`,
-        hasContract: true,
-      })
-    case "colecciona_ready":
-      return buildColeccionaReadyEmail({
-        fullName: "ROSA Gonzalez",
-        bagBrand: "Furla",
-        bagName: "Club 2 Mini",
-        imageUrl: "https://h0ayghjex33jktep.public.blob.vercel-storage.com/bags/1764264118420-furla-marfil-alquiler.jpg",
-        panelUrl: `${TEST_SITE}/dashboard`,
-      })
     case "payment_failed_1":
     case "payment_failed_2":
     case "payment_failed_3":
