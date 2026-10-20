@@ -55,11 +55,10 @@ export async function GET(request: NextRequest) {
       .in("status", ["pending", "in_transit", "out_for_delivery"])
 
     if (fetchError) throw fetchError
-    if (!activeShipments || activeShipments.length === 0) {
-      return NextResponse.json({ success: true, tracked: 0, delivered: 0 })
-    }
+    // OJO: no se sale aqui si no hay envios de ida activos. Antes un "return" temprano hacia que, cuando todos los
+    // envios de ida estaban entregados, el seguimiento de las DEVOLUCIONES (abajo) no se ejecutara nunca.
 
-    for (const shipment of activeShipments) {
+    for (const shipment of activeShipments || []) {
       try {
         const trackingInfo = await correosClient.trackShipment(shipment.tracking_number as string)
         tracked++
@@ -265,7 +264,56 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, tracked, delivered, returnsDelivered, errors })
+    // --- AVISO AL ADMIN: etiqueta de devolucion aun en PRE-ADMISION justo al vencer la reserva ---
+    // El bolso va con la etiqueta de vuelta ya creada. Si al llegar el vencimiento (hoy o manana) Correos sigue sin
+    // haberla escaneado, la socia no ha entregado el paquete: se avisa UNA vez, a tiempo, y no despues de vencida.
+    let preAdmissionAlerts = 0
+    const alertWindowEnd = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString()
+    const { data: dueSoon } = await supabase
+      .from("reservations")
+      .select(
+        `
+        id, end_date, status,
+        profiles!reservations_user_id_fkey ( email, full_name ),
+        bags!reservations_bag_id_fkey ( name, brand ),
+        shipments!shipments_reservation_id_fkey ( return_tracking_number, return_status )
+      `,
+      )
+      .in("status", ["active", "confirmed"])
+      .gt("end_date", new Date().toISOString())
+      .lte("end_date", alertWindowEnd)
+
+    for (const reservation of dueSoon || []) {
+      const shipmentRow = (Array.isArray((reservation as any).shipments)
+        ? (reservation as any).shipments[0]
+        : (reservation as any).shipments) as { return_tracking_number?: string | null; return_status?: string | null } | null
+      if (!shipmentRow?.return_tracking_number) continue
+      if (shipmentRow.return_status && shipmentRow.return_status !== "pending") continue // ya escaneada por Correos
+
+      const { data: already } = await supabase
+        .from("admin_notifications")
+        .select("id")
+        .eq("type", "return_label_not_scanned")
+        .contains("metadata", { reservation_id: reservation.id })
+        .limit(1)
+      if (already && already.length > 0) continue
+
+      const profile = (reservation as any).profiles
+      const bag = (reservation as any).bags
+      const who = profile?.full_name || profile?.email || "la socia"
+      const bagLabel = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : "el bolso"
+      const dueDay = new Date(reservation.end_date).toLocaleDateString("es-ES", { day: "numeric", month: "long" })
+      await supabase.from("admin_notifications").insert({
+        type: "return_label_not_scanned",
+        priority: "high",
+        title: `Devolución sin entregar en Correos — ${bagLabel}`,
+        message: `${who} debe devolver ${bagLabel} el ${dueDay} y Correos aún muestra la etiqueta (${shipmentRow.return_tracking_number}) en PRE-ADMISIÓN: el paquete no se ha entregado. Escríbele hoy para evitar el aviso de cargo.`,
+        metadata: { reservation_id: reservation.id, return_tracking_number: shipmentRow.return_tracking_number },
+      })
+      preAdmissionAlerts++
+    }
+
+    return NextResponse.json({ success: true, tracked, delivered, returnsDelivered, preAdmissionAlerts, errors })
   } catch (error) {
     console.error("[track-shipments] Error general:", error)
     const message = error instanceof Error ? error.message : "Error al rastrear envios"
