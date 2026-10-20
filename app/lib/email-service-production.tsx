@@ -33,6 +33,7 @@ import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-email
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import { GIFT_CARD_RECIPIENT_HTML } from "@/lib/service-emails/gift-card-recipient"
+import { NEXT_BAG_QUEUED_HTML, NEXT_BAG_QUEUED_SUBJECT } from "@/lib/service-emails/next-bag-queued"
 import {
   COLECCIONA_SALE,
   WITHDRAWAL_PROCESSED,
@@ -213,6 +214,14 @@ export function buildSepaPreNoticeEmail(data: {
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
     }),
+  }
+}
+
+/** "Tu próxima pieza ya tiene tu nombre": próximo bolso reservado (en cola). */
+export function buildNextBagQueuedEmail(data: { fullName: string | null; bagName: string }): { subject: string; html: string } {
+  return {
+    subject: NEXT_BAG_QUEUED_SUBJECT,
+    html: renderServiceTemplate(NEXT_BAG_QUEUED_HTML, { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName }),
   }
 }
 

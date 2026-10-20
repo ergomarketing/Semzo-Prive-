@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
 import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
+import { sendNextBagQueuedEmail } from "@/lib/next-bag-email"
 
 // Cliente de servicio para operaciones de escritura que requieren service role.
 function getSupabase() {
@@ -770,7 +771,8 @@ export async function POST(request: NextRequest) {
     // Cubre TANTO reservas por membresía (Essentiel/Signature/Privé) como
     // reservas hechas con un Pase de Bolso (Petite): ambas pasan por este
     // mismo endpoint, la unica diferencia es el valor de {{plan}}.
-    // En cola: no se manda "Reserva confirmada / de camino" (aun no sale). Aviso propio de "próximo bolso" pendiente de plantilla.
+    // En cola: no se manda "Reserva confirmada / de camino" (aun no sale): se manda el de "Tu próxima pieza ya tiene tu nombre".
+    if (queueMode) await sendNextBagQueuedEmail(supabase, { userId, bagId: bag_id })
     if (!queueMode) try {
       const { EmailServiceProduction } = await import("@/app/lib/email-service-production")
       const emailService = EmailServiceProduction.getInstance()
