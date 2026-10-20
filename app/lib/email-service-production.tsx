@@ -268,7 +268,8 @@ export function buildGiftCardRecipientEmail(data: {
         bloque_mensaje: messageBlock,
         linea_caducidad: expiryLine,
       },
-      ["url_canje", "bloque_mensaje", "linea_caducidad"],
+      ["url_canje"],
+      ["bloque_mensaje", "linea_caducidad"],
     ),
   }
 }
@@ -439,7 +440,8 @@ export function buildColeccionaSaleEmail(data: {
         url_factura: data.invoiceUrl || `${BRAND.site}/dashboard`,
         frase_contrato: contractSentence,
       },
-      ["url_factura", "frase_contrato"],
+      ["url_factura"],
+      ["frase_contrato"],
     ),
   }
 }
