@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { promoteQueuedReservation } from "@/lib/next-bag-queue"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -88,6 +89,20 @@ export async function PATCH(request: Request) {
     }
 
     console.log("[v0] Reservation updated:", data)
+
+    // Cerrar la reserva a mano tambien debe activar el "proximo bolso" en cola de esa socia (si lo tiene).
+    if (status === "completed" && data?.user_id) {
+      const promotion = await promoteQueuedReservation(supabase, data.user_id)
+      if (promotion.promoted) {
+        await supabase.from("admin_notifications").insert({
+          type: "next_bag_ready_to_ship",
+          priority: "high",
+          title: "Próximo bolso listo para enviar",
+          message: `Cerraste la reserva a mano y la socia tenía su PRÓXIMO BOLSO (${promotion.bagLabel}) en cola: ya está confirmado, prepara el envío.`,
+          metadata: { user_id: data.user_id, reservation_id: promotion.reservationId },
+        })
+      }
+    }
     return NextResponse.json(data)
   } catch (error) {
     console.error("[v0] Error updating reservation:", error)
