@@ -235,16 +235,9 @@ export async function GET(request: NextRequest) {
           if (justReturnDelivered) {
             returnsDelivered++
 
-            if (profile?.email) {
-              await emailService
-                .sendReturnReceivedEmail({
-                  userEmail: profile.email,
-                  userName: profile.full_name || profile.email,
-                  bagName,
-                })
-                .catch((e) => console.error(`[track-shipments] Error email devolucion recibida ${profile.email}:`, e))
-            }
-
+            // Correos dice "entregado", pero el correo de "devolucion recibida" a la socia SOLO sale cuando Erika
+            // verifica el bolso (boton "Recibida y verificada" / cierre en Devoluciones): aqui solo se avisa al admin.
+            // Antes se enviaba aqui Y al cerrar la devolucion: dos correos, el primero sin haber verificado nada.
             await adminNotifications
               .notifyShipmentStatus({
                 userName: profile?.full_name || profile?.email || "—",
