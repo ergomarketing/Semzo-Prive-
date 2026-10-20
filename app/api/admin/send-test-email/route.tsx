@@ -7,11 +7,6 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
-import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient"
-import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
-import SepaExecutionEmail from "@/emails/templates/sepa-execution"
-import { getMessages } from "@/emails/messages"
-import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
 import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildNextBagQueuedEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
@@ -98,7 +93,6 @@ const TEST_SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com"
 
 /** Construye {asunto, html} de los correos de servicio con datos de ejemplo. */
 async function buildServiceTestEmail(key: string): Promise<{ subject: string; html: string } | null> {
-  const t = getMessages("es")
   switch (key) {
     case "welcome": {
       const built = buildAccountConfirmationEmail({

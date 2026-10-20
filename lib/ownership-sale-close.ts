@@ -14,7 +14,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EmailServiceProduction, buildColeccionaSaleEmail } from "@/app/lib/email-service-production"
-import { BRAND, emailDetailList, emailInfoBox, renderAdminEmail, renderBrandEmail } from "@/app/lib/email-layout"
+import { renderAdminEmail } from "@/app/lib/email-layout"
 import { archiveColeccionaContract, type ArchivedContract } from "@/lib/ownership-contract-archive"
 import { logEmail } from "@/lib/email-logger"
 import { klaviyoTrackForUser } from "@/lib/klaviyo"
@@ -129,7 +129,6 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
         .eq("id", progress.user_id)
         .maybeSingle()
       const memberName = profile?.full_name || profile?.email || progress.user_id
-      const firstName = (profile?.full_name || "").trim().split(/\s+/)[0] || ""
       const paid = formatEUR(input.amountPaidCents)
       const invoiceUrl = archived?.invoiceUrl ?? null
 
