@@ -110,7 +110,7 @@ export default function CTASection() {
            * dramaticamente sin sacrificar legibilidad. */}
           <div className="relative aspect-[4/3] w-full order-1 md:order-2 rounded-3xl overflow-hidden">
             <Image
-              src="/images/gift-card-semzo.jpg"
+              src="https://h0ayghjex33jktep.public.blob.vercel-storage.com/blog-images/giftcard%20sp.png"
               alt="Gift Cards Semzo Prive - Tarjeta regalo de lujo"
               fill
               className="object-contain"
