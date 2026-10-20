@@ -763,24 +763,6 @@ export class EmailServiceProduction {
     return adminSent && userSent
   }
 
-  async sendMembershipExpiringEmail(data: {
-    userName: string
-    userEmail: string
-    membershipType: string
-    endDate: string
-    daysRemaining: number
-  }) {
-    try {
-      await this.sendEmail({
-        to: data.userEmail,
-        subject: `Tu membresía ${data.membershipType} expira pronto - Semzo Privé`,
-        html: this.generateMembershipExpiringHTML(data),
-      })
-    } catch (error) {
-      console.error("Error sending membership expiring email:", error)
-    }
-  }
-
   async sendMembershipCancelledEmail(data: {
     userName: string
     userEmail: string
@@ -1058,29 +1040,6 @@ export class EmailServiceProduction {
   }
 
   /** Para la prueba de /admin/email-preview: el mismo HTML que recibe la socia. */
-  renderMembershipExpiringHtml(data: { userName: string; membershipType: string; endDate: string; daysRemaining: number }): string {
-    return this.generateMembershipExpiringHTML(data)
-  }
-
-  private generateMembershipExpiringHTML(data: {
-    userName: string
-    membershipType: string
-    endDate: string
-    daysRemaining: number
-  }): string {
-    return renderBrandEmail({
-      preheader: `Tu membresía ${data.membershipType} expira en ${data.daysRemaining} días.`,
-      eyebrow: "Renovación",
-      heading: "Tu membresía expira pronto",
-      bodyHtml: `
-        <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""}, tu membresía <strong>${data.membershipType}</strong> expirará en ${data.daysRemaining} días.</p>
-        ${emailInfoBox(`<strong style="color:${BRAND.navy};">Fecha de expiración:</strong> ${esDate(data.endDate)}`, "warning")}
-        <p style="margin:0;">Renueva ahora para seguir disfrutando de nuestra colección exclusiva sin interrupciones.</p>
-      `,
-      cta: { label: "Renovar membresía", url: `${BRAND.site}/membresias`, accent: "gold" },
-    })
-  }
-
   private generateMembershipCancelledAdminHTML(data: {
     userName: string
     userEmail: string
