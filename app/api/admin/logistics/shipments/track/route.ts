@@ -3,6 +3,7 @@ import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { createClient } from "@supabase/supabase-js"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { mapCorreosStatus } from "@/lib/correos-status"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,14 +36,10 @@ export async function GET(request: NextRequest) {
     const correosClient = new CorreosAPI()
     const trackingInfo = await correosClient.trackShipment(trackingNumber)
 
-    if (trackingInfo.estadoEnvio) {
-      const statusMap: Record<string, string> = {
-        "EN TRANSITO": "in_transit",
-        ENTREGADO: "delivered",
-        "EN REPARTO": "out_for_delivery",
-        PENDIENTE: "pending",
-      }
-      const newStatus = statusMap[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+    // Estado desconocido de Correos: no se cambia el guardado (antes se marcaba "en transito" por defecto).
+    const mappedStatus = mapCorreosStatus(trackingInfo.estadoEnvio)
+    if (trackingInfo.estadoEnvio && mappedStatus) {
+      const newStatus = mappedStatus
 
       // Estado previo para detectar transicion (evita avisos admin duplicados al re-trackear)
       const { data: prevShipment } = await supabase

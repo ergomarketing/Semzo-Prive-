@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { mapCorreosStatus } from "@/lib/correos-status"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
@@ -65,7 +66,12 @@ export async function GET(request: NextRequest) {
 
         if (!trackingInfo.estadoEnvio) continue
 
-        const newStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+        // Estado desconocido de Correos: no se toca el guardado (antes se marcaba "en transito" por defecto).
+        const newStatus = mapCorreosStatus(trackingInfo.estadoEnvio)
+        if (!newStatus) {
+          console.warn("[track-shipments] Estado de Correos no reconocido:", trackingInfo.estadoEnvio)
+          continue
+        }
         const wasPending = shipment.status === "pending"
         const wasDelivered = shipment.status === "delivered"
 
@@ -179,7 +185,11 @@ export async function GET(request: NextRequest) {
 
         if (!trackingInfo.estadoEnvio) continue
 
-        const newReturnStatus = CORREOS_STATUS_MAP[trackingInfo.estadoEnvio.toUpperCase()] || "in_transit"
+        const newReturnStatus = mapCorreosStatus(trackingInfo.estadoEnvio)
+        if (!newReturnStatus) {
+          console.warn("[track-shipments] Estado de devolucion no reconocido:", trackingInfo.estadoEnvio)
+          continue
+        }
         const wasUntracked = !shipment.return_status
         const wasReturnDelivered = shipment.return_status === "delivered"
 
