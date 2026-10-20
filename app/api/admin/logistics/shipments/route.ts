@@ -9,6 +9,7 @@ import {
 } from "@/lib/correos-sanitize"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { sendShipmentOnItsWay } from "@/lib/shipment-on-its-way"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
@@ -478,24 +479,21 @@ export async function POST(request: NextRequest) {
       new_values: data,
     })
 
-    if (correosTrackingNumber && resolvedRecipient?.email) {
+    // Correo "Tu nuevo bolso ya viaja hacia ti" (uno por envio: lo dedupe lib/shipment-on-its-way.ts; el seguimiento de
+    // Correos lo reintenta si aqui no salio).
+    if (correosTrackingNumber) {
       try {
-        let bagName: string | undefined
         if (reservation_id) {
-          const { data: reservationBag } = await supabase
-            .from("reservations")
-            .select("bags!reservations_bag_id_fkey ( name, brand )")
-            .eq("id", reservation_id)
-            .maybeSingle()
-          const bag = (reservationBag as any)?.bags
-          bagName = bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : undefined
+          await sendShipmentOnItsWay(supabase, data.id)
+        } else if (resolvedRecipient?.email) {
+          // Envio sin reserva asociada: no hay historial de la socia, version de primer bolso.
+          await emailService.sendShipmentInTransitEmail({
+            userEmail: resolvedRecipient.email,
+            userName: resolvedRecipient.firstName,
+            trackingNumber: correosTrackingNumber,
+            fromSwap: false,
+          })
         }
-
-        await emailService.sendShipmentInTransitEmail({
-          userEmail: resolvedRecipient.email,
-          userName: resolvedRecipient.firstName,
-          bagName,
-        })
       } catch (emailError) {
         console.error("[Logistics API] Error sending tracking email:", emailError)
       }

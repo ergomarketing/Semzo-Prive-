@@ -4,6 +4,7 @@ import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { mapCorreosStatus } from "@/lib/correos-status"
+import { sendShipmentOnItsWay } from "@/lib/shipment-on-its-way"
 import { buildReturnLabelUrl } from "@/lib/return-label-link"
 import { buildReturnLabelReminderEmail } from "@/app/lib/email-service-production"
 import { logEmail } from "@/lib/email-logger"
@@ -110,13 +111,10 @@ export async function GET(request: NextRequest) {
 
           if (profile?.email) {
             if (justShipped) {
-              await emailService
-                .sendShipmentInTransitEmail({
-                  userEmail: profile.email,
-                  userName: profile.full_name || profile.email,
-                  bagName,
-                })
-                .catch((e) => console.error(`[track-shipments] Error email envio en transito ${profile.email}:`, e))
+              // Una sola vez por envio (si el panel ya lo mando al crear la etiqueta, aqui no se repite)
+              await sendShipmentOnItsWay(supabase, shipment.id).catch((e) =>
+                console.error(`[track-shipments] Error email envio en transito ${profile.email}:`, e),
+              )
 
               await adminNotifications
                 .notifyShipmentStatus({

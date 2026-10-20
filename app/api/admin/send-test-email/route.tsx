@@ -57,7 +57,8 @@ const CODE_EMAILS = [
   { group: "Envíos y devoluciones", key: "return_not_dropped", label: "Aviso a la socia: entrega tu paquete en Correos (etiqueta sin escanear)" },
   { group: "Envíos y devoluciones", key: "pickup_requested", label: "Recogida solicitada: te confirmamos el paso del mensajero" },
   { group: "Envíos y devoluciones", key: "pickup_confirmed", label: "Recogida confirmada (día y franja)" },
-  { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
+  { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en camino · cambio de bolso (devolución recibida)" },
+  { group: "Envíos y devoluciones", key: "shipment_in_transit_first", label: "Envío en camino · primer bolso (socia nueva)" },
   { group: "Envíos y devoluciones", key: "shipment_delivered", label: "Entrega confirmada" },
   { group: "Envíos y devoluciones", key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },
 ] as { group: string; key: string; label: string; pending?: boolean }[]
@@ -328,11 +329,14 @@ export async function POST(request: NextRequest) {
       const emailService = new EmailServiceProduction()
 
       switch (codeKey) {
-        case "shipment_in_transit": {
+        case "shipment_in_transit":
+        case "shipment_in_transit_first": {
           const ok = await emailService.sendShipmentInTransitEmail({
             userEmail: to,
             userName: "Erika Ejemplo",
             bagName: "Chanel Classic Flap",
+            trackingNumber: "PQCZV8980000001A",
+            fromSwap: codeKey === "shipment_in_transit",
           })
           if (!ok) return NextResponse.json({ error: "El envío falló" }, { status: 500 })
           return NextResponse.json({ ok: true })
