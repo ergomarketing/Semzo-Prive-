@@ -318,6 +318,9 @@ export default function LogisticsPage() {
   // Devoluciones en camino / por verificar (etiqueta de devolucion de Correos con la reserva aun abierta)
   const [returnLegs, setReturnLegs] = useState<any[]>([])
   const [receivingId, setReceivingId] = useState<string | null>(null)
+  // Recogidas a domicilio solicitadas por las socias y aun sin confirmar
+  const [pickups, setPickups] = useState<any[]>([])
+  const [confirmingPickup, setConfirmingPickup] = useState<string | null>(null)
   const [settings, setSettings] = useState<LogisticsSettings[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -459,6 +462,11 @@ export default function LogisticsPage() {
       const legsRes = await fetch("/api/admin/logistics/return-legs")
       const legsData = await legsRes.json().catch(() => ({}))
       setReturnLegs(legsData.legs || [])
+
+      // Recogidas a domicilio pendientes de confirmar
+      const pickupsRes = await fetch("/api/admin/logistics/pickups")
+      const pickupsData = await pickupsRes.json().catch(() => ({}))
+      setPickups(pickupsData.pickups || [])
 
       // Cargar configuración
       const settingsRes = await fetch("/api/admin/logistics/settings")
@@ -795,6 +803,59 @@ export default function LogisticsPage() {
 
         {/* Returns Tab */}
         <TabsContent value="returns" className="space-y-4">
+          {pickups.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Recogidas a domicilio solicitadas</CardTitle>
+                <CardDescription>
+                  La socia ha pedido que pase el mensajero. Pídela en la web de Correos con estos datos y, cuando esté
+                  pedida, pulsa «Ya la pedí en Correos»: la socia recibe el correo de recogida confirmada con el día y la
+                  franja.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {pickups.map((pickup) => (
+                    <div key={pickup.return_id} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                      <div className="flex-1">
+                        <p className="font-semibold">{pickup.bag}</p>
+                        <p className="text-sm text-gray-600">
+                          {pickup.member}
+                          {pickup.email ? ` · ${pickup.email}` : ""}
+                        </p>
+                        <p className="text-sm text-gray-600">{pickup.notes}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!pickup.shipment_id || confirmingPickup === pickup.return_id}
+                        onClick={async () => {
+                          setConfirmingPickup(pickup.return_id)
+                          try {
+                            const res = await fetch("/api/admin/logistics/pickups/confirm", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ shipment_id: pickup.shipment_id }),
+                            })
+                            const json = await res.json().catch(() => ({}))
+                            if (!res.ok) throw new Error(json.error || "No se pudo confirmar la recogida")
+                            await loadLogisticsData()
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "No se pudo confirmar la recogida")
+                          } finally {
+                            setConfirmingPickup(null)
+                          }
+                        }}
+                      >
+                        {confirmingPickup === pickup.return_id ? "Enviando…" : "Ya la pedí en Correos"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>En camino / por verificar</CardTitle>

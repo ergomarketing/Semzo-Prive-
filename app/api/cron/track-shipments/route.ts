@@ -4,6 +4,9 @@ import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { mapCorreosStatus } from "@/lib/correos-status"
+import { buildReturnLabelUrl } from "@/lib/return-label-link"
+import { buildReturnLabelReminderEmail } from "@/app/lib/email-service-production"
+import { logEmail } from "@/lib/email-logger"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
@@ -304,6 +307,24 @@ export async function GET(request: NextRequest) {
         metadata: { reservation_id: reservation.id, return_tracking_number: shipmentRow.return_tracking_number },
       })
       preAdmissionAlerts++
+
+      // Y aviso a la socia (plantilla de Erika): su etiqueta sigue sin escanear; el boton descarga la etiqueta.
+      if (profile?.email) {
+        const built = buildReturnLabelReminderEmail({
+          fullName: profile.full_name,
+          bagName: bagLabel,
+          labelUrl: buildReturnLabelUrl(reservation.id),
+        })
+        const sentToMember = await emailService.sendWithResend({ to: profile.email, subject: built.subject, html: built.html })
+        await logEmail({
+          recipientEmail: profile.email,
+          recipientName: profile.full_name || null,
+          subject: built.subject,
+          emailType: "return_label_not_scanned",
+          status: sentToMember ? "sent" : "failed",
+          metadata: { reservationId: reservation.id },
+        })
+      }
     }
 
     return NextResponse.json({ success: true, tracked, delivered, returnsDelivered, preAdmissionAlerts, errors })

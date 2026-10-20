@@ -15,6 +15,7 @@ import type Stripe from "stripe"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { fetchSessionInvoice } from "@/lib/ownership-contract-archive"
 import { klaviyoTrackForUser } from "@/lib/klaviyo"
+import { EmailServiceProduction, buildWithdrawalProcessedEmail } from "@/app/lib/email-service-production"
 
 export interface ReverseSaleInput {
   progressId: string
@@ -199,6 +200,24 @@ export async function reverseColeccionaSale(
       (bagReturned ? "El bolso vuelve al inventario." : "El bolso sigue en poder de la socia: debe devolverlo (14 días)."),
     metadata: { ownership_progress_id: progress.id, credit_note_id: creditNote.id, invoice_id: invoice.id, bag_returned: bagReturned },
   })
+  // Correo a la socia (plantilla de Erika): desistimiento procesado. Best-effort: el reembolso ya esta hecho.
+  try {
+    if (profile?.email) {
+      const built = buildWithdrawalProcessedEmail({
+        fullName: profile.full_name,
+        bagName: bagLabel,
+        amount: invoice.amount_paid / 100,
+      })
+      await EmailServiceProduction.getInstance().sendWithResend({
+        to: profile.email,
+        subject: built.subject,
+        html: built.html,
+      })
+    }
+  } catch (mailErr) {
+    console.error("[colecciona-reverse] No se pudo enviar el correo de desistimiento:", mailErr)
+  }
+
   await klaviyoTrackForUser(supabase, progress.user_id, {
     metric: "Colecciona Reversed",
     properties: { bag: bagLabel, bag_id: progress.bag_id },

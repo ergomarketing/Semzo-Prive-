@@ -12,7 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -51,12 +51,12 @@ const CODE_EMAILS = [
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
   { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
   { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
-  { group: "Colecciona", key: "colecciona_withdrawal", label: "Desistimiento: compra anulada y reembolso", pending: true },
+  { group: "Colecciona", key: "colecciona_withdrawal", label: "Desistimiento: compra anulada y reembolso" },
   { group: "Cuenta y membresía", key: "membership_suspended", label: "Membresía suspendida por impago (sin bolso en casa)", pending: true },
-  { group: "Envíos y devoluciones", key: "return_received", label: "Devolución recibida (hoy sale con diseño genérico)", pending: true },
-  { group: "Envíos y devoluciones", key: "return_not_dropped", label: "Aviso a la socia: entrega tu paquete en Correos (etiqueta sin escanear)", pending: true },
-  { group: "Envíos y devoluciones", key: "pickup_requested", label: "Recogida solicitada: te confirmamos el paso del mensajero", pending: true },
-  { group: "Envíos y devoluciones", key: "pickup_confirmed", label: "Recogida confirmada (día y franja)", pending: true },
+  { group: "Envíos y devoluciones", key: "return_received", label: "Devolución recibida" },
+  { group: "Envíos y devoluciones", key: "return_not_dropped", label: "Aviso a la socia: entrega tu paquete en Correos (etiqueta sin escanear)" },
+  { group: "Envíos y devoluciones", key: "pickup_requested", label: "Recogida solicitada: te confirmamos el paso del mensajero" },
+  { group: "Envíos y devoluciones", key: "pickup_confirmed", label: "Recogida confirmada (día y franja)" },
   { group: "Envíos y devoluciones", key: "shipment_in_transit", label: "Envío en tránsito (marca)" },
   { group: "Envíos y devoluciones", key: "shipment_delivered", label: "Entrega confirmada" },
   { group: "Envíos y devoluciones", key: "return_reminder", label: "Recordatorio de devolución (-2 días)" },
@@ -166,6 +166,25 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         bagName: "Chanel Classic Flap",
         returnDeadline: "26 de octubre de 2026",
         panelUrl: `${TEST_SITE}/dashboard`,
+      })
+    case "colecciona_withdrawal":
+      return buildWithdrawalProcessedEmail({ fullName: "ROSA Gonzalez", bagName: "Furla Club 2 Mini", amount: 1 })
+    case "return_received":
+      return buildReturnReceivedEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap" })
+    case "return_not_dropped":
+      return buildReturnLabelReminderEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        labelUrl: `${TEST_SITE}/api/return-label?r=EJEMPLO`,
+      })
+    case "pickup_requested":
+      return buildPickupRequestedEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap" })
+    case "pickup_confirmed":
+      return buildPickupConfirmedEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        pickupDay: "martes, 21 de octubre de 2026",
+        timeSlot: "Mañana (9:00 - 14:00)",
       })
     case "sepa_manual_paid":
       return buildSepaManualPaidEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
