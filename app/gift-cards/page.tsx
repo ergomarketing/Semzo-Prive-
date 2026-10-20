@@ -387,7 +387,7 @@ export default function GiftCardsPage() {
           <div className="hidden lg:block">
             <div className="relative aspect-square rounded-3xl overflow-hidden">
               <Image
-                src="/images/gift-card-semzo.jpg"
+                src="https://h0ayghjex33jktep.public.blob.vercel-storage.com/blog-images/giftcard%20sp.png"
                 alt="Gift Cards Semzo Prive"
                 fill
                 className="object-contain"
