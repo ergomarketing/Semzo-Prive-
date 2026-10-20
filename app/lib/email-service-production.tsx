@@ -34,6 +34,11 @@ import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/s
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
 import {
   COLECCIONA_SALE,
+  WITHDRAWAL_PROCESSED,
+  PICKUP_CONFIRMED,
+  PICKUP_REQUESTED,
+  RETURN_LABEL_REMINDER,
+  RETURN_RECEIVED,
   SUSPENDED_RETURN,
   SEPA_CHARGE_FAILED,
   SEPA_MANUAL_PAID,
@@ -206,6 +211,72 @@ export function buildSepaPreNoticeEmail(data: {
       importe: formatEuroAmount(data.amount),
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
+    }),
+  }
+}
+
+/** Desistimiento de una compra Colecciona procesado: compra anulada y reembolso. */
+export function buildWithdrawalProcessedEmail(data: {
+  fullName: string | null
+  bagName: string
+  amount: number | string
+}): { subject: string; html: string } {
+  return {
+    subject: WITHDRAWAL_PROCESSED.subject,
+    html: renderServiceTemplate(WITHDRAWAL_PROCESSED.html, {
+      nombre: firstNameOf(data.fullName),
+      nombre_bolso: data.bagName,
+      importe: formatEuroAmount(data.amount),
+    }),
+  }
+}
+
+/** Devolucion recibida y verificada (la manda el cierre de la devolucion en Logistica). */
+export function buildReturnReceivedEmail(data: { fullName: string | null; bagName: string }): { subject: string; html: string } {
+  return {
+    subject: RETURN_RECEIVED.subject,
+    html: renderServiceTemplate(RETURN_RECEIVED.html, { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName }),
+  }
+}
+
+/** Aviso a la socia: la etiqueta de devolucion sigue sin escanear. El boton descarga la etiqueta de Correos. */
+export function buildReturnLabelReminderEmail(data: {
+  fullName: string | null
+  bagName: string
+  labelUrl: string
+}): { subject: string; html: string } {
+  return {
+    subject: RETURN_LABEL_REMINDER.subject,
+    html: renderServiceTemplate(
+      RETURN_LABEL_REMINDER.html,
+      { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName, url_etiqueta_correos: data.labelUrl },
+      ["url_etiqueta_correos"],
+    ),
+  }
+}
+
+/** Recogida a domicilio solicitada por la socia. */
+export function buildPickupRequestedEmail(data: { fullName: string | null; bagName: string }): { subject: string; html: string } {
+  return {
+    subject: PICKUP_REQUESTED.subject,
+    html: renderServiceTemplate(PICKUP_REQUESTED.html, { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName }),
+  }
+}
+
+/** Recogida confirmada con dia y franja. */
+export function buildPickupConfirmedEmail(data: {
+  fullName: string | null
+  bagName: string
+  pickupDay: string
+  timeSlot: string
+}): { subject: string; html: string } {
+  return {
+    subject: PICKUP_CONFIRMED.subject,
+    html: renderServiceTemplate(PICKUP_CONFIRMED.html, {
+      nombre: firstNameOf(data.fullName),
+      nombre_bolso: data.bagName,
+      dia_recogida: data.pickupDay,
+      franja_horaria: data.timeSlot,
     }),
   }
 }
@@ -1423,26 +1494,9 @@ export class EmailServiceProduction {
   }
 
   async sendReturnReceivedEmail(data: { userEmail: string; userName: string; bagName: string }): Promise<boolean> {
-    const userEmailData: EmailData = {
-      to: data.userEmail,
-      subject: `Devolución recibida - ${data.bagName}`,
-      html: renderBrandEmail({
-        preheader: `Hemos recibido tu bolso ${data.bagName}.`,
-        eyebrow: "Devolución recibida",
-        heading: "¡Devolución recibida!",
-        bodyHtml: `
-          <p style="margin:0 0 8px 0;">Hola ${data.userName?.split(" ")[0] || ""},</p>
-          ${emailInfoBox(
-            `Hemos recibido tu bolso <strong>${data.bagName}</strong> en perfectas condiciones. ¡Gracias por cuidarlo!`,
-            "success",
-          )}
-          <p style="margin:0;">Ya puedes reservar un nuevo bolso de nuestra colección.</p>
-        `,
-        cta: { label: "Explorar catálogo", url: CATALOG_URL, accent: "gold" },
-      }),
-    }
-
-    return await this.sendWithResend(userEmailData)
+    // Plantilla de Erika (lib/service-emails/payment-family.ts)
+    const built = buildReturnReceivedEmail({ fullName: data.userName, bagName: data.bagName })
+    return await this.sendWithResend({ to: data.userEmail, subject: built.subject, html: built.html })
   }
 
   async sendPaymentFailedEmail(data: {

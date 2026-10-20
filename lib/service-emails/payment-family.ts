@@ -540,3 +540,110 @@ export const SUSPENDED_RETURN = {
     ctaNote: "Si crees que se trata de un error, responde a este email.",
   }),
 }
+
+/** Devolución recibida y verificada. Variables: {{nombre}} {{nombre_bolso}}. Botón: "Ir a mi cuenta". */
+export const RETURN_RECEIVED = {
+  subject: "Hemos recibido tu devolución · SEMZO PRIVÉ",
+  html: shell({
+    title: "Devolución recibida",
+    eyebrow: "Devolución completada",
+    headingHtml: "Hemos recibido tu devolución",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te confirmamos que tu <strong>{{nombre_bolso}}</strong> ha llegado de vuelta a nuestras instalaciones sano y salvo."),
+      P("Gracias por haberlo cuidado con tanto esmero. Nuestro equipo ya está revisando la pieza para prepararla para su próxima socia."),
+      P("Si tenías reservado un nuevo bolso, el proceso de envío se activará automáticamente en las próximas horas."),
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+  }),
+}
+
+/**
+ * Aviso a la socia: la etiqueta de devolución sigue sin escanear (pre-admisión) al vencer.
+ * Variables: {{nombre}} {{nombre_bolso}} {{url_etiqueta_correos}}. Botón: "Descargar etiqueta".
+ */
+export const RETURN_LABEL_REMINDER = {
+  subject: "Tu paquete te está esperando · SEMZO PRIVÉ",
+  html: shell({
+    title: "Etiqueta de devolución",
+    eyebrow: "Etiqueta de devolución",
+    headingHtml: "Tu paquete te está esperando",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Queremos recordarte que tienes el <strong>{{nombre_bolso}}</strong> pendiente de devolución."),
+      P("Vemos que la etiqueta prepagada aún no ha sido escaneada. Para que podamos preparar tu próximo bolso, solo necesitas llevar el paquete a cualquier oficina de Correos. No tienes que pagar nada, solo entregarlo."),
+      P("Si ya lo has entregado en las últimas horas, ignora este mensaje."),
+    ].join("\n"),
+    ctaLabel: "Descargar etiqueta",
+    ctaHref: "{{url_etiqueta_correos}}",
+  }),
+}
+
+/** Recogida solicitada (aviso de recogida). Variables: {{nombre}} {{nombre_bolso}}. Botón: "Ir a mi cuenta". */
+export const PICKUP_REQUESTED = {
+  subject: "Mensajero solicitado · SEMZO PRIVÉ",
+  html: shell({
+    title: "Mensajero solicitado",
+    eyebrow: "Aviso de recogida",
+    headingHtml: "Mensajero solicitado",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Tal y como solicitaste, hemos contactado con nuestra agencia de transporte para coordinar la recogida de tu <strong>{{nombre_bolso}}</strong>."),
+      P("En breve recibirás un mensaje o una llamada de la agencia para confirmarte el día y la hora exacta en la que pasarán a recogerlo. Solo tienes que tenerlo preparado en su funda."),
+      P("El proceso de devolución está en marcha."),
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+  }),
+}
+
+/** Recogida confirmada (día y franja). Variables: {{nombre}} {{nombre_bolso}} {{dia_recogida}} {{franja_horaria}}. */
+export const PICKUP_CONFIRMED = {
+  subject: "Tu recogida está confirmada · SEMZO PRIVÉ",
+  html: shell({
+    title: "Recogida confirmada",
+    eyebrow: "Recogida programada",
+    headingHtml: "Tu recogida está confirmada",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Ya tenemos la fecha y hora para recoger tu <strong>{{nombre_bolso}}</strong>. El mensajero pasará por tu dirección en la siguiente franja horaria:"),
+      dataTable([
+        ["Día", "{{dia_recogida}}"],
+        ["Franja horaria", "{{franja_horaria}}"],
+      ]),
+      P("Por favor, asegúrate de que el bolso esté dentro de su funda y listo para ser entregado. Si no hay nadie en el domicilio, la agencia intentará contactarte."),
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+  }),
+}
+
+/**
+ * Desistimiento de una compra Colecciona procesado (compra anulada y reembolso). Variables: {{nombre}}
+ * {{nombre_bolso}} {{importe}}. Botón: "Ir a mi cuenta". Lo envía la anulación de venta del admin.
+ */
+export const WITHDRAWAL_PROCESSED = {
+  subject: "Hemos procesado tu desistimiento · SEMZO PRIVÉ",
+  html: shell({
+    title: "Desistimiento procesado",
+    eyebrow: "Compra anulada",
+    headingHtml: "Hemos procesado tu desistimiento",
+    bodyHtml: [
+      P("Hola {{nombre}},"),
+      P("Te confirmamos que hemos procesado el desistimiento de tu compra correspondiente al <strong>{{nombre_bolso}}</strong>."),
+      '<p style="margin:0 0 24px 0;">Entendemos perfectamente que, en ocasiones, una pieza no termina de encajar. En SEMZO PRIVÉ queremos que tu experiencia sea perfecta en todos los sentidos, y tu tranquilidad es lo primero.</p>',
+      dataTable([
+        ["Bolso", "{{nombre_bolso}}"],
+        ["Importe a reembolsar", "{{importe}}€"],
+        ["Estado", "Reembolso en proceso"],
+      ]),
+      P("Hemos iniciado el reembolso a tu método de pago original. Dependiendo de tu entidad bancaria, verás el abono reflejado en los próximos <strong>3 a 5 días hábiles</strong>."),
+      P("Si el bolso aún está en tu domicilio, recuerda que puedes utilizar el sobre de devolución prepagado que incluimos en el paquete para hacérnoslo llegar."),
+      '<p style="margin:0 0 20px 0;font-style:italic;text-align:center;">Gracias por haber confiado en nosotros. Las puertas del club siempre estarán abiertas para ti.</p>',
+    ].join("\n"),
+    ctaLabel: "Ir a mi cuenta",
+    ctaHref: "https://semzoprive.com/dashboard",
+    ctaNote: '¿Tienes alguna duda? Escríbenos a <a href="mailto:soporte@semzoprive.com" style="color:#1a1a4b;text-decoration:underline;">soporte@semzoprive.com</a>',
+  }),
+}
