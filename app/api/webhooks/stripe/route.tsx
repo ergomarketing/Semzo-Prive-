@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { render } from "@react-email/components";
-import { EmailServiceProduction, buildMembershipRenewedEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail } from "@/app/lib/email-service-production";
+import { EmailServiceProduction, buildGiftCardRecipientEmail, buildMembershipRenewedEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail } from "@/app/lib/email-service-production";
 import { mapStripeStatusToInternal } from "@/lib/membership-state-mapper";
 import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
@@ -1364,7 +1364,7 @@ export async function POST(req: NextRequest) {
           // Primero buscar por payment_intent_id (método preferido)
           const { data: giftCardByPI } = await supabase
             .from("gift_cards")
-            .select("id, code, amount, personal_message, recipient_email, recipient_name")
+            .select("id, code, amount, personal_message, recipient_email, recipient_name, expires_at")
             .eq("stripe_payment_intent_id", pi.id)
             .eq("status", "pending")
             .maybeSingle();
@@ -1376,7 +1376,7 @@ export async function POST(req: NextRequest) {
             const amountCents = pi.amount;
             const { data: giftCardByAmount } = await supabase
               .from("gift_cards")
-              .select("id, code, amount, personal_message, recipient_email, recipient_name")
+              .select("id, code, amount, personal_message, recipient_email, recipient_name, expires_at")
               .eq("purchased_by", purchaserId)
               .eq("status", "pending")
               .eq("amount", amountCents)
@@ -1408,24 +1408,33 @@ export async function POST(req: NextRequest) {
               const amountEuros = (giftCard.amount / 100).toFixed(0);
               const emailService = EmailServiceProduction.getInstance();
 
+              // Quien regala (la socia que compro la tarjeta), para "X ha pensado en ti"
+              const { data: purchaserProfile } = await supabase
+                .from("profiles")
+                .select("full_name, first_name")
+                .eq("id", purchaserId || "")
+                .maybeSingle();
+              // Plantilla de Erika (lib/service-emails/gift-card-recipient.ts)
+              const giftEmail = buildGiftCardRecipientEmail({
+                recipientName: finalRecipientName,
+                purchaserName: purchaserProfile?.full_name || purchaserProfile?.first_name || null,
+                amountEuros,
+                code: giftCard.code,
+                personalMessage: giftCard.personal_message,
+                expiresAt: (giftCard as any).expires_at,
+                redeemUrl: `${siteUrl}/membresias`,
+              });
+
               await emailService.sendWithResend({
                 to: finalRecipientEmail,
-                subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
-                html: await render(
-                  <GiftCardRecipientEmail
-                    recipientName={finalRecipientName || undefined}
-                    personalMessage={giftCard.personal_message || undefined}
-                    code={giftCard.code}
-                    amountEuros={amountEuros}
-                    redeemUrl={`${siteUrl}/membresias`}
-                  />,
-                ),
+                subject: giftEmail.subject,
+                html: giftEmail.html,
               })
                 .then((sent) =>
                   logEmail({
                     recipientEmail: finalRecipientEmail,
                     recipientName: finalRecipientName || null,
-                    subject: `Has recibido una Gift Card de Semzo Prive - ${amountEuros}€`,
+                    subject: giftEmail.subject,
                     emailType: "gift_card_recipient",
                     status: sent ? "sent" : "failed",
                     metadata: { code: giftCard.code },
