@@ -32,6 +32,7 @@ import { COLECCIONA_READY_HTML, COLECCIONA_READY_SUBJECT } from "@/lib/service-e
 import { MEMBER_WELCOME_HTML, MEMBER_WELCOME_SUBJECT } from "@/lib/service-emails/member-welcome"
 import { ACCOUNT_CONFIRMATION_HTML, ACCOUNT_CONFIRMATION_SUBJECT } from "@/lib/service-emails/account-confirmation"
 import { firstNameOf, renderServiceTemplate } from "@/lib/service-emails/render"
+import { GIFT_CARD_RECIPIENT_HTML } from "@/lib/service-emails/gift-card-recipient"
 import {
   COLECCIONA_SALE,
   WITHDRAWAL_PROCESSED,
@@ -212,6 +213,63 @@ export function buildSepaPreNoticeEmail(data: {
       iban_masked: data.ibanMasked,
       fecha_cargo: data.chargeDate,
     }),
+  }
+}
+
+const escapeHtmlText = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+
+/** Gift Card recibida (la manda el webhook de Stripe al confirmarse el pago de la tarjeta). */
+export function buildGiftCardRecipientEmail(data: {
+  recipientName?: string | null
+  purchaserName?: string | null
+  amountEuros: number | string
+  code: string
+  personalMessage?: string | null
+  expiresAt?: string | null
+  redeemUrl: string
+}): { subject: string; html: string } {
+  const purchaser = firstNameOf(data.purchaserName) || "Alguien especial"
+  const recipientFirst = firstNameOf(data.recipientName)
+  const message = (data.personalMessage || "").trim()
+  const expires = data.expiresAt ? new Date(data.expiresAt) : null
+
+  const messageBlock = message
+    ? `<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-bottom:24px;">
+                      <tr>
+                        <td align="center" style="padding:0 10px;">
+                          <p style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:16px;font-style:italic;color:#3a3a5c;line-height:1.6;">
+                            "${escapeHtmlText(message)}"
+                          </p>
+                        </td>
+                      </tr>
+                    </table>`
+    : ""
+  const expiryLine =
+    expires && !Number.isNaN(expires.getTime())
+      ? `<p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;color:#7a7a94;">
+                      Válida hasta el ${expires.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>`
+      : ""
+
+  return {
+    subject: data.purchaserName
+      ? `${purchaser} te ha regalado una Gift Card · SEMZO PRIVÉ`
+      : "Has recibido una Gift Card · SEMZO PRIVÉ",
+    html: renderServiceTemplate(
+      GIFT_CARD_RECIPIENT_HTML,
+      {
+        saludo_nombre: recipientFirst ? ` ${recipientFirst}` : "",
+        nombre: recipientFirst,
+        nombre_comprador: purchaser,
+        importe: formatEuroAmount(data.amountEuros).replace(/,00$/, ""),
+        codigo_gift_card: data.code,
+        url_canje: data.redeemUrl,
+        bloque_mensaje: messageBlock,
+        linea_caducidad: expiryLine,
+      },
+      ["url_canje", "bloque_mensaje", "linea_caducidad"],
+    ),
   }
 }
 

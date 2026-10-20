@@ -12,7 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -41,7 +41,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "payment_failed_2", label: "Pago fallido · aviso 2" },
   { group: "Pagos", key: "payment_failed_3", label: "Pago fallido · aviso 3" },
   { group: "Pagos", key: "bag_pass_purchased", label: "Pase Bolso listo" },
-  { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida", pending: true },
+  { group: "Pagos", key: "gift_card_recipient", label: "Gift card recibida" },
   { group: "Pagos", key: "sepa_pre_execution", label: "Aviso previo de cargo SEPA" },
   { group: "Pagos", key: "sepa_execution", label: "Cargo SEPA ejecutado" },
   { group: "Pagos", key: "sepa_charge_failed", label: "Cargo SEPA rechazado (fondos insuficientes)" },
@@ -138,18 +138,15 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         paymentMethod: "card",
       })
     case "gift_card_recipient":
-      return {
-        subject: t.giftCardRecipient.subject("100"),
-        html: await render(
-          <GiftCardRecipientEmail
-            recipientName="Erika"
-            personalMessage="Para que elijas el bolso que más te guste."
-            code="SEMZO-EJEMPLO-1234"
-            amountEuros="100"
-            redeemUrl={`${TEST_SITE}/dashboard/gift-cards`}
-          />,
-        ),
-      }
+      return buildGiftCardRecipientEmail({
+        recipientName: "Rosa Gonzalez",
+        purchaserName: "Erika González",
+        amountEuros: 100,
+        code: "SEMZO-AB12-CD34",
+        personalMessage: "Para que disfrutes de lo que más te gusta. Con cariño.",
+        expiresAt: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        redeemUrl: `${TEST_SITE}/membresias`,
+      })
     case "sepa_pre_execution":
       return buildSepaPreNoticeEmail({
         fullName: "ROSA Gonzalez",
