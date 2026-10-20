@@ -20,9 +20,12 @@ export function renderServiceTemplate(
   template: string,
   vars: Record<string, string>,
   raw: string[] = [],
+  /** Claves cuyo valor es un TROZO DE HTML ya montado por el codigo (con sus comillas): se inserta tal cual. */
+  html: string[] = [],
 ): string {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
     if (!(key in vars)) return match
+    if (html.includes(key)) return vars[key]
     return raw.includes(key) ? vars[key].replace(/"/g, "%22") : escapeHtml(vars[key])
   })
 }
