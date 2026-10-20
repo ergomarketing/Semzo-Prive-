@@ -8,7 +8,6 @@ import { isIdentityVerified } from "@/lib/identity-status";
 import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestrator";
 import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
-import MembershipRenewedEmail from "@/emails/templates/membership-renewed";
 import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import {
@@ -24,7 +23,6 @@ import { registerOwnershipMode } from "@/lib/ownership-register-mode";
 import { getNextBagState } from "@/lib/next-bag-queue";
 import { sendNextBagQueuedEmail } from "@/lib/next-bag-email";
 import { creditPassPurchase } from "@/lib/ownership-pass-credit";
-import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
 
 export const dynamic = "force-dynamic";
@@ -1038,9 +1036,7 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (renewProfile?.email) {
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://semzoprive.com";
           const amount = invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : "—";
-          const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || "";
           const invoiceNumber = invoice.number || "";
           const emailService = EmailServiceProduction.getInstance();
           // Plantilla de Erika (lib/service-emails/payment-family.ts). Fecha de la proxima renovacion = fin del periodo.
