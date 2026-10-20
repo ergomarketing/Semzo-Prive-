@@ -315,6 +315,9 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
 export default function LogisticsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [returns, setReturns] = useState<Return[]>([])
+  // Devoluciones en camino / por verificar (etiqueta de devolucion de Correos con la reserva aun abierta)
+  const [returnLegs, setReturnLegs] = useState<any[]>([])
+  const [receivingId, setReceivingId] = useState<string | null>(null)
   const [settings, setSettings] = useState<LogisticsSettings[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -452,6 +455,11 @@ export default function LogisticsPage() {
       const returnsData = await returnsRes.json()
       setReturns(returnsData.data || [])
 
+      // Devoluciones en camino (seguimiento de Correos de la vuelta)
+      const legsRes = await fetch("/api/admin/logistics/return-legs")
+      const legsData = await legsRes.json().catch(() => ({}))
+      setReturnLegs(legsData.legs || [])
+
       // Cargar configuración
       const settingsRes = await fetch("/api/admin/logistics/settings")
       const settingsData = await settingsRes.json()
@@ -551,7 +559,7 @@ export default function LogisticsPage() {
     totalShipments: shipments.length,
     pendingShipments: shipments.filter((s) => s.status === "pending").length,
     deliveredShipments: shipments.filter((s) => s.status === "delivered").length,
-    totalReturns: returns.length,
+    totalReturns: returns.length + returnLegs.length,
     enabledCarriers: settings.filter((s) => s.is_enabled).length,
   }
 
@@ -787,6 +795,69 @@ export default function LogisticsPage() {
 
         {/* Returns Tab */}
         <TabsContent value="returns" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>En camino / por verificar</CardTitle>
+              <CardDescription>
+                Bolsos con etiqueta de devolución de Correos cuya reserva sigue abierta. Cuando tengas el bolso en la mano
+                y lo hayas comprobado, pulsa «Recibida y verificada»: se cierra la reserva, el bolso vuelve a estar
+                disponible y la socia recibe el aviso.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {returnLegs.length === 0 ? (
+                <p className="py-4 text-center text-gray-500">No hay devoluciones en camino.</p>
+              ) : (
+                <div className="space-y-3">
+                  {returnLegs.map((leg) => (
+                    <div key={leg.shipment_id} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                      <div className="flex-1">
+                        <p className="font-semibold">{leg.bag}</p>
+                        <p className="text-sm text-gray-600">
+                          {leg.member}
+                          {leg.email ? ` · ${leg.email}` : ""}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Seguimiento de vuelta: {leg.return_tracking_number} · Correos:{" "}
+                          {leg.return_status === "delivered"
+                            ? "entregado"
+                            : leg.return_status === "in_transit"
+                              ? "en tránsito"
+                              : "sin movimientos"}
+                          {leg.reservation_status === "overdue" ? " · reserva VENCIDA" : ""}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={receivingId === leg.reservation_id}
+                        onClick={async () => {
+                          if (!window.confirm(`¿Confirmas que has recibido ${leg.bag} y es el bolso correcto?`)) return
+                          setReceivingId(leg.reservation_id)
+                          try {
+                            const res = await fetch("/api/admin/logistics/return-legs/receive", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ reservation_id: leg.reservation_id }),
+                            })
+                            const json = await res.json().catch(() => ({}))
+                            if (!res.ok) throw new Error(json.error || "No se pudo cerrar la devolución")
+                            await loadLogisticsData()
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "No se pudo cerrar la devolución")
+                          } finally {
+                            setReceivingId(null)
+                          }
+                        }}
+                      >
+                        {receivingId === leg.reservation_id ? "Cerrando…" : "Recibida y verificada"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Devoluciones</CardTitle>
