@@ -821,9 +821,11 @@ export default function LogisticsPage() {
                           Seguimiento de vuelta: {leg.return_tracking_number} · Correos:{" "}
                           {leg.return_status === "delivered"
                             ? "entregado"
-                            : leg.return_status === "in_transit"
-                              ? "en tránsito"
-                              : "sin movimientos"}
+                            : leg.return_status === "out_for_delivery"
+                              ? "en reparto"
+                              : leg.return_status === "in_transit"
+                                ? "en tránsito"
+                                : "pre-admisión (aún no lo han entregado en Correos)"}
                           {leg.reservation_status === "overdue" ? " · reserva VENCIDA" : ""}
                         </p>
                       </div>
