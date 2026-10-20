@@ -101,7 +101,7 @@ export const SHIPMENT_ON_ITS_WAY_HTML = `<!DOCTYPE html>
                       <tr>
                         <td style="padding:20px;">
                           <p style="margin:0 0 12px 0;font-family:-apple-system,sans-serif;font-size:12px;text-transform:uppercase;color:#7a7a94;letter-spacing:1px;">
-                            El ritual de siempre
+                            Cómo llegará a tus manos
                           </p>
                           <p style="margin:0;font-size:15px;color:#1a1a4b;line-height:1.6;">
                             Lo recibirás con su funda protectora, la tarjeta de cuidados específicos para esa pieza y el sobre prepagado para tu próxima devolución.
