@@ -12,7 +12,7 @@ import SepaPreExecutionEmail from "@/emails/templates/sepa-pre-execution"
 import SepaExecutionEmail from "@/emails/templates/sepa-execution"
 import { getMessages } from "@/emails/messages"
 import { BRAND, emailDetailList, emailInfoBox, renderBrandEmail } from "@/app/lib/email-layout"
-import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
+import { buildAccountConfirmationEmail, buildBagPassPurchaseUserEmail, buildMemberWelcomeEmail, buildMembershipCancelledEmail, buildColeccionaReadyEmail, buildColeccionaSaleEmail, buildSepaPreNoticeEmail, buildSepaExecutionEmail, buildSepaChargeFailedEmail, buildSepaManualPaidEmail, buildNextBagQueuedEmail, buildGiftCardRecipientEmail, buildWithdrawalProcessedEmail, buildReturnReceivedEmail, buildReturnLabelReminderEmail, buildPickupRequestedEmail, buildPickupConfirmedEmail, buildSuspendedReturnEmail, buildPaymentFailedEmail, buildPaymentReceiptEmail, buildRefundEmail, buildMembershipRenewedEmail } from "@/app/lib/email-service-production"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 
 /**
@@ -49,7 +49,7 @@ const CODE_EMAILS = [
   { group: "Pagos", key: "sepa_manual_paid", label: "Pago manual recibido tras cargo rechazado" },
   { group: "Colecciona", key: "colecciona_sale", label: "Venta Colecciona (compra completada)" },
   { group: "Colecciona", key: "colecciona_ready", label: "Colecciona: ya puedes finalizar la compra" },
-  { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)", pending: true },
+  { group: "Próximo bolso", key: "next_bag_queued", label: "Próximo bolso reservado (en cola, sale al recibir la devolución)" },
   { group: "Próximo bolso", key: "next_bag_shipping", label: "Tu próximo bolso sale hacia ti (devolución recibida)", pending: true },
   { group: "Colecciona", key: "colecciona_withdrawal", label: "Desistimiento: compra anulada y reembolso" },
   { group: "Cuenta y membresía", key: "membership_suspended", label: "Membresía suspendida por impago (sin bolso en casa)", pending: true },
@@ -183,6 +183,8 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
         pickupDay: "martes, 21 de octubre de 2026",
         timeSlot: "Mañana (9:00 - 14:00)",
       })
+    case "next_bag_queued":
+      return buildNextBagQueuedEmail({ fullName: "Rosa Gonzalez", bagName: "Chanel Classic Flap" })
     case "sepa_manual_paid":
       return buildSepaManualPaidEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
     case "sepa_charge_failed":

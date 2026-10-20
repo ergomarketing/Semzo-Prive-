@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
 import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
+import { sendNextBagQueuedEmail } from "@/lib/next-bag-email"
 
 export async function POST(request: Request) {
   try {
@@ -362,6 +363,7 @@ export async function POST(request: Request) {
           }
         } else {
           autoReservationId = reservationId
+          if (nextBag.hasBagInHand) await sendNextBagQueuedEmail(supabase, { userId: finalUserId, bagId })
           console.log("[v0] [purchase] reserva auto creada OK", {
             reservation_id: reservationId,
             bag_id: bagId,

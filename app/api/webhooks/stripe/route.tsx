@@ -22,6 +22,7 @@ import { closeColeccionaSale } from "@/lib/ownership-sale-close";
 import { klaviyoTrackForUser } from "@/lib/klaviyo";
 import { registerOwnershipMode } from "@/lib/ownership-register-mode";
 import { getNextBagState } from "@/lib/next-bag-queue";
+import { sendNextBagQueuedEmail } from "@/lib/next-bag-email";
 import { creditPassPurchase } from "@/lib/ownership-pass-credit";
 import GiftCardRecipientEmail from "@/emails/templates/gift-card-recipient";
 import AdminNotificationEmail from "@/emails/templates/admin-notification";
@@ -525,6 +526,7 @@ export async function POST(req: NextRequest) {
                   }
                 } else {
                   passReservationCreated = true;
+                  if (nextBagState?.hasBagInHand) await sendNextBagQueuedEmail(supabase, { userId, bagId });
                   console.log("[v0] [bag_pass_webhook] reserva auto creada OK", {
                     session_id: session.id,
                     reservation_id: reservationId,
