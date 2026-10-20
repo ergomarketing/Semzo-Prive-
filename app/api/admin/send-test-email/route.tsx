@@ -109,6 +109,87 @@ async function buildServiceTestEmail(key: string): Promise<{ subject: string; ht
       return buildMemberWelcomeEmail({ name: "Erika", tier: "Petite" })
     case "membership_cancelled":
       return buildMembershipCancelledEmail({ userName: "Erika Ejemplo", membershipType: "L'Essentiel", endDate: "31 de diciembre de 2026" })
+    case "bag_pass_purchased":
+      return buildBagPassPurchaseUserEmail({
+        userName: "Erika Ejemplo",
+        passTier: "lessentiel",
+        quantity: 1,
+        totalPrice: 52,
+        paymentMethod: "card",
+      })
+    case "gift_card_recipient":
+      return buildGiftCardRecipientEmail({
+        recipientName: "Rosa Gonzalez",
+        purchaserName: "Erika González",
+        amountEuros: 100,
+        code: "SEMZO-AB12-CD34",
+        personalMessage: "Para que disfrutes de lo que más te gusta. Con cariño.",
+        expiresAt: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        redeemUrl: `${TEST_SITE}/membresias`,
+      })
+    case "sepa_pre_execution":
+      return buildSepaPreNoticeEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        deadline: "viernes, 20 de septiembre",
+        amount: 2950,
+        ibanMasked: "ES·· ···· ···· ···· 1234",
+        chargeDate: "4 de octubre de 2026",
+      })
+    case "suspended_return":
+      return buildSuspendedReturnEmail({
+        fullName: "ROSA Gonzalez",
+        membershipType: "petite",
+        bagName: "Chanel Classic Flap",
+        returnDeadline: "26 de octubre de 2026",
+        panelUrl: `${TEST_SITE}/dashboard`,
+      })
+    case "colecciona_withdrawal":
+      return buildWithdrawalProcessedEmail({ fullName: "ROSA Gonzalez", bagName: "Furla Club 2 Mini", amount: 1 })
+    case "return_received":
+      return buildReturnReceivedEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap" })
+    case "return_not_dropped":
+      return buildReturnLabelReminderEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        labelUrl: `${TEST_SITE}/api/return-label?r=EJEMPLO`,
+      })
+    case "pickup_confirmed":
+      return buildPickupConfirmedEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        pickupDay: "martes, 21 de octubre de 2026",
+        timeSlot: "Mañana (9:00 - 14:00)",
+      })
+    case "next_bag_queued":
+      return buildNextBagQueuedEmail({ fullName: "Rosa Gonzalez", bagName: "Chanel Classic Flap" })
+    case "sepa_manual_paid":
+      return buildSepaManualPaidEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
+    case "sepa_charge_failed":
+      return buildSepaChargeFailedEmail({
+        fullName: "ROSA Gonzalez",
+        bagName: "Chanel Classic Flap",
+        amount: 2950,
+        payUrl: `${TEST_SITE}/dashboard`,
+      })
+    case "sepa_execution":
+      return buildSepaExecutionEmail({ fullName: "ROSA Gonzalez", bagName: "Chanel Classic Flap", amount: 2950 })
+    case "colecciona_sale":
+      return buildColeccionaSaleEmail({
+        fullName: "ROSA Gonzalez",
+        bagLabel: "Furla Club 2 Mini",
+        amountPaid: 1,
+        invoiceUrl: `${TEST_SITE}/dashboard`,
+        hasContract: true,
+      })
+    case "colecciona_ready":
+      return buildColeccionaReadyEmail({
+        fullName: "ROSA Gonzalez",
+        bagBrand: "Furla",
+        bagName: "Club 2 Mini",
+        imageUrl: "https://h0ayghjex33jktep.public.blob.vercel-storage.com/bags/1764264118420-furla-marfil-alquiler.jpg",
+        panelUrl: `${TEST_SITE}/dashboard`,
+      })
     case "payment_failed_1":
     case "payment_failed_2":
     case "payment_failed_3":
