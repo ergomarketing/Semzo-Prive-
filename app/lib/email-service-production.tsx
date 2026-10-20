@@ -39,7 +39,6 @@ import {
   COLECCIONA_SALE,
   WITHDRAWAL_PROCESSED,
   PICKUP_CONFIRMED,
-  PICKUP_REQUESTED,
   RETURN_LABEL_REMINDER,
   RETURN_RECEIVED,
   SUSPENDED_RETURN,
@@ -355,14 +354,6 @@ export function buildReturnLabelReminderEmail(data: {
       { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName, url_etiqueta_correos: data.labelUrl },
       ["url_etiqueta_correos"],
     ),
-  }
-}
-
-/** Recogida a domicilio solicitada por la socia. */
-export function buildPickupRequestedEmail(data: { fullName: string | null; bagName: string }): { subject: string; html: string } {
-  return {
-    subject: PICKUP_REQUESTED.subject,
-    html: renderServiceTemplate(PICKUP_REQUESTED.html, { nombre: firstNameOf(data.fullName), nombre_bolso: data.bagName }),
   }
 }
 

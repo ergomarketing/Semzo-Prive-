@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
 import { getResendApiKey } from "@/lib/resend-api-key"
-import { EmailServiceProduction, buildPickupRequestedEmail } from "@/app/lib/email-service-production"
 
 // Service-role client para escribir en shipments/returns (evita choques con RLS).
 // La propiedad SIEMPRE se valida contra user.id antes de escribir.
@@ -195,23 +194,6 @@ export async function POST(request: NextRequest) {
     }
 
     await admin.from("shipments").update(shipmentUpdate).eq("id", shipmentId)
-
-    // Correo a la socia: "Mensajero solicitado" (plantilla de Erika). No bloquea la devolucion.
-    if (method === "pickup") {
-      try {
-        const { data: member } = await admin.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle()
-        if (member?.email) {
-          const bagInfo = (reservation as any).bags
-          const built = buildPickupRequestedEmail({
-            fullName: member.full_name,
-            bagName: bagInfo ? `${bagInfo.brand || ""} ${bagInfo.name || ""}`.trim() : "tu bolso",
-          })
-          await EmailServiceProduction.getInstance().sendWithResend({ to: member.email, subject: built.subject, html: built.html })
-        }
-      } catch (e) {
-        console.error("[v0] Fallo correo de recogida solicitada:", e)
-      }
-    }
 
     // Aviso a logistica (no bloqueante: si falla el email, la devolucion ya quedo creada).
     try {
