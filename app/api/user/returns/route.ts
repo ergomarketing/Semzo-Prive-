@@ -180,7 +180,8 @@ export async function POST(request: NextRequest) {
       .from("returns")
       .insert({
         shipment_id: shipmentId,
-        reason: "socia_return",
+        // returns_reason_check solo admite: customer_request, damaged, wrong_item, not_as_described, quality_issue, lost, other
+        reason: "customer_request",
         status: "pending",
         notes,
         return_carrier: method,

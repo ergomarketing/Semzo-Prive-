@@ -386,9 +386,9 @@ export async function POST(request: NextRequest) {
         const isPremium = service_type === "PAQ_PREMIUM"
         // Producto de IDA (Semzo -> socia) y su producto de RETORNO emparejado
         const productCode = isPremium ? CORREOS_PRODUCTS.PAQ_PREMIUM : CORREOS_PRODUCTS.PAQ_ESTANDAR
-        const returnProductCode = isPremium
-          ? CORREOS_PRODUCTS.PAQ_RETORNO_PREMIUM
-          : CORREOS_PRODUCTS.PAQ_RETORNO
+        // La etiqueta de RETORNO usa SIEMPRE "Paq Retorno" (PAAZE): su prefijo es L3, el que admite el contrato de
+        // Semzo en Correos. Con "Paq Retorno Premium" (PAAZV) salia un prefijo LI y Correos la rechazaba.
+        const returnProductCode = CORREOS_PRODUCTS.PAQ_RETORNO
 
         // Envio de IDA: Semzo -> Cliente
         try {
@@ -604,5 +604,82 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("[Logistics API] Unexpected error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+/**
+ * PUT /api/admin/logistics/shipments   { shipment_id, action: "regenerate_return" }
+ *
+ * Vuelve a crear SOLO la etiqueta de devolucion de un envio ya hecho, con el producto correcto (Paq Retorno, prefijo
+ * L3). Sustituye a la etiqueta anterior (p. ej. una LI... rechazada por Correos). La ida no se toca.
+ */
+export async function PUT(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
+  try {
+    const body = await request.json()
+    if (body?.action !== "regenerate_return" || !body?.shipment_id) {
+      return NextResponse.json({ error: "Falta shipment_id o action=regenerate_return" }, { status: 400 })
+    }
+
+    const { data: shipment } = await supabase
+      .from("shipments")
+      .select("id, reservation_id, weight, return_tracking_number")
+      .eq("id", body.shipment_id)
+      .maybeSingle()
+    if (!shipment) return NextResponse.json({ error: "Envío no encontrado" }, { status: 404 })
+
+    const { recipient: rec, error: recError } = await resolveRecipient(shipment.reservation_id, {})
+    if (recError || !rec) return NextResponse.json({ error: recError || "Destinatario no resuelto" }, { status: 400 })
+    const sanitized = sanitizeRecipient(rec)
+    if (!sanitized.valid) {
+      return NextResponse.json({ error: "Datos de la socia inválidos", details: sanitized.errors }, { status: 400 })
+    }
+
+    const { data: correosSettings } = await supabase
+      .from("logistics_settings")
+      .select("sender_info, is_enabled")
+      .eq("carrier_name", "Correos")
+      .single()
+    if (!process.env.CORREOS_PROXY_URL || !process.env.CORREOS_PROXY_API_KEY || !correosSettings?.is_enabled) {
+      return NextResponse.json({ error: "La integración de Correos no está activa" }, { status: 400 })
+    }
+
+    const senderParty = buildSenderParty(correosSettings.sender_info)
+    const response = await new CorreosAPI().createShipment({
+      sender: sanitized.data,
+      recipient: senderParty,
+      weight: Number(shipment.weight) || 2000,
+      productCode: CORREOS_PRODUCTS.PAQ_RETORNO,
+      admissionMethod: 3,
+      deliveryMethod: "DOURUA",
+      reference: `RET-${shipment.reservation_id}-${Date.now()}`,
+      observations: "Devolucion bolso",
+    })
+
+    await supabase
+      .from("shipments")
+      .update({
+        return_tracking_number: response.codEnvio,
+        return_package_code: response.packageCode || null,
+        return_correos_response: response,
+        return_label_url: null,
+        return_status: "pending",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", shipment.id)
+
+    await supabase.from("logistics_audit_log").insert({
+      action: "regenerate_return_label",
+      entity_type: "shipment",
+      entity_id: shipment.id,
+      old_values: { return_tracking_number: shipment.return_tracking_number },
+      new_values: { return_tracking_number: response.codEnvio },
+    })
+
+    return NextResponse.json({ success: true, return_tracking_number: response.codEnvio })
+  } catch (error: any) {
+    console.error("[Logistics API] Error regenerando etiqueta de devolución:", error)
+    return NextResponse.json({ error: error?.message || "No se pudo regenerar la etiqueta" }, { status: 500 })
   }
 }

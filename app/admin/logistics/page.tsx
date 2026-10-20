@@ -891,6 +891,36 @@ export default function LogisticsPage() {
                           {leg.reservation_status === "overdue" ? " · reserva VENCIDA" : ""}
                         </p>
                       </div>
+                      {leg.return_tracking_number && !String(leg.return_tracking_number).startsWith("L3") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-400 text-amber-700"
+                          onClick={async () => {
+                            if (
+                              !window.confirm(
+                                `La etiqueta ${leg.return_tracking_number} no empieza por L3 y Correos la rechaza. ¿Crear una nueva etiqueta de devolución (L3) para ${leg.bag}?`,
+                              )
+                            )
+                              return
+                            try {
+                              const res = await fetch("/api/admin/logistics/shipments", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ shipment_id: leg.shipment_id, action: "regenerate_return" }),
+                              })
+                              const json = await res.json().catch(() => ({}))
+                              if (!res.ok) throw new Error(json.error || "No se pudo regenerar la etiqueta")
+                              window.alert(`Nueva etiqueta creada: ${json.return_tracking_number}. Pulsa «Recordar entrega» para mandársela a la socia.`)
+                              await loadLogisticsData()
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "No se pudo regenerar la etiqueta")
+                            }
+                          }}
+                        >
+                          Regenerar etiqueta (L3)
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
