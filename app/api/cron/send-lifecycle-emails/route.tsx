@@ -98,6 +98,27 @@ export async function GET(req: NextRequest) {
       continue
     }
 
+    // Carrito abandonado: solo sale mientras el intento siga abierto y la persona no sea ya socia activa.
+    // Si compro, el intento caduco o se hizo socia entre el aviso 1 y el 3, los avisos pendientes se cancelan.
+    if (row.sequence_key === "checkout_abandoned") {
+      const { data: intent } = await supabase
+        .from("membership_intents")
+        .select("status")
+        .eq("id", row.entity_id)
+        .maybeSingle()
+      const { data: active } = row.user_id
+        ? await supabase.from("user_memberships").select("id").eq("user_id", row.user_id).eq("status", "active").limit(1)
+        : { data: null }
+      if (intent?.status !== "initiated" || (active && active.length > 0)) {
+        await supabase
+          .from("lifecycle_email_log")
+          .update({ status: "cancelled", error_message: "el carrito ya no esta abandonado" })
+          .eq("id", row.id)
+        skipped++
+        continue
+      }
+    }
+
     if (!template) {
       await supabase.from("lifecycle_email_log").update({ status: "skipped" }).eq("id", row.id)
       skipped++

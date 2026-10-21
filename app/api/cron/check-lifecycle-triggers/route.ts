@@ -46,6 +46,11 @@ async function getRecipient(userId: string): Promise<{ email: string; name: stri
   return { email: profile.email, name: profile.full_name || profile.first_name || "" }
 }
 
+async function hasActiveMembership(userId: string): Promise<boolean> {
+  const { data } = await supabase.from("user_memberships").select("id").eq("user_id", userId).eq("status", "active").limit(1)
+  return !!data && data.length > 0
+}
+
 async function checkCheckoutAbandoned() {
   let enrolled = 0
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString() // > 1h desde initiated_at
@@ -69,6 +74,9 @@ async function checkCheckoutAbandoned() {
   const resumeUrl = `${appUrl}/dashboard`
 
   for (const intent of intents || []) {
+    // Quien ya es socia activa no esta "abandonando" nada: no se le manda el carrito abandonado.
+    if (await hasActiveMembership(intent.user_id)) continue
+
     const recipient = await getRecipient(intent.user_id)
     if (!recipient) continue
 
@@ -292,7 +300,22 @@ async function checkNps() {
     .gte("updated_at", cutoffStart)
     .limit(300)
 
+  const recentSince = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+  const surveyed = new Set<string>()
+
   for (const r of reservations || []) {
+    // Una sola encuesta por socia cada 14 dias, aunque cierre dos reservas seguidas.
+    if (surveyed.has(r.user_id)) continue
+    const { data: recent } = await supabase
+      .from("lifecycle_email_log")
+      .select("id")
+      .eq("sequence_key", "nps")
+      .eq("user_id", r.user_id)
+      .gte("created_at", recentSince)
+      .limit(1)
+    if (recent && recent.length > 0) continue
+    surveyed.add(r.user_id)
+
     const recipient = await getRecipient(r.user_id)
     if (!recipient) continue
 
