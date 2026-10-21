@@ -123,6 +123,15 @@ export async function buildCensus(supabase: SupabaseClient): Promise<Map<string,
     if ((n.status && n.status !== "active") || n.unsubscribed_at) e.unsubscribed = true
   }
 
+  // Fuera lo que no es una persona real: direcciones de relleno de registros por telefono y cuentas de prueba internas.
+  for (const email of Array.from(census.keys())) {
+    if (/@phone\.semzopriv/.test(email) || /^ergomara\d*@/.test(email)) census.delete(email)
+  }
+  // "canceled" y "cancelled" son el mismo estado: un unico valor para que los segmentos no se partan en dos.
+  for (const e of census.values()) {
+    if (e.membershipStatus === "canceled") e.membershipStatus = "cancelled"
+  }
+
   return census
 }
 
