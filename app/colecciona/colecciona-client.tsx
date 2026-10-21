@@ -10,6 +10,7 @@ const HERO_IMAGE =
 
 // Mismas imagenes reales usadas en /membresias, para dar memoria visual a cada plan
 const PLAN_IMAGES: Record<string, string> = {
+  Petite: "/images/membership-petite-v2.jpg",
   "L'Essentiel": "/images/membership-essentiel.jpeg",
   Signature: "/images/membership-signature-v2.jpg",
   Privé: "/images/membership-prive.jpg",
@@ -105,7 +106,7 @@ export default function ColeccionaClient() {
                 {t("creditSubtitle")}
               </p>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid gap-3 ${creditPlans.length > 3 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
                 {creditPlans.map((plan) => (
                   <div
                     key={plan.name}
