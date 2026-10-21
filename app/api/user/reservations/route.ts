@@ -707,6 +707,22 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] New reservation created successfully:", reservation.id)
 
+    // Klaviyo (solo analitica): reserva hecha. Nunca bloquea ni falla la reserva.
+    try {
+      const { klaviyoTrackForUser } = await import("@/lib/klaviyo")
+      await klaviyoTrackForUser(supabase, userId, {
+        metric: "Bag Reserved",
+        uniqueId: `reservation:${reservation.id}`,
+        properties: {
+          bag_name: (reservation as any).bags?.name ?? null,
+          bag_brand: (reservation as any).bags?.brand ?? null,
+          membership_type: userMembershipPlan ?? null,
+          queued_as_next_bag: !!queueMode,
+          used_bag_pass: !!passIdToConsume,
+        },
+      })
+    } catch {}
+
     // POST-PROCESAMIENTO: el pase ya fue marcado como usado por el RPC atomico
     // El conteo de pases se calcula en tiempo real desde bag_passes, no se cachea en profiles
 

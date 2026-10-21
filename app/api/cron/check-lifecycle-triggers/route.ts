@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
+import { klaviyoTrack } from "@/lib/klaviyo"
 
 /**
  * Cron diario de detección/enrolamiento para las secuencias de lifecycle de
@@ -79,6 +80,14 @@ async function checkCheckoutAbandoned() {
 
     const recipient = await getRecipient(intent.user_id)
     if (!recipient) continue
+
+    // Klaviyo (solo analitica): un evento por intento abandonado (el unique_id evita repetirlo cada dia).
+    await klaviyoTrack({
+      email: recipient.email,
+      metric: "Checkout Abandoned",
+      uniqueId: `checkout-abandoned:${intent.id}`,
+      properties: { membership_type: intent.membership_type || null },
+    })
 
     const result = await enrollLifecycleSequence({
       sequenceKey: "checkout_abandoned",

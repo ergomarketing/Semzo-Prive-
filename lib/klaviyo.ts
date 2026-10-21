@@ -40,6 +40,8 @@ export async function klaviyoTrack(input: KlaviyoTrackInput): Promise<KlaviyoRes
   if (!apiKey) return { ok: false, skipped: true }
   const email = (input.email || "").toLowerCase().trim()
   if (!email || !email.includes("@")) return { ok: false, skipped: true }
+  // Las cuentas de prueba internas y las direcciones de relleno no cuentan en las estadisticas (igual que en el censo).
+  if (/^ergomara\d*@/.test(email) || /@phone\.semzopriv/.test(email)) return { ok: false, skipped: true }
 
   const profileAttributes: Record<string, unknown> = { email }
   if (input.profile?.firstName) profileAttributes.first_name = input.profile.firstName

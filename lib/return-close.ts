@@ -13,6 +13,7 @@ import { reconcileRentalCommission } from "@/lib/partners"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 import { promoteQueuedReservation } from "@/lib/next-bag-queue"
 import { renderAdminEmail } from "@/app/lib/email-layout"
+import { klaviyoTrackForUser } from "@/lib/klaviyo"
 
 export async function closeReservationOnReturnReceived(
   supabase: SupabaseClient,
@@ -39,6 +40,13 @@ export async function closeReservationOnReturnReceived(
       .from("reservations")
       .update({ status: "completed", updated_at: new Date().toISOString() })
       .eq("id", reservation.id)
+
+    // Klaviyo (solo analitica): ciclo cerrado por devolucion fisica confirmada. Nunca lanza.
+    await klaviyoTrackForUser(supabase, reservation.user_id, {
+      metric: "Return Received",
+      uniqueId: `return-received:${reservation.id}`,
+      properties: { bag_name: bag?.name ?? null, bag_brand: bag?.brand ?? null },
+    })
 
     if (reservation.bag_id) {
       await supabase.from("bags").update({ status: "available" }).eq("id", reservation.bag_id)

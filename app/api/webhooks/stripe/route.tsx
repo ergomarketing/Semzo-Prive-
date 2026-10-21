@@ -1579,6 +1579,18 @@ export async function POST(req: NextRequest) {
             })
             .eq("user_id", failedMembership.user_id);
 
+          // Klaviyo (solo analitica): un evento por cada intento fallido de cobro.
+          await klaviyoTrackForUser(supabase, failedMembership.user_id, {
+            metric: "Payment Failed",
+            uniqueId: `payment-failed:${invoice.id}:${failedCount}`,
+            value: invoice.amount_due ? invoice.amount_due / 100 : undefined,
+            properties: {
+              membership_type: failedMembership.membership_type || null,
+              attempt: failedCount,
+              first_failure: isFirstFailure,
+            },
+          });
+
           // Obtener datos de contacto del perfil (solo lectura de datos basicos)
           const { data: profile } = await supabase
             .from("profiles")
