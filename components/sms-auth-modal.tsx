@@ -1,5 +1,6 @@
 "use client"
 
+import { trackSignUp } from "@/lib/track-signup"
 import { useEffect, useState } from "react"
 
 const SmsAuthModal = () => {
@@ -40,6 +41,7 @@ const SmsAuthModal = () => {
       const data = await response.json()
 
       if (data.success) {
+        trackSignUp("phone")
         if (data.requiresConfirmation) {
           setStep("confirm-email")
           setConfirmationMessage(
