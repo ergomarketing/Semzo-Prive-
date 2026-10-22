@@ -1,4 +1,5 @@
 "use client"
+import { trackSignUp } from "@/lib/track-signup"
 import { useCart } from "@/app/contexts/cart-context"
 import type React from "react"
 import { Button } from "@/components/ui/button"
@@ -607,6 +608,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           setAuthError(registerData.error || "No se pudo crear la cuenta")
           return
         }
+        if (registerRes.ok && !registerData.exists) trackSignUp("checkout")
 
         // Tras crear (o si ya existia), login inmediato. Si el usuario ya existia y
         // la contrasena es correcta, entra; si no, mostramos error claro.

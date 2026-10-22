@@ -1,5 +1,6 @@
 "use client"
 
+import { trackSignUp } from "@/lib/track-signup"
 import type React from "react"
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -160,6 +161,7 @@ function SignupContent() {
 
       // La atribucion ya viaja en el registro: evita el reenvio de respaldo.
       markAttributionSynced(result?.user?.id)
+      trackSignUp("email")
 
       const needsConfirmation = result.requiresEmailConfirmation
       setRequiresConfirmation(needsConfirmation)

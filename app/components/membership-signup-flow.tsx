@@ -1,5 +1,6 @@
 "use client"
 
+import { trackSignUp } from "@/lib/track-signup"
 import type React from "react"
 
 import { useState } from "react"
@@ -50,6 +51,7 @@ export default function MembershipSignupFlow({ membershipType, price }: Membersh
       const result = await response.json()
 
       if (result.success) {
+        trackSignUp("free")
         setStep(2)
         setMessage("✅ Información guardada. Revisa tu email para confirmar tu cuenta, luego procede al pago.")
       } else {
