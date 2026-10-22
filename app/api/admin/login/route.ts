@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { createAdminSessionValue } from "@/lib/admin-auth"
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     if (email === adminEmail && password === adminPassword) {
       // Crear cookie de sesión
       const cookieStore = await cookies()
-      cookieStore.set("admin_session", "authenticated", {
+      cookieStore.set("admin_session", createAdminSessionValue(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
