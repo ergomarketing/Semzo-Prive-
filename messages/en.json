@@ -273,6 +273,7 @@
     "cancel": "Cancel"
   },
   "reservasPage": {
+    "eyebrow": "My bags",
     "title": "My Reservations",
     "subtitle": "Manage your active reservations and review your history",
     "loginRequired": "Sign in to view your reservations",
@@ -328,7 +329,9 @@
     "errDefault": "Error updating password"
   },
   "membresiaPage": {
-    "title": "MY MEMBERSHIP",
+    "eyebrow": "Your plan",
+    "manageTitle": "Manage membership",
+    "title": "My membership",
     "errorLoading": "Error loading your membership. Please reload the page.",
     "emailRequired": "Email required:",
     "emailRequiredDesc": "We need your real email to confirm reservations and send notifications.",
@@ -433,6 +436,7 @@
     "feat_free_4": "Email support"
   },
   "listaEsperaPage": {
+    "eyebrow": "My bags",
     "title": "My Waitlist",
     "subtitle": "All the bags you are watching. We will email you when these styles become available.",
     "empty": "You have no bags on your waitlist",
@@ -445,6 +449,7 @@
     "unknownBrand": "Unknown brand"
   },
   "perfilPage": {
+    "eyebrow": "Account",
     "title": "My Profile",
     "subtitle": "Manage your personal information",
     "errorLoadingProfile": "Error loading profile",
@@ -481,6 +486,7 @@
     "yes": "Yes"
   },
   "envioPage": {
+    "eyebrow": "Account",
     "title": "Shipping Address",
     "subtitle": "Complete all fields so we can ship your bags via Correos.",
     "shippingInfoTitle": "Shipping Information",

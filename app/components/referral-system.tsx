@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Copy, Check, Gift, Users, Crown, Wallet, Loader2 } from "lucide-react"
+import { Copy, Check, Gift, Users, Crown, Wallet, Loader2, Clock } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
 
 interface ReferralStatsResponse {
@@ -80,7 +80,7 @@ export default function ReferralSystem() {
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-md">
+      <Card>
         <CardContent className="p-10 text-center text-slate-500">
           {t("loading")}
         </CardContent>
@@ -90,7 +90,7 @@ export default function ReferralSystem() {
 
   if (error || !data) {
     return (
-      <Card className="border-0 shadow-md">
+      <Card>
         <CardContent className="p-10 text-center text-slate-500">
           {t("loadError")}
         </CardContent>
@@ -168,10 +168,10 @@ export default function ReferralSystem() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-rose-nude to-rose-pastel/30">
+      <Card className="border-rose-pastel/60 bg-rose-nude/70">
         <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-serif text-indigo-dark">
-            <Gift className="h-6 w-6" />
+          <CardTitle className="flex items-center justify-center gap-2 text-2xl">
+            <Gift className="h-6 w-6 text-[#b08d57]" />
             {t("programTitle")}
           </CardTitle>
           <p className="text-slate-700 mt-2">{t("programDesc")}</p>
@@ -180,47 +180,43 @@ export default function ReferralSystem() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card>
           <CardContent className="p-4 text-center">
-            <Users className="h-8 w-8 text-indigo-dark mx-auto mb-2" />
-            <p className="text-2xl font-bold text-indigo-dark">{data.totalReferrals}</p>
-            <p className="text-sm text-slate-600">{t("statFriends")}</p>
+            <Users className="mx-auto mb-3 h-6 w-6 text-[#b08d57]" />
+            <p className="font-serif text-3xl text-indigo-dark">{data.totalReferrals}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t("statFriends")}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card>
           <CardContent className="p-4 text-center">
-            <Crown className="h-8 w-8 text-rose-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-rose-500">{data.qualifiedReferrals}</p>
-            <p className="text-sm text-slate-600">{t("statQualified")}</p>
+            <Crown className="mx-auto mb-3 h-6 w-6 text-[#b08d57]" />
+            <p className="font-serif text-3xl text-indigo-dark">{data.qualifiedReferrals}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t("statQualified")}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card>
           <CardContent className="p-4 text-center">
-            <div className="h-8 w-8 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-amber-600 font-bold">⏳</span>
-            </div>
-            <p className="text-2xl font-bold text-amber-600">{data.pendingReferrals}</p>
-            <p className="text-sm text-slate-600">{t("statPending")}</p>
+            <Clock className="mx-auto mb-3 h-6 w-6 text-[#b08d57]" />
+            <p className="font-serif text-3xl text-indigo-dark">{data.pendingReferrals}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t("statPending")}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card>
           <CardContent className="p-4 text-center">
-            <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-green-600 font-bold">€</span>
-            </div>
-            <p className="text-2xl font-bold text-green-600">{data.balanceEuros}€</p>
-            <p className="text-sm text-slate-600">{t("statCredit")}</p>
+            <Wallet className="mx-auto mb-3 h-6 w-6 text-[#b08d57]" />
+            <p className="font-serif text-3xl text-indigo-dark">{data.balanceEuros}€</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">{t("statCredit")}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Canje de credito */}
-      <Card className="border-0 shadow-md">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-serif text-indigo-dark flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-xl">
             <Wallet className="h-5 w-5" />
             {t("redeemTitle")}
           </CardTitle>
@@ -244,7 +240,7 @@ export default function ReferralSystem() {
 
       {/* Historial de canjes */}
       {historyData?.redemptions && historyData.redemptions.length > 0 && (
-        <Card className="border-0 shadow-md">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg font-serif text-indigo-dark">
               {t("redemptionHistory")}
@@ -297,7 +293,7 @@ export default function ReferralSystem() {
       )}
 
       {/* Referral Link */}
-      <Card className="border-0 shadow-md">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg font-serif text-indigo-dark">
             {t("referralLinkTitle")}
@@ -331,7 +327,7 @@ export default function ReferralSystem() {
       </Card>
 
       {/* How it Works */}
-      <Card className="border-0 shadow-md">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg font-serif text-indigo-dark">{t("howItWorksTitle")}</CardTitle>
         </CardHeader>
