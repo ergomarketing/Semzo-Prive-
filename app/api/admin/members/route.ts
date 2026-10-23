@@ -128,37 +128,3 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: "Error interno del servidor", details: error }, { status: 500 })
   }
 }
-
-export async function DELETE(request: NextRequest) {
-  const authError = await requireAdminAuth()
-  if (authError) return authError
-  try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
-
-    if (!userId) {
-      return NextResponse.json({ error: "userId is required" }, { status: 400 })
-    }
-
-    const { data: authUser } = await supabase.auth.admin.getUserById(userId)
-
-    if (authUser.user) {
-      return NextResponse.json({ error: "Cannot delete: user still exists in auth.users" }, { status: 400 })
-    }
-
-    await supabase.from("audit_log").delete().eq("user_id", userId)
-    await supabase.from("notifications").delete().eq("user_id", userId)
-    await supabase.from("gift_card_transactions").delete().eq("user_id", userId)
-    await supabase.from("bag_passes").delete().eq("user_id", userId)
-    await supabase.from("reservations").delete().eq("user_id", userId)
-    await supabase.from("membership_intents").delete().eq("user_id", userId)
-    await supabase.from("user_memberships").delete().eq("user_id", userId)
-    await supabase.from("profiles").delete().eq("id", userId)
-
-    return NextResponse.json({ success: true, message: "Registros huerfanos eliminados" })
-  } catch (error) {
-    console.error("[v0] Error deleting orphaned records:", error)
-    return NextResponse.json({ error: "Error al eliminar registros", details: error }, { status: 500 })
-  }
-}
