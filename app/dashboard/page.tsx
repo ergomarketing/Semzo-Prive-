@@ -254,12 +254,12 @@ export default function DashboardHome() {
   return (
     <div className="relative isolate max-w-6xl mx-auto">
       {/* Fondo: foto de marca muy suave, solo decorativa (no compite con la informacion) */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-4 -z-10 h-[560px] overflow-hidden rounded-3xl">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-4 -z-10 h-[640px] overflow-hidden rounded-3xl">
         <div
-          className="absolute inset-0 bg-cover opacity-[0.10]"
+          className="absolute inset-0 bg-cover opacity-[0.20]"
           style={{ backgroundImage: "url(/images/panel-fondo.jpg)", backgroundPosition: "100% 24%" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-50/0 via-slate-50/70 to-slate-50" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-50/0 via-slate-50/40 to-slate-50" />
       </div>
 
       {/* Banner Petite: pase por vencer o vencido (solo se muestra si aplica) */}
