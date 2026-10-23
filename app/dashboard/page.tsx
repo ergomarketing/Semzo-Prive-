@@ -240,7 +240,7 @@ export default function DashboardHome() {
       ? [{ href: "/dashboard/membresia", icon: Sparkles, label: t("cardCredit"), value: formatEuro(creditBalance), hint: t("cardCreditHint") }]
       : []),
     { href: "/dashboard/lista-espera", icon: Clock, label: t("cardWaitlist"), value: String(reservations?.waitlist ?? 0), hint: t("cardWaitlistBags") },
-    { href: "/wishlist", icon: Heart, label: t("cardWishlist"), value: String(reservations?.wishlist ?? 0), hint: t("cardFavorites") },
+    { href: "/dashboard/favoritos", icon: Heart, label: t("cardWishlist"), value: String(reservations?.wishlist ?? 0), hint: t("cardFavorites") },
     { href: "/dashboard/gift-cards", icon: Gift, label: t("cardGiftCard"), value: formatEuro(gift_cards?.total_balance ?? 0), hint: t("cardGiftCardAvailable") },
     {
       href: "/dashboard/envio",

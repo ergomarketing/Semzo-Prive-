@@ -435,6 +435,23 @@
     "feat_free_3": "Limited waitlist",
     "feat_free_4": "Email support"
   },
+  "favoritosPage": {
+    "eyebrow": "My bags",
+    "title": "My favourites",
+    "subtitle": "The bags you have saved to reserve later",
+    "empty": "You have no favourites yet",
+    "emptyDesc": "Tap the heart on any bag in the catalogue to save it here.",
+    "explore": "Explore catalogue",
+    "available": "Available",
+    "inUse": "In use",
+    "view": "View bag",
+    "remove": "Remove from favourites",
+    "removed": "Removed from your favourites",
+    "removeError": "Could not remove it. Please try again.",
+    "savedOn": "Saved on",
+    "unknownBag": "Bag",
+    "unknownBrand": "Brand"
+  },
   "listaEsperaPage": {
     "eyebrow": "My bags",
     "title": "My Waitlist",

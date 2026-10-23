@@ -51,7 +51,7 @@ export default function DashboardLayoutClient({
       label: t("groupBags"),
       items: [
         { title: t("myReservations"), icon: ShoppingBag, href: "/dashboard/reservas", match: ["/dashboard/reservas"] },
-        { title: t("menuFavorites"), icon: Heart, href: "/wishlist", match: ["/wishlist"] },
+        { title: t("menuFavorites"), icon: Heart, href: "/dashboard/favoritos", match: ["/dashboard/favoritos"] },
         { title: t("waitlist"), icon: Clock, href: "/dashboard/lista-espera", match: ["/dashboard/lista-espera"] },
       ],
     },

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "../../../hooks/useAuth"
 import { getSupabaseBrowser } from "../../../lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -88,18 +88,18 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
     color: "bg-orange-100 text-orange-800",
     icon: <RefreshCw className="h-4 w-4" />,
   },
-  completed: { label: "Completada", color: "bg-slate-100 text-slate-800", icon: <CheckCircle2 className="h-4 w-4" /> },
+  completed: { label: "Completada", color: "bg-slate-100 text-slate-600", icon: <CheckCircle2 className="h-4 w-4" /> },
   cancelled: { label: "Cancelada", color: "bg-[#fff0f3] text-[#1a1a4b]", icon: <XCircle className="h-4 w-4" /> },
-  queued: { label: "Próximo bolso (en cola)", color: "bg-amber-100 text-amber-800", icon: <Clock className="h-4 w-4" /> },
+  queued: { label: "Próximo bolso (en cola)", color: "bg-[#b08d57]/15 text-[#7a5f33]", icon: <Clock className="h-4 w-4" /> },
   overdue: { label: "Devolución pendiente", color: "bg-red-100 text-red-800", icon: <Clock className="h-4 w-4" /> },
 }
 
 const membershipLabels: Record<string, { label: string; color: string }> = {
-  signature: { label: "Signature", color: "bg-indigo-100 text-indigo-800" },
-  prive: { label: "Privé", color: "bg-purple-100 text-purple-800" },
-  essentiel: { label: "L'Essentiel", color: "bg-rose-100 text-rose-800" },
-  free: { label: "Free", color: "bg-gray-100 text-gray-800" },
-  petite: { label: "Petite", color: "bg-pink-100 text-pink-800" },
+  signature: { label: "Signature", color: "bg-[#b08d57]/15 text-[#7a5f33]" },
+  prive: { label: "Privé", color: "bg-[#b08d57]/15 text-[#7a5f33]" },
+  essentiel: { label: "L'Essentiel", color: "bg-[#b08d57]/15 text-[#7a5f33]" },
+  free: { label: "Free", color: "bg-slate-100 text-slate-600" },
+  petite: { label: "Petite", color: "bg-[#b08d57]/15 text-[#7a5f33]" },
 }
 
 export default function ReservationDetailsPage() {
@@ -348,7 +348,7 @@ export default function ReservationDetailsPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="font-serif text-2xl">Detalles de la Reserva</CardTitle>
+                <CardTitle className="text-2xl">Detalles de la reserva</CardTitle>
                 <Badge className={status.color}>
                   {status.icon}
                   <span className="ml-1">{status.label}</span>
@@ -373,31 +373,31 @@ export default function ReservationDetailsPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg text-slate-900">{reservation.bags?.name || "Bolso"}</h3>
+                  <h3 className="font-serif text-2xl text-indigo-dark">{reservation.bags?.name || "Bolso"}</h3>
                   <p className="text-slate-600">{reservation.bags?.brand || "Marca"}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge className={membershipInfo.color}>
+                    <Badge className={`${membershipInfo.color} border-transparent`}>
                       <Crown className="h-3 w-3 mr-1" />
                       {membershipInfo.label}
                     </Badge>
                     {priceInfo.included && (
-                      <span className="text-xs text-green-600 font-medium">Incluido en tu membresía</span>
+                      <span className="text-xs font-medium text-[#7a5f33]">Incluido en tu membresía</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Periodo de la reserva del bolso (NO de la membresia) */}
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+              <div className="rounded-xl border border-[#b08d57]/20 bg-[#b08d57]/[0.07] p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Package className="h-4 w-4 text-[#1a1a4b]" />
-                  <h4 className="font-medium text-[#1a1a4b]">Periodo de tu reserva</h4>
+                  <Package className="h-4 w-4 text-[#b08d57]" />
+                  <h4 className="font-serif text-lg text-indigo-dark">Periodo de tu reserva</h4>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-white rounded-lg border border-slate-200">
-                      <Calendar className="h-5 w-5 text-slate-600" />
+                    <div className="rounded-lg border border-[#b08d57]/20 bg-white p-2">
+                      <Calendar className="h-5 w-5 text-[#b08d57]" />
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">
@@ -409,8 +409,8 @@ export default function ReservationDetailsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-white rounded-lg border border-slate-200">
-                      <Calendar className="h-5 w-5 text-slate-600" />
+                    <div className="rounded-lg border border-[#b08d57]/20 bg-white p-2">
+                      <Calendar className="h-5 w-5 text-[#b08d57]" />
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Fecha de devolución</p>
@@ -519,7 +519,7 @@ export default function ReservationDetailsPage() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle className="font-serif">Resumen</CardTitle>
+              <CardTitle>Resumen</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between text-sm">
@@ -538,11 +538,11 @@ export default function ReservationDetailsPage() {
                   <div className="text-right">
                     {priceInfo.included ? (
                       <div>
-                        <span className="font-bold text-lg text-green-600">€0</span>
+                        <span className="font-serif text-2xl text-indigo-dark">€0</span>
                         <p className="text-xs text-green-600">Incluido en membresía</p>
                       </div>
                     ) : (
-                      <span className="font-bold text-lg text-slate-900">€{priceInfo.price}</span>
+                      <span className="font-serif text-2xl text-indigo-dark">€{priceInfo.price}</span>
                     )}
                   </div>
                 </div>
