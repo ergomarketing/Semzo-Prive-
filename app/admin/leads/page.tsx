@@ -1,5 +1,6 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -65,8 +66,8 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  lead: "bg-blue-100 text-blue-800",
-  subscribed: "bg-green-100 text-green-800",
+  lead: "bg-[#b08d57]/15 text-[#7a5f33]",
+  subscribed: "bg-[#b08d57]/15 text-[#7a5f33]",
   unsubscribed: "bg-red-100 text-red-800",
   cold: "bg-gray-100 text-gray-600",
 }
@@ -82,7 +83,7 @@ function StatCard({ label, value, sub }: { label: string; value: number | string
   return (
     <div className="rounded-lg border bg-white p-5">
       <p className="text-xs uppercase tracking-widest text-gray-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-[#1a1a4b]">{value}</p>
+      <p className="mt-1 font-serif text-3xl font-normal text-indigo-dark text-[#1a1a4b]">{value}</p>
       {sub && <p className="mt-1 text-xs text-gray-400">{sub}</p>}
     </div>
   )
@@ -132,13 +133,10 @@ export default function AdminLeadsPage() {
 
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
-          <div>
-          <h1 className="text-2xl font-bold text-[#1a1a4b]">Automatización de Leads</h1>
-          <p className="mt-1 text-sm text-gray-500">Leads de Google Ads · Secuencia de 5 emails</p>
-          </div>
+          <PageHeader eyebrow="Contenido y comunicación" title="Automatización de leads" subtitle="Leads de Google Ads · secuencia de 5 correos" />
           <div className="flex items-center gap-2">
             {sendResult && (
-              <span className="text-xs font-medium text-green-600">{sendResult}</span>
+              <span className="text-xs font-medium text-[#b08d57]">{sendResult}</span>
             )}
             <Button size="sm" onClick={triggerCron} disabled={sending} className="bg-[#1a1a4b] text-white hover:bg-[#2a2a6b]">
               <Send className={`mr-2 h-4 w-4 ${sending ? "animate-pulse" : ""}`} />
@@ -202,7 +200,7 @@ export default function AdminLeadsPage() {
                     />
                   </div>
                   <span className="w-8 text-right text-xs font-medium text-[#1a1a4b]">{s.total}</span>
-                  <span className="w-16 text-right text-xs text-green-600">{s.converted} conv.</span>
+                  <span className="w-16 text-right text-xs text-[#b08d57]">{s.converted} conv.</span>
                 </div>
               ))}
             </div>

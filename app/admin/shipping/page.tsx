@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -230,13 +231,7 @@ export default function AdminShippingPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <MapPin className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-4xl font-bold">Direcciones de Envío</h1>
-            <p className="text-gray-600 text-lg">Gestión de datos de entrega para Correos</p>
-          </div>
-        </div>
+        <PageHeader eyebrow="Inventario y reservas" title="Direcciones de envío" subtitle="Datos de entrega para Correos" />
 
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="relative flex-1 max-w-md">
@@ -274,7 +269,7 @@ export default function AdminShippingPage() {
               <Download className="h-4 w-4" />
               CSV
             </Button>
-            <Button onClick={fetchShippingAddresses} className="bg-blue-600 hover:bg-blue-700" size="sm">
+            <Button onClick={fetchShippingAddresses} className="bg-indigo-dark hover:bg-indigo-dark/90 text-white" size="sm">
               Actualizar
             </Button>
           </div>
@@ -292,19 +287,19 @@ export default function AdminShippingPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats?.withShipping || 0}</div>
+                <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats?.withShipping || 0}</div>
                 <div className="text-sm text-gray-600">Con Dirección</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{stats?.correosReady || 0}</div>
+                <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats?.correosReady || 0}</div>
                 <div className="text-sm text-gray-600">Listos Correos</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{stats?.correosIncomplete || 0}</div>
+                <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats?.correosIncomplete || 0}</div>
                 <div className="text-sm text-gray-600">Datos Incompletos</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{stats?.withoutShipping || 0}</div>
+                <div className="font-serif text-3xl font-normal text-indigo-dark text-red-600">{stats?.withoutShipping || 0}</div>
                 <div className="text-sm text-gray-600">Sin Dirección</div>
               </div>
             </div>
@@ -322,7 +317,7 @@ export default function AdminShippingPage() {
                 <div className="text-xs text-gray-600">L&apos;Essentiel</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-amber-600">{stats?.byMembership.petite || 0}</div>
+                <div className="text-xl font-bold text-[#b08d57]">{stats?.byMembership.petite || 0}</div>
                 <div className="text-xs text-gray-600">Petite</div>
               </div>
               <div className="text-center">
@@ -354,7 +349,7 @@ export default function AdminShippingPage() {
             <Card
               key={address.id}
               className={`hover:shadow-lg transition-shadow ${
-                !address.correos_ready && address.shipping_via_name ? "border-orange-300" : ""
+                !address.correos_ready && address.shipping_via_name ? "border-slate-200" : ""
               }`}
             >
               <CardContent className="p-6">
@@ -366,12 +361,12 @@ export default function AdminShippingPage() {
                       <span className="font-semibold">{buildFullName(address)}</span>
                       {getMembershipBadge(address.membership_type)}
                       {address.correos_ready ? (
-                        <Badge className="bg-green-100 text-green-800 border border-green-300">
+                        <Badge className="bg-[#b08d57]/15 text-[#7a5f33] border border-[#b08d57]/30">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Correos OK
                         </Badge>
                       ) : (
-                        <Badge className="bg-orange-100 text-orange-800 border border-orange-300">
+                        <Badge className="bg-slate-100 text-slate-700 border border-slate-200">
                           <AlertCircle className="h-3 w-3 mr-1" />
                           Incompleto
                         </Badge>
@@ -409,7 +404,7 @@ export default function AdminShippingPage() {
                         <div className="text-gray-500 text-xs">{address.shipping_country || "España"}</div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 text-sm text-orange-600">
+                      <div className="flex items-center gap-2 text-sm text-[#b08d57]">
                         <AlertCircle className="h-4 w-4" />
                         <span>Sin dirección de envío configurada</span>
                       </div>
@@ -419,7 +414,7 @@ export default function AdminShippingPage() {
                   {/* Estado Correos / metadata */}
                   <div className="space-y-2">
                     {!address.correos_ready && address.correos_missing_fields.length > 0 && (
-                      <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                      <div className="bg-orange-50 border border-slate-200 rounded p-3">
                         <div className="text-xs font-semibold text-orange-900 mb-1">Faltan campos para Correos:</div>
                         <ul className="text-xs text-orange-800 space-y-0.5 list-disc list-inside">
                           {address.correos_missing_fields.map((f) => (

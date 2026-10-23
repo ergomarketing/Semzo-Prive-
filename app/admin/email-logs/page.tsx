@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -93,11 +94,11 @@ export default function EmailLogsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "sent":
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />
+        return <CheckCircle2 className="h-4 w-4 text-[#b08d57]" />
       case "failed":
         return <XCircle className="h-4 w-4 text-red-600" />
       case "pending":
-        return <Clock className="h-4 w-4 text-yellow-600" />
+        return <Clock className="h-4 w-4 text-[#b08d57]" />
       default:
         return <Mail className="h-4 w-4 text-gray-600" />
     }
@@ -105,9 +106,9 @@ export default function EmailLogsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      sent: "bg-green-100 text-green-800",
+      sent: "bg-[#b08d57]/15 text-[#7a5f33]",
       failed: "bg-red-100 text-red-800",
-      pending: "bg-yellow-100 text-yellow-800",
+      pending: "bg-slate-100 text-slate-700",
     }
 
     return (
@@ -137,10 +138,7 @@ export default function EmailLogsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-serif text-3xl text-slate-900">Logs de Emails</h1>
-          <p className="text-slate-600">Registro completo de todos los emails enviados desde la plataforma</p>
-        </div>
+        <PageHeader eyebrow="Contenido y comunicación" title="Correos enviados" subtitle="Registro de todos los correos enviados desde la plataforma" />
         <Button onClick={fetchLogs} disabled={loading} variant="outline" size="sm">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Actualizar
@@ -153,7 +151,7 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Total Enviados</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark">{stats.total}</p>
               </div>
               <Send className="h-8 w-8 text-slate-600" />
             </div>
@@ -165,9 +163,9 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Exitosos</p>
-                <p className="text-2xl font-bold text-green-600">{stats.sent}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.sent}</p>
               </div>
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <CheckCircle2 className="h-8 w-8 text-[#b08d57]" />
             </div>
           </CardContent>
         </Card>
@@ -177,7 +175,7 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Fallidos</p>
-                <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-red-600">{stats.failed}</p>
               </div>
               <XCircle className="h-8 w-8 text-red-600" />
             </div>
@@ -189,9 +187,9 @@ export default function EmailLogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.pending}</p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
+              <Clock className="h-8 w-8 text-[#b08d57]" />
             </div>
           </CardContent>
         </Card>

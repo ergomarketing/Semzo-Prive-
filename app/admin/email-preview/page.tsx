@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -76,7 +77,7 @@ export default function EmailPreviewPage() {
     if (result.status === "sending") return <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
     if (result.status === "success")
       return (
-        <Badge className="bg-green-100 text-green-800 gap-1">
+        <Badge className="bg-[#b08d57]/15 text-[#7a5f33] gap-1">
           <CheckCircle2 className="h-3 w-3" /> Enviado
         </Badge>
       )
@@ -89,13 +90,7 @@ export default function EmailPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl text-slate-900">Prueba manual de emails</h1>
-        <p className="text-slate-600">
-          Dispara cualquier email del sistema con datos de ejemplo hacia una dirección de prueba, para verificarlo
-          visualmente en tu bandeja de entrada.
-        </p>
-      </div>
+      <PageHeader eyebrow="Contenido y comunicación" title="Prueba de correos" subtitle="Dispara cualquier correo del sistema con datos de ejemplo hacia una dirección de prueba." />
 
       <Card>
         <CardContent className="p-6">
@@ -145,7 +140,7 @@ export default function EmailPreviewPage() {
                     >
                       <p className={email.pending ? "font-medium text-slate-400" : "font-medium text-slate-900"}>{email.label}</p>
                       <div className="flex items-center gap-3">
-                        {email.pending && <span className="text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">Pendiente de plantilla</span>}
+                        {email.pending && <span className="text-sm text-[#b08d57] bg-amber-50 rounded px-2 py-1">Pendiente de plantilla</span>}
                         {renderResultBadge(resultKey)}
                         <Button
                           size="sm"

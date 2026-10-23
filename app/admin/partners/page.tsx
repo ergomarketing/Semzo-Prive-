@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -254,14 +255,7 @@ export default function AdminPartnersPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: colors.primary }}>
-            Partners
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Villas, hoteles, wedding planners y concierge. Comisión por cada cliente referido.
-          </p>
-        </div>
+        <PageHeader eyebrow="Miembros y pagos" title="Partners" subtitle="Villas, hoteles, wedding planners y concierge. Comisión por cada clienta referida." />
         <div className="flex gap-2">
           <Button onClick={fetchAll} variant="outline" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -280,7 +274,7 @@ export default function AdminPartnersPage() {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Partners activos</p>
-              <p className="text-3xl font-bold mt-1" style={{ color: colors.primary }}>
+              <p className="font-serif text-3xl font-normal text-indigo-dark mt-1" style={{ color: colors.primary }}>
                 {totals.activePartners}
               </p>
             </div>
@@ -291,7 +285,7 @@ export default function AdminPartnersPage() {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Pendiente de pago</p>
-              <p className="text-3xl font-bold mt-1" style={{ color: "#92400e" }}>
+              <p className="font-serif text-3xl font-normal text-indigo-dark mt-1" style={{ color: "#92400e" }}>
                 {fmt(totals.payable)}
               </p>
             </div>
@@ -302,7 +296,7 @@ export default function AdminPartnersPage() {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total pagado</p>
-              <p className="text-3xl font-bold mt-1" style={{ color: "#065f46" }}>
+              <p className="font-serif text-3xl font-normal text-indigo-dark mt-1" style={{ color: "#065f46" }}>
                 {fmt(totals.paid)}
               </p>
             </div>
@@ -312,9 +306,9 @@ export default function AdminPartnersPage() {
       </div>
 
       <Tabs defaultValue="partners" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="partners">Partners</TabsTrigger>
-          <TabsTrigger value="commissions">Comisiones</TabsTrigger>
+        <TabsList className="rounded-none border-b border-indigo-dark/10 bg-transparent p-0 h-auto">
+          <TabsTrigger value="partners" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Partners</TabsTrigger>
+          <TabsTrigger value="commissions" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Comisiones</TabsTrigger>
         </TabsList>
 
         {/* TAB partners */}

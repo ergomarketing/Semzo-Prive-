@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MessageCircle, Clock, User, Send } from "lucide-react"
@@ -72,9 +73,9 @@ export default function ChatAdminPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-[#b08d57]/15 text-[#7a5f33]"
       case "waiting":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-slate-100 text-slate-700"
       case "closed":
         return "bg-gray-100 text-gray-800"
       default:
@@ -98,10 +99,7 @@ export default function ChatAdminPage() {
   return (
     <div className="min-h-screen bg-rose-nude/30 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-serif font-bold text-indigo-dark mb-2">Chat en Vivo</h1>
-          <p className="text-gray-600">Gestiona las conversaciones con tus clientes en tiempo real</p>
-        </div>
+        <PageHeader eyebrow="Contenido y comunicación" title="Chat en vivo" subtitle="Conversaciones con tus clientas en tiempo real" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
           {/* Lista de Conversaciones */}
@@ -242,7 +240,7 @@ export default function ChatAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Conversaciones Activas</p>
-                  <p className="text-2xl font-bold text-indigo-dark">3</p>
+                  <p className="font-serif text-3xl font-normal text-indigo-dark text-indigo-dark">3</p>
                 </div>
                 <MessageCircle className="h-8 w-8 text-indigo-dark" />
               </div>
@@ -254,7 +252,7 @@ export default function ChatAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Tiempo Respuesta Promedio</p>
-                  <p className="text-2xl font-bold text-indigo-dark">2m</p>
+                  <p className="font-serif text-3xl font-normal text-indigo-dark text-indigo-dark">2m</p>
                 </div>
                 <Clock className="h-8 w-8 text-indigo-dark" />
               </div>
@@ -266,7 +264,7 @@ export default function ChatAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Satisfacción</p>
-                  <p className="text-2xl font-bold text-indigo-dark">98%</p>
+                  <p className="font-serif text-3xl font-normal text-indigo-dark text-indigo-dark">98%</p>
                 </div>
                 <div className="text-2xl">😊</div>
               </div>
@@ -278,7 +276,7 @@ export default function ChatAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Conversiones</p>
-                  <p className="text-2xl font-bold text-indigo-dark">67%</p>
+                  <p className="font-serif text-3xl font-normal text-indigo-dark text-indigo-dark">67%</p>
                 </div>
                 <div className="text-2xl">💎</div>
               </div>

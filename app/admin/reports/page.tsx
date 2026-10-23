@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Users, CreditCard, Gift, RefreshCw, Ticket } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -83,10 +84,7 @@ export default function AdminReportsPage() {
   return (
     <div className="space-y-8 p-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Reportes Financieros</h1>
-          <p className="text-muted-foreground">Stripe (financiero) + Supabase (membresia presente)</p>
-        </div>
+        <PageHeader eyebrow="General" title="Reportes financieros" subtitle="Stripe (financiero) y Supabase (membresía presente)" />
         <Button variant="outline" size="sm" onClick={fetchMetrics}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualizar
@@ -104,7 +102,7 @@ export default function AdminReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatEuros(stripeMetrics?.totalRevenue || 0)}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{formatEuros(stripeMetrics?.totalRevenue || 0)}</div>
             <p className="text-xs text-muted-foreground">{stripeMetrics?.totalPayments || 0} pagos procesados</p>
           </CardContent>
         </Card>
@@ -115,7 +113,7 @@ export default function AdminReportsPage() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatEuros(stripeMetrics?.mrr || 0)}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{formatEuros(stripeMetrics?.mrr || 0)}</div>
             <p className="text-xs text-muted-foreground">Ingresos recurrentes mensuales</p>
           </CardContent>
         </Card>
@@ -126,7 +124,7 @@ export default function AdminReportsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{memberMetrics?.activeMembers || 0}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{memberMetrics?.activeMembers || 0}</div>
             <p className="text-xs text-muted-foreground">Categoria comercial (active / cancelled_active / past_due)</p>
           </CardContent>
         </Card>
@@ -137,7 +135,7 @@ export default function AdminReportsPage() {
             <Ticket className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{memberMetrics?.passes.available || 0}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{memberMetrics?.passes.available || 0}</div>
             <p className="text-xs text-muted-foreground">
               {memberMetrics?.passes.used || 0} usados · {memberMetrics?.passes.total || 0} totales
             </p>
@@ -159,7 +157,7 @@ export default function AdminReportsPage() {
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">
                   {typeLabels[type] || type}
                 </span>
-                <span className="text-3xl font-bold mt-2">{count}</span>
+                <span className="font-serif text-3xl font-normal text-indigo-dark mt-2">{count}</span>
                 <Badge variant="secondary" className="mt-2">
                   socias
                 </Badge>

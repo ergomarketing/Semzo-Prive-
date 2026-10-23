@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -150,12 +151,7 @@ export default function ReservationsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" style={{ color: colors.primary }}>
-          Gestión de Reservas
-        </h1>
-        <p style={{ color: "#888" }}>Administra todas las reservas de bolsos</p>
-      </div>
+      <PageHeader eyebrow="Inventario y reservas" title="Reservas" subtitle="Todas las reservas de bolsos" />
 
       {/* Stats Cards - colores minimalistas */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -177,7 +173,7 @@ export default function ReservationsPage() {
                   <stat.icon className="h-5 w-5" style={{ color: stat.alert ? "#dc2626" : colors.primary }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold" style={{ color: stat.alert ? "#dc2626" : colors.primary }}>
+                  <p className="font-serif text-3xl font-normal text-indigo-dark" style={{ color: stat.alert ? "#dc2626" : colors.primary }}>
                     {stat.value}
                   </p>
                   <p className="text-xs" style={{ color: "#888" }}>

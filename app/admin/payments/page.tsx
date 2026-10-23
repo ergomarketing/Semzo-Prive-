@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -63,8 +64,8 @@ export default function PaymentsPage() {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; class: string }> = {
-      succeeded: { label: "Exitoso", class: "bg-green-100 text-green-800" },
-      pending: { label: "Pendiente", class: "bg-yellow-100 text-yellow-800" },
+      succeeded: { label: "Exitoso", class: "bg-[#b08d57]/15 text-[#7a5f33]" },
+      pending: { label: "Pendiente", class: "bg-slate-100 text-slate-700" },
       failed: { label: "Fallido", class: "bg-red-100 text-red-800" },
       refunded: { label: "Reembolsado", class: "bg-gray-100 text-gray-800" },
     }
@@ -82,10 +83,7 @@ export default function PaymentsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Pagos</h1>
-          <p className="text-gray-600 mt-1">Historial de cobros desde Stripe</p>
-        </div>
+        <PageHeader eyebrow="Miembros y pagos" title="Pagos" subtitle="Historial de cobros desde Stripe" />
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchPayments} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -109,26 +107,26 @@ export default function PaymentsPage() {
             <DollarSign className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">€{stats.totalRevenue.toFixed(2)}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">€{stats.totalRevenue.toFixed(2)}</div>
             <p className="text-xs text-gray-500">{stats.totalCharges} transacciones</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Este Mes</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <TrendingUp className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">€{stats.thisMonthRevenue.toFixed(2)}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">€{stats.thisMonthRevenue.toFixed(2)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Exitosos</CardTitle>
-            <CreditCard className="h-4 w-4 text-blue-500" />
+            <CreditCard className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.succeeded}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.succeeded}</div>
           </CardContent>
         </Card>
         <Card>
@@ -137,7 +135,7 @@ export default function PaymentsPage() {
             <Calendar className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark text-red-600">{stats.failed}</div>
           </CardContent>
         </Card>
       </div>
@@ -208,7 +206,7 @@ export default function PaymentsPage() {
                           href={charge.receipt_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-[#b08d57] hover:text-blue-800"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </a>

@@ -1,9 +1,10 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -116,13 +117,7 @@ export default function AdminColeccionaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-serif text-indigo-dark">Colecciona · ventas</h1>
-        <p className="text-sm text-slate-600">
-          Ventas cerradas en Modo Colecciona. Desde aquí se anula una venta por desistimiento (14 días): nota de crédito y
-          reembolso en Stripe, y la socia queda como antes de comprar.
-        </p>
-      </div>
+      <PageHeader eyebrow="Miembros y pagos" title="Colecciona" subtitle="Ventas cerradas en Modo Colecciona. Desde aquí se anula una venta por desistimiento (14 días): nota de crédito y reembolso en Stripe, y la socia queda como antes de comprar." />
 
       <Card>
         <CardHeader>

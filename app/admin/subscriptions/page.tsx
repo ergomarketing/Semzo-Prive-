@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -198,10 +199,7 @@ export default function SubscriptionsPage() {
             </Button>
           </Link>
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Suscripciones</h1>
-              <p className="text-gray-600 mt-2">Verifica el estado real de pagos con Stripe</p>
-            </div>
+            <PageHeader eyebrow="Miembros y pagos" title="Suscripciones" subtitle="Verifica el estado real de los pagos con Stripe" />
             <Button onClick={handleRefresh} disabled={refreshing}>
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               Verificar con Stripe
@@ -237,27 +235,27 @@ export default function SubscriptionsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.total}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Activas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-[#b08d57]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.active}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pago Pendiente</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
+              <Clock className="h-4 w-4 text-[#b08d57]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pastDue}</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.pastDue}</div>
             </CardContent>
           </Card>
 
@@ -267,7 +265,7 @@ export default function SubscriptionsPage() {
               <AlertTriangle className={`h-4 w-4 ${stats.mismatched > 0 ? "text-red-600" : "text-muted-foreground"}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${stats.mismatched > 0 ? "text-red-600" : ""}`}>
+              <div className={`font-serif text-3xl font-normal text-indigo-dark ${stats.mismatched > 0 ? "text-red-600" : ""}`}>
                 {stats.mismatched}
               </div>
               {stats.mismatched > 0 && <p className="text-xs text-red-600 mt-1">¡Revisar urgente!</p>}
@@ -358,9 +356,9 @@ export default function SubscriptionsPage() {
                           Pago directo
                         </Badge>
                       ) : sub.stripe_verified_status === sub.status ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <CheckCircle className="h-5 w-5 text-[#b08d57]" />
                       ) : sub.stripe_verified_status === "active" && sub.status === "cancelled_active" ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <CheckCircle className="h-5 w-5 text-[#b08d57]" />
                       ) : sub.stripe_verified_status === "error" ? (
                         <XCircle className="h-5 w-5 text-gray-400" />
                       ) : sub.stripe_verified_status &&
@@ -388,7 +386,7 @@ export default function SubscriptionsPage() {
                     </TableCell>
                     <TableCell>
                       {sub.cancel_at_period_end ? (
-                        <span className="text-yellow-600">Se cancela</span>
+                        <span className="text-[#b08d57]">Se cancela</span>
                       ) : sub.current_period_end ? (
                         new Date(sub.current_period_end).toLocaleDateString("es-ES")
                       ) : (

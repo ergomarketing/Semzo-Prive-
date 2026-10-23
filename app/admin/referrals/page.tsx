@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -184,14 +185,7 @@ export default function AdminReferralsPage() {
       )}
 
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: colors.primary }}>
-            Programa de Referidos
-          </h1>
-          <p style={{ color: "#888" }} className="mt-1">
-            Gestion del programa "Recomienda a una amiga" - 50 EUR por cada amiga cualificada
-          </p>
-        </div>
+        <PageHeader eyebrow="Miembros y pagos" title="Programa de referidos" subtitle="Programa «Recomienda a una amiga»: 50 € por cada amiga cualificada" />
         <Button onClick={fetchAll} variant="outline" disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Actualizar
@@ -208,7 +202,7 @@ export default function AdminReferralsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <Icon className="h-4 w-4" style={{ color: s.color }} />
                 </div>
-                <p className="text-2xl font-bold" style={{ color: colors.primary }}>
+                <p className="font-serif text-3xl font-normal text-indigo-dark" style={{ color: colors.primary }}>
                   {s.value}
                 </p>
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -225,7 +219,7 @@ export default function AdminReferralsPage() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total EUR repartidos</p>
-                <p className="text-3xl font-bold mt-1" style={{ color: colors.primary }}>
+                <p className="font-serif text-3xl font-normal text-indigo-dark mt-1" style={{ color: colors.primary }}>
                   {stats.eurosRewarded} EUR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -239,7 +233,7 @@ export default function AdminReferralsPage() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pendiente de payout</p>
-                <p className="text-3xl font-bold mt-1" style={{ color: "#92400e" }}>
+                <p className="font-serif text-3xl font-normal text-indigo-dark mt-1" style={{ color: "#92400e" }}>
                   {stats.eurosPendingPayout} EUR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -253,10 +247,10 @@ export default function AdminReferralsPage() {
       )}
 
       <Tabs defaultValue="list" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">Lista de Referidos</TabsTrigger>
-          <TabsTrigger value="ranking">Top Referidoras</TabsTrigger>
-          <TabsTrigger value="balances">Saldos</TabsTrigger>
+        <TabsList className="rounded-none border-b border-indigo-dark/10 bg-transparent p-0 h-auto">
+          <TabsTrigger value="list" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Lista de Referidos</TabsTrigger>
+          <TabsTrigger value="ranking" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Top Referidoras</TabsTrigger>
+          <TabsTrigger value="balances" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Saldos</TabsTrigger>
         </TabsList>
 
         {/* TAB: Lista */}
