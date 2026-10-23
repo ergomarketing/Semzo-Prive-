@@ -435,6 +435,23 @@
     "feat_free_3": "Lista de espera limitada",
     "feat_free_4": "Soporte por email"
   },
+  "favoritosPage": {
+    "eyebrow": "Mis bolsos",
+    "title": "Mis favoritos",
+    "subtitle": "Los bolsos que has guardado para reservar más adelante",
+    "empty": "Aún no tienes favoritos",
+    "emptyDesc": "Pulsa el corazón en cualquier bolso del catálogo para guardarlo aquí.",
+    "explore": "Explorar catálogo",
+    "available": "Disponible",
+    "inUse": "En uso",
+    "view": "Ver bolso",
+    "remove": "Quitar de favoritos",
+    "removed": "Quitado de tus favoritos",
+    "removeError": "No se pudo quitar. Inténtalo de nuevo.",
+    "savedOn": "Guardado el",
+    "unknownBag": "Bolso",
+    "unknownBrand": "Marca"
+  },
   "listaEsperaPage": {
     "eyebrow": "Mis bolsos",
     "title": "Mi Lista de Espera",
