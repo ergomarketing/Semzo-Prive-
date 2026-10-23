@@ -14,6 +14,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
 import { supabase } from "@/lib/supabase" // Import supabase
 import { useTranslations } from "next-intl"
+import { AccountTabs } from "@/app/components/account-tabs"
 
 interface UserProfile {
   first_name: string
@@ -309,6 +310,7 @@ export default function PerfilPage() {
       )}
 
       <div className="max-w-4xl mx-auto">
+        <AccountTabs />
         <div className="mb-8">
           <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
           <p className="text-slate-600">{t("subtitle")}</p>
