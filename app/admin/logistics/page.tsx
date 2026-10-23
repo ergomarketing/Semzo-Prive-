@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -179,7 +180,7 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
       <Card>
         <CardContent className="py-8">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#b08d57]"></div>
           </div>
         </CardContent>
       </Card>
@@ -192,7 +193,7 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-yellow-100 rounded-lg">
-              <Truck className="h-5 w-5 text-yellow-600" />
+              <Truck className="h-5 w-5 text-[#b08d57]" />
             </div>
             <div>
               <CardTitle>Correos de Espana</CardTitle>
@@ -200,7 +201,7 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
           {isConfigured && (
-            <Badge className={isEnabled ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+            <Badge className={isEnabled ? "bg-[#b08d57]/15 text-[#7a5f33]" : "bg-gray-100 text-gray-800"}>
               {isEnabled ? "Activo" : "Inactivo"}
             </Badge>
           )}
@@ -209,11 +210,11 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
       <CardContent className="space-y-4">
         {isConfigured && !clientSecret ? (
           <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            <div className="bg-green-50 border border-[#b08d57]/30 rounded-lg p-4 flex gap-3">
+              <CheckCircle className="h-5 w-5 text-[#b08d57] flex-shrink-0" />
               <div>
                 <p className="font-medium text-green-900">Credenciales configuradas</p>
-                <p className="text-sm text-green-700 mt-1">
+                <p className="text-sm text-[#b08d57] mt-1">
                   Client ID: {clientId}<br />
                   Client Secret: {maskedSecret}
                 </p>
@@ -224,12 +225,12 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
               <div
                 className={`p-3 rounded-lg flex gap-2 ${
                   testResult.success
-                    ? "bg-green-50 border border-green-200"
+                    ? "bg-green-50 border border-[#b08d57]/30"
                     : "bg-red-50 border border-red-200"
                 }`}
               >
                 {testResult.success ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-5 w-5 text-[#b08d57]" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-red-600" />
                 )}
@@ -278,12 +279,12 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
               <div
                 className={`p-3 rounded-lg flex gap-2 ${
                   testResult.success
-                    ? "bg-green-50 border border-green-200"
+                    ? "bg-green-50 border border-[#b08d57]/30"
                     : "bg-red-50 border border-red-200"
                 }`}
               >
                 {testResult.success ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-5 w-5 text-[#b08d57]" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-red-600" />
                 )}
@@ -298,7 +299,7 @@ function CorreosConfigCard({ onSaved }: { onSaved: () => void }) {
                 {testing ? "Probando..." : "Probar conexión"}
               </Button>
               <Button
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-indigo-dark hover:bg-indigo-dark/90 text-white"
                 onClick={handleSave}
                 disabled={saving || !clientId || !clientSecret}
               >
@@ -548,13 +549,13 @@ export default function LogisticsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-800",
-      picked_up: "bg-blue-100 text-blue-800",
-      in_transit: "bg-blue-100 text-blue-800",
-      out_for_delivery: "bg-purple-100 text-purple-800",
-      delivered: "bg-green-100 text-green-800",
+      pending: "bg-slate-100 text-slate-700",
+      picked_up: "bg-[#b08d57]/15 text-[#7a5f33]",
+      in_transit: "bg-[#b08d57]/15 text-[#7a5f33]",
+      out_for_delivery: "bg-[#b08d57]/15 text-[#7a5f33]",
+      delivered: "bg-[#b08d57]/15 text-[#7a5f33]",
       failed_delivery: "bg-red-100 text-red-800",
-      returned: "bg-orange-100 text-orange-800",
+      returned: "bg-slate-100 text-slate-700",
       cancelled: "bg-gray-100 text-gray-800",
     }
     return (
@@ -576,7 +577,7 @@ export default function LogisticsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#b08d57] mx-auto mb-4"></div>
           <p className="text-gray-600">Cargando logística...</p>
         </div>
       </div>
@@ -587,13 +588,7 @@ export default function LogisticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <Truck className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-4xl font-bold">Logística</h1>
-            <p className="text-gray-600 text-lg">Gestión de envíos y devoluciones</p>
-          </div>
-        </div>
+        <PageHeader eyebrow="Inventario y reservas" title="Logística" subtitle="Envíos y devoluciones" />
       </div>
 
       {/* Stats Cards */}
@@ -604,58 +599,58 @@ export default function LogisticsPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalShipments}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.totalShipments}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <Clock className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingShipments}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.pendingShipments}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Entregados</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.deliveredShipments}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.deliveredShipments}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Devoluciones</CardTitle>
-            <RotateCcw className="h-4 w-4 text-orange-600" />
+            <RotateCcw className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalReturns}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.totalReturns}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transportistas</CardTitle>
-            <Truck className="h-4 w-4 text-blue-600" />
+            <Truck className="h-4 w-4 text-[#b08d57]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.enabledCarriers}</div>
+            <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.enabledCarriers}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="shipments">Envíos</TabsTrigger>
-          <TabsTrigger value="returns">Devoluciones</TabsTrigger>
-          <TabsTrigger value="settings">Configuración</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 rounded-none border-b border-indigo-dark/10 bg-transparent p-0 h-auto">
+          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Resumen</TabsTrigger>
+          <TabsTrigger value="shipments" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Envíos</TabsTrigger>
+          <TabsTrigger value="returns" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Devoluciones</TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-500 shadow-none data-[state=active]:border-[#b08d57] data-[state=active]:bg-transparent data-[state=active]:text-indigo-dark data-[state=active]:shadow-none">Configuración</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -675,7 +670,7 @@ export default function LogisticsPage() {
               />
             </div>
             <Button 
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-indigo-dark hover:bg-indigo-dark/90 text-white"
               onClick={() => {
                 setShowNewShipmentModal(true)
                 loadPendingReservations()
@@ -718,7 +713,7 @@ export default function LogisticsPage() {
                                 href={`https://www.correos.es/es/es/herramientas/localizador/envios/${shipment.tracking_number}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800"
+                                className="text-[#b08d57] hover:text-blue-800"
                               >
                                 <ExternalLink className="h-3 w-3" />
                               </a>
@@ -895,7 +890,7 @@ export default function LogisticsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-amber-400 text-amber-700"
+                          className="border-amber-400 text-[#b08d57]"
                           onClick={async () => {
                             if (
                               !window.confirm(
@@ -1208,7 +1203,7 @@ export default function LogisticsPage() {
             <Button 
               onClick={handleCreateShipment} 
               disabled={creatingShipment}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-indigo-dark hover:bg-indigo-dark/90 text-white"
             >
               {creatingShipment ? "Creando envío..." : "Crear Envío"}
             </Button>

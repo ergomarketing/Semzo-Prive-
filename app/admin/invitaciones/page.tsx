@@ -1,5 +1,6 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
 import { QRCodeSVG } from "qrcode.react"
 import { Download, Copy, Check, Users, RefreshCw } from "lucide-react"
@@ -43,7 +44,7 @@ function RegistrationsList() {
       <div className="flex items-center justify-between mb-6 border-b border-[#f4c4cc] pb-3">
         <div className="flex items-center gap-3">
           <Users className="w-6 h-6 text-[#1a1a4b]" />
-          <h2 className="font-serif text-2xl font-bold text-[#1a1a4b]">
+          <h2 className="font-serif font-serif text-3xl font-normal text-indigo-dark text-[#1a1a4b]">
             Registros de Invitación
             {!loading && (
               <span className="ml-3 text-base font-normal text-gray-500">
@@ -171,7 +172,7 @@ function QRSection({
 
   return (
     <div className="mb-12">
-      <h2 className="font-serif text-2xl font-bold text-[#1a1a4b] mb-6 border-b border-[#f4c4cc] pb-3">{label}</h2>
+      <h2 className="font-serif font-serif text-3xl font-normal text-indigo-dark text-[#1a1a4b] mb-6 border-b border-[#f4c4cc] pb-3">{label}</h2>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* QR */}
@@ -206,7 +207,7 @@ function QRSection({
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="font-semibold text-[#1a1a4b] mb-3">{couponLabel}</h3>
             <div className="bg-[#fff0f3] border-2 border-[#f4c4cc] rounded-lg p-4">
-              <p className="text-3xl font-bold text-[#1a1a4b] text-center tracking-wider">{couponCode}</p>
+              <p className="font-serif text-3xl font-normal text-indigo-dark text-[#1a1a4b] text-center tracking-wider">{couponCode}</p>
               <p className="text-sm text-gray-600 text-center mt-2">{discountLabel}</p>
             </div>
           </div>
@@ -251,10 +252,7 @@ export default function InvitacionesAdmin() {
   return (
     <div className="min-h-screen bg-[#fff0f3] p-8">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-10">
-          <h1 className="font-serif text-4xl font-bold text-[#1a1a4b] mb-2">Generador de Invitaciones</h1>
-          <p className="text-gray-600">Códigos QR para tarjetas de invitación exclusivas — ES / EN</p>
-        </div>
+        <PageHeader eyebrow="Contenido y comunicación" title="Generador de invitaciones" subtitle="Códigos QR para tarjetas de invitación exclusivas · ES / EN" />
 
         <RegistrationsList />
 

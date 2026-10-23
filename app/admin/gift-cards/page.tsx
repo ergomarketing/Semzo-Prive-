@@ -1,8 +1,9 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -159,15 +160,15 @@ export default function AdminGiftCardsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800">Activa</Badge>
+        return <Badge className="bg-[#b08d57]/15 text-[#7a5f33]">Activa</Badge>
       case "used":
         return <Badge className="bg-gray-100 text-gray-800">Usada</Badge>
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>
+        return <Badge className="bg-slate-100 text-slate-700">Pendiente</Badge>
       case "disabled":
         return <Badge className="bg-red-100 text-red-800">Desactivada</Badge>
       case "expired":
-        return <Badge className="bg-orange-100 text-orange-800">Expirada</Badge>
+        return <Badge className="bg-slate-100 text-slate-700">Expirada</Badge>
       default:
         return <Badge>{status}</Badge>
     }
@@ -184,10 +185,7 @@ export default function AdminGiftCardsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Gift Cards</h1>
-          <p className="text-muted-foreground">Gestiona las tarjetas regalo de Semzó Privé</p>
-        </div>
+        <PageHeader eyebrow="Miembros y pagos" title="Gift cards" subtitle="Las tarjetas regalo de Semzo Privé" />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -309,25 +307,25 @@ export default function AdminGiftCardsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark">{stats.total}</div>
               <p className="text-sm text-muted-foreground">Total creadas</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.active}</div>
               <p className="text-sm text-muted-foreground">Activas</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{(stats.totalValue / 100).toFixed(0)}€</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark">{(stats.totalValue / 100).toFixed(0)}€</div>
               <p className="text-sm text-muted-foreground">Valor total emitido</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-indigo-600">{(stats.remainingValue / 100).toFixed(0)}€</div>
+              <div className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{(stats.remainingValue / 100).toFixed(0)}€</div>
               <p className="text-sm text-muted-foreground">Saldo pendiente</p>
             </CardContent>
           </Card>
@@ -382,7 +380,7 @@ export default function AdminGiftCardsPage() {
                           {card.status === "active" ? (
                             <Ban className="h-4 w-4 text-red-500" />
                           ) : (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-4 w-4 text-[#b08d57]" />
                           )}
                         </Button>
                       )}

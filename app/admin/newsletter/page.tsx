@@ -1,5 +1,6 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -164,10 +165,7 @@ export default function NewsletterPage() {
 
         {/* ── Header ───────────────────────────────────────────────��─────── */}
         <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1a1f3a]">Email Marketing</h1>
-            <p className="mt-1 text-sm text-gray-500">Campañas de newsletter y comunicaciones a leads</p>
-          </div>
+          <PageHeader eyebrow="Contenido y comunicación" title="Email marketing" subtitle="Campañas de newsletter y comunicaciones a leads" />
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Actualizar
@@ -252,7 +250,7 @@ export default function NewsletterPage() {
               <div
                 className={`flex items-center gap-2 rounded-lg p-3 text-sm font-medium ${
                   result.type === "success"
-                    ? "bg-green-50 text-green-700"
+                    ? "bg-[#b08d57]/15 text-[#7a5f33]"
                     : "bg-red-50 text-red-700"
                 }`}
               >
@@ -374,7 +372,7 @@ export default function NewsletterPage() {
                             <Badge
                               className={
                                 sub.status === "active"
-                                  ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                  ? "bg-[#b08d57]/15 text-[#7a5f33] hover:bg-green-100"
                                   : "bg-gray-100 text-gray-600 hover:bg-gray-100"
                               }
                             >
@@ -419,7 +417,7 @@ function StatCard({
       <div className={`mb-3 flex h-8 w-8 items-center justify-center rounded-md ${accent ? "bg-white/10" : "bg-gray-100"}`}>
         <span className={accent ? "text-white" : "text-[#1a1f3a]"}>{icon}</span>
       </div>
-      <p className={`text-2xl font-bold ${accent ? "text-white" : "text-[#1a1f3a]"}`}>{value}</p>
+      <p className={`font-serif text-3xl font-normal text-indigo-dark ${accent ? "text-white" : "text-[#1a1f3a]"}`}>{value}</p>
       <p className={`mt-0.5 text-xs ${accent ? "text-white/70" : "text-gray-500"}`}>{label}</p>
     </div>
   )

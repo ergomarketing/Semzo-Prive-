@@ -1,7 +1,8 @@
 "use client"
 
+import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Badge } from "@/components/ui/badge"
 import { Bell, AlertTriangle, Clock, DollarSign, TrendingDown } from "lucide-react"
 
@@ -44,9 +45,9 @@ export default function AdminAlertsPage() {
       case "high":
         return "bg-red-100 text-red-800 border-red-200"
       case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+        return "bg-slate-100 text-slate-700 border-slate-200"
       case "low":
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-[#b08d57]/15 text-[#7a5f33] border-[#b08d57]/30"
       default:
         return ""
     }
@@ -71,12 +72,7 @@ export default function AdminAlertsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1a2c4e" }}>
-            Centro de Alertas
-          </h1>
-          <p className="text-muted-foreground">Notificaciones importantes del sistema</p>
-        </div>
+        <PageHeader eyebrow="Sistema" title="Centro de alertas" subtitle="Notificaciones importantes del sistema" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -85,7 +81,7 @@ export default function AdminAlertsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Alertas críticas</p>
-                <p className="text-2xl font-bold text-red-600">{highAlerts}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-red-600">{highAlerts}</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
@@ -99,10 +95,10 @@ export default function AdminAlertsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Alertas medias</p>
-                <p className="text-2xl font-bold text-yellow-600">{mediumAlerts}</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{mediumAlerts}</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                <Bell className="h-6 w-6 text-yellow-600" />
+                <Bell className="h-6 w-6 text-[#b08d57]" />
               </div>
             </div>
           </CardContent>
@@ -113,7 +109,7 @@ export default function AdminAlertsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total alertas</p>
-                <p className="text-2xl font-bold" style={{ color: "#1a2c4e" }}>
+                <p className="font-serif text-3xl font-normal text-indigo-dark" style={{ color: "#1a2c4e" }}>
                   {alerts.length}
                 </p>
               </div>
