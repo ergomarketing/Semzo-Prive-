@@ -445,6 +445,7 @@ export async function POST(request: NextRequest) {
         package_code: correosPackageCode || null,
         return_tracking_number: returnTrackingNumber || null,
         return_package_code: returnPackageCode || null,
+        return_status: returnTrackingNumber ? "pending" : null,
         estimated_delivery: estimated_delivery || null,
         cost: cost || null,
         notes: notes || null,

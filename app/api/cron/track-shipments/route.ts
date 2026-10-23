@@ -1,3 +1,4 @@
+import { isReturnWindowOpen } from "@/lib/return-window"
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { CorreosAPI, isCorreosProxyConfigured } from "@/lib/correos-api"
@@ -170,7 +171,9 @@ export async function GET(request: NextRequest) {
     // vuelta quedaba invisible para siempre. Aqui se rastrea por separado.
     const { data: returnShipments, error: returnFetchError } = await supabase
       .from("shipments")
-      .select("id, reservation_id, return_tracking_number, return_status")
+      .select(
+        "id, reservation_id, return_tracking_number, return_status, reservations!shipments_reservation_id_fkey ( end_date, status )",
+      )
       .not("return_tracking_number", "is", null)
       .or("return_status.is.null,return_status.in.(pending,in_transit,out_for_delivery)")
 
@@ -190,7 +193,15 @@ export async function GET(request: NextRequest) {
           console.warn("[track-shipments] Estado de devolucion no reconocido:", trackingInfo.estadoEnvio)
           continue
         }
-        const wasUntracked = !shipment.return_status
+        // La etiqueta de vuelta viaja con el bolso desde el primer dia, y Correos puede dar eventos de "admision" de
+        // esa etiqueta nada mas crearla. Mientras la reserva no este cerca de su fin (o vencida), un estado "en
+        // transito" o "en reparto" NO significa que el bolso vuelva: no se guarda ni se avisa. Solo "entregado" cuenta siempre.
+        const reservationRow = Array.isArray((shipment as any).reservations)
+          ? (shipment as any).reservations[0]
+          : (shipment as any).reservations
+        if (newReturnStatus !== "delivered" && !isReturnWindowOpen(reservationRow?.end_date, reservationRow?.status)) continue
+
+        const wasUntracked = !shipment.return_status || shipment.return_status === "pending"
         const wasReturnDelivered = shipment.return_status === "delivered"
 
         await supabase
