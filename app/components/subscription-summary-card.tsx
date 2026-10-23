@@ -94,7 +94,7 @@ export function SubscriptionSummaryCard() {
 
   if (isLoading) {
     return (
-      <Card className="border-rose-pastel/40">
+      <Card className="rounded-xl border-indigo-dark/10 bg-white/80 shadow-none backdrop-blur">
         <CardContent className="flex items-center gap-3 py-6">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
           <span className="text-sm text-slate-500">{t("loading")}</span>
@@ -112,10 +112,10 @@ export function SubscriptionSummaryCard() {
     data.friendly_id || data.member_since || data.membership_type || data.next_charge_at
 
   return (
-    <Card className="border-rose-pastel/40">
+    <Card className="rounded-xl border-indigo-dark/10 bg-white/80 shadow-none backdrop-blur">
       <CardHeader className="pb-3">
-        <CardTitle className="font-serif text-xl text-indigo-dark flex items-center gap-2">
-          <Crown className="h-5 w-5 text-rose-pastel" />
+        <CardTitle className="font-serif text-2xl text-indigo-dark flex items-center gap-2">
+          <Crown className="h-5 w-5 text-[#b08d57]" />
           {t("title")}
         </CardTitle>
       </CardHeader>
@@ -124,13 +124,13 @@ export function SubscriptionSummaryCard() {
           {/* ID de suscripción */}
           {data.friendly_id && (
             <div className="flex items-start gap-3">
-              <Hash className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+              <Hash className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                   {t("subscriptionId")}
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="font-mono text-sm font-semibold text-indigo-dark bg-rose-nude/40 px-2 py-1 rounded">
+                  <code className="font-serif text-xl tracking-wider text-indigo-dark bg-[#b08d57]/10 px-3 py-1 rounded-md">
                     {data.friendly_id}
                   </code>
                   <button
@@ -148,12 +148,12 @@ export function SubscriptionSummaryCard() {
           {/* Plan actual */}
           {data.membership_type && (
             <div className="flex items-start gap-3">
-              <Crown className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+              <Crown className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                   {t("currentPlan")}
                 </p>
-                <p className="text-sm font-semibold text-indigo-dark">
+                <p className="font-serif text-xl text-indigo-dark">
                   {getPlanName(data.membership_type)}
                   {data.billing_cycle && (
                     <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
@@ -168,12 +168,12 @@ export function SubscriptionSummaryCard() {
           {/* Socia desde */}
           {data.member_since && (
             <div className="flex items-start gap-3">
-              <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+              <Calendar className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                   {t("memberSince")}
                 </p>
-                <p className="text-sm font-semibold text-indigo-dark">
+                <p className="font-serif text-xl text-indigo-dark">
                   {formatDate(data.member_since, locale)}
                 </p>
               </div>
@@ -202,12 +202,12 @@ export function SubscriptionSummaryCard() {
 
             return (
               <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+                <Calendar className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                     {isEndedOrUnpaid ? t("accessUntil") : t("nextCharge")}
                   </p>
-                  <p className="text-sm font-semibold text-indigo-dark">{formatDate(displayDate, locale)}</p>
+                  <p className="font-serif text-xl text-indigo-dark">{formatDate(displayDate, locale)}</p>
                 </div>
               </div>
             )
@@ -216,13 +216,13 @@ export function SubscriptionSummaryCard() {
           {/* Método de pago */}
           {data.payment_method && (
             <div className="flex items-start gap-3 md:col-span-2">
-              <CreditCard className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+              <CreditCard className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                     {t("paymentMethod")}
                   </p>
-                  <p className="text-sm font-semibold text-indigo-dark">
+                  <p className="font-serif text-xl text-indigo-dark">
                     {formatBrand(data.payment_method.brand)} •••• {data.payment_method.last4}
                     {data.payment_method.exp_month > 0 && data.payment_method.exp_year > 0 && (
                       <span className="ml-2 text-xs text-indigo-dark/60 font-normal">
@@ -235,7 +235,7 @@ export function SubscriptionSummaryCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
+                  className="bg-transparent border-indigo-dark/15 text-indigo-dark hover:bg-rose-nude/40"
                   onClick={() => setShowPaymentDialog(true)}
                 >
                   {t("change")}
@@ -247,10 +247,10 @@ export function SubscriptionSummaryCard() {
           {/* Si no tenemos método de pago pero hay membresía activa */}
           {!data.payment_method && data.membership_type && (
             <div className="flex items-start gap-3 md:col-span-2">
-              <CreditCard className="h-4 w-4 text-indigo-dark/60 mt-1 shrink-0" />
+              <CreditCard className="h-4 w-4 text-[#b08d57] mt-1 shrink-0" />
               <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-dark/70 mb-1">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                     {t("paymentMethod")}
                   </p>
                   <p className="text-sm text-indigo-dark/60">{t("notConfigured")}</p>
@@ -258,7 +258,7 @@ export function SubscriptionSummaryCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-transparent border-rose-pastel/60 text-indigo-dark hover:bg-rose-nude/40"
+                  className="bg-transparent border-indigo-dark/15 text-indigo-dark hover:bg-rose-nude/40"
                   onClick={() => setShowPaymentDialog(true)}
                 >
                   {t("configure")}
@@ -269,7 +269,7 @@ export function SubscriptionSummaryCard() {
         </div>
 
         {/* Acciones de la suscripcion (Fase B sencilla: solo reportar incidencia) */}
-        <div className="mt-5 pt-4 border-t border-rose-pastel/30 flex items-center justify-between flex-wrap gap-3">
+        <div className="mt-5 pt-4 border-t border-indigo-dark/10 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 text-xs text-indigo-dark/70" />
           <Button
             variant="ghost"
