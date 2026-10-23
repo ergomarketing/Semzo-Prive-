@@ -18,6 +18,7 @@ import { supabase } from "../../lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { SPANISH_PROVINCES, VIA_TYPES } from "@/lib/spanish-provinces"
 import { useTranslations } from "next-intl"
+import { AccountTabs } from "@/app/components/account-tabs"
 
 interface ShippingForm {
   shipping_first_name: string
@@ -197,6 +198,7 @@ export default function EnvioPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <AccountTabs />
       <div className="mb-8">
         <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
         <p className="text-slate-600">{t("subtitle")}</p>
