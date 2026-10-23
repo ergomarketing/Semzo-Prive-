@@ -9,6 +9,7 @@ import { syncMembershipFromStripe } from "@/app/api/membership/activate/orchestr
 import { adminNotifications } from "@/lib/admin-notifications";
 import { logEmail } from "@/lib/email-logger";
 import { addCreditToProgress, deleteLedgerEntry, insertLedgerEntries } from "@/lib/ownership-credit-ledger";
+import { forfeitUserCredit } from "@/lib/ownership-credit-carry";
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email";
 import {
   claimStripeEvent,
@@ -1294,6 +1295,8 @@ export async function POST(req: NextRequest) {
             if (lostCreditError) {
               console.error("[v0] Error anulando credito Colecciona al cancelar:", lostCreditError);
             }
+            // El credito es saldo de la socia: con la baja se pierde, tambien el de intentos ya cancelados.
+            await forfeitUserCredit(supabase, membership.user_id);
           } catch (err) {
             console.error("[v0] Error en bloque perdida de credito:", err);
           }

@@ -28,7 +28,17 @@ export default function MembresiaPage() {
   const [isPhoneEmail, setIsPhoneEmail] = useState(false)
   const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [creditBalance, setCreditBalance] = useState(0)
   const [resumeLoading, setResumeLoading] = useState(false)
+
+  // Saldo de credito Colecciona: se muestra como aviso al cancelar (con la baja se pierde).
+  useEffect(() => {
+    if (!showCancelConfirm) return
+    fetch("/api/user/ownership/credit-balance")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => setCreditBalance(Number(json?.balance) || 0))
+      .catch(() => setCreditBalance(0))
+  }, [showCancelConfirm])
   const [payLoading, setPayLoading] = useState(false)
 
   // SINGLE SOURCE OF TRUTH - NO guardias aquí, layout.tsx maneja redirects
@@ -541,6 +551,16 @@ export default function MembresiaPage() {
                     ) : (
                       <div className="border border-indigo-dark/20 rounded-lg p-4 bg-rose-nude/30 space-y-3">
                         <p className="text-sm text-indigo-dark font-medium">{t("cancelConfirm")}</p>
+                        {creditBalance > 0 && (
+                          <p className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-md p-3">
+                            {t("cancelCreditWarning", {
+                              amount: new Intl.NumberFormat(locale === "en" ? "en-GB" : "es-ES", {
+                                style: "currency",
+                                currency: "EUR",
+                              }).format(creditBalance),
+                            })}
+                          </p>
+                        )}
                         <div className="flex gap-2">
                           <Button
                             onClick={() => handleMembershipAction("cancel")}

@@ -360,6 +360,7 @@
     "buyPassBtn": "Buy Pass & Explore Catalogue",
     "pauseBtn": "Pause membership",
     "cancelBtn": "Cancel membership",
+    "cancelCreditWarning": "If you cancel, you will lose your accumulated Collect credit: {amount}. This credit is not refundable.",
     "cancelConfirm": "Are you sure you want to cancel? You will keep access until the end of the current period.",
     "yesCancel": "Yes, cancel",
     "keepMembership": "Keep membership",

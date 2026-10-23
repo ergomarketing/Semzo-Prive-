@@ -13,7 +13,8 @@ const supabaseAdmin = createClient(
  * POST /api/user/ownership/cancel-collect
  *
  * Renunciar a la compra rent-to-own del bolso actual.
- * Marca el ownership_progress como cancelled (se pierde el credito acumulado).
+ * Marca el ownership_progress como cancelled. El credito acumulado NO se pierde: es saldo de la socia y el
+ * siguiente Colecciona lo hereda (lib/ownership-credit-carry.ts). Solo se pierde al darse de baja.
  * No toca la reserva del bolso ni la suscripcion: la socia puede pedir cambio
  * de bolso normalmente despues.
  */

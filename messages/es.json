@@ -360,6 +360,7 @@
     "buyPassBtn": "Comprar Pase y Explorar Catálogo",
     "pauseBtn": "Pausar membresía",
     "cancelBtn": "Cancelar membresía",
+    "cancelCreditWarning": "Si cancelas, perderás tu crédito Colecciona acumulado: {amount}. Ese crédito no es reembolsable.",
     "cancelConfirm": "¿Segura que quieres cancelar? Mantendrás el acceso hasta el final del período actual.",
     "yesCancel": "Sí, cancelar",
     "keepMembership": "Mantener",

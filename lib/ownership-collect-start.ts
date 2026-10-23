@@ -6,6 +6,7 @@ import {
   type LedgerRow,
 } from "@/lib/ownership-credit-ledger"
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
+import { carryOverCredit, restoreCarriedCredit, type CarriedEntry } from "@/lib/ownership-credit-carry"
 
 /**
  * UNICA via para empezar Modo Colecciona. La usan convert-to-collect y
@@ -15,6 +16,7 @@ import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
  * 1) Calcula las facturas pagadas elegibles (previewRentalConversion).
  * 2) Crea el progreso 'active'.
  * 3) Las registra en ownership_credit_entries (source='rental_conversion').
+ * 3b) Hereda el credito que la socia tenia en intentos cancelados (el credito es SALDO DE LA SOCIA, no del bolso).
  * 4) Fija accumulated (limitado al precio).
  * 5) Cancela el registro Descubre activo del mismo bolso (solo Descubre).
  *
@@ -156,6 +158,7 @@ export async function startCollectProgress(
 
   let initialCredit = 0
   let invoicesClaimed = 0
+  let carriedEntries: CarriedEntry[] = []
   try {
     const rows: LedgerRow[] = preview.eligible.map((invoice) => ({
       ownership_progress_id: created.id,
@@ -168,7 +171,12 @@ export async function startCollectProgress(
     const inserted = await insertLedgerEntries(supabase, rows)
     invoicesClaimed = inserted.length
     const creditCents = inserted.reduce((total, row) => total + row.amount_cents, 0)
-    initialCredit = Math.round(Math.min(creditCents / 100, target) * 100) / 100
+    const targetCents = Math.round(target * 100)
+    const fromInvoicesCents = Math.min(creditCents, targetCents)
+    // Credito de intentos anteriores cancelados: pasa a este bolso hasta completar el precio.
+    const carried = await carryOverCredit(supabase, userId, created.id, targetCents - fromInvoicesCents)
+    carriedEntries = carried.moved
+    initialCredit = Math.round(fromInvoicesCents + carried.cents) / 100
 
     if (initialCredit > 0) {
       const { error: updateErr } = await supabase
@@ -179,6 +187,10 @@ export async function startCollectProgress(
     }
   } catch (err) {
     console.error("[v0] startCollectProgress error aplicando el credito:", err)
+    // Primero se devuelve a su sitio el credito heredado: el borrado de abajo solo debe quitar lo nuevo.
+    await restoreCarriedCredit(supabase, carriedEntries).catch((restoreErr) =>
+      console.error("[v0] startCollectProgress no se pudo devolver el credito heredado:", restoreErr),
+    )
     await supabase.from("ownership_credit_entries").delete().eq("ownership_progress_id", created.id)
     await supabase.from("ownership_progress").delete().eq("id", created.id)
     return fail("credit_failed", 500, "No se pudo aplicar el crédito. Inténtalo de nuevo.")
