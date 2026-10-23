@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/panel/card"
+import { PageHeader, PanelEmpty } from "@/components/panel/page-header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingBag, Loader2, Package, Calendar, Filter, X, RefreshCw } from "lucide-react"
@@ -125,17 +126,18 @@ export default function ReservasPage() {
   }, [activeFilter, reservations])
 
   const getStatusBadge = (status: string) => {
+    const gold = "bg-[#b08d57]/15 text-[#7a5f33] border-transparent"
     const statusConfig = {
-      active:    { label: t("statusActive"),    className: "bg-green-100 text-green-800 border-green-200" },
-      pending:   { label: t("statusPending"),   className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-      confirmed: { label: t("statusConfirmed"), className: "bg-blue-100 text-blue-800 border-blue-200" },
-      completed: { label: t("statusCompleted"), className: "bg-slate-100 text-slate-800 border-slate-200" },
-      cancelled: { label: t("statusCancelled"), className: "bg-[#fff0f3] text-[#1a1a4b] border-[#f4c4cc]" },
-      overdue:   { label: t("statusOverdue"),   className: "bg-red-100 text-red-800 border-red-200" },
-      queued:    { label: "Próximo bolso (en cola)", className: "bg-amber-100 text-amber-800 border-amber-200" },
+      active:    { label: t("statusActive"),    className: gold },
+      pending:   { label: t("statusPending"),   className: "bg-slate-100 text-slate-700 border-transparent" },
+      confirmed: { label: t("statusConfirmed"), className: "bg-indigo-dark/10 text-indigo-dark border-transparent" },
+      completed: { label: t("statusCompleted"), className: "bg-slate-100 text-slate-500 border-transparent" },
+      cancelled: { label: t("statusCancelled"), className: "bg-rose-pastel/40 text-indigo-dark border-transparent" },
+      overdue:   { label: t("statusOverdue"),   className: "bg-red-100 text-red-800 border-transparent" },
+      queued:    { label: "Próximo bolso (en cola)", className: gold },
     }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, className: "bg-slate-100 text-slate-800 border-slate-200" }
+    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, className: "bg-slate-100 text-slate-700 border-transparent" }
 
     return (
       <Badge variant="secondary" className={config.className}>
@@ -166,7 +168,7 @@ export default function ReservasPage() {
         <Card>
           <CardContent className="p-6 text-center">
             <h3 className="text-lg font-serif mb-2">{t("loginRequired")}</h3>
-            <Button onClick={() => router.push("/auth/login")} className="bg-slate-900 hover:bg-slate-800 text-white">
+            <Button onClick={() => router.push("/auth/login")} className="bg-indigo-dark text-white hover:bg-indigo-dark/90">
               {t("signIn")}
             </Button>
           </CardContent>
@@ -198,47 +200,44 @@ export default function ReservasPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
-        <p className="text-slate-600">{t("subtitle")}</p>
-      </div>
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
       {/* Estadísticas */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("all")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "all" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("all")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-sm text-slate-600">{t("statTotal")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.total}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statTotal")}</div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("active")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "active" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("active")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <div className="text-sm text-slate-600">{t("statActive")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.active}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statActive")}</div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("confirmed")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "confirmed" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("confirmed")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
-            <div className="text-sm text-slate-600">{t("statConfirmed")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.confirmed}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statConfirmed")}</div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("pending")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "pending" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("pending")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-            <div className="text-sm text-slate-600">{t("statPending")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.pending}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statPending")}</div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("completed")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "completed" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("completed")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-slate-600">{stats.completed}</div>
-            <div className="text-sm text-slate-600">{t("statCompleted")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.completed}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statCompleted")}</div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveFilter("cancelled")}>
+        <Card className={`cursor-pointer transition-colors hover:border-indigo-dark/30 ${activeFilter === "cancelled" ? "border-[#b08d57] bg-[#b08d57]/[0.06]" : ""}`} onClick={() => setActiveFilter("cancelled")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-[#1a1a4b]">{stats.cancelled}</div>
-            <div className="text-sm text-slate-600">{t("statCancelled")}</div>
+            <div className="font-serif text-3xl text-indigo-dark">{stats.cancelled}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("statCancelled")}</div>
           </CardContent>
         </Card>
       </div>
@@ -259,33 +258,31 @@ export default function ReservasPage() {
       {/* Lista de reservas */}
       {filteredReservations.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ShoppingBag className="h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-xl font-serif text-slate-900 mb-2">
-              {activeFilter === "all" ? t("noReservations") : t("noReservationsFiltered", { status: activeFilter })}
-            </h3>
-            <p className="text-slate-600 text-center mb-6">
-              {activeFilter === "all" ? t("noReservationsDesc") : t("noReservationsFilteredDesc")}
-            </p>
-            <div className="flex gap-3">
-              {activeFilter !== "all" && (
+          <PanelEmpty
+            icon={<ShoppingBag className="h-6 w-6" />}
+            title={activeFilter === "all" ? t("noReservations") : t("noReservationsFiltered", { status: activeFilter })}
+            text={activeFilter === "all" ? t("noReservationsDesc") : t("noReservationsFilteredDesc")}
+            action={
+              <div className="flex flex-wrap justify-center gap-3">
+                {activeFilter !== "all" && (
+                  <Button
+                    onClick={clearFilter}
+                    variant="outline"
+                    className="border-indigo-dark/15 bg-transparent font-serif text-slate-700 hover:bg-rose-nude/40"
+                  >
+                    {t("seeAll")}
+                  </Button>
+                )}
                 <Button
-                  onClick={clearFilter}
-                  variant="outline"
-                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
+                  onClick={() => router.push("/catalog")}
+                  className="h-11 rounded-md bg-indigo-dark px-6 text-xs font-medium uppercase tracking-[0.18em] text-white hover:bg-indigo-dark/90"
                 >
-                  {t("seeAll")}
+                  <Package className="mr-2 h-4 w-4 text-[#d9bd8a]" />
+                  {t("exploreCatalog")}
                 </Button>
-              )}
-              <Button
-                onClick={() => router.push("/catalog")}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
-              >
-                <Package className="h-4 w-4 mr-2" />
-                {t("exploreCatalog")}
-              </Button>
-            </div>
-          </CardContent>
+              </div>
+            }
+          />
         </Card>
       ) : (
         <div className="space-y-4">
@@ -297,9 +294,9 @@ export default function ReservasPage() {
             const isActive = reservation.status === "active"
 
             return (
-              <Card key={reservation.id} className="hover:shadow-md transition-shadow">
+              <Card key={reservation.id} className="transition-colors hover:border-indigo-dark/25">
                 <CardContent className="flex items-center gap-4 p-6">
-                  <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-rose-nude/60">
                     {reservation.bags?.image_url ? (
                       <img
                         src={reservation.bags.image_url || "/placeholder.svg"}
@@ -311,7 +308,7 @@ export default function ReservasPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-serif text-slate-900 truncate">
+                    <h3 className="truncate text-xl font-serif text-indigo-dark">
                       {reservation.bags?.name || t("unknownBag")}
                     </h3>
                     <p className="text-sm text-slate-600 mb-2">{reservation.bags?.brand || t("unknownBrand")}</p>
@@ -325,18 +322,18 @@ export default function ReservasPage() {
                         </span>
                       </div>
                       {isUpcoming && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className="text-xs bg-indigo-dark/10 text-indigo-dark border-transparent">
                           {t("upcoming")}
                         </Badge>
                       )}
                       {isActive && (
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="outline" className="text-xs bg-[#b08d57]/15 text-[#7a5f33] border-transparent">
                           {t("inProgress")}
                         </Badge>
                       )}
                     </div>
                     {reservation.total_amount && (
-                      <p className="text-sm text-slate-700 mt-2 font-medium">
+                      <p className="mt-2 font-serif text-base text-indigo-dark">
                         {t("totalLabel")} {reservation.total_amount.toFixed(2)}€
                       </p>
                     )}
@@ -344,7 +341,7 @@ export default function ReservasPage() {
                   <Button
                     onClick={() => handleViewDetails(reservation.id)}
                     variant="outline"
-                    className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent flex-shrink-0"
+                    className="flex-shrink-0 border-indigo-dark/15 bg-transparent font-serif text-slate-700 hover:bg-rose-nude/40"
                   >
                     {t("viewDetails")}
                   </Button>

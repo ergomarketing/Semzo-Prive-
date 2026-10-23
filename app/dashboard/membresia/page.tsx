@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/panel/card"
+import { PageHeader } from "@/components/panel/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -182,8 +183,8 @@ export default function MembresiaPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white pt-32">
-        <div className="container mx-auto px-4 max-w-4xl">
+      <div className="mx-auto max-w-4xl">
+        <div>
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>{t("errorLoading")}</AlertDescription>
@@ -275,9 +276,9 @@ export default function MembresiaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pt-32">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-4xl font-serif text-indigo-dark mb-8 text-center">{t("title")}</h1>
+    <div className="mx-auto max-w-4xl">
+      <div>
+        <PageHeader eyebrow={t("eyebrow")} title={t("title")} />
 
         {/*
          * Avisos del dashboard — TODOS alineados a paleta Semzo:
@@ -306,8 +307,9 @@ export default function MembresiaPage() {
           </Alert>
         )}
 
-        {/* Profile Section */}
-        <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+        {/* Datos personales: solo se muestra para pedir el email que falta; el resto vive en Perfil y envio. */}
+        {flags.needs_email && (
+        <Card className="mb-6">
           <CardContent className="p-6">
             <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("personalInfo")}</h3>
             <div className="space-y-4">
@@ -355,15 +357,16 @@ export default function MembresiaPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Membership Section */}
-        <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+        <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start gap-6 mb-6">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    {isActive && <Crown className="w-6 h-6 text-indigo-dark" />}
+                    {isActive && <Crown className="h-6 w-6 text-[#b08d57]" />}
                     <h2 className="font-serif text-2xl text-indigo-dark">{currentMembership.name}</h2>
                   </div>
                   {/*
@@ -406,7 +409,7 @@ export default function MembresiaPage() {
                               : t("inactive")}
                   </span>
                 </div>
-                <p className="font-serif text-3xl text-indigo-dark mb-6">
+                <p className="mb-6 font-serif text-4xl text-indigo-dark">
                   €{currentMembership.price}
                   <span className="text-lg text-indigo-dark/60">/{currentMembership.period}</span>
                 </p>
@@ -414,7 +417,7 @@ export default function MembresiaPage() {
                 <ul className="space-y-3 mb-6">
                   {getFeatures().map((feature, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-indigo-dark mt-0.5 flex-shrink-0" />
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#b08d57]" />
                       <span className="text-indigo-dark/70">{feature}</span>
                     </li>
                   ))}
@@ -424,15 +427,15 @@ export default function MembresiaPage() {
                     con acceso (active o cancelled_active). Aclara la diferencia
                     entre tiempo de membresía y tiempo de reserva del bolso. */}
                 {hasAccess && (
-                  <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
-                    <h4 className="font-medium text-indigo-dark mb-3 flex items-center gap-2">
-                      <Crown className="w-4 h-4" />
+                  <div className="border border-[#b08d57]/20 bg-[#b08d57]/[0.07] p-5 rounded-xl mb-4">
+                    <h4 className="mb-4 flex items-center gap-2 font-serif text-lg text-indigo-dark">
+                      <Crown className="h-4 w-4 text-[#b08d57]" />
                       {t("membershipPeriodTitle")}
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-indigo-dark/60">{t("typeLabel")}</p>
-                        <p className="text-indigo-dark font-medium">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{t("typeLabel")}</p>
+                        <p className="font-serif text-lg text-indigo-dark">
                           {isPetite
                             ? t("typePetite")
                             : isQuarterly
@@ -441,33 +444,33 @@ export default function MembresiaPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-indigo-dark/60">{t("statusLabel")}</p>
-                        <p className="text-indigo-dark font-medium">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{t("statusLabel")}</p>
+                        <p className="font-serif text-lg text-indigo-dark">
                           {isCancelledActive ? t("statusCancelledActive") : t("statusActive")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-indigo-dark/60">{t("cycleStart")}</p>
-                        <p className="text-indigo-dark font-medium">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{t("cycleStart")}</p>
+                        <p className="font-serif text-lg text-indigo-dark">
                           {formatLongDate(membership.start_date || membership.started_at)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-indigo-dark/60">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">
                           {isCancelledActive
                             ? t("accessEnd")
                             : isQuarterly
                               ? t("quarterEnd")
                               : t("nextRenewal")}
                         </p>
-                        <p className="text-indigo-dark font-medium">
+                        <p className="font-serif text-lg text-indigo-dark">
                           {formatLongDate(membership.end_date || membership.ends_at)}
                         </p>
                       </div>
                     </div>
 
                     {/* Aclaración importante: tiempo membresía vs tiempo reserva */}
-                    <div className="mt-4 pt-4 border-t border-rose-pastel/40">
+                    <div className="mt-4 pt-4 border-t border-[#b08d57]/20">
                       <p className="text-xs text-indigo-dark/70 leading-relaxed">
                         <strong className="text-indigo-dark">{t("howItWorks")}</strong>{" "}
                         {t("howItWorksDesc", {
@@ -481,7 +484,7 @@ export default function MembresiaPage() {
                 )}
 
                 {isPetite && isActive && (
-                  <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg mb-4">
+                  <div className="border border-[#b08d57]/20 bg-[#b08d57]/[0.07] p-5 rounded-xl mb-4">
                     <div className="flex items-start gap-3">
                       <Info className="w-5 h-5 text-indigo-dark flex-shrink-0 mt-0.5" />
                       <div>
@@ -523,12 +526,14 @@ export default function MembresiaPage() {
 
                 {/* Controles de suscripción */}
                 {isActive && (
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-6 space-y-3 border-t border-indigo-dark/10 pt-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#b08d57]">{t("manageTitle")}</p>
+                    <div className="flex flex-wrap gap-3">
                     <Button
                       variant="outline"
                       onClick={() => handleMembershipAction("pause")}
                       disabled={!!actionLoading}
-                      className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
+                      className="border-indigo-dark/15 bg-transparent font-serif text-indigo-dark hover:bg-rose-nude/40"
                     >
                       {actionLoading === "pause" ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -543,7 +548,7 @@ export default function MembresiaPage() {
                         variant="outline"
                         onClick={() => setShowCancelConfirm(true)}
                         disabled={!!actionLoading}
-                        className="w-full border-indigo-dark/20 text-indigo-dark hover:bg-rose-nude"
+                        className="border-indigo-dark/15 bg-transparent font-serif text-indigo-dark hover:bg-rose-nude/40"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
                         {t("cancelBtn")}
@@ -583,6 +588,7 @@ export default function MembresiaPage() {
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
                 )}
 
@@ -669,7 +675,7 @@ export default function MembresiaPage() {
 
         {/* Gift Cards Section */}
         {gift_cards.total_balance > 0 && (
-          <Card className="mb-6 border border-indigo-dark/10 shadow-sm">
+          <Card className="mb-6">
             <CardContent className="p-6">
               <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("giftCardBalance")}</h3>
               <div className="bg-rose-nude border border-rose-pastel/30 p-4 rounded-lg">
@@ -681,7 +687,7 @@ export default function MembresiaPage() {
         )}
 
         {/* Historial de Pagos */}
-        <Card className="border border-indigo-dark/10 shadow-sm">
+        <Card>
           <CardContent className="p-6">
             <h3 className="font-serif text-lg text-indigo-dark mb-4">{t("paymentHistory")}</h3>
             {reservations.history === 0 ? (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { SPANISH_PROVINCES, VIA_TYPES } from "@/lib/spanish-provinces"
 import { useTranslations } from "next-intl"
 import { AccountTabs } from "@/app/components/account-tabs"
+import { PageHeader } from "@/components/panel/page-header"
 
 interface ShippingForm {
   shipping_first_name: string
@@ -199,15 +200,12 @@ export default function EnvioPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <AccountTabs />
-      <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
-        <p className="text-slate-600">{t("subtitle")}</p>
-      </div>
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-[#b08d57]" />
             {t("shippingInfoTitle")}
           </CardTitle>
           <CardDescription>{t("shippingInfoDesc")}</CardDescription>

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "../../hooks/useAuth"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/panel/card"
+import { PageHeader, PanelEmpty } from "@/components/panel/page-header"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Clock, Loader2, Package, Bell } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import { useTranslations, useLocale } from "next-intl"
@@ -69,32 +69,31 @@ export default function ListaEsperaPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
-        <p className="text-slate-600">{t("subtitle")}</p>
-      </div>
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
       {waitlistItems.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Clock className="h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-xl font-serif text-slate-900 mb-2">{t("empty")}</h3>
-            <p className="text-slate-600 text-center mb-6">{t("emptyDesc")}</p>
-            <Button
-              onClick={() => (window.location.href = "/catalog")}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-serif"
-            >
-              <Package className="h-4 w-4 mr-2" />
-              {t("exploreCatalog")}
-            </Button>
-          </CardContent>
+          <PanelEmpty
+            icon={<Clock className="h-6 w-6" />}
+            title={t("empty")}
+            text={t("emptyDesc")}
+            action={
+              <Button
+                onClick={() => (window.location.href = "/catalog")}
+                className="h-11 rounded-md bg-indigo-dark px-6 text-xs font-medium uppercase tracking-[0.18em] text-white hover:bg-indigo-dark/90"
+              >
+                <Package className="mr-2 h-4 w-4 text-[#d9bd8a]" />
+                {t("exploreCatalog")}
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <div className="space-y-4">
           {waitlistItems.map((item) => (
-            <Card key={item.id} className="hover:shadow-md transition-shadow">
+            <Card key={item.id} className="transition-colors hover:border-indigo-dark/25">
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-rose-nude/60">
                   {item.bags?.image_url ? (
                     <img
                       src={item.bags.image_url || "/placeholder.svg"}
@@ -106,13 +105,13 @@ export default function ListaEsperaPage() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-serif text-slate-900">{item.bags?.name || t("unknownBag")}</h3>
+                  <h3 className="text-xl font-serif text-indigo-dark">{item.bags?.name || t("unknownBag")}</h3>
                   <p className="text-sm text-slate-600">{item.bags?.brand || t("unknownBrand")}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="secondary" className="bg-rose-100 text-rose-800 border-rose-200">
-                      <Bell className="h-3 w-3 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-[#b08d57]/15 px-3 py-1 text-xs font-medium text-[#7a5f33]">
+                      <Bell className="mr-1 h-3 w-3" />
                       {t("waiting")}
-                    </Badge>
+                    </span>
                     <span className="text-xs text-slate-500">
                       {t("addedOn")} {new Date(item.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES")}
                     </span>
@@ -120,7 +119,7 @@ export default function ListaEsperaPage() {
                 </div>
                 <Button
                   variant="outline"
-                  className="border-slate-300 text-slate-700 hover:bg-slate-100 font-serif bg-transparent"
+                  className="border-indigo-dark/15 bg-transparent font-serif text-slate-700 hover:bg-rose-nude/40"
                 >
                   {t("remove")}
                 </Button>

@@ -3,7 +3,7 @@
 import { AccountUpgradeModal } from "@/components/account-upgrade-modal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader } from "@/components/ui/card"
+import { Card, CardHeader } from "@/components/panel/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordSettings } from "@/components/password-settings"
@@ -15,6 +15,7 @@ import { useAuth } from "../../hooks/useAuth"
 import { supabase } from "@/lib/supabase" // Import supabase
 import { useTranslations } from "next-intl"
 import { AccountTabs } from "@/app/components/account-tabs"
+import { PageHeader } from "@/components/panel/page-header"
 
 interface UserProfile {
   first_name: string
@@ -311,10 +312,7 @@ export default function PerfilPage() {
 
       <div className="max-w-4xl mx-auto">
         <AccountTabs />
-        <div className="mb-8">
-          <h2 className="text-3xl font-serif text-slate-900 mb-2">{t("title")}</h2>
-          <p className="text-slate-600">{t("subtitle")}</p>
-        </div>
+        <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
         {/* Mensajes de éxito/error */}
         {successMessage && (
@@ -369,8 +367,8 @@ export default function PerfilPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <h2 className="font-serif">{t("personalInfo")}</h2>
-              <p>{t("personalInfoDesc")}</p>
+              <h2 className="font-serif text-xl text-indigo-dark">{t("personalInfo")}</h2>
+              <p className="text-sm text-slate-500">{t("personalInfoDesc")}</p>
             </div>
             {!isEditing && (
               <Button onClick={() => setIsEditing(true)} size="sm" variant="outline">

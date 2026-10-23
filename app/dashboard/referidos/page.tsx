@@ -1,6 +1,8 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import ReferralSystem from "@/app/components/referral-system"
+import { PageHeader } from "@/components/panel/page-header"
 
 /**
  * Pagina de referidos dentro del dashboard de la socia.
@@ -8,8 +10,10 @@ import ReferralSystem from "@/app/components/referral-system"
  * Reutiliza el componente <ReferralSystem /> que ya consume /api/referrals/me.
  */
 export default function ReferidosPage() {
+  const t = useTranslations("dashboardLayout")
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8">
+    <div className="mx-auto max-w-4xl">
+      <PageHeader eyebrow={t("groupAccount")} title={t("menuInvite")} />
       <ReferralSystem />
     </div>
   )

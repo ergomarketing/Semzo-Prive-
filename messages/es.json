@@ -273,6 +273,7 @@
     "cancel": "Cancelar"
   },
   "reservasPage": {
+    "eyebrow": "Mis bolsos",
     "title": "Mis Reservas",
     "subtitle": "Gestiona tus reservas activas y revisa tu historial",
     "loginRequired": "Inicia sesión para ver tus reservas",
@@ -328,7 +329,9 @@
     "errDefault": "Error actualizando contraseña"
   },
   "membresiaPage": {
-    "title": "MI MEMBRESÍA",
+    "eyebrow": "Tu plan",
+    "manageTitle": "Gestionar membresía",
+    "title": "Mi membresía",
     "errorLoading": "Error al cargar tu membresía. Por favor recarga la página.",
     "emailRequired": "Email requerido:",
     "emailRequiredDesc": "Necesitamos tu email real para confirmar reservas y notificaciones.",
@@ -433,6 +436,7 @@
     "feat_free_4": "Soporte por email"
   },
   "listaEsperaPage": {
+    "eyebrow": "Mis bolsos",
     "title": "Mi Lista de Espera",
     "subtitle": "Todas las bolsas que estás vigilando. Te enviaremos un correo electrónico cuando estos estilos estén disponibles.",
     "empty": "No tienes bolsos en lista de espera",
@@ -445,6 +449,7 @@
     "unknownBrand": "Marca desconocida"
   },
   "perfilPage": {
+    "eyebrow": "Cuenta",
     "title": "Mi Perfil",
     "subtitle": "Gestiona tu información personal",
     "errorLoadingProfile": "Error al cargar el perfil",
@@ -481,6 +486,7 @@
     "yes": "Sí"
   },
   "envioPage": {
+    "eyebrow": "Cuenta",
     "title": "Dirección de Envío",
     "subtitle": "Completa todos los campos para que podamos enviarte tus bolsos a través de Correos.",
     "shippingInfoTitle": "Información de Envío",
