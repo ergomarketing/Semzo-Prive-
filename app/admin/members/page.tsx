@@ -29,24 +29,6 @@ interface Member {
   shippingCountry?: string
 }
 
-interface Reservation {
-  id: string
-  status: string
-  start_date: string
-  end_date: string
-  bag_name: string
-  bag_brand: string
-}
-
-interface BagPass {
-  id: string
-  pass_tier: string
-  status: string
-  price: number
-  purchased_at: string
-  stripe_session_id: string | null
-}
-
 const colors = {
   primary: "#1a2c4e",
   accent: "#d4a5a5",
@@ -59,10 +41,6 @@ export default function MembersAdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({ total: 0, petite: 0, essentiel: 0, signature: 0, prive: 0, free: 0, active: 0 })
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
-  const [memberHistory, setMemberHistory] = useState<Reservation[]>([])
-  const [memberPasses, setMemberPasses] = useState<BagPass[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
-  const [showHistoryDialog, setShowHistoryDialog] = useState(false)
   const [showEmailDialog, setShowEmailDialog] = useState(false)
   const [emailSubject, setEmailSubject] = useState("")
   const [emailBody, setEmailBody] = useState("")
@@ -94,29 +72,6 @@ export default function MembersAdminPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const fetchMemberHistory = async (memberId: string) => {
-    setLoadingHistory(true)
-    try {
-      const response = await fetch(`/api/admin/members/history?userId=${memberId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setMemberHistory(data.reservations || [])
-        setMemberPasses(data.passes || [])
-      }
-    } catch (err) {
-      setMemberHistory([])
-      setMemberPasses([])
-    } finally {
-      setLoadingHistory(false)
-    }
-  }
-
-  const handleViewHistory = async (member: Member) => {
-    setSelectedMember(member)
-    setShowHistoryDialog(true)
-    await fetchMemberHistory(member.id)
   }
 
   const handleContact = (member: Member) => {
@@ -320,10 +275,12 @@ export default function MembersAdminPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleViewHistory(member)}
+                        onClick={() => {
+                          window.location.href = `/admin/members/${member.id}`
+                        }}
                         style={{ borderColor: colors.primary, color: colors.primary }}
                       >
-                        Ver historial
+                        Ver ficha
                       </Button>
                       <Button
                         size="sm"
@@ -353,109 +310,6 @@ export default function MembersAdminPage() {
           ))}
         </div>
       )}
-
-      {/* History Dialog */}
-      <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle style={{ color: colors.primary }}>Historial de Reservas</DialogTitle>
-            <DialogDescription>
-              {selectedMember?.name} - {selectedMember?.email}
-            </DialogDescription>
-          </DialogHeader>
-          {loadingHistory ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Pases comprados (solo socias Petite) */}
-              {memberPasses.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-3" style={{ color: colors.primary }}>
-                    Pases comprados ({memberPasses.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {memberPasses.map((p) => (
-                      <Card key={p.id} className="border-0" style={{ backgroundColor: colors.bg }}>
-                        <CardContent className="p-3 flex justify-between items-center">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge style={{ backgroundColor: colors.primary, color: "white" }}>
-                                {p.pass_tier?.toUpperCase()}
-                              </Badge>
-                              <span className="text-sm font-medium" style={{ color: colors.primary }}>
-                                €{Number(p.price).toFixed(2)}
-                              </span>
-                            </div>
-                            <p className="text-xs mt-1" style={{ color: "#888" }}>
-                              {new Date(p.purchased_at).toLocaleString()}
-                            </p>
-                          </div>
-                          <Badge
-                            style={{
-                              backgroundColor:
-                                p.status === "available"
-                                  ? colors.primary
-                                  : p.status === "used"
-                                    ? "#888"
-                                    : colors.accent,
-                              color: "white",
-                            }}
-                          >
-                            {p.status}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Reservas */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3" style={{ color: colors.primary }}>
-                  Reservas ({memberHistory.length})
-                </h3>
-                {memberHistory.length === 0 ? (
-                  <p className="text-center py-4 text-sm" style={{ color: "#888" }}>
-                    No hay reservas
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {memberHistory.map((res) => (
-                      <Card key={res.id} className="border-0" style={{ backgroundColor: colors.bg }}>
-                        <CardContent className="p-4 flex justify-between items-center">
-                          <div>
-                            <h4 className="font-semibold" style={{ color: colors.primary }}>
-                              {res.bag_name}
-                            </h4>
-                            <p className="text-sm" style={{ color: "#888" }}>
-                              {res.bag_brand}
-                            </p>
-                            <p className="text-xs" style={{ color: "#888" }}>
-                              {new Date(res.start_date).toLocaleDateString()} -{" "}
-                              {new Date(res.end_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Badge
-                            style={{
-                              backgroundColor: res.status === "completed" ? colors.primary : colors.accent,
-                              color: "white",
-                            }}
-                          >
-                            {res.status}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Email Dialog */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
