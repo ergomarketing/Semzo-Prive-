@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { isReturnWindowOpen } from "@/lib/return-window"
 
 export const dynamic = "force-dynamic"
 
@@ -10,7 +11,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
  * GET /api/admin/logistics/return-legs
  *
  * Devoluciones EN CAMINO o por verificar: envios con etiqueta de devolucion de Correos cuya reserva sigue abierta
- * (active / overdue / confirmed). No dependen de la tabla "returns" (que solo se rellena si la socia pulsa
+ * (active / overdue / confirmed) y esta a punto de vencer o vencida (la etiqueta de vuelta existe desde el primer dia). No dependen de la tabla "returns" (que solo se rellena si la socia pulsa
  * "devolver" en su panel): el seguimiento de Correos de la ida y la vuelta vive en shipments.
  */
 export async function GET(request: NextRequest) {
@@ -59,6 +60,9 @@ export async function GET(request: NextRequest) {
       }
     })
     .filter((leg) => ["active", "overdue", "confirmed"].includes(leg.reservation_status || ""))
+    // La etiqueta de vuelta existe desde el primer dia: solo se lista cuando el bolso puede estar volviendo
+    // (reserva a punto de vencer o vencida) o Correos ya la dio por entregada.
+    .filter((leg) => leg.return_status === "delivered" || isReturnWindowOpen(leg.end_date, leg.reservation_status))
 
   return NextResponse.json({ legs })
 }
