@@ -65,6 +65,34 @@ interface Return {
   status: string
   refund_amount: number | null
   created_at: string
+  return_carrier?: string | null
+  shipments?: any
+}
+
+const RETURN_REASON: Record<string, string> = {
+  customer_request: "Solicitada por la socia desde su panel",
+  end_of_rental: "Fin del alquiler",
+  damaged: "Bolso dañado",
+  wrong_item: "Bolso equivocado",
+}
+const RETURN_STATUS: Record<string, string> = {
+  pending: "Pendiente",
+  approved: "Aprobada",
+  received: "Recibida",
+  completed: "Completada",
+  cancelled: "Cancelada",
+}
+
+/** Socia y bolso de una devolucion (la API los trae anidados dentro del envio). */
+function returnWho(item: Return): { member: string; bag: string } {
+  const shipment = Array.isArray(item.shipments) ? item.shipments[0] : item.shipments
+  const reservation = Array.isArray(shipment?.reservations) ? shipment.reservations[0] : shipment?.reservations
+  const profile = Array.isArray(reservation?.profiles) ? reservation.profiles[0] : reservation?.profiles
+  const bag = Array.isArray(reservation?.bags) ? reservation.bags[0] : reservation?.bags
+  return {
+    member: profile?.full_name || profile?.email || "Socia sin identificar",
+    bag: bag ? `${bag.brand || ""} ${bag.name || ""}`.trim() : "Bolso",
+  }
 }
 
 interface LogisticsSettings {
@@ -985,21 +1013,28 @@ export default function LogisticsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {returns.slice(0, 10).map((return_item) => (
-                    <div key={return_item.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold">Razón: {return_item.reason}</p>
-                          <p className="text-sm text-gray-600">
-                            Reembolso: ${return_item.refund_amount || "N/A"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {getStatusBadge(return_item.status)}
+                  {returns.slice(0, 10).map((return_item) => {
+                    const who = returnWho(return_item)
+                    return (
+                      <div key={return_item.id} className="rounded-lg border border-indigo-dark/10 p-4 transition-colors hover:bg-rose-nude/30">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="font-serif text-lg text-indigo-dark">{who.bag}</p>
+                            <p className="text-sm text-slate-600">{who.member}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {RETURN_REASON[return_item.reason] || return_item.reason}
+                              {return_item.return_carrier === "pickup" ? " · recogida a domicilio" : ""} ·{" "}
+                              {new Date(return_item.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                              {return_item.refund_amount ? ` · reembolso ${return_item.refund_amount} €` : ""}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-[#b08d57]/15 px-3 py-1 text-xs font-medium text-[#7a5f33]">
+                            {RETURN_STATUS[return_item.status] || return_item.status}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
