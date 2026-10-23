@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: {
     canonical: "https://semzoprive.com/lp/membresia",
+    languages: {
+      es: "https://semzoprive.com/lp/membresia",
+      en: "https://semzoprive.com/lp/membership",
+    },
   },
 }
 
