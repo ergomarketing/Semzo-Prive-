@@ -101,7 +101,7 @@ export function MyBagCard() {
       if (res.ok && json.success) {
         toast({
           title: "Compra cancelada",
-          description: "Has renunciado a esta compra. Ya puedes cambiar de bolso.",
+          description: "Has renunciado a esta compra. Tu crédito acumulado se mantiene y ya puedes cambiar de bolso.",
         })
         mutate()
       } else {
@@ -325,7 +325,8 @@ export function MyBagCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Renunciar a esta compra?</AlertDialogTitle>
             <AlertDialogDescription>
-              Perderás los {formatEUR(accumulated)} acumulados hacia este bolso. Esta acción no se puede deshacer.
+              Dejarás de ir a por este bolso. Tu crédito acumulado ({formatEUR(accumulated)}) se mantiene y podrás usarlo
+              en la compra de otro bolso mientras sigas siendo socia.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

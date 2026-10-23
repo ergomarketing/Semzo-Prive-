@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { cancelQueuedReservation } from "@/lib/next-bag-queue"
+import { forfeitUserCredit } from "@/lib/ownership-credit-carry"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -93,6 +94,14 @@ export async function POST(req: Request) {
       cancelDate = endDate
         ? endDate.toLocaleDateString("es-ES", LONG_DATE)
         : new Date().toLocaleDateString("es-ES", LONG_DATE)
+
+      // Baja efectiva sin acceso vigente: el credito Colecciona se pierde (con Stripe lo hace el webhook al vencer).
+      if (!stillValid) {
+        const creditClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+        await forfeitUserCredit(creditClient, user.id).catch((err) =>
+          console.error("[memberships/cancel] No se pudo marcar el credito como perdido:", err),
+        )
+      }
     }
 
     // Si tenia un "proximo bolso" en cola, se cancela (la membresia no se renueva): libera el bolso y
