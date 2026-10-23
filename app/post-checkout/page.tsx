@@ -77,6 +77,26 @@ function PostCheckoutContent() {
         if (data.status === "active" || data.status === "trialing") {
           if (data.user_id) verifiedUserId.current = data.user_id
 
+          // Medicion (solo analitica, aditivo): avisa a Tag Manager de la compra real UNA vez por transaccion.
+          // Nunca bloquea ni cambia el flujo de abajo.
+          try {
+            const c = data.conversion
+            if (c?.transaction_id && typeof window !== "undefined") {
+              const key = `semzo_conv_${c.transaction_id}`
+              if (!window.sessionStorage.getItem(key)) {
+                window.sessionStorage.setItem(key, "1")
+                const w = window as unknown as { dataLayer?: unknown[] }
+                w.dataLayer = w.dataLayer || []
+                w.dataLayer.push({
+                  event: c.kind === "bag_pass" ? "semzo_bag_pass_purchase" : "semzo_membership_active",
+                  transaction_id: c.transaction_id,
+                  value: c.value,
+                  currency: c.currency,
+                })
+              }
+            }
+          } catch {}
+
           // Enrutar por la acción del orquestador (única fuente de verdad).
           // Evita loops: resume-onboarding consulta Stripe + identity_verifications
           // + SEPA y decide el siguiente paso coherente.
