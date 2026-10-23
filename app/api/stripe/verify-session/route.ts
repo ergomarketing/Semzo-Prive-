@@ -14,6 +14,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/** Datos para medir la compra en Google Ads (solo informativos; no cambian el flujo). */
+function conversionOf(
+  session: { amount_total: number | null; currency: string | null },
+  transactionId: string,
+  kind: "membership" | "bag_pass",
+  fallbackAmount?: number | null,
+) {
+  const cents = session.amount_total && session.amount_total > 0 ? session.amount_total : fallbackAmount || 0
+  return {
+    transaction_id: transactionId,
+    value: Math.round(cents) / 100,
+    currency: (session.currency || "eur").toUpperCase(),
+    kind,
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const sessionId = searchParams.get("session_id")
@@ -34,6 +50,7 @@ export async function GET(req: NextRequest) {
           status: "active",
           identity_verified: true,
           mode: "payment",
+          conversion: conversionOf(session, session.id, "bag_pass"),
         })
       }
       return NextResponse.json({ status: "incomplete" })
@@ -85,6 +102,7 @@ export async function GET(req: NextRequest) {
           identity_verified: false,
           user_id: null,
           mode: "subscription",
+          conversion: conversionOf(session, subscription.id, "membership", subscription.items.data[0]?.price?.unit_amount),
         })
       }
       return NextResponse.json({ status: "incomplete" })
@@ -113,6 +131,7 @@ export async function GET(req: NextRequest) {
         identity_verified: isIdentityVerified,
         user_id: userId,
         mode: "subscription",
+        conversion: conversionOf(session, subscription.id, "membership", subscription.items.data[0]?.price?.unit_amount),
       })
     }
 
