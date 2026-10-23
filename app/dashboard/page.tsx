@@ -2,10 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { useAuth } from "../hooks/useAuth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { User, MapPin, Crown, ShoppingBag, Clock, Heart, Loader2, Gift, AlertTriangle } from "lucide-react"
+import { MapPin, Crown, ShoppingBag, Clock, Heart, Loader2, Gift, AlertTriangle, Sparkles } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import useSWR from "swr"
 import { mapDBStatusToUI, getStatusLabel, getStatusDescription } from "@/lib/membership-state-mapper"
@@ -61,6 +59,8 @@ export default function DashboardHome() {
   }, [authLoading, user, router])
 
   const { data, error, isLoading } = useSWR(user?.id ? DASHBOARD_KEY : null, fetcher)
+  const { data: creditData } = useSWR(user?.id ? "/api/user/ownership/credit-balance" : null, fetcher)
+  const creditBalance = Number(creditData?.balance) || 0
 
   // Fuente de verdad unica: llamar a resume-onboarding y enrutar por su `action`.
   // Evita el loop por SWR cacheado con raw_status viejo tras completar Identity.
@@ -219,8 +219,49 @@ export default function DashboardHome() {
     )
   }
 
+  const planName =
+    membership?.type === "essentiel" || membership?.type === "lessentiel"
+      ? "L'Essentiel"
+      : membership?.type === "signature"
+        ? "Signature"
+        : membership?.type === "prive"
+          ? "Privé"
+          : membership?.type === "petite"
+            ? "Petite"
+            : membershipLabel
+
+  const formatEuro = (value: number) =>
+    new Intl.NumberFormat(locale === "en" ? "en-GB" : "es-ES", { style: "currency", currency: "EUR" }).format(value)
+
+  // Accesos del panel: antes eran 7 tarjetas que repetian el menu; ahora una fila compacta con lo que importa.
+  const tiles = [
+    { href: "/dashboard/reservas", icon: ShoppingBag, label: t("cardReservations"), value: String(reservations?.active ?? 0), hint: t("cardActiveReservations") },
+    ...(creditBalance > 0
+      ? [{ href: "/dashboard/membresia", icon: Sparkles, label: t("cardCredit"), value: formatEuro(creditBalance), hint: t("cardCreditHint") }]
+      : []),
+    { href: "/dashboard/lista-espera", icon: Clock, label: t("cardWaitlist"), value: String(reservations?.waitlist ?? 0), hint: t("cardWaitlistBags") },
+    { href: "/wishlist", icon: Heart, label: t("cardWishlist"), value: String(reservations?.wishlist ?? 0), hint: t("cardFavorites") },
+    { href: "/dashboard/gift-cards", icon: Gift, label: t("cardGiftCard"), value: formatEuro(gift_cards?.total_balance ?? 0), hint: t("cardGiftCardAvailable") },
+    {
+      href: "/dashboard/envio",
+      icon: MapPin,
+      label: t("cardShipping"),
+      value: profile?.shipping_address ? t("cardShippingSet") : t("tileComplete"),
+      hint: profile?.shipping_city || t("cardShippingAdd"),
+    },
+  ]
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="relative isolate max-w-6xl mx-auto">
+      {/* Fondo: foto de marca muy suave, solo decorativa (no compite con la informacion) */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-4 -z-10 h-[560px] overflow-hidden rounded-3xl">
+        <div
+          className="absolute inset-0 bg-cover opacity-[0.10]"
+          style={{ backgroundImage: "url(/images/panel-fondo.jpg)", backgroundPosition: "100% 24%" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-50/0 via-slate-50/70 to-slate-50" />
+      </div>
+
       {/* Banner Petite: pase por vencer o vencido (solo se muestra si aplica) */}
       <PetitePassBanner />
 
@@ -346,230 +387,97 @@ export default function DashboardHome() {
         </Alert>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-4xl font-serif text-slate-900 mb-2">{t("welcomeUser", { name: userName })}</h2>
-        <p className="text-lg text-slate-600">{t("accessCollection")}</p>
-      </div>
-
-      {/* Resumen de suscripción (Fase A) - card aislada, solo lectura.
-          Se muestra para cualquier socia que tenga una membresía registrada.
-          El propio componente decide si mostrarse según los datos del endpoint. */}
-      {membership && membership.status !== "no_membership" && (
-        <div className="mb-8">
-          <SubscriptionSummaryCard />
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.28em] text-[#b08d57]">{t("panelEyebrow")}</p>
+          <h2 className="text-4xl font-serif text-indigo-dark">{t("welcomeUser", { name: userName })}</h2>
+          <p className="mt-1 text-lg text-slate-600">{t("accessCollection")}</p>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/membresia")}
+          className="inline-flex items-center gap-2 rounded-full border border-indigo-dark/15 bg-white/80 px-4 py-2 text-sm text-indigo-dark backdrop-blur transition hover:border-indigo-dark/40"
+        >
+          <Crown className="h-4 w-4 text-[#b08d57]" />
+          <span className="font-serif">{planName}</span>
+          {membershipUIStatus === "cancelled_active" && (
+            <span className="text-xs text-slate-500">· {t("cancelledBadge")}</span>
+          )}
+        </button>
+      </div>
 
       {/* Pago pendiente: cargo por no devolucion rechazado por el banco (solo si hay alguno). */}
       <div className="mb-6 empty:hidden">
         <PendingChargeCard />
       </div>
 
-      {/* Mi bolso actual: card con vista condicional Descubre / Colecciona.
-          El propio componente decide si renderizar según la reserva activa. */}
+      {/* Tu bolso ahora: protagonista de la pantalla. Vista condicional Descubre / Colecciona. */}
       {membership && membership.status !== "no_membership" && (
-        <div className="mb-8">
+        <div className="mb-6">
           <MyBagCard />
         </div>
       )}
 
       {/* Proximo bolso: reserva en cola o aviso de que ya se puede elegir (ultimos 7 dias del ciclo). */}
       {membership && membership.status !== "no_membership" && (
-        <div className="mb-8">
+        <div className="mb-6">
           <NextBagCard />
         </div>
       )}
 
       {/* Mis bolsos adquiridos (modo Colecciona completado). Solo renderiza si hay alguno. */}
       {membership && membership.status !== "no_membership" && (
-        <div className="mb-8">
+        <div className="mb-6">
           <OwnedBagsSection />
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/perfil")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardMyProfile")}</CardTitle>
-            <User className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{userName}</div>
-            <p className="text-xs text-slate-600 mt-1">{user?.email}</p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/envio")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardShipping")}</CardTitle>
-            <MapPin className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">
-              {profile?.shipping_address ? t("cardShippingSet") : t("cardShippingNotSet")}
+      {/* Accesos rapidos: una fila compacta (antes 7 tarjetas que repetian el menu). */}
+      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        {tiles.map((tile) => (
+          <button
+            key={tile.href}
+            type="button"
+            onClick={() => router.push(tile.href)}
+            className="group rounded-xl border border-indigo-dark/10 bg-white/80 p-4 text-left backdrop-blur transition hover:border-indigo-dark/30 hover:shadow-sm"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-wide text-slate-500">{tile.label}</span>
+              <tile.icon className="h-4 w-4 text-[#b08d57]" />
             </div>
-            <p className="text-xs text-slate-600 mt-1">{profile?.shipping_city || t("cardShippingAdd")}</p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/membresia")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardMembership")}</CardTitle>
-            <Crown className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            {/* Mostrar el nombre real del plan (L'Essentiel / Signature / Privé / Petite)
-                cuando hay acceso, en lugar de un label genérico "Free" o "Cancelada". */}
-            <div className="text-2xl font-serif font-bold text-indigo-dark">
-              {membership?.type
-                ? membership.type === "essentiel" || membership.type === "lessentiel"
-                  ? "L'Essentiel"
-                  : membership.type === "signature"
-                    ? "Signature"
-                    : membership.type === "prive"
-                      ? "Privé"
-                      : membership.type === "petite"
-                        ? "Petite"
-                        : membershipLabel
-                : membershipLabel}
-            </div>
-            <p className="text-xs text-slate-600 mt-1">
-              {membershipUIStatus === "cancelled_active"
-                ? `${t("cancelledBadge")} · ${membership?.end_date ? new Date(membership.end_date).toLocaleDateString(locale === "en" ? "en-GB" : "es-ES") : ""}`
-                : membershipUIStatus === "active"
-                  ? `${membership?.billing_cycle === "quarterly" ? t("billingQuarterly") : t("billingMonthly")} · ${membershipDescription}`
-                  : membershipDescription}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/reservas")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardReservations")}</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.active ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">{t("cardActiveReservations")}</p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/lista-espera")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardWaitlist")}</CardTitle>
-            <Clock className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.waitlist ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">{t("cardWaitlistBags")}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/wishlist")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardWishlist")}</CardTitle>
-            <Heart className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{reservations?.wishlist ?? 0}</div>
-            <p className="text-xs text-slate-600 mt-1">{t("cardFavorites")}</p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => router.push("/dashboard/gift-cards")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-serif">{t("cardGiftCard")}</CardTitle>
-            <Gift className="h-4 w-4 text-slate-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-indigo-dark">{(gift_cards?.total_balance ?? 0).toFixed(2)}€</div>
-            <p className="text-xs text-slate-600 mt-1">{t("cardGiftCardAvailable")}</p>
-          </CardContent>
-        </Card>
+            <div className="mt-3 truncate text-2xl font-serif text-indigo-dark">{tile.value}</div>
+            <div className="mt-0.5 truncate text-xs text-slate-500">{tile.hint}</div>
+          </button>
+        ))}
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif">{t("quickActions")}</CardTitle>
-            <CardDescription>{t("quickActionsDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              onClick={() => router.push("/catalog")}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-serif"
-            >
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              {t("exploreCatalog")}
-            </Button>
-            {membership?.type !== "prive" && (
-              <Button
-                onClick={() => { window.location.href = "/#membresias" }}
-                className="w-full bg-rose-pastel/50 hover:bg-rose-pastel/70 text-indigo-dark font-serif"
-              >
-                <Crown className="h-4 w-4 mr-2" />
-                {t("upgradePrive")}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      {/* Resumen de suscripcion (solo lectura): el propio componente decide si mostrarse. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-8">
+          <SubscriptionSummaryCard />
+        </div>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif">{t("accountStatus")}</CardTitle>
-            <CardDescription>{t("accountStatusDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">{t("emailVerified")}</span>
-              <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {user?.email_confirmed_at ? t("yes") : t("pending")}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">{t("membershipLabel")}</span>
-              <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {membership?.type
-                  ? `${
-                      membership.type === "essentiel" || membership.type === "lessentiel"
-                        ? "L'Essentiel"
-                        : membership.type === "signature"
-                          ? "Signature"
-                          : membership.type === "prive"
-                            ? "Privé"
-                            : membership.type === "petite"
-                              ? "Petite"
-                              : membershipLabel
-                    }${membershipUIStatus === "cancelled_active" ? ` (${t("cancelledBadge")})` : ""}`
-                  : membershipLabel}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">{t("shippingConfigured")}</span>
-              <Badge variant="secondary" className="bg-rose-pastel/50 text-indigo-dark border-rose-200">
-                {profile?.shipping_address ? t("yes") : "No"}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Dos acciones, sin tarjetas: explorar y, si procede, pasar a Privé. */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <Button
+          onClick={() => router.push("/catalog")}
+          className="bg-indigo-dark font-serif text-white hover:bg-indigo-dark/90"
+        >
+          <ShoppingBag className="mr-2 h-4 w-4" />
+          {t("exploreCatalog")}
+        </Button>
+        {membership?.type !== "prive" && (
+          <Button
+            onClick={() => {
+              window.location.href = "/#membresias"
+            }}
+            className="bg-rose-pastel/50 font-serif text-indigo-dark hover:bg-rose-pastel/70"
+          >
+            <Crown className="mr-2 h-4 w-4" />
+            {t("upgradePrive")}
+          </Button>
+        )}
       </div>
 
       {/* Modal verificacion: solo si profile cargado y identity_verified === false, y usuario hace click en boton del banner */}
