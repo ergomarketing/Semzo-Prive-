@@ -458,23 +458,24 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* Dos acciones, sin tarjetas: explorar y, si procede, pasar a Privé. */}
-      <div className="mb-4 flex flex-wrap gap-3">
+      {/* Dos acciones, unificadas: una principal (explorar) y una secundaria con borde dorado (pasar a Privé). */}
+      <div className="mb-6 flex flex-wrap items-center gap-3 border-t border-indigo-dark/10 pt-6">
         <Button
           onClick={() => router.push("/catalog")}
-          className="bg-indigo-dark font-serif text-white hover:bg-indigo-dark/90"
+          className="h-12 rounded-md bg-indigo-dark px-8 text-xs font-medium uppercase tracking-[0.18em] text-white hover:bg-indigo-dark/90"
         >
-          <ShoppingBag className="mr-2 h-4 w-4" />
+          <ShoppingBag className="mr-3 h-4 w-4 text-[#d9bd8a]" />
           {t("exploreCatalog")}
         </Button>
         {membership?.type !== "prive" && (
           <Button
+            variant="outline"
             onClick={() => {
               window.location.href = "/#membresias"
             }}
-            className="bg-rose-pastel/50 font-serif text-indigo-dark hover:bg-rose-pastel/70"
+            className="h-12 rounded-md border-[#b08d57] bg-transparent px-8 text-xs font-medium uppercase tracking-[0.18em] text-indigo-dark hover:bg-[#b08d57]/10 hover:text-indigo-dark"
           >
-            <Crown className="mr-2 h-4 w-4" />
+            <Crown className="mr-3 h-4 w-4 text-[#b08d57]" />
             {t("upgradePrive")}
           </Button>
         )}
