@@ -1,6 +1,6 @@
 # Semzo Privé
 
-> Semzo Privé es un servicio de alquiler de bolsos de lujo mediante membresía, con sede en Marbella y servicio en Madrid y Marbella (España). Las socias eligen bolsos de diseñador auténticos y verificados, los usan y los devuelven; si se enamoran de uno, el modo Colecciona permite quedárselo descontando lo pagado.
+> Semzo Privé es un servicio de alquiler de bolsos de lujo mediante membresía, con sede en Marbella y servicio en Madrid y en toda la España peninsular. Las socias eligen bolsos de diseñador auténticos y verificados, los usan y los devuelven; si se enamoran de uno, el modo Colecciona permite quedárselo descontando lo pagado.
 
 Semzo Privé trabaja con casas como Chanel, Gucci, Louis Vuitton, Prada, Fendi, Saint Laurent, Furla, Marni, Karl Lagerfeld y Patou. El envío y la devolución son gratuitos y cada bolso incluye seguro. La entrega suele hacerse en 24-48 horas. Los precios indicados son los vigentes y pueden cambiar: la fuente de verdad es la página de membresías.
 
@@ -36,7 +36,7 @@ Hay dos formas de usar la membresía: **Descubre** (rotar de bolso dentro de los
 ## Contacto
 
 - Web: https://semzoprive.com
-- Correo: mailbox@semzoprive.com
+- Correo: info@semzoprive.com
 - Instagram: https://instagram.com/semzoprive
 
 ## Optional
