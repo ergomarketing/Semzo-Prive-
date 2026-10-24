@@ -26,10 +26,11 @@ export default function VerifiedReviewsSection({ reviews }: { reviews: PublicRev
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {reviews.slice(0, 6).map((review) => (
             <article key={review.id} className="bg-rose-nude/10 rounded-lg p-6 border border-rose-pastel/30">
-              <div className="flex items-center gap-1 mb-3" aria-label={`Puntuación ${review.rating} de 10`}>
+              <div className="flex items-center gap-1 mb-3" role="img" aria-label={`Puntuación ${review.rating} de 10`}>
                 {Array.from({ length: 10 }, (_, i) => (
                   <span
                     key={i}
+                    aria-hidden="true"
                     className={`h-1.5 w-3 rounded-full ${i < review.rating ? "bg-indigo-dark" : "bg-slate-200"}`}
                   />
                 ))}
