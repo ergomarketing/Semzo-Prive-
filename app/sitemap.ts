@@ -97,6 +97,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // silencioso - no bloquear el sitemap si el blog falla
   }
 
+  // Secciones del blog (una URL indexable por seccion)
+  const { BLOG_CATEGORIES } = await import("@/lib/blog-categories")
+  for (const c of BLOG_CATEGORIES) {
+    blogUrls.push({
+      url: `${baseUrl}/blog/seccion/${c.slug}`,
+      lastModified: STATIC_PAGES_LASTMOD,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })
+  }
+
   // Bolsos del catalogo (con updated_at real, prioridad diferenciada, imagenes para Google Images)
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_NEXT_PUBLIC_SUPABASE_URL

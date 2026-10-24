@@ -9,6 +9,7 @@ export interface BlogPost {
   image_url?: string
   content: string
   published?: boolean
+  category?: string | null
 }
 
 // Default posts when no posts exist in blob storage

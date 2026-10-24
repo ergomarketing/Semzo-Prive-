@@ -9,6 +9,7 @@ export interface BlogPost {
   excerpt: string
   image_url?: string
   author: string
+  category?: string | null
   published: boolean
   created_at?: string
   updated_at?: string

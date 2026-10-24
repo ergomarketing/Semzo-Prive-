@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
+import { getBlogCategory } from "@/lib/blog-categories"
 
 function ShareMenu({ title, slug, imageUrl, excerpt }: { title: string; slug: string; imageUrl?: string; excerpt?: string }) {
   const t = useTranslations("blog")
@@ -254,6 +255,7 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
+  const category = getBlogCategory(post.category)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -299,7 +301,13 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
                   {t("backToBlog")}
                 </Button>
               </Link>
-              <Badge className="bg-rose-pastel text-indigo-dark mb-4">{t("badge")}</Badge>
+              {category ? (
+                <Link href={`/blog/seccion/${category.slug}`} className="inline-block mb-4">
+                  <Badge className="bg-rose-pastel text-indigo-dark hover:bg-rose-pastel/80">{category.label}</Badge>
+                </Link>
+              ) : (
+                <Badge className="bg-rose-pastel text-indigo-dark mb-4">{t("badge")}</Badge>
+              )}
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif text-white mb-4">{post.title}</h1>
               <div className="flex flex-wrap items-center gap-4 text-white/80">
                 <span className="flex items-center gap-2">
