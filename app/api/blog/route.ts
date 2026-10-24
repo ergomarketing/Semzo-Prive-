@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, slug, content, excerpt, image_url, author, published } = body
+    const { title, slug, content, excerpt, image_url, author, published, category } = body
 
     if (!title || !slug || !content) {
       return NextResponse.json({ error: "title, slug y content son obligatorios" }, { status: 400 })
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       excerpt: excerpt || content.substring(0, 150),
       image_url: image_url || "",
       author: author || "Semzo Privé",
+      category: category || null,
       published: published ?? false,
     })
 

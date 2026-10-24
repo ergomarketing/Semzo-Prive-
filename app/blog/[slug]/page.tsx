@@ -21,6 +21,7 @@ interface BlogPost {
   image_url?: string
   content: string
   published?: boolean
+  category?: string | null
 }
 
 async function getPost(slug: string): Promise<BlogPost | null> {

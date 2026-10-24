@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Upload, FileText, Trash2, ExternalLink, Plus, Loader2, Pencil } from "lucide-react"
 import Link from "next/link"
 import { publicBlogSlug } from "@/lib/blog-slug-map"
+import { BLOG_CATEGORIES } from "@/lib/blog-categories"
 import { ImageUploader } from "@/app/components/image-uploader"
 
 interface BlogPost {
@@ -25,6 +26,7 @@ interface BlogPost {
   image_url?: string
   content?: string
   published?: boolean
+  category?: string | null
 }
 
 export default function AdminBlogPage() {
@@ -41,6 +43,7 @@ export default function AdminBlogPage() {
     slug: "",
     excerpt: "",
     author: "Semzo Privé",
+    category: "",
     content: "",
     image: "",
   })
@@ -95,6 +98,7 @@ export default function AdminBlogPage() {
           excerpt: editingPost.excerpt,
           image_url: editingPost.image_url,
           author: editingPost.author,
+          category: editingPost.category || null,
           published: editingPost.published,
           created_at: editingPost.created_at,
         }),
@@ -170,6 +174,7 @@ export default function AdminBlogPage() {
           slug: newPost.slug,
           excerpt: newPost.excerpt,
           author: newPost.author,
+          category: newPost.category || null,
           content: newPost.content,
           image_url: newPost.image,
           published: true,
@@ -178,7 +183,7 @@ export default function AdminBlogPage() {
 
       if (response.ok) {
         alert("Artículo creado correctamente")
-        setNewPost({ title: "", slug: "", excerpt: "", author: "Semzo Privé", content: "", image: "" })
+        setNewPost({ title: "", slug: "", excerpt: "", author: "Semzo Privé", category: "", content: "", image: "" })
         fetchPosts()
       } else {
         const error = await response.json()
@@ -272,7 +277,7 @@ export default function AdminBlogPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-author">Autor</Label>
                   <Input
@@ -280,6 +285,20 @@ export default function AdminBlogPage() {
                     value={editingPost.author}
                     onChange={(e) => setEditingPost({ ...editingPost, author: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Sección</Label>
+                  <select
+                    id="edit-category"
+                    value={editingPost.category || ""}
+                    onChange={(e) => setEditingPost({ ...editingPost, category: e.target.value })}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="">Sin sección</option>
+                    {BLOG_CATEGORIES.map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-date">Fecha de publicación</Label>
@@ -486,6 +505,20 @@ export default function AdminBlogPage() {
                       onChange={(e) => setNewPost({ ...newPost, author: e.target.value })}
                       placeholder="Nombre del autor"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-category">Sección</Label>
+                    <select
+                      id="new-category"
+                      value={newPost.category}
+                      onChange={(e) => setNewPost({ ...newPost, category: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="">Sin sección</option>
+                      {BLOG_CATEGORIES.map((c) => (
+                        <option key={c.slug} value={c.slug}>{c.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="excerpt">Resumen</Label>
