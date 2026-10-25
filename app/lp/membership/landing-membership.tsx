@@ -208,7 +208,7 @@ export default function LandingMembership() {
               Your first month at <span className="italic">50% off</span> with code PRIVE50
             </p>
             <p className="mb-4 text-sm text-indigo-dark/70">
-              No empty promises. It&apos;s yours from today. New members only. Valid this week.
+              No empty promises. It&apos;s yours from today. New members only. Applies to your first sign-up.
             </p>
             <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
               <span className="flex-1 border border-dashed border-indigo-dark/40 bg-rose-nude px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">

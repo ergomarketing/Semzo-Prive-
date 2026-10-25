@@ -213,7 +213,7 @@ export default function LandingMembresia() {
               Tu primera mensualidad al <span className="italic">50%</span> con el código PRIVE50
             </p>
             <p className="mb-4 text-sm text-indigo-dark/70">
-              No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Válido esta semana.
+              No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Aplica para tu primer registro.
             </p>
             <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
               <span className="flex-1 border border-dashed border-indigo-dark/40 bg-rose-nude px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">
