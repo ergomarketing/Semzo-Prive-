@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "Alquila bolsos de lujo Chanel, Dior y Louis Vuitton en Madrid y Marbella. Membresía exclusiva desde 59€/mes. Bolsos para invitadas, eventos y ocasiones especiales. Envío 24-48h.",
+    "Alquila bolsos de lujo Chanel, Dior y Louis Vuitton con envío a toda la España peninsular. Membresía exclusiva desde 59€/mes. Bolsos para invitadas, eventos y ocasiones especiales.",
 
   keywords: [
     "alquiler bolsos lujo",
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
     siteName: "Semzo Privé",
     title: "Alquiler de Bolsos de Lujo | Chanel, Dior, Louis Vuitton | Semzo Privé",
     description:
-      "Alquila bolsos de lujo Chanel, Dior y Louis Vuitton en Madrid y Marbella. Membresía exclusiva desde 59€/mes.",
+      "Alquila bolsos de lujo Chanel, Dior y Louis Vuitton con envío a toda la España peninsular. Membresía exclusiva desde 59€/mes.",
     images: [
       {
         url: "https://semzoprive.com/images/hero-luxury-bags.jpeg",
@@ -108,7 +108,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Alquiler de Bolsos de Lujo | Chanel, Dior, Louis Vuitton | Semzo Privé",
     description:
-      "Alquila bolsos de lujo en Madrid y Marbella. Membresía desde 59€/mes. Envío 24-48h.",
+      "Alquila bolsos de lujo con envío a toda la España peninsular. Membresía desde 59€/mes.",
     images: ["https://semzoprive.com/images/hero-luxury-bags.jpeg"],
   },
 
