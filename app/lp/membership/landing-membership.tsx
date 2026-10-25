@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
 import { useLocale } from "@/providers/IntlProvider"
+import LpHeader from "../lp-header"
 
 const DISCOUNT_CODE = "PRIVE50"
 
@@ -113,9 +114,7 @@ export default function LandingMembership() {
 
   return (
     <main className="min-h-screen bg-rose-nude font-serif text-indigo-dark">
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:px-10">
-        <span className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">SEMZO PRIVE</span>
-      </header>
+      <LpHeader />
 
       <section className="w-full bg-indigo-dark">
         <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>

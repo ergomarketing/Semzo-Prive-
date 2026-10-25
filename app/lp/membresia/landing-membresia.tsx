@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
+import LpHeader from "../lp-header"
 
 const CODIGO_DESCUENTO = "PRIVE50"
 
@@ -110,9 +111,7 @@ export default function LandingMembresia() {
       {/* Header minimo: solo el logo, sin links ni navegacion.
           Pagina de conversion para Google Ads — cero distracciones que saquen
           a la visitante del embudo antes del CTA. */}
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:justify-start md:px-14 lg:px-20">
-        <span className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">SEMZO PRIVE</span>
-      </header>
+      <LpHeader />
 
       {/* HERO: una sola pantalla. En movil la foto va de fondo con el texto abajo;
           en escritorio, texto a la izquierda y foto a la derecha, de modo que el

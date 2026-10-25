@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
+import LpHeader from "../lp-header"
 
 const CODIGO_DESCUENTO = "PRIVE50"
 const UTM = "utm_source=google&utm_medium=cpc&utm_campaign=lp_madrid"
@@ -111,9 +112,7 @@ export default function LandingMadrid() {
       {/* Header minimo: solo el logo, sin links ni navegacion.
           Pagina de conversion para Google Ads — cero distracciones que saquen
           a la visitante del embudo antes del CTA. */}
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:px-10">
-        <span className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">SEMZO PRIVE</span>
-      </header>
+      <LpHeader />
 
       {/* HERO: la imagen original es 1199x1473px (retrato).
           Se muestra con su aspect-ratio nativo — sin recortar, sin desenfoque.
