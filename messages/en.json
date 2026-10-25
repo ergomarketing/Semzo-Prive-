@@ -1264,7 +1264,8 @@
     "subtitle": "Discover the latest trends, style tips and the stories behind the world's most iconic bags.",
     "loading": "Loading articles...",
     "emptyTitle": "No articles published yet.",
-    "emptyHint": "Publish your first article from the admin panel."
+    "emptyHint": "Publish your first article from the admin panel.",
+    "viewAll": "View the whole blog"
   },
   "marqueeBanner": {
     "text": "Luxury bag rental by membership"
@@ -1280,19 +1281,6 @@
     "exploreButton": "Explore bags",
     "featuredBrands": "Featured brands",
     "viewCatalog": "View full catalogue"
-  },
-  "testimonialSection": {
-    "eyebrow": "Testimonials",
-    "title": "What our clients say",
-    "t1quote": "Semzo Privé has transformed my relationship with luxury fashion. I can now access bags I could previously only admire in magazines.",
-    "t1author": "María González",
-    "t1role": "Entrepreneur",
-    "t2quote": "The quality of service is impeccable. From selection to delivery, every detail reflects a commitment to excellence.",
-    "t2author": "Carmen Ruiz",
-    "t2role": "Creative Director",
-    "t3quote": "What I value most is the flexibility. I can change my bag according to the season or my mood, without committing to a permanent purchase.",
-    "t3author": "Laura Martínez",
-    "t3role": "Architect"
   },
   "pricing": {
     "title": "Our Memberships",
