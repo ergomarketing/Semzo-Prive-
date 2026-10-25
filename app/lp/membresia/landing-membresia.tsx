@@ -128,7 +128,7 @@ export default function LandingMembresia() {
           En movil ocupa todo el ancho; en escritorio el texto se coloca dentro de
           la primera pantalla (sobre la foto) para que titular y boton se vean sin hacer scroll. */}
       <section className="w-full bg-indigo-dark">
-        <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
+        <div className="relative mx-auto w-full min-h-[calc(100vw*1473/1199)] md:min-h-0 md:aspect-[1199/1473]">
           <Image
             src="/images/hermes-prive.jpeg"
             alt="Mujer sujetando un bolso de piel burdeos con herrajes dorados"
@@ -140,11 +140,11 @@ export default function LandingMembresia() {
           {/* Velo neutro y plano para legibilidad del texto */}
           <div className="absolute inset-0 bg-black/35" />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:bottom-auto md:top-[max(8rem,20svh)] md:px-14 md:pb-0 lg:px-20">
+          <div className="relative z-10 flex min-h-[inherit] flex-col justify-end px-6 pb-10 pt-24 md:absolute md:inset-x-0 md:bottom-auto md:top-[max(8rem,20svh)] md:block md:min-h-0 md:px-14 md:pb-0 md:pt-0 lg:px-20">
             <div className="text-white md:max-w-3xl">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">MEMBRESÍA DE BOLSOS DE LUJO</p>
 
-              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
+              <h1 className="mb-5 text-balance font-serif text-4xl leading-[0.95] tracking-tight md:text-6xl">
                 El armario de lujo que siempre quisiste.
                 <br />
                 <span className="italic text-rose-pastel">Sin comprarlo.</span>

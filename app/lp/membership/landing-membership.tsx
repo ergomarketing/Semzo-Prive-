@@ -130,7 +130,7 @@ export default function LandingMembership() {
       {/* HERO: whole photo (1199x1473), never cropped or split. On desktop the text sits inside
           the first screen, over the photo, so headline and button are visible without scrolling. */}
       <section className="w-full bg-indigo-dark">
-        <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
+        <div className="relative mx-auto w-full min-h-[calc(100vw*1473/1199)] md:min-h-0 md:aspect-[1199/1473]">
           <Image
             src="/images/hermes-prive.jpeg"
             alt="Woman holding a burgundy leather handbag with gold hardware"
@@ -141,13 +141,13 @@ export default function LandingMembership() {
           />
           <div className="absolute inset-0 bg-black/35" />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:bottom-auto md:top-[max(8rem,20svh)] md:px-14 md:pb-0 lg:px-20">
+          <div className="relative z-10 flex min-h-[inherit] flex-col justify-end px-6 pb-10 pt-24 md:absolute md:inset-x-0 md:bottom-auto md:top-[max(8rem,20svh)] md:block md:min-h-0 md:px-14 md:pb-0 md:pt-0 lg:px-20">
             <div className="text-white md:max-w-3xl">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 LUXURY HANDBAG MEMBERSHIP
               </p>
 
-              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
+              <h1 className="mb-5 text-balance font-serif text-4xl leading-[0.95] tracking-tight md:text-6xl">
                 The luxury wardrobe you always wanted.
                 <br />
                 <span className="italic text-rose-pastel">Without buying it.</span>
