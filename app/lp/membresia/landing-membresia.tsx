@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
 import LpHeader from "../lp-header"
+import LpFaq from "../lp-faq"
+import { commonFaqs } from "../faq-content"
 
 const CODIGO_DESCUENTO = "PRIVE50"
 
@@ -46,22 +48,22 @@ const memberships = [
   },
   {
     id: "prive",
-    name: "Prive",
+    name: "Privé",
     price: "279€",
     period: "/mes",
-    tagline: "Coleccion exclusiva",
+    tagline: "Colección exclusiva",
     image: "/images/membership-prive.jpg",
     href: "/signup?plan=prive&utm_source=google&utm_medium=cpc&utm_campaign=lp_membresia",
     highlight: false,
   },
 ]
 
-const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opcion de adquisicion"]
+const trustItems = ["100% auténticos", "Cambio flexible", "Envío gratuito", "Opción de adquisición"]
 
 const steps = [
   { n: "1", title: "Elige tu plan", text: "Sin permanencia. Sin letra pequeña. Cancela cuando quieras." },
   { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta." },
-  { n: "3", title: "Cambia o quédate con él", text: "Cuando sientas que quieres otro, lo cambiamos. Si te enamoras, es tuyo." },
+  { n: "3", title: "Cambia o quédate con él", text: "Cuando sientas que quieres otro, lo cambiamos. Si te enamoras, tus cuotas suman hacia su compra." },
 ]
 
 const testimonials = [
@@ -91,6 +93,21 @@ export default function LandingMembresia() {
 
   useEffect(() => {
     trackEvent("view_landing_lp_membresia")
+
+    // Embudo: la visitante llega a la seccion de planes
+    const plans = document.getElementById("membresias")
+    if (!plans || !("IntersectionObserver" in window)) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          trackEvent("view_membership_plans")
+          io.disconnect()
+        }
+      },
+      { threshold: 0.2 },
+    )
+    io.observe(plans)
+    return () => io.disconnect()
   }, [])
 
   const handleCopyCode = () => {
@@ -134,8 +151,8 @@ export default function LandingMembresia() {
               </h1>
 
               <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
-                enamoras.
+                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes, sin permanencia. Bolsos originales verificados. Cambia
+                cuando quieras y, si te enamoras, tus cuotas suman hacia la compra.
               </p>
 
               <a
@@ -237,7 +254,7 @@ export default function LandingMembresia() {
                 <div className="relative aspect-[4/5] overflow-hidden bg-rose-nude">
                   <Image
                     src={m.image || "/placeholder.svg"}
-                    alt={`Membresia ${m.name}`}
+                    alt={`Bolso de la membresía ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover object-center transition duration-700 group-hover:scale-105"
@@ -274,6 +291,8 @@ export default function LandingMembresia() {
           </div>
         </div>
       </section>
+
+      <LpFaq items={commonFaqs} />
 
       {/* CTA FINAL con 3 testimonios integrados */}
       <section className="relative overflow-hidden bg-indigo-dark py-16 text-white md:py-20">
