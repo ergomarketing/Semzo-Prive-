@@ -9,7 +9,7 @@ export const revalidate = 0
 // "%s | Semzo Privé" del layout (mismo patron que /, /proceso, /blog, /catalog).
 const TITLE = "Alquiler de Bolsos de Lujo en Madrid | Chanel, Dior, Louis Vuitton | SEMZO PRIVÉ"
 const DESCRIPTION =
-  "Alquila bolsos Chanel, Louis Vuitton, Dior y Loewe en Madrid desde 59€/mes. Entrega en 24h. Sin permanencia. El club privado de bolsos de diseñador."
+  "Alquila bolsos Chanel, Louis Vuitton, Dior y Loewe en Madrid desde 59€/mes. Sin permanencia. El club privado de bolsos de diseñador."
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

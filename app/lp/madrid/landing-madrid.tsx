@@ -62,17 +62,11 @@ const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opc
 
 const steps = [
   { n: "1", title: "Elige tu plan", text: "Sin permanencia. Sin letra pequeña. Cancela cuando quieras." },
-  { n: "2", title: "Entrega en Madrid en 24h", text: "Autenticado, preparado y en tu puerta al día siguiente." },
+  { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta." },
   { n: "3", title: "Cambia o quédate con él", text: "Cuando quieras otro, lo cambiamos. Si te enamoras, es tuyo." },
 ]
 
 const testimonials = [
-  {
-    quote:
-      "Lo pedí un jueves por la noche y el viernes lo tenía en casa antes de comer. Para una cena en Coque esa misma noche. Perfecto.",
-    author: "Lucía M., Salamanca",
-    detail: "Socia desde enero 2026",
-  },
   {
     quote:
       "Trabajo en banca y necesito ir impecable cada día. SEMZO PRIVÉ me permite cambiar de bolso cada mes sin arruinarme.",
@@ -144,8 +138,8 @@ export default function LandingMadrid() {
               </h1>
 
               <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Entrega en Madrid en 24 horas. Cambia
-                cuando quieras.
+                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando
+                quieras.
               </p>
 
               <a
@@ -179,7 +173,7 @@ export default function LandingMadrid() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              De tu barrio a tu primer bolso de lujo en <span className="italic">24 horas</span>.
+              De tu barrio a tu primer bolso de lujo.
             </h2>
           </div>
 
@@ -308,7 +302,7 @@ export default function LandingMadrid() {
         <div className="absolute inset-0 bg-indigo-dark/60" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 text-center md:px-10">
-          <div className="mb-10 grid gap-8 md:mb-12 md:grid-cols-3 md:gap-8">
+          <div className="mx-auto mb-10 grid max-w-4xl gap-8 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
                 <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
@@ -327,7 +321,7 @@ export default function LandingMadrid() {
             Madrid sabe que el lujo no se compra. <span className="italic">Se vive.</span>
           </h2>
           <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-white/80 md:text-base">
-            Sin permanencia. Sin riesgo. Entrega en 24h en toda la Comunidad de Madrid.
+            Sin permanencia. Sin riesgo.
           </p>
 
           <a

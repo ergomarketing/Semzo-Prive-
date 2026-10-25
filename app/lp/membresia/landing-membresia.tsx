@@ -60,7 +60,7 @@ const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opc
 
 const steps = [
   { n: "1", title: "Elige tu plan", text: "Sin permanencia. Sin letra pequeña. Cancela cuando quieras." },
-  { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta en 24-48 horas." },
+  { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta." },
   { n: "3", title: "Cambia o quédate con él", text: "Cuando sientas que quieres otro, lo cambiamos. Si te enamoras, es tuyo." },
 ]
 
@@ -70,12 +70,6 @@ const testimonials = [
       "Llevaba años queriendo un Chanel y nunca me decidía por el precio. Con SEMZO PRIVÉ lo llevé a una boda en junio y a una cena de trabajo en julio. Sin gastarlo todo de golpe.",
     author: "Lucía M., Madrid",
     detail: "Socia desde enero 2026",
-  },
-  {
-    quote:
-      "Lo que más me sorprendió fue la calidad del embalaje y lo rápido que llegó. En menos de 24 horas tenía mi Dior en casa. Lo repetí tres veces en dos meses.",
-    author: "Ana P., Barcelona",
-    detail: "Plan Signature",
   },
   {
     quote:
@@ -113,46 +107,46 @@ export default function LandingMembresia() {
           a la visitante del embudo antes del CTA. */}
       <LpHeader />
 
-      {/* HERO: una sola pantalla. En movil la foto va de fondo con el texto abajo;
-          en escritorio, texto a la izquierda y foto a la derecha, de modo que el
-          titular y el boton se ven sin hacer scroll. */}
-      <section className="relative w-full bg-indigo-dark md:grid md:grid-cols-2">
-        <div className="absolute inset-0 md:relative md:order-2 md:min-h-[min(100svh,860px)]">
+      {/* HERO: la foto entera (1199x1473, retrato), sin recortar ni partir en dos.
+          En movil ocupa todo el ancho; en escritorio el texto se coloca dentro de
+          la primera pantalla (sobre la foto) para que titular y boton se vean sin hacer scroll. */}
+      <section className="w-full bg-indigo-dark">
+        <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
           <Image
             src="/images/hermes-prive.jpeg"
-            alt="Editorial Semzo Prive - bolso Hermes burgundy"
+            alt="Mujer sujetando un bolso de piel burdeos con herrajes dorados"
             fill
             priority
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="100vw"
             className="object-cover object-top"
           />
-          {/* Velo para legibilidad del texto (solo cuando el texto va sobre la foto) */}
-          <div className="absolute inset-0 bg-black/45 md:hidden" />
-        </div>
+          {/* Velo neutro y plano para legibilidad del texto */}
+          <div className="absolute inset-0 bg-black/35" />
 
-        <div className="relative z-10 flex min-h-[100svh] flex-col justify-end px-6 pb-10 pt-28 md:order-1 md:min-h-[min(100svh,860px)] md:justify-center md:px-14 md:pb-0 md:pt-24 lg:px-20">
-          <div className="text-white">
-            <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">MEMBRESIA DE BOLSOS DE LUJO</p>
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:bottom-auto md:top-[max(8rem,20svh)] md:px-14 md:pb-0 lg:px-20">
+            <div className="text-white md:max-w-3xl">
+              <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">MEMBRESÍA DE BOLSOS DE LUJO</p>
 
-            <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
-              El armario de lujo que siempre quisiste.
-              <br />
-              <span className="italic text-rose-pastel">Sin comprarlo.</span>
-            </h1>
+              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
+                El armario de lujo que siempre quisiste.
+                <br />
+                <span className="italic text-rose-pastel">Sin comprarlo.</span>
+              </h1>
 
-            <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-              Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
-              enamoras.
-            </p>
+              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
+                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
+                enamoras.
+              </p>
 
-            <a
-              href="#membresias"
-              onClick={() => trackEvent("cta_hero_click")}
-              className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
-            >
-              ELEGIR MI MEMBRESÍA
-              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-            </a>
+              <a
+                href="#membresias"
+                onClick={() => trackEvent("cta_hero_click")}
+                className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
+              >
+                ELEGIR MI MEMBRESÍA
+                <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -175,7 +169,7 @@ export default function LandingMembresia() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              De la duda a tu primer bolso en <span className="italic">48 horas</span>.
+              De la duda a tu primer bolso de lujo.
             </h2>
           </div>
 
@@ -289,7 +283,7 @@ export default function LandingMembresia() {
         <div className="absolute inset-0 bg-indigo-dark/60" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 text-center md:px-10">
-          <div className="mb-10 grid gap-8 md:mb-12 md:grid-cols-3 md:gap-8">
+          <div className="mx-auto mb-10 grid max-w-4xl gap-8 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
                 <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
