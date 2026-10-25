@@ -148,7 +148,7 @@ export default function LandingMadrid() {
                 MEMBRESÍA DE BOLSOS DE LUJO
               </p>
 
-              <h1 className="mb-5 text-balance font-serif text-4xl leading-[0.95] tracking-tight md:text-6xl">
+              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
                 Madrid tiene un nuevo armario de lujo.
                 <br />
                 <span className="italic text-rose-pastel">El tuyo.</span>
@@ -190,7 +190,7 @@ export default function LandingMadrid() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              De tu barrio a tu primer bolso de lujo.
+              Tu primer bolso de lujo, en tres pasos.
             </h2>
           </div>
 
