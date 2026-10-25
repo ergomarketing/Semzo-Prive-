@@ -130,20 +130,20 @@ export default function LandingMadrid() {
           En mobile ocupa el 100% del ancho. En desktop se limita a 700px centrado
           para que quepa en pantalla completa mostrando modelo+bolso+jeans. */}
       <section className="w-full bg-indigo-dark">
-        <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
+        <div className="relative mx-auto w-full min-h-[calc(100vw*1473/1199)] md:min-h-0 md:aspect-[1199/1473]">
           <Image
             src="/images/hermes-prive.jpeg"
             alt="Mujer sujetando un bolso de piel burdeos con herrajes dorados"
             fill
             priority
-            sizes="(max-width: 768px) 100vw, 700px"
-            className="object-cover object-top md:object-contain md:object-top"
+            sizes="100vw"
+            className="object-cover object-top"
           />
           {/* Overlay para legibilidad del texto */}
           <div className="absolute inset-0 bg-black/35" />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
-            <div className="text-white">
+          <div className="relative z-10 flex min-h-[inherit] flex-col justify-end px-6 pb-10 pt-24 md:absolute md:inset-x-0 md:bottom-auto md:top-[max(8rem,20svh)] md:block md:min-h-0 md:px-14 md:pb-0 md:pt-0 lg:px-20">
+            <div className="text-white md:max-w-3xl">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 MEMBRESÍA DE BOLSOS DE LUJO
               </p>
@@ -190,7 +190,7 @@ export default function LandingMadrid() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              De tu barrio a tu primer bolso de lujo.
+              Tu primer bolso de lujo, en tres pasos.
             </h2>
           </div>
 
