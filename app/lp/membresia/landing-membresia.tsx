@@ -110,55 +110,50 @@ export default function LandingMembresia() {
       {/* Header minimo: solo el logo, sin links ni navegacion.
           Pagina de conversion para Google Ads — cero distracciones que saquen
           a la visitante del embudo antes del CTA. */}
-      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:px-10">
+      <header className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-6 py-5 md:justify-start md:px-14 lg:px-20">
         <span className="font-serif text-base tracking-[0.3em] text-white drop-shadow-md">SEMZO PRIVE</span>
       </header>
 
-      {/* HERO - imagen a ancho completo (object-cover), sin desenfoque.
-          El punto focal 50% 35% mantiene visible modelo + bolso al recortar en pantallas anchas. */}
-      {/* HERO: la imagen original es 1199x1473px (retrato).
-          Se muestra con su aspect-ratio nativo — sin recortar, sin desenfoque.
-          En mobile ocupa el 100% del ancho. En desktop se limita a 700px centrado
-          para que quepa en pantalla completa mostrando modelo+bolso+jeans. */}
-      <section className="w-full bg-indigo-dark">
-        <div className="relative mx-auto w-full" style={{aspectRatio: "1199/1473"}}>
+      {/* HERO: una sola pantalla. En movil la foto va de fondo con el texto abajo;
+          en escritorio, texto a la izquierda y foto a la derecha, de modo que el
+          titular y el boton se ven sin hacer scroll. */}
+      <section className="relative w-full bg-indigo-dark md:grid md:grid-cols-2">
+        <div className="absolute inset-0 md:relative md:order-2 md:min-h-[min(100svh,860px)]">
           <Image
             src="/images/hermes-prive.jpeg"
             alt="Editorial Semzo Prive - bolso Hermes burgundy"
             fill
             priority
-            sizes="(max-width: 768px) 100vw, 700px"
-            className="object-cover object-top md:object-contain md:object-top"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover object-top"
           />
-          {/* Overlay para legibilidad del texto */}
-          <div className="absolute inset-0 bg-black/35" />
+          {/* Velo para legibilidad del texto (solo cuando el texto va sobre la foto) */}
+          <div className="absolute inset-0 bg-black/45 md:hidden" />
+        </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
-            <div className="text-white">
-              <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
-                MEMBRESIA DE BOLSOS DE LUJO
-              </p>
+        <div className="relative z-10 flex min-h-[100svh] flex-col justify-end px-6 pb-10 pt-28 md:order-1 md:min-h-[min(100svh,860px)] md:justify-center md:px-14 md:pb-0 md:pt-24 lg:px-20">
+          <div className="text-white">
+            <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">MEMBRESIA DE BOLSOS DE LUJO</p>
 
-              <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
-                El armario de lujo que siempre quisiste.
-                <br />
-                <span className="italic text-rose-pastel">Sin comprarlo.</span>
-              </h1>
+            <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
+              El armario de lujo que siempre quisiste.
+              <br />
+              <span className="italic text-rose-pastel">Sin comprarlo.</span>
+            </h1>
 
-              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
-                enamoras.
-              </p>
+            <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
+              Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Cambia cuando quieras. Hazlos tuyos si te
+              enamoras.
+            </p>
 
-              <a
-                href="#membresias"
-                onClick={() => trackEvent("cta_hero_click")}
-                className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
-              >
-                ELEGIR MI MEMBRESÍA
-                <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-              </a>
-            </div>
+            <a
+              href="#membresias"
+              onClick={() => trackEvent("cta_hero_click")}
+              className="group inline-flex items-center gap-2 bg-white px-10 py-4 text-xs tracking-[0.3em] text-indigo-dark transition hover:bg-rose-pastel"
+            >
+              ELEGIR MI MEMBRESÍA
+              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+            </a>
           </div>
         </div>
       </section>
@@ -205,7 +200,7 @@ export default function LandingMembresia() {
           <div className="mb-8 text-center md:mb-12">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">CUATRO NIVELES</p>
             <h2 className="text-balance font-serif text-3xl leading-tight md:text-5xl">
-              Elige tu <span className="italic">membresia</span>.
+              Elige tu <span className="italic">membresía</span>.
             </h2>
           </div>
 
