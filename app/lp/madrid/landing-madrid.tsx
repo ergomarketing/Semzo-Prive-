@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
 import LpHeader from "../lp-header"
+import LpFaq from "../lp-faq"
+import { madridFaqs } from "../faq-content"
 
 const CODIGO_DESCUENTO = "PRIVE50"
 const UTM = "utm_source=google&utm_medium=cpc&utm_campaign=lp_madrid"
@@ -48,31 +50,25 @@ const memberships = [
   },
   {
     id: "prive",
-    name: "Prive",
+    name: "Privé",
     price: "279€",
     period: "/mes",
-    tagline: "Coleccion exclusiva",
+    tagline: "Colección exclusiva",
     image: "/images/membership-prive.jpg",
     href: `/signup?plan=prive&${UTM}`,
     highlight: false,
   },
 ]
 
-const trustItems = ["100% autenticos", "Cambio flexible", "Envio gratuito", "Opcion de adquisicion"]
+const trustItems = ["100% auténticos", "Cambio flexible", "Envío gratuito", "Opción de adquisición"]
 
 const steps = [
   { n: "1", title: "Elige tu plan", text: "Sin permanencia. Sin letra pequeña. Cancela cuando quieras." },
-  { n: "2", title: "Entrega en Madrid en 24h", text: "Autenticado, preparado y en tu puerta al día siguiente." },
-  { n: "3", title: "Cambia o quédate con él", text: "Cuando quieras otro, lo cambiamos. Si te enamoras, es tuyo." },
+  { n: "2", title: "Recibe tu bolso", text: "Autenticado, preparado y en tu puerta." },
+  { n: "3", title: "Cambia o quédate con él", text: "Cuando quieras otro, lo cambiamos. Si te enamoras, tus cuotas suman hacia su compra." },
 ]
 
 const testimonials = [
-  {
-    quote:
-      "Lo pedí un jueves por la noche y el viernes lo tenía en casa antes de comer. Para una cena en Coque esa misma noche. Perfecto.",
-    author: "Lucía M., Salamanca",
-    detail: "Socia desde enero 2026",
-  },
   {
     quote:
       "Trabajo en banca y necesito ir impecable cada día. SEMZO PRIVÉ me permite cambiar de bolso cada mes sin arruinarme.",
@@ -98,6 +94,21 @@ export default function LandingMadrid() {
 
   useEffect(() => {
     trackEvent("view_landing_lp_madrid")
+
+    // Embudo: la visitante llega a la seccion de planes
+    const plans = document.getElementById("membresias")
+    if (!plans || !("IntersectionObserver" in window)) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          trackEvent("view_membership_plans")
+          io.disconnect()
+        }
+      },
+      { threshold: 0.2 },
+    )
+    io.observe(plans)
+    return () => io.disconnect()
   }, [])
 
   const handleCopyCode = () => {
@@ -122,7 +133,7 @@ export default function LandingMadrid() {
         <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
           <Image
             src="/images/hermes-prive.jpeg"
-            alt="Editorial Semzo Prive - bolso Hermes burgundy"
+            alt="Mujer sujetando un bolso de piel burdeos con herrajes dorados"
             fill
             priority
             sizes="(max-width: 768px) 100vw, 700px"
@@ -134,7 +145,7 @@ export default function LandingMadrid() {
           <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
             <div className="text-white">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
-                MEMBRESIA DE BOLSOS DE LUJO
+                MEMBRESÍA DE BOLSOS DE LUJO
               </p>
 
               <h1 className="mb-5 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl">
@@ -144,8 +155,8 @@ export default function LandingMadrid() {
               </h1>
 
               <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Accede a Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes. Entrega en Madrid en 24 horas. Cambia
-                cuando quieras.
+                Alquiler de bolsos de lujo en Madrid: Chanel, Louis Vuitton, Dior y Loewe desde 59€/mes, sin permanencia. Cambia
+                cuando quieras y, si te enamoras, tus cuotas suman hacia la compra.
               </p>
 
               <a
@@ -179,7 +190,7 @@ export default function LandingMadrid() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">EL PROCESO</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              De tu barrio a tu primer bolso de lujo en <span className="italic">24 horas</span>.
+              De tu barrio a tu primer bolso de lujo.
             </h2>
           </div>
 
@@ -220,7 +231,7 @@ export default function LandingMadrid() {
           <div className="mb-8 text-center md:mb-12">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">CUATRO NIVELES</p>
             <h2 className="text-balance font-serif text-3xl leading-tight md:text-5xl">
-              Elige tu <span className="italic">membresia</span>.
+              Elige tu <span className="italic">membresía</span>.
             </h2>
           </div>
 
@@ -262,7 +273,7 @@ export default function LandingMadrid() {
                 <div className="relative aspect-[4/5] overflow-hidden bg-rose-nude">
                   <Image
                     src={m.image || "/placeholder.svg"}
-                    alt={`Membresia ${m.name}`}
+                    alt={`Bolso de la membresía ${m.name}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover object-center transition duration-700 group-hover:scale-105"
@@ -300,6 +311,8 @@ export default function LandingMadrid() {
         </div>
       </section>
 
+      <LpFaq items={madridFaqs} />
+
       {/* CTA FINAL con 3 testimonios integrados */}
       <section className="relative overflow-hidden bg-indigo-dark py-16 text-white md:py-20">
         <div className="absolute inset-0 opacity-15">
@@ -308,7 +321,7 @@ export default function LandingMadrid() {
         <div className="absolute inset-0 bg-indigo-dark/60" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 text-center md:px-10">
-          <div className="mb-10 grid gap-8 md:mb-12 md:grid-cols-3 md:gap-8">
+          <div className="mx-auto mb-10 grid max-w-4xl gap-8 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
                 <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
@@ -327,7 +340,7 @@ export default function LandingMadrid() {
             Madrid sabe que el lujo no se compra. <span className="italic">Se vive.</span>
           </h2>
           <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-white/80 md:text-base">
-            Sin permanencia. Sin riesgo. Entrega en 24h en toda la Comunidad de Madrid.
+            Sin permanencia. Sin riesgo.
           </p>
 
           <a

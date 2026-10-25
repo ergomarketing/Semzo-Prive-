@@ -63,7 +63,7 @@ const trustItems = ["100% authentic", "Flexible swaps", "Free shipping", "Option
 
 const steps = [
   { n: "1", title: "Choose your plan", text: "No lock-in. No small print. Cancel whenever you want." },
-  { n: "2", title: "Receive your bag", text: "Authenticated, prepared and at your door in 24-48 hours." },
+  { n: "2", title: "Receive your bag", text: "Authenticated, prepared and at your door." },
   { n: "3", title: "Swap it or keep it", text: "When you want a different one, we swap it. If you fall in love, it's yours." },
 ]
 
@@ -73,12 +73,6 @@ const testimonials = [
       "I'd wanted a Chanel for years and could never justify the price. With SEMZO PRIVÉ I wore it to a wedding in June and to a work dinner in July. Without spending it all at once.",
     author: "Lucía M., Madrid",
     detail: "Member since January 2026",
-  },
-  {
-    quote:
-      "What surprised me most was the quality of the packaging and how fast it arrived. I had my Dior at home in under 24 hours. I've done it three times in two months.",
-    author: "Ana P., Barcelona",
-    detail: "Signature plan",
   },
   {
     quote:
@@ -174,7 +168,7 @@ export default function LandingMembership() {
           <div className="mb-8 text-center">
             <p className="mb-2 text-[10px] tracking-[0.5em] text-indigo-dark/60 md:text-xs">HOW IT WORKS</p>
             <h2 className="text-balance font-serif text-2xl leading-tight md:text-3xl">
-              From doubt to your first bag in <span className="italic">48 hours</span>.
+              From doubt to your first designer bag.
             </h2>
           </div>
 
@@ -283,7 +277,7 @@ export default function LandingMembership() {
         <div className="absolute inset-0 bg-indigo-dark/60" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 text-center md:px-10">
-          <div className="mb-10 grid gap-8 md:mb-12 md:grid-cols-3 md:gap-8">
+          <div className="mx-auto mb-10 grid max-w-4xl gap-8 md:mb-12 md:grid-cols-2 md:gap-10">
             {testimonials.map((t) => (
               <blockquote key={t.author}>
                 <p className="font-serif text-base italic leading-relaxed text-white md:text-lg">
