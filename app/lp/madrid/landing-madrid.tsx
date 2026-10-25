@@ -233,7 +233,7 @@ export default function LandingMadrid() {
             <p className="mb-3 font-serif text-2xl leading-tight md:text-3xl">
               Tu primera mensualidad al <span className="italic">50%</span> con el código PRIVE50
             </p>
-            <p className="mb-4 text-sm text-indigo-dark/70">Solo para nuevas socias. Válido esta semana.</p>
+            <p className="mb-4 text-sm text-indigo-dark/70">Solo para nuevas socias. Aplica para tu primer registro.</p>
             <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
               <span className="flex-1 border border-dashed border-indigo-dark/40 bg-white px-4 py-3 font-serif text-xl font-bold tracking-[0.2em] text-indigo-dark">
                 {CODIGO_DESCUENTO}

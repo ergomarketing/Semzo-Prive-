@@ -148,7 +148,7 @@ export default function ExitIntentPopup() {
         </h2>
 
         <p className="mb-4 text-sm text-indigo-dark/70">
-          No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Válido esta semana.
+          No es una promesa. Es tuyo desde hoy. Solo para nuevas socias. Aplica para tu primer registro.
         </p>
 
         <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
