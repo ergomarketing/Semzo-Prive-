@@ -8,7 +8,6 @@ import CollectionSection from "./components/collection-section"
 import MembershipSection from "./components/membership-section"
 import TwoModesSection from "./components/two-modes-section"
 import HowItWorks from "./components/how-it-works"
-import TestimonialSection from "./components/testimonial-section"
 import VerifiedReviewsSection, { type PublicReview } from "./components/verified-reviews-section"
 import MagazineSection from "./components/magazine-section"
 import CTASection from "./components/cta-section"
@@ -86,9 +85,8 @@ export default function ClientHomePage({ verifiedReviews = [] }: { verifiedRevie
         <HowItWorks />
       </div>
       <div id="testimonios">
-        <TestimonialSection />
+        <VerifiedReviewsSection reviews={verifiedReviews} />
       </div>
-      <VerifiedReviewsSection reviews={verifiedReviews} />
       <div id="magazine">
         <MagazineSection />
       </div>

@@ -1,8 +1,8 @@
 "use client"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Calendar, User, ChevronLeft, ChevronRight } from "lucide-react"
+import { Calendar, User, ArrowRight } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
 import { publicBlogSlug } from "@/lib/blog-slug-map"
 
@@ -22,9 +22,6 @@ export default function MagazineSection() {
   const locale = useLocale()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
 
   useEffect(() => {
     async function fetchPosts() {
@@ -48,36 +45,12 @@ export default function MagazineSection() {
     fetchPosts()
   }, [])
 
-  const checkScrollability = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      setCanScrollLeft(scrollLeft > 0)
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10)
-    }
-  }
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 400
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      })
-    }
-  }
-
-  useEffect(() => {
-    const container = scrollContainerRef.current
-    if (container) {
-      container.addEventListener("scroll", checkScrollability)
-      checkScrollability()
-      return () => container.removeEventListener("scroll", checkScrollability)
-    }
-  }, [posts])
+  // La portada solo enseña los 3 articulos mas recientes; el resto vive en /blog.
+  const latest = posts.slice(0, 3)
 
   if (loading) {
     // CLS FIX: el skeleton replica la estructura del estado cargado (mismo
-    // header con subtitulo) y reserva ~600px para el carrusel, de modo que
+    // header con subtitulo) y reserva el alto de las 3 tarjetas, de modo que
     // cuando llegan los posts el contenido de abajo (footer) no se desplaza.
     return (
       <section className="py-16 bg-gray-50">
@@ -91,7 +64,7 @@ export default function MagazineSection() {
               {t("subtitle")}
             </p>
           </div>
-          <div className="flex items-center justify-center min-h-[600px]">
+          <div className="flex items-center justify-center min-h-[420px]">
             <p className="text-gray-500">{t("loading")}</p>
           </div>
         </div>
@@ -113,41 +86,19 @@ export default function MagazineSection() {
         </div>
 
         {posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center min-h-[600px]">
+          <div className="flex flex-col items-center justify-center text-center min-h-[420px]">
             <p className="text-gray-500">{t("emptyTitle")}</p>
             <p className="text-sm text-gray-400 mt-2">{t("emptyHint")}</p>
           </div>
         ) : (
-          <div className="relative group min-h-[600px]">
-            {/* Left Arrow */}
-            {canScrollLeft && (
-              <button
-                onClick={() => scroll("left")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="h-6 w-6 text-indigo-dark" />
-              </button>
-            )}
-
-            {/* Right Arrow */}
-            {canScrollRight && (
-              <button
-                onClick={() => scroll("right")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg transition-all"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-6 w-6 text-indigo-dark" />
-              </button>
-            )}
-
-            <div ref={scrollContainerRef} className="overflow-x-auto -mx-4 px-4 scroll-smooth scrollbar-hide">
-              <div className="flex gap-4 md:gap-6 pb-4">
-                {posts.map((post) => (
+          <div>
+            <div className="overflow-x-auto -mx-4 px-4 scroll-smooth scrollbar-hide md:overflow-visible md:mx-0 md:px-0">
+              <div className="flex gap-4 md:grid md:grid-cols-3 md:gap-6 pb-4">
+                {latest.map((post) => (
                   <Link
                     key={post.slug}
                     href={`/blog/${publicBlogSlug(post.slug)}`}
-                    className="flex-shrink-0 w-[80vw] md:w-[40vw] lg:w-[28vw] group/card"
+                    className="flex-shrink-0 w-[80vw] md:w-auto group/card"
                   >
                     <div className="flex flex-col rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white">
                       {/*
@@ -204,6 +155,15 @@ export default function MagazineSection() {
                   </Link>
                 ))}
               </div>
+            </div>
+            <div className="mt-8 text-center">
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-sm font-medium text-indigo-dark hover:text-rose-dark transition-colors"
+              >
+                {t("viewAll")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             </div>
           </div>
         )}
