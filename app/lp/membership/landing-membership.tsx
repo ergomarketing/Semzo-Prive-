@@ -6,6 +6,8 @@ import { useEffect, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
 import { useLocale } from "@/providers/IntlProvider"
 import LpHeader from "../lp-header"
+import LpFaq from "../lp-faq"
+import { commonFaqsEn } from "../faq-content"
 
 const DISCOUNT_CODE = "PRIVE50"
 
@@ -49,7 +51,7 @@ const memberships = [
   },
   {
     id: "prive",
-    name: "Prive",
+    name: "Privé",
     price: "€279",
     period: "/month",
     tagline: "Exclusive collection",
@@ -64,7 +66,7 @@ const trustItems = ["100% authentic", "Flexible swaps", "Free shipping", "Option
 const steps = [
   { n: "1", title: "Choose your plan", text: "No lock-in. No small print. Cancel whenever you want." },
   { n: "2", title: "Receive your bag", text: "Authenticated, prepared and at your door." },
-  { n: "3", title: "Swap it or keep it", text: "When you want a different one, we swap it. If you fall in love, it's yours." },
+  { n: "3", title: "Swap it or keep it", text: "When you want a different one, we swap it. If you fall in love, your fees add up towards buying it." },
 ]
 
 const testimonials = [
@@ -97,6 +99,21 @@ export default function LandingMembership() {
     // Keeps /signup and the rest of the funnel in English for this visitor.
     setLocale("en")
     trackEvent("view_landing_lp_membership_en")
+
+    // Funnel: the visitor reaches the plans section
+    const plans = document.getElementById("memberships")
+    if (!plans || !("IntersectionObserver" in window)) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          trackEvent("view_membership_plans", { lang: "en" })
+          io.disconnect()
+        }
+      },
+      { threshold: 0.2 },
+    )
+    io.observe(plans)
+    return () => io.disconnect()
   }, [setLocale])
 
   const handleCopyCode = () => {
@@ -110,20 +127,22 @@ export default function LandingMembership() {
     <main className="min-h-screen bg-rose-nude font-serif text-indigo-dark">
       <LpHeader />
 
+      {/* HERO: whole photo (1199x1473), never cropped or split. On desktop the text sits inside
+          the first screen, over the photo, so headline and button are visible without scrolling. */}
       <section className="w-full bg-indigo-dark">
         <div className="relative mx-auto w-full" style={{ aspectRatio: "1199/1473" }}>
           <Image
             src="/images/hermes-prive.jpeg"
-            alt="Semzo Prive editorial - burgundy Hermes handbag"
+            alt="Woman holding a burgundy leather handbag with gold hardware"
             fill
             priority
-            sizes="(max-width: 768px) 100vw, 700px"
-            className="object-cover object-top md:object-contain md:object-top"
+            sizes="100vw"
+            className="object-cover object-top"
           />
           <div className="absolute inset-0 bg-black/35" />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
-            <div className="text-white">
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:bottom-auto md:top-[max(8rem,20svh)] md:px-14 md:pb-0 lg:px-20">
+            <div className="text-white md:max-w-3xl">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 LUXURY HANDBAG MEMBERSHIP
               </p>
@@ -135,8 +154,8 @@ export default function LandingMembership() {
               </h1>
 
               <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-white/90 md:text-lg">
-                Access Chanel, Louis Vuitton, Dior and Loewe from €59/month. Swap whenever you like. Make them yours if
-                you fall in love.
+                Access Chanel, Louis Vuitton, Dior and Loewe from €59/month, no lock-in. Verified original bags. Swap
+                whenever you like and, if you fall in love, your fees add up towards buying it.
               </p>
 
               <a
@@ -232,7 +251,7 @@ export default function LandingMembership() {
                 <div className="relative aspect-[4/5] overflow-hidden bg-rose-nude">
                   <Image
                     src={m.image || "/placeholder.svg"}
-                    alt={`${m.name} membership`}
+                    alt={`Handbag of the ${m.name} membership`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover object-center transition duration-700 group-hover:scale-105"
@@ -269,6 +288,8 @@ export default function LandingMembership() {
           </div>
         </div>
       </section>
+
+      <LpFaq items={commonFaqsEn} id="faq" title="Frequently asked questions" />
 
       <section className="relative overflow-hidden bg-indigo-dark py-16 text-white md:py-20">
         <div className="absolute inset-0 opacity-15">

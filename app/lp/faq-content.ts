@@ -52,3 +52,41 @@ export const madridFaqs: LpFaqItem[] = [
   },
   ...commonFaqs,
 ]
+
+// English version (/lp/membership). Same facts as commonFaqs.
+export const commonFaqsEn: LpFaqItem[] = [
+  {
+    question: "Is there a lock-in?",
+    answer: "No. You can cancel whenever you want and keep access until the end of the billing cycle.",
+  },
+  {
+    question: "How does the membership work?",
+    answer:
+      "Every membership includes one luxury bag at a time. You choose a bag from the collection, enjoy it for the month and swap it for another one in the next cycle.",
+  },
+  {
+    question: "How do my fees add up towards buying a bag?",
+    answer:
+      "If you fall in love with a bag, you can switch to Colecciona mode from your account. The rental fees you have already paid on your current membership count as purchase credit, and so does each new fee, up to the bag's fixed price. To make it yours you complete the purchase from your account and pay the difference. If you cancel your membership, the accumulated credit is lost: it is not money and it is not refundable.",
+  },
+  {
+    question: "Are the bags authentic?",
+    answer:
+      "All of them go through a multi-layer authentication process carried out by our team of experts and by independent authenticators. For certain models we can provide an Entrupy certificate of authenticity on request. If a verified authenticator proved that a bag you bought is not authentic, we refund you in full when you return it. SEMZO PRIVÉ is not an authorised retailer of the brands it offers.",
+  },
+  {
+    question: "What if the bag gets stained or damaged?",
+    answer:
+      "In Descubre mode your fee includes cover for normal use: small stains, scuffs or scratches are handled by our team. It does not cover negligence, loss, unreported theft or serious damage from misuse; in those cases a policy based on the bag's value applies. In Colecciona mode, custody is yours while the bag is reserved for you.",
+  },
+  {
+    question: "How do I return the bag?",
+    answer:
+      "At the end of your membership month, with all the original items (dust bag, authenticity cards, etc.) and the prepaid shipping label that comes with the bag. Once we receive it we inspect it and confirm by email.",
+  },
+  {
+    question: "Does shipping cost anything?",
+    answer:
+      "No. Shipping and returns are free and include insurance and tracking. We cover all of peninsular Spain.",
+  },
+]

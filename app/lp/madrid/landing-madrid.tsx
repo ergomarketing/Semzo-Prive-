@@ -136,14 +136,14 @@ export default function LandingMadrid() {
             alt="Mujer sujetando un bolso de piel burdeos con herrajes dorados"
             fill
             priority
-            sizes="(max-width: 768px) 100vw, 700px"
-            className="object-cover object-top md:object-contain md:object-top"
+            sizes="100vw"
+            className="object-cover object-top"
           />
           {/* Overlay para legibilidad del texto */}
           <div className="absolute inset-0 bg-black/35" />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:px-10 md:pb-14">
-            <div className="text-white">
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-10 md:bottom-auto md:top-[max(8rem,20svh)] md:px-14 md:pb-0 lg:px-20">
+            <div className="text-white md:max-w-3xl">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-white/85 md:text-xs">
                 MEMBRESÍA DE BOLSOS DE LUJO
               </p>

@@ -14,12 +14,20 @@ function trackEvent(name: string, params: Record<string, unknown> = {}) {
  * esta en el HTML (lo leen buscadores y lectores de pantalla) y funciona sin JavaScript.
  * Mismo estilo que el resto de la landing: serif, indigo, fondo blanco.
  */
-export default function LpFaq({ items, id = "preguntas" }: { items: LpFaqItem[]; id?: string }) {
+export default function LpFaq({
+  items,
+  id = "preguntas",
+  title = "Preguntas frecuentes",
+}: {
+  items: LpFaqItem[]
+  id?: string
+  title?: string
+}) {
   return (
     <section id={id} className="bg-white py-12 md:py-16">
       <div className="mx-auto max-w-3xl px-6 md:px-10">
         <h2 className="mb-8 text-balance text-center font-serif text-2xl leading-tight md:text-3xl">
-          Preguntas frecuentes
+          {title}
         </h2>
 
         <div className="divide-y divide-indigo-dark/10 border-y border-indigo-dark/10">
