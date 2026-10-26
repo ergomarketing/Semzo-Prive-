@@ -32,11 +32,23 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString()
-    await supabase
+    // Cerrar tambien el rastro de la devolucion: el envio (etiqueta de Correos o recogida a domicilio, que no
+    // tiene numero de seguimiento) y la fila de "returns" que ve Logistica -> Devoluciones. Sin esto la
+    // devolucion verificada seguia saliendo como "Pendiente".
+    const { data: shipmentRows } = await supabase
       .from("shipments")
       .update({ return_status: "delivered", return_actual_delivery: now, updated_at: now })
       .eq("reservation_id", reservationId)
-      .not("return_tracking_number", "is", null)
+      .not("return_status", "is", null)
+      .select("id")
+    const shipmentIds = (shipmentRows ?? []).map((row: { id: string }) => row.id)
+    if (shipmentIds.length > 0) {
+      await supabase
+        .from("returns")
+        .update({ status: "received", updated_at: now })
+        .in("shipment_id", shipmentIds)
+        .in("status", ["pending", "approved", "in_transit"])
+    }
 
     await supabase.from("logistics_audit_log").insert({
       action: "return_received_manual",
