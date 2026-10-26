@@ -383,6 +383,8 @@ function BagCard({
 
   const isAvailable = bag.status === "available"
   const isColecciona = bag.status === "colecciona"
+  const isMaintenance = bag.status === "maintenance"
+  const unavailableLabel = isMaintenance ? t("inMaintenance") : t("outWithMember")
 
   useEffect(() => {
     const checkWaitlist = async () => {
@@ -739,9 +741,11 @@ function BagCard({
         </div>
 
         {!isAvailable && (
-          <div className="text-center py-2 border-b border-slate-200 bg-rose-pastel/10">
-            <p className="text-sm font-medium tracking-widest text-rose-500">
-              {isColecciona ? t("coleccionaBadge") : t("outWithMember")}
+          <div className={`text-center py-2 border-b border-slate-200 ${isColecciona ? "bg-rose-pastel/10" : ""}`}>
+            <p
+              className={`text-sm font-medium tracking-widest ${isColecciona ? "text-rose-500" : "text-slate-400"}`}
+            >
+              {isColecciona ? t("coleccionaBadge") : unavailableLabel}
             </p>
           </div>
         )}
@@ -813,7 +817,7 @@ function BagCard({
                 disabled
                 className="w-full bg-rose-pastel/10 border border-rose-pastel/40 text-indigo-dark/70 cursor-not-allowed hover:bg-rose-pastel/10"
               >
-                {t("outWithMember")}
+                {unavailableLabel}
               </Button>
               <Button
                 onClick={(e) => {
