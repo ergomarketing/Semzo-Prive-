@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const SIZE = 1000
+const SIZE = 1200
 
 type OutFormat = "jpeg" | "png" | "webp"
 type ImgStatus = "processing" | "done" | "error"
@@ -25,6 +25,9 @@ interface EditedImage {
   previewUrl: string
   resultUrl: string | null
   resultBlob: Blob | null
+  cutoutBlob?: Blob
+  angle: number
+  scale: number
   fileName: string
   status: ImgStatus
   error?: string
@@ -87,24 +90,43 @@ export default function CatalogImageEditor() {
     return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
   }
 
-  const applyBackground = (pngBlob: Blob, fmt: OutFormat, color: string): Promise<Blob> => {
+  const applyBackground = (
+    pngBlob: Blob,
+    fmt: OutFormat,
+    color: string,
+    opts: { angle: number; scale: number } = { angle: 0, scale: 1 },
+  ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(pngBlob)
       const img = new Image()
       img.crossOrigin = "anonymous"
       img.onload = () => {
-        // 1. Renderizar la imagen original en un canvas temporal para leer píxeles
+        // 1. Enderezar: se gira el recorte en un lienzo mas grande para no cortar nada
+        const rad = (opts.angle * Math.PI) / 180
+        const cos = Math.abs(Math.cos(rad))
+        const sin = Math.abs(Math.sin(rad))
+        const rw = Math.ceil(img.width * cos + img.height * sin)
+        const rh = Math.ceil(img.width * sin + img.height * cos)
         const tmp = document.createElement("canvas")
-        tmp.width = img.width
-        tmp.height = img.height
-        const tmpCtx = tmp.getContext("2d")
+        tmp.width = rw
+        tmp.height = rh
+        const tmpCtx = tmp.getContext("2d", { willReadFrequently: true })
         if (!tmpCtx) { URL.revokeObjectURL(url); reject(new Error("Canvas error")); return }
-        tmpCtx.drawImage(img, 0, 0)
+        tmpCtx.translate(rw / 2, rh / 2)
+        tmpCtx.rotate(rad)
+        tmpCtx.drawImage(img, -img.width / 2, -img.height / 2)
 
-        // 2. Detectar bounding box real del bolso (recortar transparencia extra)
-        const bb = getBoundingBox(tmpCtx, img.width, img.height)
+        // 2. Limpiar el halo: los pixeles casi transparentes del borde del recorte se eliminan
+        const data = tmpCtx.getImageData(0, 0, rw, rh)
+        for (let i = 3; i < data.data.length; i += 4) {
+          if (data.data[i] < 24) data.data[i] = 0
+        }
+        tmpCtx.putImageData(data, 0, 0)
 
-        // 3. Dibujar en el canvas final con padding del 10%
+        // 3. Caja real del bolso
+        const bb = getBoundingBox(tmpCtx, rw, rh)
+
+        // 4. Lienzo final: fondo liso con un centro algo mas claro (como un estudio), igual en todas las fotos
         const canvas = document.createElement("canvas")
         canvas.width = SIZE
         canvas.height = SIZE
@@ -112,22 +134,47 @@ export default function CatalogImageEditor() {
         if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas error")); return }
         ctx.fillStyle = color
         ctx.fillRect(0, 0, SIZE, SIZE)
+        const light = ctx.createRadialGradient(SIZE / 2, SIZE * 0.45, 0, SIZE / 2, SIZE * 0.45, SIZE * 0.65)
+        light.addColorStop(0, "rgba(255,255,255,0.40)")
+        light.addColorStop(1, "rgba(255,255,255,0)")
+        ctx.fillStyle = light
+        ctx.fillRect(0, 0, SIZE, SIZE)
 
-        const pad = SIZE * 0.10
-        const avail = SIZE - pad * 2
+        // 5. Encuadre igual para todos: el bolso cabe en el 76% del lienzo (por el control de tamano)
+        const pad = SIZE * 0.12
+        const avail = (SIZE - pad * 2) * opts.scale
         const ratio = Math.min(avail / bb.w, avail / bb.h)
         const dw = bb.w * ratio
         const dh = bb.h * ratio
         const dx = (SIZE - dw) / 2
-        const dy = (SIZE - dh) / 2
+        const dy = (SIZE - dh) / 2 - SIZE * 0.01
 
-        // Dibujar solo la zona recortada del bolso, centrada
-        ctx.drawImage(img, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh)
+        // 6. Sombra de apoyo bajo el bolso (elipse difusa) para que no flote
+        ctx.save()
+        ctx.translate(SIZE / 2, dy + dh - dh * 0.012)
+        ctx.scale(1, 0.1)
+        const radius = dw * 0.42
+        const ground = ctx.createRadialGradient(0, 0, 0, 0, 0, radius)
+        ground.addColorStop(0, "rgba(26,26,75,0.30)")
+        ground.addColorStop(1, "rgba(26,26,75,0)")
+        ctx.fillStyle = ground
+        ctx.beginPath()
+        ctx.arc(0, 0, radius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+
+        // 7. El bolso, con una sombra suave de contorno
+        ctx.shadowColor = "rgba(26,26,75,0.16)"
+        ctx.shadowBlur = SIZE * 0.022
+        ctx.shadowOffsetY = SIZE * 0.009
+        ctx.drawImage(tmp, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh)
+        ctx.shadowColor = "transparent"
+
         URL.revokeObjectURL(url)
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
           `image/${fmt}`,
-          0.92,
+          0.94,
         )
       }
       img.onerror = () => {
@@ -136,6 +183,26 @@ export default function CatalogImageEditor() {
       }
       img.src = url
     })
+  }
+
+  // Reencuadra una foto ya recortada (enderezar / tamano) sin volver a llamar a Remove.bg
+  const rerenderTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const adjustImage = (img: EditedImage, patch: { angle?: number; scale?: number }) => {
+    const angle = patch.angle ?? img.angle
+    const scale = patch.scale ?? img.scale
+    updateImage(img.id, { angle, scale })
+    const cutout = img.cutoutBlob
+    if (!cutout) return
+    clearTimeout(rerenderTimers.current[img.id])
+    rerenderTimers.current[img.id] = setTimeout(async () => {
+      try {
+        const blob = await applyBackground(cutout, outFormat, bgColor, { angle, scale })
+        const url = URL.createObjectURL(blob)
+        updateImage(img.id, { resultUrl: url, resultBlob: blob, previewUrl: url })
+      } catch {
+        // se queda con la version anterior
+      }
+    }, 180)
   }
 
   const handleFiles = async (files: File[]) => {
@@ -157,6 +224,8 @@ export default function CatalogImageEditor() {
           previewUrl,
           resultUrl: null,
           resultBlob: null,
+          angle: 0,
+          scale: 1,
           fileName: `${baseName(file.name)}_cat.${ext}`,
           status: "processing",
         },
@@ -173,7 +242,7 @@ export default function CatalogImageEditor() {
         const cutoutBlob = await res.blob()
         const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
         const finalUrl = URL.createObjectURL(finalBlob)
-        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, previewUrl: finalUrl, status: "done" })
+        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, cutoutBlob, previewUrl: finalUrl, status: "done" })
       } catch (e) {
         updateImage(id, { status: "error", error: e instanceof Error ? e.message : "Error desconocido" })
       }
@@ -290,7 +359,7 @@ export default function CatalogImageEditor() {
           <div className="flex flex-col gap-2">
             <Label className="text-xs uppercase tracking-wide text-slate-500">Tamaño final</Label>
             <div className="flex h-11 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
-              1000 × 1000 px (cuadrado)
+              1200 × 1200 px (cuadrado)
             </div>
           </div>
         </div>
@@ -406,6 +475,38 @@ export default function CatalogImageEditor() {
 
                   {img.status === "done" && (
                     <>
+                      {/* Ajustes de encuadre: se aplican al momento, sin gastar otro recorte */}
+                      {!img.uploadedUrl && (
+                        <div className="space-y-1.5 rounded-md bg-slate-50 px-3 py-2">
+                          <label className="flex items-center gap-2 text-[11px] text-slate-600">
+                            <span className="w-16 shrink-0">Enderezar</span>
+                            <input
+                              type="range"
+                              min={-15}
+                              max={15}
+                              step={0.5}
+                              value={img.angle}
+                              onChange={(e) => adjustImage(img, { angle: Number(e.target.value) })}
+                              className="h-1 flex-1 accent-[#1a1a4b]"
+                            />
+                            <span className="w-9 text-right tabular-nums">{img.angle}°</span>
+                          </label>
+                          <label className="flex items-center gap-2 text-[11px] text-slate-600">
+                            <span className="w-16 shrink-0">Tamaño</span>
+                            <input
+                              type="range"
+                              min={0.6}
+                              max={1.1}
+                              step={0.02}
+                              value={img.scale}
+                              onChange={(e) => adjustImage(img, { scale: Number(e.target.value) })}
+                              className="h-1 flex-1 accent-[#1a1a4b]"
+                            />
+                            <span className="w-9 text-right tabular-nums">{Math.round(img.scale * 100)}%</span>
+                          </label>
+                        </div>
+                      )}
+
                       {/* Botones subir / descargar */}
                       {!img.uploadedUrl && (
                         <div className="flex gap-1.5">
