@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     if (shipmentIds.length > 0) {
       await supabase
         .from("returns")
-        .update({ status: "completed", updated_at: now })
+        .update({ status: "received", updated_at: now })
         .in("shipment_id", shipmentIds)
-        .in("status", ["pending", "approved", "received"])
+        .in("status", ["pending", "approved", "in_transit"])
     }
 
     await supabase.from("logistics_audit_log").insert({
