@@ -41,6 +41,42 @@ function baseName(name: string) {
   return name.replace(/\.[^.]+$/, "")
 }
 
+const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024
+const MAX_UPLOAD_SIDE = 2400
+
+/**
+ * Las fotos del movil pesan 5-10 MB y Vercel rechaza peticiones de mas de 4,5 MB (error 413).
+ * Se reducen aqui, en el navegador, antes de enviarlas a recortar: 2400 px de lado largo sobran
+ * para una imagen final de 1200 px. Si algo falla se envia la original.
+ */
+async function shrinkForUpload(file: File): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" })
+    const longSide = Math.max(bitmap.width, bitmap.height)
+    if (file.size <= MAX_UPLOAD_BYTES && longSide <= MAX_UPLOAD_SIDE) {
+      bitmap.close()
+      return file
+    }
+    const ratio = Math.min(1, MAX_UPLOAD_SIDE / longSide)
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.round(bitmap.width * ratio)
+    canvas.height = Math.round(bitmap.height * ratio)
+    const ctx = canvas.getContext("2d")
+    if (!ctx) { bitmap.close(); return file }
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    for (const quality of [0.92, 0.85, 0.75]) {
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality))
+      if (blob && blob.size <= MAX_UPLOAD_BYTES) {
+        return new File([blob], `${baseName(file.name)}.jpg`, { type: "image/jpeg" })
+      }
+    }
+    return file
+  } catch {
+    return file
+  }
+}
+
 export default function CatalogImageEditor() {
   const [bgColor, setBgColor] = useState("#f0efed")
   const [outFormat, setOutFormat] = useState<OutFormat>("webp")
@@ -233,11 +269,13 @@ export default function CatalogImageEditor() {
 
       try {
         const form = new FormData()
-        form.append("file", file)
+        form.append("file", await shrinkForUpload(file))
         const res = await fetch("/api/admin/catalog-editor/remove-bg", { method: "POST", body: form })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.error || `Error ${res.status}`)
+          throw new Error(
+            err.error || (res.status === 413 ? "La foto pesa demasiado para procesarla." : `Error ${res.status}`),
+          )
         }
         const cutoutBlob = await res.blob()
         const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
