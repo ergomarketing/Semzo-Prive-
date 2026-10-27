@@ -31,6 +31,7 @@ interface EditedImage {
   fileName: string
   status: ImgStatus
   error?: string
+  notice?: string
   uploadedUrl?: string
   uploading?: boolean
   assigning?: boolean
@@ -275,18 +276,27 @@ export default function CatalogImageEditor() {
 
       try {
         const form = new FormData()
-        form.append("file", await shrinkForUpload(file))
+        const upload = await shrinkForUpload(file)
+        form.append("file", upload)
         const res = await fetch("/api/admin/catalog-editor/remove-bg", { method: "POST", body: form })
-        if (!res.ok) {
+        let cutoutBlob: Blob
+        let notice: string | undefined
+        if (res.ok) {
+          cutoutBlob = await res.blob()
+        } else {
           const err = await res.json().catch(() => ({}))
-          throw new Error(
-            err.error || (res.status === 413 ? "La foto pesa demasiado para procesarla." : `Error ${res.status}`),
-          )
+          if (err.code !== "no_foreground") {
+            throw new Error(
+              err.error || (res.status === 413 ? "La foto pesa demasiado para procesarla." : `Error ${res.status}`),
+            )
+          }
+          // Sin recorte posible: se encuadra la foto original sobre el fondo
+          cutoutBlob = upload
+          notice = "Sin recorte: no se detectó el bolso, se usó la foto original"
         }
-        const cutoutBlob = await res.blob()
         const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
         const finalUrl = URL.createObjectURL(finalBlob)
-        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, cutoutBlob, previewUrl: finalUrl, status: "done" })
+        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, cutoutBlob, previewUrl: finalUrl, status: "done", notice })
       } catch (e) {
         updateImage(id, { status: "error", error: e instanceof Error ? e.message : "Error desconocido" })
       }
@@ -516,6 +526,7 @@ export default function CatalogImageEditor() {
                       img.fileName
                     )}
                   </p>
+                  {img.notice && <p className="text-[11px] text-amber-700">{img.notice}</p>}
 
                   {img.status === "done" && (
                     <>
