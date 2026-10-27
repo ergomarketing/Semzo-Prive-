@@ -183,10 +183,14 @@ export default function CatalogImageEditor() {
         ctx.fillStyle = light
         ctx.fillRect(0, 0, SIZE, SIZE)
 
-        // 5. Encuadre igual para todos: el bolso cabe en el 76% del lienzo (por el control de tamano)
-        const pad = SIZE * 0.12
-        const avail = (SIZE - pad * 2) * opts.scale
-        const ratio = Math.min(avail / bb.w, avail / bb.h)
+        // 5. Encuadre igual para todos: el bolso ocupa la misma superficie visual (no el mismo ancho o alto),
+        //    asi una pochette ancha y un bolso alto se ven del mismo tamano. Ningun lado pasa del 86% del lienzo.
+        //    El control de tamano afina sobre esa base.
+        const TARGET_AREA = SIZE * SIZE * 0.5
+        const maxSide = SIZE * 0.86
+        const byArea = Math.sqrt(TARGET_AREA / (bb.w * bb.h))
+        const byFit = Math.min(maxSide / bb.w, maxSide / bb.h)
+        const ratio = Math.min(Math.min(byArea, byFit) * opts.scale, (SIZE * 0.96) / bb.w, (SIZE * 0.96) / bb.h)
         const dw = bb.w * ratio
         const dh = bb.h * ratio
         const dx = (SIZE - dw) / 2
