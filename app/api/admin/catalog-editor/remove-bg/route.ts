@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
     const removeBgForm = new FormData()
     removeBgForm.append("image_file", file)
     removeBgForm.append("size", "auto")
+    // Bolsos y accesorios: "product" detecta mejor el objeto que el modo automatico
+    removeBgForm.append("type", "product")
 
     const res = await fetch("https://api.remove.bg/v1.0/removebg", {
       method: "POST",
@@ -45,6 +47,13 @@ export async function POST(request: NextRequest) {
         detail = err?.errors?.[0]?.title || err?.errors?.[0]?.detail || ""
       } catch {
         // respuesta sin JSON
+      }
+
+      // Remove.bg no encuentra objeto en primer plano (p. ej. foto ya sobre fondo blanco o muy recortada):
+      // el editor usa entonces la foto original en vez de dar error
+      if (res.status === 400 && /foreground/i.test(detail)) {
+        console.error(`[v0] remove-bg sin primer plano: ${detail}`)
+        return NextResponse.json({ error: "No se detectó el bolso en la foto", code: "no_foreground" }, { status: 422 })
       }
 
       let message: string
