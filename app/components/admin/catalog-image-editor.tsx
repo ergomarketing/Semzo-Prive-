@@ -50,22 +50,26 @@ const MAX_UPLOAD_SIDE = 2400
  * para una imagen final de 1200 px. Si algo falla se envia la original.
  */
 async function shrinkForUpload(file: File): Promise<File> {
+  // Se carga con un <img> (no con createImageBitmap): Safari no admite todas sus opciones y el <img>
+  // aplica solo la orientacion EXIF de las fotos del movil.
+  const url = URL.createObjectURL(file)
   try {
-    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" })
-    const longSide = Math.max(bitmap.width, bitmap.height)
-    if (file.size <= MAX_UPLOAD_BYTES && longSide <= MAX_UPLOAD_SIDE) {
-      bitmap.close()
-      return file
-    }
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error("No se pudo leer la foto"))
+      el.src = url
+    })
+    const longSide = Math.max(img.naturalWidth, img.naturalHeight)
+    if (file.size <= MAX_UPLOAD_BYTES && longSide <= MAX_UPLOAD_SIDE) return file
     const ratio = Math.min(1, MAX_UPLOAD_SIDE / longSide)
     const canvas = document.createElement("canvas")
-    canvas.width = Math.round(bitmap.width * ratio)
-    canvas.height = Math.round(bitmap.height * ratio)
+    canvas.width = Math.round(img.naturalWidth * ratio)
+    canvas.height = Math.round(img.naturalHeight * ratio)
     const ctx = canvas.getContext("2d")
-    if (!ctx) { bitmap.close(); return file }
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    bitmap.close()
-    for (const quality of [0.92, 0.85, 0.75]) {
+    if (!ctx) return file
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    for (const quality of [0.92, 0.85, 0.75, 0.6]) {
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality))
       if (blob && blob.size <= MAX_UPLOAD_BYTES) {
         return new File([blob], `${baseName(file.name)}.jpg`, { type: "image/jpeg" })
@@ -74,6 +78,8 @@ async function shrinkForUpload(file: File): Promise<File> {
     return file
   } catch {
     return file
+  } finally {
+    URL.revokeObjectURL(url)
   }
 }
 
