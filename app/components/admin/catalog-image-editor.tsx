@@ -6,6 +6,7 @@ import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
 
 const SIZE = 1200
 
@@ -32,6 +33,7 @@ interface EditedImage {
   status: ImgStatus
   error?: string
   notice?: string
+  stage?: string
   uploadedUrl?: string
   uploading?: boolean
   assigning?: boolean
@@ -279,28 +281,28 @@ export default function CatalogImageEditor() {
       ])
 
       try {
-        const form = new FormData()
-        const upload = await shrinkForUpload(file)
-        form.append("file", upload)
-        const res = await fetch("/api/admin/catalog-editor/remove-bg", { method: "POST", body: form })
+        const source = await shrinkForUpload(file)
         let cutoutBlob: Blob
         let notice: string | undefined
-        if (res.ok) {
-          cutoutBlob = await res.blob()
-        } else {
-          const err = await res.json().catch(() => ({}))
-          if (err.code !== "no_foreground") {
-            throw new Error(
-              err.error || (res.status === 413 ? "La foto pesa demasiado para procesarla." : `Error ${res.status}`),
-            )
-          }
+        try {
+          cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
+        } catch (e) {
+          if (!(e instanceof Error) || e.message !== NO_FOREGROUND) throw e
           // Sin recorte posible: se encuadra la foto original sobre el fondo
-          cutoutBlob = upload
+          cutoutBlob = source
           notice = "Sin recorte: no se detectó el bolso, se usó la foto original"
         }
         const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
         const finalUrl = URL.createObjectURL(finalBlob)
-        updateImage(id, { resultUrl: finalUrl, resultBlob: finalBlob, cutoutBlob, previewUrl: finalUrl, status: "done", notice })
+        updateImage(id, {
+          resultUrl: finalUrl,
+          resultBlob: finalBlob,
+          cutoutBlob,
+          previewUrl: finalUrl,
+          status: "done",
+          stage: undefined,
+          notice,
+        })
       } catch (e) {
         updateImage(id, { status: "error", error: e instanceof Error ? e.message : "Error desconocido" })
       }
@@ -496,7 +498,7 @@ export default function CatalogImageEditor() {
                   {img.status === "processing" && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/85">
                       <Loader2 className="h-6 w-6 animate-spin text-slate-700" />
-                      <span className="text-xs text-slate-600">Procesando…</span>
+                      <span className="px-3 text-center text-xs text-slate-600">{img.stage || "Procesando…"}</span>
                     </div>
                   )}
                   {img.status === "done" && (
