@@ -195,21 +195,28 @@ export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null
 
   // Huecos de fondo encerrados (el interior de un asa): si son grandes y del color exacto del fondo, tambien son fondo.
   // Los pequenos (el esmalte blanco de un cierre) se quedan como parte del bolso.
+  // Tambien los huecos finos y largos en diagonal (la rendija entre las dos capas de una correa): ocupan poco pero
+  // miden mas del 8% de la foto y no son un rectangulo. Asi no se tocan letras ni detalles blancos pequenos.
   const TIGHT = 10
   const MIN_HOLE = W * H * 0.015
+  const MIN_STRIP = W * H * 0.0002
+  const MIN_STRIP_LENGTH = Math.max(W, H) * 0.08
   const seen = new Uint8Array(W * H)
   const hole = new Int32Array(W * H)
   for (let start = 0; start < W * H; start++) {
     if (isBg[start] || seen[start] || diffAt(start * 4) > TIGHT) continue
-    let size = 0
     let t = 0
+    let minX = W, maxX = 0, minY = H, maxY = 0
     hole[t++] = start
     seen[start] = 1
     for (let i = 0; i < t; i++) {
       const p = hole[i]
-      size++
       const x = p % W
       const y = (p - x) / W
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
       const visit = (q: number) => {
         if (!seen[q] && !isBg[q] && diffAt(q * 4) <= TIGHT) { seen[q] = 1; hole[t++] = q }
       }
@@ -218,7 +225,11 @@ export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null
       if (y > 0) visit(p - W)
       if (y < H - 1) visit(p + W)
     }
-    if (size >= MIN_HOLE) for (let i = 0; i < t; i++) isBg[hole[i]] = 1
+    const boxW = maxX - minX + 1
+    const boxH = maxY - minY + 1
+    const longSide = Math.max(boxW, boxH)
+    const isStrip = t >= MIN_STRIP && longSide >= MIN_STRIP_LENGTH && t / (boxW * boxH) < 0.4
+    if (t >= MIN_HOLE || isStrip) for (let i = 0; i < t; i++) isBg[hole[i]] = 1
   }
 
   // Transparencia: el fondo desaparece; su sombra suave (si la hay) queda como sombra translucida

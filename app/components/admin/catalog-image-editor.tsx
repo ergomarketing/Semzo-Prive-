@@ -8,7 +8,32 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cutoutFromCleanBackground, cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
 
-const SIZE = 1200
+const SIZE = 1600
+
+/**
+ * Recorta una zona de un lienzo y la reduce a la mitad tantas veces como haga falta hasta quedar a menos del doble
+ * del ancho final. Reducir una foto grande de golpe da bordes dentados y poca nitidez; por pasos queda limpio.
+ */
+function shrinkCanvas(src: HTMLCanvasElement, sx: number, sy: number, sw: number, sh: number, targetW: number) {
+  let cur = document.createElement("canvas")
+  cur.width = Math.max(1, Math.round(sw))
+  cur.height = Math.max(1, Math.round(sh))
+  const first = cur.getContext("2d")
+  if (!first) return src
+  first.drawImage(src, sx, sy, sw, sh, 0, 0, cur.width, cur.height)
+  while (cur.width / 2 >= targetW) {
+    const next = document.createElement("canvas")
+    next.width = Math.max(1, Math.round(cur.width / 2))
+    next.height = Math.max(1, Math.round(cur.height / 2))
+    const nctx = next.getContext("2d")
+    if (!nctx) break
+    nctx.imageSmoothingEnabled = true
+    nctx.imageSmoothingQuality = "high"
+    nctx.drawImage(cur, 0, 0, next.width, next.height)
+    cur = next
+  }
+  return cur
+}
 
 type OutFormat = "jpeg" | "png" | "webp"
 type ImgStatus = "processing" | "done" | "error"
@@ -219,14 +244,17 @@ export default function CatalogImageEditor() {
         ctx.shadowColor = "rgba(26,26,75,0.16)"
         ctx.shadowBlur = SIZE * 0.022
         ctx.shadowOffsetY = SIZE * 0.009
-        ctx.drawImage(tmp, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh)
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = "high"
+        const bag = shrinkCanvas(tmp, bb.x, bb.y, bb.w, bb.h, dw)
+        ctx.drawImage(bag, 0, 0, bag.width, bag.height, dx, dy, dw, dh)
         ctx.shadowColor = "transparent"
 
         URL.revokeObjectURL(url)
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
           `image/${fmt}`,
-          0.94,
+          0.95,
         )
       }
       img.onerror = () => {
