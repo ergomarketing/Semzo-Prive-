@@ -120,9 +120,11 @@ export default function CatalogImageEditor() {
   const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const pixels = ctx.getImageData(0, 0, w, h).data
     let minX = w, minY = h, maxX = 0, maxY = 0
+    let filled = 0 // pixeles realmente ocupados por el bolso (sin contar el aire de la caja)
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const alpha = pixels[(y * w + x) * 4 + 3]
+        if (alpha > 128) filled++
         if (alpha > 10) {
           if (x < minX) minX = x
           if (x > maxX) maxX = x
@@ -131,8 +133,8 @@ export default function CatalogImageEditor() {
         }
       }
     }
-    if (maxX < minX) return { x: 0, y: 0, w, h } // fallback imagen sin transparencia
-    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+    if (maxX < minX) return { x: 0, y: 0, w, h, filled: w * h } // fallback imagen sin transparencia
+    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1, filled: Math.max(filled, 1) }
   }
 
   const applyBackground = (
@@ -186,11 +188,12 @@ export default function CatalogImageEditor() {
         ctx.fillRect(0, 0, SIZE, SIZE)
 
         // 5. Encuadre igual para todos: el bolso ocupa la misma superficie visual (no el mismo ancho o alto),
-        //    asi una pochette ancha y un bolso alto se ven del mismo tamano. Ningun lado pasa del 86% del lienzo.
+        //    asi una pochette ancha y un bolso alto se ven del mismo tamano, y una cadena larga colgando no lo
+        //    encoge. Se mide la superficie real del bolso, no su caja. Ningun lado pasa del 86% del lienzo.
         //    El control de tamano afina sobre esa base.
-        const TARGET_AREA = SIZE * SIZE * 0.5
+        const TARGET_FILLED = SIZE * SIZE * 0.33
         const maxSide = SIZE * 0.86
-        const byArea = Math.sqrt(TARGET_AREA / (bb.w * bb.h))
+        const byArea = Math.sqrt(TARGET_FILLED / bb.filled)
         const byFit = Math.min(maxSide / bb.w, maxSide / bb.h)
         const ratio = Math.min(Math.min(byArea, byFit) * opts.scale, (SIZE * 0.96) / bb.w, (SIZE * 0.96) / bb.h)
         const dw = bb.w * ratio
