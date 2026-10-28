@@ -332,7 +332,7 @@ export default function ReservasPage() {
                         </Badge>
                       )}
                     </div>
-                    {reservation.total_amount && (
+                    {Number(reservation.total_amount) > 0 && (
                       <p className="mt-2 font-serif text-base text-indigo-dark">
                         {t("totalLabel")} {reservation.total_amount.toFixed(2)}€
                       </p>

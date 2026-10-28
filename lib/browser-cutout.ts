@@ -12,6 +12,9 @@ const CACHE_NAME = "semzo-cutout-v1"
 const MODEL_SIDE = 1024
 
 /** Mensaje de error cuando el modelo no consigue separar el bolso del fondo. */
+/** Alfa que marca el bolso en las fotos sin recorte (el resto de la foto va con 255). */
+export const OBJECT_ALPHA = 250
+
 export const NO_FOREGROUND = "NO_FOREGROUND"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -134,6 +137,157 @@ function keepMainObjects(alpha: Float32Array, S: number): Uint8Array {
     }
   }
   return keep
+}
+
+/**
+ * Fotos de estudio que ya vienen sobre fondo liso y claro: no necesitan IA ni recorte. La foto se conserva entera
+ * (con su sombra y toda su calidad) y solo se marca donde esta el bolso para poder encuadrarlo igual que los demas.
+ * Devuelve null si el fondo no es liso y claro (entonces hay que usar la IA).
+ */
+export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null> {
+  const img = await loadImage(file)
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+  const canvas = document.createElement("canvas")
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })
+  if (!ctx) return null
+  ctx.drawImage(img, 0, 0)
+  const frame = ctx.getImageData(0, 0, W, H)
+  const px = frame.data
+
+  // Color del fondo: mediana de los pixeles del borde
+  const edge: number[] = []
+  const pushEdge = (x: number, y: number) => edge.push((y * W + x) * 4)
+  for (let x = 0; x < W; x++) { pushEdge(x, 0); pushEdge(x, H - 1) }
+  for (let y = 1; y < H - 1; y++) { pushEdge(0, y); pushEdge(W - 1, y) }
+  const median = (c: number) => {
+    const v = edge.map((o) => px[o + c]).sort((a, b) => a - b)
+    return v[Math.floor(v.length / 2)]
+  }
+  const bg = [median(0), median(1), median(2)]
+  if (Math.min(bg[0], bg[1], bg[2]) < 215) return null // fondo oscuro o de color: hace falta IA
+
+  const diffAt = (o: number) => Math.max(Math.abs(px[o] - bg[0]), Math.abs(px[o + 1] - bg[1]), Math.abs(px[o + 2] - bg[2]))
+  let clean = 0
+  for (const o of edge) if (diffAt(o) <= 14) clean++
+  if (clean < edge.length * 0.97) return null // el borde no es liso (suelo, pared, objetos...)
+
+  // Fondo = lo parecido al color de fondo que se alcanza desde el borde de la foto
+  const HI = 30
+  const LO = 6
+  const isBg = new Uint8Array(W * H)
+  const stack = new Int32Array(W * H)
+  let top = 0
+  const seed = (x: number, y: number) => {
+    const p = y * W + x
+    if (!isBg[p] && diffAt(p * 4) <= HI) { isBg[p] = 1; stack[top++] = p }
+  }
+  for (let x = 0; x < W; x++) { seed(x, 0); seed(x, H - 1) }
+  for (let y = 0; y < H; y++) { seed(0, y); seed(W - 1, y) }
+  while (top > 0) {
+    const p = stack[--top]
+    const x = p % W
+    const y = (p - x) / W
+    if (x > 0) seed(x - 1, y)
+    if (x < W - 1) seed(x + 1, y)
+    if (y > 0) seed(x, y - 1)
+    if (y < H - 1) seed(x, y + 1)
+  }
+
+  // Huecos de fondo encerrados (el interior de un asa): si son grandes y del color exacto del fondo, tambien son fondo.
+  // Los pequenos (el esmalte blanco de un cierre) se quedan como parte del bolso.
+  // Tambien los huecos finos y largos en diagonal (la rendija entre las dos capas de una correa): ocupan poco pero
+  // miden mas del 8% de la foto y no son un rectangulo. Asi no se tocan letras ni detalles blancos pequenos.
+  const TIGHT = 10
+  const MIN_HOLE = W * H * 0.015
+  const MIN_STRIP = W * H * 0.0002
+  const MIN_STRIP_LENGTH = Math.max(W, H) * 0.08
+  const seen = new Uint8Array(W * H)
+  const hole = new Int32Array(W * H)
+  for (let start = 0; start < W * H; start++) {
+    if (isBg[start] || seen[start] || diffAt(start * 4) > TIGHT) continue
+    let t = 0
+    let minX = W, maxX = 0, minY = H, maxY = 0
+    hole[t++] = start
+    seen[start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = hole[i]
+      const x = p % W
+      const y = (p - x) / W
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+      const visit = (q: number) => {
+        if (!seen[q] && !isBg[q] && diffAt(q * 4) <= TIGHT) { seen[q] = 1; hole[t++] = q }
+      }
+      if (x > 0) visit(p - 1)
+      if (x < W - 1) visit(p + 1)
+      if (y > 0) visit(p - W)
+      if (y < H - 1) visit(p + W)
+    }
+    const boxW = maxX - minX + 1
+    const boxH = maxY - minY + 1
+    const longSide = Math.max(boxW, boxH)
+    const isStrip = t >= MIN_STRIP && longSide >= MIN_STRIP_LENGTH && t / (boxW * boxH) < 0.4
+    if (t >= MIN_HOLE || isStrip) for (let i = 0; i < t; i++) isBg[hole[i]] = 1
+  }
+
+  // Objeto = lo que no es fondo. Se descartan motas sueltas: solo cuentan las piezas grandes (el bolso y sus partes)
+  const comp = new Int32Array(W * H)
+  const label = new Uint8Array(W * H)
+  const parts: { start: number; size: number }[] = []
+  for (let start = 0; start < W * H; start++) {
+    if (isBg[start] || label[start]) continue
+    let t = 0
+    comp[t++] = start
+    label[start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = comp[i]
+      const x = p % W
+      if (x > 0 && !isBg[p - 1] && !label[p - 1]) { label[p - 1] = 1; comp[t++] = p - 1 }
+      if (x < W - 1 && !isBg[p + 1] && !label[p + 1]) { label[p + 1] = 1; comp[t++] = p + 1 }
+      if (p >= W && !isBg[p - W] && !label[p - W]) { label[p - W] = 1; comp[t++] = p - W }
+      if (p < W * H - W && !isBg[p + W] && !label[p + W]) { label[p + W] = 1; comp[t++] = p + W }
+    }
+    parts.push({ start, size: t })
+  }
+  const biggest = parts.reduce((m, c) => Math.max(m, c.size), 0)
+  if (biggest < W * H * 0.03) return null
+  const isObject = new Uint8Array(W * H)
+  let filled = 0
+  for (const part of parts) {
+    if (part.size < biggest * 0.05) continue
+    let t = 0
+    comp[t++] = part.start
+    isObject[part.start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = comp[i]
+      const x = p % W
+      if (x > 0 && !isBg[p - 1] && !isObject[p - 1]) { isObject[p - 1] = 1; comp[t++] = p - 1 }
+      if (x < W - 1 && !isBg[p + 1] && !isObject[p + 1]) { isObject[p + 1] = 1; comp[t++] = p + 1 }
+      if (p >= W && !isBg[p - W] && !isObject[p - W]) { isObject[p - W] = 1; comp[t++] = p - W }
+      if (p < W * H - W && !isBg[p + W] && !isObject[p + W]) { isObject[p + W] = 1; comp[t++] = p + W }
+    }
+    filled += t
+  }
+  if (filled > W * H * 0.9) return null
+
+  // Sin recorte: la foto se queda tal cual, solo se lleva su fondo a blanco puro (se divide por el color del fondo).
+  // Despues el editor la mezcla en "multiplicar" sobre el fondo del catalogo: el fondo pasa a ser el del catalogo y la
+  // sombra de la foto original se conserva suave y natural. El canal alfa solo marca donde esta el bolso (254) para medirlo.
+  for (let p = 0; p < W * H; p++) {
+    const o = p * 4
+    px[o] = Math.min(255, Math.round((px[o] * 255) / bg[0]))
+    px[o + 1] = Math.min(255, Math.round((px[o + 1] * 255) / bg[1]))
+    px[o + 2] = Math.min(255, Math.round((px[o + 2] * 255) / bg[2]))
+    px[o + 3] = isObject[p] ? OBJECT_ALPHA : 255
+  }
+  ctx.putImageData(frame, 0, 0)
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"))
 }
 
 /** Devuelve un PNG con el bolso y el fondo transparente. */

@@ -6,9 +6,34 @@ import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
+import { cutoutFromCleanBackground, cutoutInBrowser, NO_FOREGROUND, OBJECT_ALPHA } from "@/lib/browser-cutout"
 
-const SIZE = 1200
+const SIZE = 1600
+
+/**
+ * Recorta una zona de un lienzo y la reduce a la mitad tantas veces como haga falta hasta quedar a menos del doble
+ * del ancho final. Reducir una foto grande de golpe da bordes dentados y poca nitidez; por pasos queda limpio.
+ */
+function shrinkCanvas(src: HTMLCanvasElement, sx: number, sy: number, sw: number, sh: number, targetW: number) {
+  let cur = document.createElement("canvas")
+  cur.width = Math.max(1, Math.round(sw))
+  cur.height = Math.max(1, Math.round(sh))
+  const first = cur.getContext("2d")
+  if (!first) return src
+  first.drawImage(src, sx, sy, sw, sh, 0, 0, cur.width, cur.height)
+  while (cur.width / 2 >= targetW) {
+    const next = document.createElement("canvas")
+    next.width = Math.max(1, Math.round(cur.width / 2))
+    next.height = Math.max(1, Math.round(cur.height / 2))
+    const nctx = next.getContext("2d")
+    if (!nctx) break
+    nctx.imageSmoothingEnabled = true
+    nctx.imageSmoothingQuality = "high"
+    nctx.drawImage(cur, 0, 0, next.width, next.height)
+    cur = next
+  }
+  return cur
+}
 
 type OutFormat = "jpeg" | "png" | "webp"
 type ImgStatus = "processing" | "done" | "error"
@@ -21,12 +46,15 @@ interface Bag {
 }
 
 interface EditedImage {
+  flat?: boolean // foto sin recorte (se mezcla en multiplicar)
   id: string
   originalName: string
   previewUrl: string
   resultUrl: string | null
   resultBlob: Blob | null
   cutoutBlob?: Blob
+  sourceBlob?: Blob // foto original (para usarla sin recorte)
+  original?: boolean // se esta usando la foto original, sin recorte
   angle: number
   scale: number
   fileName: string
@@ -50,7 +78,7 @@ const MAX_UPLOAD_SIDE = 2400
 /**
  * Las fotos del movil pesan 5-10 MB y Vercel rechaza peticiones de mas de 4,5 MB (error 413).
  * Se reducen aqui, en el navegador, antes de enviarlas a recortar: 2400 px de lado largo sobran
- * para una imagen final de 1200 px. Si algo falla se envia la original.
+ * para una imagen final de 1600 px. Si algo falla se envia la original.
  */
 async function shrinkForUpload(file: File): Promise<File> {
   // Se carga con un <img> (no con createImageBitmap): Safari no admite todas sus opciones y el <img>
@@ -117,12 +145,31 @@ export default function CatalogImageEditor() {
   }
 
   // Detecta el bounding box real de píxeles no-transparentes en el canvas
-  const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+  const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number, flat = false) => {
     const pixels = ctx.getImageData(0, 0, w, h).data
+    if (flat) {
+      // Foto sin recorte: el bolso es lo marcado con el alfa especial (el resto es fondo de la foto)
+      let fx = w, fy = h, fx2 = 0, fy2 = 0, count = 0
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const a = pixels[(y * w + x) * 4 + 3]
+          if (a >= 200 && a <= OBJECT_ALPHA + 2) { // margen por si el giro mezcla pixeles vecinos
+            count++
+            if (x < fx) fx = x
+            if (x > fx2) fx2 = x
+            if (y < fy) fy = y
+            if (y > fy2) fy2 = y
+          }
+        }
+      }
+      if (fx2 >= fx) return { x: fx, y: fy, w: fx2 - fx + 1, h: fy2 - fy + 1, filled: Math.max(count, 1) }
+    }
     let minX = w, minY = h, maxX = 0, maxY = 0
+    let filled = 0 // pixeles realmente ocupados por el bolso (sin contar el aire de la caja)
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const alpha = pixels[(y * w + x) * 4 + 3]
+        if (alpha > 128) filled++
         if (alpha > 10) {
           if (x < minX) minX = x
           if (x > maxX) maxX = x
@@ -131,8 +178,8 @@ export default function CatalogImageEditor() {
         }
       }
     }
-    if (maxX < minX) return { x: 0, y: 0, w, h } // fallback imagen sin transparencia
-    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+    if (maxX < minX) return { x: 0, y: 0, w, h, filled: w * h } // fallback imagen sin transparencia
+    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1, filled: Math.max(filled, 1) }
   }
 
   const applyBackground = (
@@ -140,6 +187,7 @@ export default function CatalogImageEditor() {
     fmt: OutFormat,
     color: string,
     opts: { angle: number; scale: number } = { angle: 0, scale: 1 },
+    flat = false,
   ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(pngBlob)
@@ -162,14 +210,16 @@ export default function CatalogImageEditor() {
         tmpCtx.drawImage(img, -img.width / 2, -img.height / 2)
 
         // 2. Limpiar el halo: los pixeles casi transparentes del borde del recorte se eliminan
-        const data = tmpCtx.getImageData(0, 0, rw, rh)
-        for (let i = 3; i < data.data.length; i += 4) {
-          if (data.data[i] < 24) data.data[i] = 0
+        if (!flat) {
+          const data = tmpCtx.getImageData(0, 0, rw, rh)
+          for (let i = 3; i < data.data.length; i += 4) {
+            if (data.data[i] < 24) data.data[i] = 0
+          }
+          tmpCtx.putImageData(data, 0, 0)
         }
-        tmpCtx.putImageData(data, 0, 0)
 
         // 3. Caja real del bolso
-        const bb = getBoundingBox(tmpCtx, rw, rh)
+        const bb = getBoundingBox(tmpCtx, rw, rh, flat)
 
         // 4. Lienzo final: fondo liso con un centro algo mas claro (como un estudio), igual en todas las fotos
         const canvas = document.createElement("canvas")
@@ -186,17 +236,41 @@ export default function CatalogImageEditor() {
         ctx.fillRect(0, 0, SIZE, SIZE)
 
         // 5. Encuadre igual para todos: el bolso ocupa la misma superficie visual (no el mismo ancho o alto),
-        //    asi una pochette ancha y un bolso alto se ven del mismo tamano. Ningun lado pasa del 86% del lienzo.
+        //    asi una pochette ancha y un bolso alto se ven del mismo tamano, y una cadena larga colgando no lo
+        //    encoge. Se mide la superficie real del bolso, no su caja. Ningun lado pasa del 86% del lienzo.
         //    El control de tamano afina sobre esa base.
-        const TARGET_AREA = SIZE * SIZE * 0.5
+        const TARGET_FILLED = SIZE * SIZE * 0.33
         const maxSide = SIZE * 0.86
-        const byArea = Math.sqrt(TARGET_AREA / (bb.w * bb.h))
+        const byArea = Math.sqrt(TARGET_FILLED / bb.filled)
         const byFit = Math.min(maxSide / bb.w, maxSide / bb.h)
         const ratio = Math.min(Math.min(byArea, byFit) * opts.scale, (SIZE * 0.96) / bb.w, (SIZE * 0.96) / bb.h)
         const dw = bb.w * ratio
         const dh = bb.h * ratio
         const dx = (SIZE - dw) / 2
         const dy = (SIZE - dh) / 2 - SIZE * 0.01
+
+        if (flat) {
+          // Foto sin recorte: se encuadra entera (con margen para su sombra) y se mezcla en "multiplicar" sobre el fondo
+          const mx = Math.round(bb.w * 0.12)
+          const my = Math.round(bb.h * 0.12)
+          const sx = Math.max(0, bb.x - mx)
+          const sy = Math.max(0, bb.y - my)
+          const sw = Math.min(rw, bb.x + bb.w + mx) - sx
+          const sh = Math.min(rh, bb.y + bb.h + my) - sy
+          const piece = shrinkCanvas(tmp, sx, sy, sw, sh, sw * ratio)
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = "high"
+          ctx.globalCompositeOperation = "multiply"
+          ctx.drawImage(piece, 0, 0, piece.width, piece.height, dx + (sx - bb.x) * ratio, dy + (sy - bb.y) * ratio, sw * ratio, sh * ratio)
+          ctx.globalCompositeOperation = "source-over"
+          URL.revokeObjectURL(url)
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
+            `image/${fmt}`,
+            0.95,
+          )
+          return
+        }
 
         // 6. Sombra de apoyo bajo el bolso (elipse difusa) para que no flote
         ctx.save()
@@ -216,14 +290,17 @@ export default function CatalogImageEditor() {
         ctx.shadowColor = "rgba(26,26,75,0.16)"
         ctx.shadowBlur = SIZE * 0.022
         ctx.shadowOffsetY = SIZE * 0.009
-        ctx.drawImage(tmp, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh)
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = "high"
+        const bag = shrinkCanvas(tmp, bb.x, bb.y, bb.w, bb.h, dw)
+        ctx.drawImage(bag, 0, 0, bag.width, bag.height, dx, dy, dw, dh)
         ctx.shadowColor = "transparent"
 
         URL.revokeObjectURL(url)
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
           `image/${fmt}`,
-          0.94,
+          0.95,
         )
       }
       img.onerror = () => {
@@ -232,6 +309,73 @@ export default function CatalogImageEditor() {
       }
       img.src = url
     })
+  }
+
+  // Foto original sin recorte: entera, centrada y con el fondo de sus propios bordes. Para fotos que el recorte no resuelve
+  // (interiores, manos, fondos con objetos): la foto se queda como esta, sin manchas.
+  const frameOriginal = async (src: Blob, fmt: OutFormat): Promise<Blob> => {
+    const url = URL.createObjectURL(src)
+    try {
+      const img = new Image()
+      img.src = url
+      await img.decode()
+      const full = document.createElement("canvas")
+      full.width = img.naturalWidth
+      full.height = img.naturalHeight
+      const fctx = full.getContext("2d", { willReadFrequently: true })
+      if (!fctx) throw new Error("Canvas error")
+      fctx.drawImage(img, 0, 0)
+      const w = full.width
+      const h = full.height
+      const rs: number[] = [], gs: number[] = [], bs: number[] = []
+      const take = (x: number, y: number) => {
+        const d = fctx.getImageData(x, y, 1, 1).data
+        rs.push(d[0]); gs.push(d[1]); bs.push(d[2])
+      }
+      for (let i = 0; i < 40; i++) {
+        const x = Math.floor((i / 39) * (w - 1))
+        const y = Math.floor((i / 39) * (h - 1))
+        take(x, 0); take(x, h - 1); take(0, y); take(w - 1, y)
+      }
+      const med = (v: number[]) => v.sort((a, b) => a - b)[Math.floor(v.length / 2)]
+      const canvas = document.createElement("canvas")
+      canvas.width = SIZE
+      canvas.height = SIZE
+      const ctx = canvas.getContext("2d")
+      if (!ctx) throw new Error("Canvas error")
+      ctx.fillStyle = `rgb(${med(rs)},${med(gs)},${med(bs)})`
+      ctx.fillRect(0, 0, SIZE, SIZE)
+      const ratio = Math.min((SIZE * 0.94) / w, (SIZE * 0.94) / h)
+      const dw = w * ratio
+      const dh = h * ratio
+      const piece = shrinkCanvas(full, 0, 0, w, h, dw)
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = "high"
+      ctx.drawImage(piece, 0, 0, piece.width, piece.height, (SIZE - dw) / 2, (SIZE - dh) / 2, dw, dh)
+      return await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))), `image/${fmt}`, 0.95),
+      )
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  // Alterna entre el recorte automatico y la foto original sin recorte
+  const toggleOriginal = async (img: EditedImage) => {
+    try {
+      let blob: Blob
+      if (img.original) {
+        if (!img.cutoutBlob) return
+        blob = await applyBackground(img.cutoutBlob, outFormat, bgColor, { angle: img.angle, scale: img.scale }, img.flat)
+      } else {
+        if (!img.sourceBlob) return
+        blob = await frameOriginal(img.sourceBlob, outFormat)
+      }
+      const url = URL.createObjectURL(blob)
+      updateImage(img.id, { original: !img.original, resultUrl: url, resultBlob: blob, previewUrl: url })
+    } catch {
+      // se queda con la version anterior
+    }
   }
 
   // Reencuadra una foto ya recortada (enderezar / tamano) sin volver a llamar a Remove.bg
@@ -245,7 +389,7 @@ export default function CatalogImageEditor() {
     clearTimeout(rerenderTimers.current[img.id])
     rerenderTimers.current[img.id] = setTimeout(async () => {
       try {
-        const blob = await applyBackground(cutout, outFormat, bgColor, { angle, scale })
+        const blob = await applyBackground(cutout, outFormat, bgColor, { angle, scale }, img.flat)
         const url = URL.createObjectURL(blob)
         updateImage(img.id, { resultUrl: url, resultBlob: blob, previewUrl: url })
       } catch {
@@ -284,20 +428,31 @@ export default function CatalogImageEditor() {
         const source = await shrinkForUpload(file)
         let cutoutBlob: Blob
         let notice: string | undefined
+        let isFlat = false
         try {
-          cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
+          // Fotos de estudio ya sobre fondo liso y claro: sin IA, para no perder calidad
+          const flatBlob = await cutoutFromCleanBackground(source)
+          if (flatBlob) {
+            cutoutBlob = flatBlob
+            isFlat = true
+            notice = "Fondo ya limpio: la foto no se recorta, solo se encuadra y se iguala el fondo"
+          } else {
+            cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
+          }
         } catch (e) {
           if (!(e instanceof Error) || e.message !== NO_FOREGROUND) throw e
           // Sin recorte posible: se encuadra la foto original sobre el fondo
           cutoutBlob = source
           notice = "Sin recorte: no se detectó el bolso, se usó la foto original"
         }
-        const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
+        const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor, { angle: 0, scale: 1 }, isFlat)
         const finalUrl = URL.createObjectURL(finalBlob)
         updateImage(id, {
           resultUrl: finalUrl,
           resultBlob: finalBlob,
           cutoutBlob,
+          sourceBlob: source,
+          flat: isFlat,
           previewUrl: finalUrl,
           status: "done",
           stage: undefined,
@@ -419,7 +574,7 @@ export default function CatalogImageEditor() {
           <div className="flex flex-col gap-2">
             <Label className="text-xs uppercase tracking-wide text-slate-500">Tamaño final</Label>
             <div className="flex h-11 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
-              1200 × 1200 px (cuadrado)
+              {SIZE} × {SIZE} px (cuadrado)
             </div>
           </div>
         </div>
@@ -537,7 +692,7 @@ export default function CatalogImageEditor() {
                   {img.status === "done" && (
                     <>
                       {/* Ajustes de encuadre: se aplican al momento, sin gastar otro recorte */}
-                      {!img.uploadedUrl && (
+                      {!img.uploadedUrl && !img.original && (
                         <div className="space-y-1.5 rounded-md bg-slate-50 px-3 py-2">
                           <label className="flex items-center gap-2 text-[11px] text-slate-600">
                             <span className="w-16 shrink-0">Enderezar</span>
@@ -566,6 +721,16 @@ export default function CatalogImageEditor() {
                             <span className="w-9 text-right tabular-nums">{Math.round(img.scale * 100)}%</span>
                           </label>
                         </div>
+                      )}
+
+                      {!img.uploadedUrl && img.sourceBlob && (
+                        <button
+                          type="button"
+                          onClick={() => toggleOriginal(img)}
+                          className="text-left text-[11px] text-[#1a1a4b] underline underline-offset-2"
+                        >
+                          {img.original ? "Volver al recorte automático" : "¿Mal recortada? Usar la foto original sin recorte"}
+                        </button>
                       )}
 
                       {/* Botones subir / descargar */}

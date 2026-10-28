@@ -19,10 +19,12 @@ export async function POST(request: Request) {
     if (email === adminEmail && password === adminPassword) {
       // Crear cookie de sesión
       const cookieStore = await cookies()
+      const isProduction = process.env.NODE_ENV === "production"
       cookieStore.set("admin_session", createAdminSessionValue(), {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        // El preview de v0 es un iframe de terceros: sin SameSite=None; Secure el navegador descarta la cookie.
+        secure: true,
+        sameSite: isProduction ? "lax" : "none",
         maxAge: 60 * 60 * 24, // 24 horas
         path: "/",
       })
