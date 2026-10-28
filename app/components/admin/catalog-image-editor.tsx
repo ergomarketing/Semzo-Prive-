@@ -6,7 +6,7 @@ import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cutoutFromCleanBackground, cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
+import { cutoutFromCleanBackground, cutoutInBrowser, NO_FOREGROUND, OBJECT_ALPHA } from "@/lib/browser-cutout"
 
 const SIZE = 1600
 
@@ -46,6 +46,7 @@ interface Bag {
 }
 
 interface EditedImage {
+  flat?: boolean // foto sin recorte (se mezcla en multiplicar)
   id: string
   originalName: string
   previewUrl: string
@@ -142,8 +143,25 @@ export default function CatalogImageEditor() {
   }
 
   // Detecta el bounding box real de píxeles no-transparentes en el canvas
-  const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+  const getBoundingBox = (ctx: CanvasRenderingContext2D, w: number, h: number, flat = false) => {
     const pixels = ctx.getImageData(0, 0, w, h).data
+    if (flat) {
+      // Foto sin recorte: el bolso es lo marcado con el alfa especial (el resto es fondo de la foto)
+      let fx = w, fy = h, fx2 = 0, fy2 = 0, count = 0
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const a = pixels[(y * w + x) * 4 + 3]
+          if (a >= 200 && a <= OBJECT_ALPHA + 2) { // margen por si el giro mezcla pixeles vecinos
+            count++
+            if (x < fx) fx = x
+            if (x > fx2) fx2 = x
+            if (y < fy) fy = y
+            if (y > fy2) fy2 = y
+          }
+        }
+      }
+      if (fx2 >= fx) return { x: fx, y: fy, w: fx2 - fx + 1, h: fy2 - fy + 1, filled: Math.max(count, 1) }
+    }
     let minX = w, minY = h, maxX = 0, maxY = 0
     let filled = 0 // pixeles realmente ocupados por el bolso (sin contar el aire de la caja)
     for (let y = 0; y < h; y++) {
@@ -167,6 +185,7 @@ export default function CatalogImageEditor() {
     fmt: OutFormat,
     color: string,
     opts: { angle: number; scale: number } = { angle: 0, scale: 1 },
+    flat = false,
   ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(pngBlob)
@@ -189,14 +208,16 @@ export default function CatalogImageEditor() {
         tmpCtx.drawImage(img, -img.width / 2, -img.height / 2)
 
         // 2. Limpiar el halo: los pixeles casi transparentes del borde del recorte se eliminan
-        const data = tmpCtx.getImageData(0, 0, rw, rh)
-        for (let i = 3; i < data.data.length; i += 4) {
-          if (data.data[i] < 24) data.data[i] = 0
+        if (!flat) {
+          const data = tmpCtx.getImageData(0, 0, rw, rh)
+          for (let i = 3; i < data.data.length; i += 4) {
+            if (data.data[i] < 24) data.data[i] = 0
+          }
+          tmpCtx.putImageData(data, 0, 0)
         }
-        tmpCtx.putImageData(data, 0, 0)
 
         // 3. Caja real del bolso
-        const bb = getBoundingBox(tmpCtx, rw, rh)
+        const bb = getBoundingBox(tmpCtx, rw, rh, flat)
 
         // 4. Lienzo final: fondo liso con un centro algo mas claro (como un estudio), igual en todas las fotos
         const canvas = document.createElement("canvas")
@@ -225,6 +246,29 @@ export default function CatalogImageEditor() {
         const dh = bb.h * ratio
         const dx = (SIZE - dw) / 2
         const dy = (SIZE - dh) / 2 - SIZE * 0.01
+
+        if (flat) {
+          // Foto sin recorte: se encuadra entera (con margen para su sombra) y se mezcla en "multiplicar" sobre el fondo
+          const mx = Math.round(bb.w * 0.12)
+          const my = Math.round(bb.h * 0.12)
+          const sx = Math.max(0, bb.x - mx)
+          const sy = Math.max(0, bb.y - my)
+          const sw = Math.min(rw, bb.x + bb.w + mx) - sx
+          const sh = Math.min(rh, bb.y + bb.h + my) - sy
+          const piece = shrinkCanvas(tmp, sx, sy, sw, sh, sw * ratio)
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = "high"
+          ctx.globalCompositeOperation = "multiply"
+          ctx.drawImage(piece, 0, 0, piece.width, piece.height, dx + (sx - bb.x) * ratio, dy + (sy - bb.y) * ratio, sw * ratio, sh * ratio)
+          ctx.globalCompositeOperation = "source-over"
+          URL.revokeObjectURL(url)
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))),
+            `image/${fmt}`,
+            0.95,
+          )
+          return
+        }
 
         // 6. Sombra de apoyo bajo el bolso (elipse difusa) para que no flote
         ctx.save()
@@ -276,7 +320,7 @@ export default function CatalogImageEditor() {
     clearTimeout(rerenderTimers.current[img.id])
     rerenderTimers.current[img.id] = setTimeout(async () => {
       try {
-        const blob = await applyBackground(cutout, outFormat, bgColor, { angle, scale })
+        const blob = await applyBackground(cutout, outFormat, bgColor, { angle, scale }, img.flat)
         const url = URL.createObjectURL(blob)
         updateImage(img.id, { resultUrl: url, resultBlob: blob, previewUrl: url })
       } catch {
@@ -315,12 +359,14 @@ export default function CatalogImageEditor() {
         const source = await shrinkForUpload(file)
         let cutoutBlob: Blob
         let notice: string | undefined
+        let isFlat = false
         try {
           // Fotos de estudio ya sobre fondo liso y claro: sin IA, para no perder calidad
-          const flat = await cutoutFromCleanBackground(source)
-          if (flat) {
-            cutoutBlob = flat
-            notice = "Fondo ya limpio: solo se ha encuadrado, sin recorte con IA"
+          const flatBlob = await cutoutFromCleanBackground(source)
+          if (flatBlob) {
+            cutoutBlob = flatBlob
+            isFlat = true
+            notice = "Fondo ya limpio: la foto no se recorta, solo se encuadra y se iguala el fondo"
           } else {
             cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
           }
@@ -330,12 +376,13 @@ export default function CatalogImageEditor() {
           cutoutBlob = source
           notice = "Sin recorte: no se detectó el bolso, se usó la foto original"
         }
-        const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor)
+        const finalBlob = await applyBackground(cutoutBlob, outFormat, bgColor, { angle: 0, scale: 1 }, isFlat)
         const finalUrl = URL.createObjectURL(finalBlob)
         updateImage(id, {
           resultUrl: finalUrl,
           resultBlob: finalBlob,
           cutoutBlob,
+          flat: isFlat,
           previewUrl: finalUrl,
           status: "done",
           stage: undefined,

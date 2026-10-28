@@ -12,6 +12,9 @@ const CACHE_NAME = "semzo-cutout-v1"
 const MODEL_SIDE = 1024
 
 /** Mensaje de error cuando el modelo no consigue separar el bolso del fondo. */
+/** Alfa que marca el bolso en las fotos sin recorte (el resto de la foto va con 255). */
+export const OBJECT_ALPHA = 250
+
 export const NO_FOREGROUND = "NO_FOREGROUND"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -137,9 +140,9 @@ function keepMainObjects(alpha: Float32Array, S: number): Uint8Array {
 }
 
 /**
- * Fotos de estudio que ya vienen sobre fondo liso y claro: no necesitan IA. Se quita solo el fondo que toca los
- * bordes de la foto (lo de dentro del bolso, como un herraje blanco, se queda) y el resto de la foto no se toca,
- * asi conserva toda su calidad. Devuelve null si el fondo no es liso y claro (entonces hay que usar la IA).
+ * Fotos de estudio que ya vienen sobre fondo liso y claro: no necesitan IA ni recorte. La foto se conserva entera
+ * (con su sombra y toda su calidad) y solo se marca donde esta el bolso para poder encuadrarlo igual que los demas.
+ * Devuelve null si el fondo no es liso y claro (entonces hay que usar la IA).
  */
 export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null> {
   const img = await loadImage(file)
@@ -232,37 +235,55 @@ export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null
     if (t >= MIN_HOLE || isStrip) for (let i = 0; i < t; i++) isBg[hole[i]] = 1
   }
 
-  // Transparencia: el fondo desaparece; su sombra suave (si la hay) queda como sombra translucida
-  const alpha = new Uint8ClampedArray(W * H)
+  // Objeto = lo que no es fondo. Se descartan motas sueltas: solo cuentan las piezas grandes (el bolso y sus partes)
+  const comp = new Int32Array(W * H)
+  const label = new Uint8Array(W * H)
+  const parts: { start: number; size: number }[] = []
+  for (let start = 0; start < W * H; start++) {
+    if (isBg[start] || label[start]) continue
+    let t = 0
+    comp[t++] = start
+    label[start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = comp[i]
+      const x = p % W
+      if (x > 0 && !isBg[p - 1] && !label[p - 1]) { label[p - 1] = 1; comp[t++] = p - 1 }
+      if (x < W - 1 && !isBg[p + 1] && !label[p + 1]) { label[p + 1] = 1; comp[t++] = p + 1 }
+      if (p >= W && !isBg[p - W] && !label[p - W]) { label[p - W] = 1; comp[t++] = p - W }
+      if (p < W * H - W && !isBg[p + W] && !label[p + W]) { label[p + W] = 1; comp[t++] = p + W }
+    }
+    parts.push({ start, size: t })
+  }
+  const biggest = parts.reduce((m, c) => Math.max(m, c.size), 0)
+  if (biggest < W * H * 0.03) return null
+  const isObject = new Uint8Array(W * H)
   let filled = 0
-  for (let p = 0; p < W * H; p++) {
-    if (isBg[p]) {
-      const d = diffAt(p * 4)
-      const a = Math.min(1, Math.max(0, (d - LO) / (HI - LO)))
-      alpha[p] = Math.round(a * 140)
-    } else {
-      alpha[p] = 255
-      filled++
+  for (const part of parts) {
+    if (part.size < biggest * 0.05) continue
+    let t = 0
+    comp[t++] = part.start
+    isObject[part.start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = comp[i]
+      const x = p % W
+      if (x > 0 && !isBg[p - 1] && !isObject[p - 1]) { isObject[p - 1] = 1; comp[t++] = p - 1 }
+      if (x < W - 1 && !isBg[p + 1] && !isObject[p + 1]) { isObject[p + 1] = 1; comp[t++] = p + 1 }
+      if (p >= W && !isBg[p - W] && !isObject[p - W]) { isObject[p - W] = 1; comp[t++] = p - W }
+      if (p < W * H - W && !isBg[p + W] && !isObject[p + W]) { isObject[p + W] = 1; comp[t++] = p + W }
     }
+    filled += t
   }
-  if (filled < W * H * 0.03 || filled > W * H * 0.9) return null
+  if (filled > W * H * 0.9) return null
 
-  // Pixel del borde del bolso que toca el fondo: medio transparente, para que no quede un halo claro
-  for (let y = 1; y < H - 1; y++) {
-    for (let x = 1; x < W - 1; x++) {
-      const p = y * W + x
-      if (alpha[p] === 255 && (isBg[p - 1] || isBg[p + 1] || isBg[p - W] || isBg[p + W])) alpha[p] = 140
-    }
-  }
-
+  // Sin recorte: la foto se queda tal cual, solo se lleva su fondo a blanco puro (se divide por el color del fondo).
+  // Despues el editor la mezcla en "multiplicar" sobre el fondo del catalogo: el fondo pasa a ser el del catalogo y la
+  // sombra de la foto original se conserva suave y natural. El canal alfa solo marca donde esta el bolso (254) para medirlo.
   for (let p = 0; p < W * H; p++) {
     const o = p * 4
-    if (isBg[p]) {
-      px[o] = 38
-      px[o + 1] = 38
-      px[o + 2] = 64 // la sombra se pinta en el indigo de la marca
-    }
-    px[o + 3] = alpha[p]
+    px[o] = Math.min(255, Math.round((px[o] * 255) / bg[0]))
+    px[o + 1] = Math.min(255, Math.round((px[o + 1] * 255) / bg[1]))
+    px[o + 2] = Math.min(255, Math.round((px[o + 2] * 255) / bg[2]))
+    px[o + 3] = isObject[p] ? OBJECT_ALPHA : 255
   }
   ctx.putImageData(frame, 0, 0)
 
