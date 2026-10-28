@@ -136,6 +136,128 @@ function keepMainObjects(alpha: Float32Array, S: number): Uint8Array {
   return keep
 }
 
+/**
+ * Fotos de estudio que ya vienen sobre fondo liso y claro: no necesitan IA. Se quita solo el fondo que toca los
+ * bordes de la foto (lo de dentro del bolso, como un herraje blanco, se queda) y el resto de la foto no se toca,
+ * asi conserva toda su calidad. Devuelve null si el fondo no es liso y claro (entonces hay que usar la IA).
+ */
+export async function cutoutFromCleanBackground(file: Blob): Promise<Blob | null> {
+  const img = await loadImage(file)
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+  const canvas = document.createElement("canvas")
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })
+  if (!ctx) return null
+  ctx.drawImage(img, 0, 0)
+  const frame = ctx.getImageData(0, 0, W, H)
+  const px = frame.data
+
+  // Color del fondo: mediana de los pixeles del borde
+  const edge: number[] = []
+  const pushEdge = (x: number, y: number) => edge.push((y * W + x) * 4)
+  for (let x = 0; x < W; x++) { pushEdge(x, 0); pushEdge(x, H - 1) }
+  for (let y = 1; y < H - 1; y++) { pushEdge(0, y); pushEdge(W - 1, y) }
+  const median = (c: number) => {
+    const v = edge.map((o) => px[o + c]).sort((a, b) => a - b)
+    return v[Math.floor(v.length / 2)]
+  }
+  const bg = [median(0), median(1), median(2)]
+  if (Math.min(bg[0], bg[1], bg[2]) < 215) return null // fondo oscuro o de color: hace falta IA
+
+  const diffAt = (o: number) => Math.max(Math.abs(px[o] - bg[0]), Math.abs(px[o + 1] - bg[1]), Math.abs(px[o + 2] - bg[2]))
+  let clean = 0
+  for (const o of edge) if (diffAt(o) <= 14) clean++
+  if (clean < edge.length * 0.97) return null // el borde no es liso (suelo, pared, objetos...)
+
+  // Fondo = lo parecido al color de fondo que se alcanza desde el borde de la foto
+  const HI = 30
+  const LO = 6
+  const isBg = new Uint8Array(W * H)
+  const stack = new Int32Array(W * H)
+  let top = 0
+  const seed = (x: number, y: number) => {
+    const p = y * W + x
+    if (!isBg[p] && diffAt(p * 4) <= HI) { isBg[p] = 1; stack[top++] = p }
+  }
+  for (let x = 0; x < W; x++) { seed(x, 0); seed(x, H - 1) }
+  for (let y = 0; y < H; y++) { seed(0, y); seed(W - 1, y) }
+  while (top > 0) {
+    const p = stack[--top]
+    const x = p % W
+    const y = (p - x) / W
+    if (x > 0) seed(x - 1, y)
+    if (x < W - 1) seed(x + 1, y)
+    if (y > 0) seed(x, y - 1)
+    if (y < H - 1) seed(x, y + 1)
+  }
+
+  // Huecos de fondo encerrados (el interior de un asa): si son grandes y del color exacto del fondo, tambien son fondo.
+  // Los pequenos (el esmalte blanco de un cierre) se quedan como parte del bolso.
+  const TIGHT = 10
+  const MIN_HOLE = W * H * 0.015
+  const seen = new Uint8Array(W * H)
+  const hole = new Int32Array(W * H)
+  for (let start = 0; start < W * H; start++) {
+    if (isBg[start] || seen[start] || diffAt(start * 4) > TIGHT) continue
+    let size = 0
+    let t = 0
+    hole[t++] = start
+    seen[start] = 1
+    for (let i = 0; i < t; i++) {
+      const p = hole[i]
+      size++
+      const x = p % W
+      const y = (p - x) / W
+      const visit = (q: number) => {
+        if (!seen[q] && !isBg[q] && diffAt(q * 4) <= TIGHT) { seen[q] = 1; hole[t++] = q }
+      }
+      if (x > 0) visit(p - 1)
+      if (x < W - 1) visit(p + 1)
+      if (y > 0) visit(p - W)
+      if (y < H - 1) visit(p + W)
+    }
+    if (size >= MIN_HOLE) for (let i = 0; i < t; i++) isBg[hole[i]] = 1
+  }
+
+  // Transparencia: el fondo desaparece; su sombra suave (si la hay) queda como sombra translucida
+  const alpha = new Uint8ClampedArray(W * H)
+  let filled = 0
+  for (let p = 0; p < W * H; p++) {
+    if (isBg[p]) {
+      const d = diffAt(p * 4)
+      const a = Math.min(1, Math.max(0, (d - LO) / (HI - LO)))
+      alpha[p] = Math.round(a * 140)
+    } else {
+      alpha[p] = 255
+      filled++
+    }
+  }
+  if (filled < W * H * 0.03 || filled > W * H * 0.9) return null
+
+  // Pixel del borde del bolso que toca el fondo: medio transparente, para que no quede un halo claro
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const p = y * W + x
+      if (alpha[p] === 255 && (isBg[p - 1] || isBg[p + 1] || isBg[p - W] || isBg[p + W])) alpha[p] = 140
+    }
+  }
+
+  for (let p = 0; p < W * H; p++) {
+    const o = p * 4
+    if (isBg[p]) {
+      px[o] = 38
+      px[o + 1] = 38
+      px[o + 2] = 64 // la sombra se pinta en el indigo de la marca
+    }
+    px[o + 3] = alpha[p]
+  }
+  ctx.putImageData(frame, 0, 0)
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"))
+}
+
 /** Devuelve un PNG con el bolso y el fondo transparente. */
 export async function cutoutInBrowser(file: Blob, onStage?: (text: string) => void): Promise<Blob> {
   const { ort, session } = await loadSession(onStage)

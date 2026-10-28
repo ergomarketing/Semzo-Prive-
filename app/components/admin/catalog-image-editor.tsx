@@ -6,7 +6,7 @@ import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
+import { cutoutFromCleanBackground, cutoutInBrowser, NO_FOREGROUND } from "@/lib/browser-cutout"
 
 const SIZE = 1200
 
@@ -288,7 +288,14 @@ export default function CatalogImageEditor() {
         let cutoutBlob: Blob
         let notice: string | undefined
         try {
-          cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
+          // Fotos de estudio ya sobre fondo liso y claro: sin IA, para no perder calidad
+          const flat = await cutoutFromCleanBackground(source)
+          if (flat) {
+            cutoutBlob = flat
+            notice = "Fondo ya limpio: solo se ha encuadrado, sin recorte con IA"
+          } else {
+            cutoutBlob = await cutoutInBrowser(source, (stage) => updateImage(id, { stage }))
+          }
         } catch (e) {
           if (!(e instanceof Error) || e.message !== NO_FOREGROUND) throw e
           // Sin recorte posible: se encuadra la foto original sobre el fondo
