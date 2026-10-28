@@ -75,7 +75,7 @@ const MAX_UPLOAD_SIDE = 2400
 /**
  * Las fotos del movil pesan 5-10 MB y Vercel rechaza peticiones de mas de 4,5 MB (error 413).
  * Se reducen aqui, en el navegador, antes de enviarlas a recortar: 2400 px de lado largo sobran
- * para una imagen final de 1200 px. Si algo falla se envia la original.
+ * para una imagen final de 1600 px. Si algo falla se envia la original.
  */
 async function shrinkForUpload(file: File): Promise<File> {
   // Se carga con un <img> (no con createImageBitmap): Safari no admite todas sus opciones y el <img>
@@ -457,7 +457,7 @@ export default function CatalogImageEditor() {
           <div className="flex flex-col gap-2">
             <Label className="text-xs uppercase tracking-wide text-slate-500">Tamaño final</Label>
             <div className="flex h-11 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
-              1200 × 1200 px (cuadrado)
+              {SIZE} × {SIZE} px (cuadrado)
             </div>
           </div>
         </div>
