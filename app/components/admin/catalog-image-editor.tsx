@@ -53,6 +53,8 @@ interface EditedImage {
   resultUrl: string | null
   resultBlob: Blob | null
   cutoutBlob?: Blob
+  sourceBlob?: Blob // foto original (para usarla sin recorte)
+  original?: boolean // se esta usando la foto original, sin recorte
   angle: number
   scale: number
   fileName: string
@@ -309,6 +311,73 @@ export default function CatalogImageEditor() {
     })
   }
 
+  // Foto original sin recorte: entera, centrada y con el fondo de sus propios bordes. Para fotos que el recorte no resuelve
+  // (interiores, manos, fondos con objetos): la foto se queda como esta, sin manchas.
+  const frameOriginal = async (src: Blob, fmt: OutFormat): Promise<Blob> => {
+    const url = URL.createObjectURL(src)
+    try {
+      const img = new Image()
+      img.src = url
+      await img.decode()
+      const full = document.createElement("canvas")
+      full.width = img.naturalWidth
+      full.height = img.naturalHeight
+      const fctx = full.getContext("2d", { willReadFrequently: true })
+      if (!fctx) throw new Error("Canvas error")
+      fctx.drawImage(img, 0, 0)
+      const w = full.width
+      const h = full.height
+      const rs: number[] = [], gs: number[] = [], bs: number[] = []
+      const take = (x: number, y: number) => {
+        const d = fctx.getImageData(x, y, 1, 1).data
+        rs.push(d[0]); gs.push(d[1]); bs.push(d[2])
+      }
+      for (let i = 0; i < 40; i++) {
+        const x = Math.floor((i / 39) * (w - 1))
+        const y = Math.floor((i / 39) * (h - 1))
+        take(x, 0); take(x, h - 1); take(0, y); take(w - 1, y)
+      }
+      const med = (v: number[]) => v.sort((a, b) => a - b)[Math.floor(v.length / 2)]
+      const canvas = document.createElement("canvas")
+      canvas.width = SIZE
+      canvas.height = SIZE
+      const ctx = canvas.getContext("2d")
+      if (!ctx) throw new Error("Canvas error")
+      ctx.fillStyle = `rgb(${med(rs)},${med(gs)},${med(bs)})`
+      ctx.fillRect(0, 0, SIZE, SIZE)
+      const ratio = Math.min((SIZE * 0.94) / w, (SIZE * 0.94) / h)
+      const dw = w * ratio
+      const dh = h * ratio
+      const piece = shrinkCanvas(full, 0, 0, w, h, dw)
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = "high"
+      ctx.drawImage(piece, 0, 0, piece.width, piece.height, (SIZE - dw) / 2, (SIZE - dh) / 2, dw, dh)
+      return await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Error al generar la imagen"))), `image/${fmt}`, 0.95),
+      )
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  // Alterna entre el recorte automatico y la foto original sin recorte
+  const toggleOriginal = async (img: EditedImage) => {
+    try {
+      let blob: Blob
+      if (img.original) {
+        if (!img.cutoutBlob) return
+        blob = await applyBackground(img.cutoutBlob, outFormat, bgColor, { angle: img.angle, scale: img.scale }, img.flat)
+      } else {
+        if (!img.sourceBlob) return
+        blob = await frameOriginal(img.sourceBlob, outFormat)
+      }
+      const url = URL.createObjectURL(blob)
+      updateImage(img.id, { original: !img.original, resultUrl: url, resultBlob: blob, previewUrl: url })
+    } catch {
+      // se queda con la version anterior
+    }
+  }
+
   // Reencuadra una foto ya recortada (enderezar / tamano) sin volver a llamar a Remove.bg
   const rerenderTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const adjustImage = (img: EditedImage, patch: { angle?: number; scale?: number }) => {
@@ -382,6 +451,7 @@ export default function CatalogImageEditor() {
           resultUrl: finalUrl,
           resultBlob: finalBlob,
           cutoutBlob,
+          sourceBlob: source,
           flat: isFlat,
           previewUrl: finalUrl,
           status: "done",
@@ -622,7 +692,7 @@ export default function CatalogImageEditor() {
                   {img.status === "done" && (
                     <>
                       {/* Ajustes de encuadre: se aplican al momento, sin gastar otro recorte */}
-                      {!img.uploadedUrl && (
+                      {!img.uploadedUrl && !img.original && (
                         <div className="space-y-1.5 rounded-md bg-slate-50 px-3 py-2">
                           <label className="flex items-center gap-2 text-[11px] text-slate-600">
                             <span className="w-16 shrink-0">Enderezar</span>
@@ -651,6 +721,16 @@ export default function CatalogImageEditor() {
                             <span className="w-9 text-right tabular-nums">{Math.round(img.scale * 100)}%</span>
                           </label>
                         </div>
+                      )}
+
+                      {!img.uploadedUrl && img.sourceBlob && (
+                        <button
+                          type="button"
+                          onClick={() => toggleOriginal(img)}
+                          className="text-left text-[11px] text-[#1a1a4b] underline underline-offset-2"
+                        >
+                          {img.original ? "Volver al recorte automático" : "¿Mal recortada? Usar la foto original sin recorte"}
+                        </button>
                       )}
 
                       {/* Botones subir / descargar */}
