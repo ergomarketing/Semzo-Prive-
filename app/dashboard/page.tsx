@@ -11,6 +11,7 @@ import { IdentityVerificationModal } from "@/app/components/identity-verificatio
 import { SubscriptionSummaryCard } from "@/app/components/subscription-summary-card"
 import { MyBagCard } from "@/app/components/my-bag-card"
 import { NextBagCard } from "@/app/components/next-bag-card"
+import { ReturnLabelCard } from "@/app/components/return-label-card"
 import { PendingChargeCard } from "@/app/components/pending-charge-card"
 import { OwnedBagsSection } from "@/app/components/owned-bags-section"
 import { PetitePassBanner } from "@/app/components/petite-pass-banner"
@@ -415,6 +416,13 @@ export default function DashboardHome() {
       {membership && membership.status !== "no_membership" && (
         <div className="mb-6">
           <MyBagCard />
+        </div>
+      )}
+
+      {/* Etiqueta de devolucion de Correos (PDF) del bolso en curso: el propio componente decide si mostrarse. */}
+      {membership && membership.status !== "no_membership" && (
+        <div className="mb-6 empty:hidden">
+          <ReturnLabelCard />
         </div>
       )}
 
