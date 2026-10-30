@@ -101,17 +101,15 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup", plan
       })
 
         if (error) {
-        if (error.message.includes("unverified") && error.message.includes("Trial accounts")) {
-          setError(
-            `⚠️ Cuenta Twilio en modo prueba: El número ${phone} debe ser verificado primero. 
-            
-            Opciones:
-            1. Verifica tu número en: twilio.com/user/account/phone-numbers/verified
-            2. O usa el registro gratuito con email en su lugar
-            3. O actualiza tu cuenta Twilio para enviar a números no verificados`,
-          )
+        // El detalle tecnico (proveedor, cuenta, codigos) va solo a la consola; la clienta ve un mensaje claro.
+        console.error("[sms-auth] error enviando SMS:", error.message)
+        const msg = error.message.toLowerCase()
+        if (msg.includes("security purposes") || msg.includes("rate limit") || msg.includes("too many")) {
+          setError("Has pedido el código demasiadas veces. Espera un minuto e inténtalo de nuevo.")
+        } else if (msg.includes("invalid") && msg.includes("phone")) {
+          setError("El número de teléfono no es válido. Revisa que incluya el código de país (+34 para España).")
         } else {
-          setError(`Error enviando SMS: ${error.message}`)
+          setError("No hemos podido enviar el SMS ahora mismo. Puedes registrarte con email, es igual de rápido.")
         }
       } else {
         if (!isResend) {
