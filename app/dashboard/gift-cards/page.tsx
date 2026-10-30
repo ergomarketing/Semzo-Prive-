@@ -66,27 +66,37 @@ export default function UserGiftCardsPage() {
     }
   }
 
-  const copyCode = async (code: string) => {
+  // Safari solo deja copiar dentro del propio clic: se intenta primero el metodo clasico (sincrono) y despues el moderno.
+  const copyCode = (code: string) => {
+    let copied = false
     try {
-      await navigator.clipboard.writeText(code)
-      toast.success("Código copiado")
+      const area = document.createElement("textarea")
+      area.value = code
+      area.setAttribute("readonly", "")
+      area.style.position = "fixed"
+      area.style.top = "0"
+      area.style.left = "0"
+      area.style.opacity = "0"
+      document.body.appendChild(area)
+      area.focus()
+      area.select()
+      area.setSelectionRange(0, code.length)
+      copied = document.execCommand("copy")
+      document.body.removeChild(area)
     } catch {
-      // Safari o webviews sin permiso de portapapeles: se copia seleccionando un campo temporal
-      try {
-        const area = document.createElement("textarea")
-        area.value = code
-        area.style.position = "fixed"
-        area.style.opacity = "0"
-        document.body.appendChild(area)
-        area.focus()
-        area.select()
-        const ok = document.execCommand("copy")
-        document.body.removeChild(area)
-        if (!ok) throw new Error("copy failed")
-        toast.success("Código copiado")
-      } catch {
-        toast.error("No se pudo copiar. Selecciona el código y cópialo a mano.")
-      }
+      copied = false
+    }
+    if (copied) {
+      toast.success("Código copiado")
+      return
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(
+        () => toast.success("Código copiado"),
+        () => toast.error("No se pudo copiar. Mantén pulsado el código y cópialo a mano."),
+      )
+    } else {
+      toast.error("No se pudo copiar. Mantén pulsado el código y cópialo a mano.")
     }
   }
 
