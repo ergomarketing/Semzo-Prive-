@@ -1,16 +1,18 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
+    const db = getServiceClient()
     const { code } = await request.json()
 
     if (!code) {
       return NextResponse.json({ error: "Código requerido" }, { status: 400 })
     }
 
-    const { data: giftCard, error } = await supabase
+    const { data: giftCard, error } = await db
       .from("gift_cards")
       .select("*")
       .eq("code", code.toUpperCase().trim())

@@ -53,6 +53,21 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Avisos y errores de toda la web: sin rojo. Fondos y bordes en rosa; letras e iconos en azul de marca.
+        // (Se redefine la escala "red" de Tailwind para que todo aviso existente cambie a la vez.)
+        red: {
+          50: "#fff0f3",
+          100: "#fde4e9",
+          200: "#f9d0d8",
+          300: "#f0b4c0",
+          400: "#d98aa0",
+          500: "#3b3b9a",
+          600: "#2e2e7a",
+          700: "#1a1a4b",
+          800: "#151540",
+          900: "#0f0f30",
+          950: "#0a0a24",
+        },
         // Colores personalizados de Semzo Privé
         "indigo-dark": "#1a1a4b",
         "rose-pastel": "#f4c4cc",

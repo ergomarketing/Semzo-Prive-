@@ -183,7 +183,7 @@ function SepaForm({ onComplete }: { onComplete: () => void }) {
                     },
                   },
                   invalid: {
-                    color: "#ef4444",
+                    color: "#2e2e7a",
                   },
                 },
               }}

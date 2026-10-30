@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { getServiceClient } from "@/lib/supabase-service"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -17,6 +18,7 @@ function generateGiftCardCode(): string {
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
+    const db = getServiceClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
     let code = generateGiftCardCode()
     let attempts = 0
     while (attempts < 5) {
-      const { data: existing } = await supabase.from("gift_cards").select("id").eq("code", code).single()
+      const { data: existing } = await db.from("gift_cards").select("id").eq("code", code).single()
 
       if (!existing) break
       code = generateGiftCardCode()
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
     const expiresAt = new Date()
     expiresAt.setFullYear(expiresAt.getFullYear() + 2) // Válida por 2 años
 
-    const { data: giftCard, error } = await supabase
+    const { data: giftCard, error } = await db
       .from("gift_cards")
       .insert({
         code,

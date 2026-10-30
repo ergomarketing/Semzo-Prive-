@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
 import { isWithinDelinquencyGrace } from "@/lib/delinquency"
+import { getServiceClient } from "@/lib/supabase-service"
 
 // CRITICAL: No cache - user-specific authenticated data
 export const dynamic = "force-dynamic"
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic"
  */
 export async function GET() {
   const supabase = await createClient()
+  const db = getServiceClient()
 
   // Get current user
   const {
@@ -153,7 +155,7 @@ export async function GET() {
     // 5. GIFT CARDS - Saldo total disponible
     // Estrategia optimizada: 2 queries en paralelo, luego deduplicar
     const [{ data: directGiftCards }, { data: intentGiftCardIds }] = await Promise.all([
-      supabase
+      db
         .from("gift_cards")
         .select("id, amount")
         .eq("used_by", user.id)
@@ -170,7 +172,7 @@ export async function GET() {
     let intentGiftCards: any[] = []
     const gcIds = (intentGiftCardIds || []).map((i) => i.gift_card_id).filter(Boolean)
     if (gcIds.length > 0) {
-      const { data } = await supabase
+      const { data } = await db
         .from("gift_cards")
         .select("id, amount")
         .in("id", gcIds)

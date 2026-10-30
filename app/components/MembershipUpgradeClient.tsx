@@ -276,7 +276,7 @@ export default function MembershipUpgradeClient({ plan, userId }: Props) {
           )}
 
           {gcError && (
-            <p className="text-sm mt-2" style={{ color: "#e53e3e" }}>
+            <p className="text-sm mt-2" style={{ color: "#2e2e7a" }}>
               {gcError}
             </p>
           )}

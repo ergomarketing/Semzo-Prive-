@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       essentiel: 52.0,
       lessentiel: 52.0,
       signature: 99.0,
-      prive: 149.0,
+      prive: 137.0,
     }
 
     const pricePerPass = passPrices[normalizedTier] || 52.0

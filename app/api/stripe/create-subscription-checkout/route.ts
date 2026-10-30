@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { getServiceClient } from "@/lib/supabase-service"
 
 // CRITICAL: No cache - authenticated mutation endpoint
 export const dynamic = "force-dynamic"
@@ -238,7 +239,14 @@ export async function POST(request: NextRequest) {
         // Recuperar el precio del plan para no pasarnos del tope (guardrail 5)
         const stripePrice = await stripe.prices.retrieve(priceId)
         const planAmountCents = stripePrice.unit_amount || 0
-        const giftCardCents = Math.round(giftCardAmountEuros * 100)
+        // El saldo REAL de la gift card se lee en la base de datos: el importe que manda el navegador nunca puede superarlo.
+        const { data: gcRow } = await getServiceClient()
+          .from("gift_cards")
+          .select("amount, status")
+          .eq("id", gift_card_id)
+          .maybeSingle()
+        const gcBalanceCents = gcRow && gcRow.status === "active" ? gcRow.amount || 0 : 0
+        const giftCardCents = Math.min(Math.round(giftCardAmountEuros * 100), gcBalanceCents)
         const amountOffCents = Math.min(giftCardCents, planAmountCents)
 
         console.log("[CHECKOUT DEBUG] gift card coupon calc", {

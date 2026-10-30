@@ -1,9 +1,11 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export async function GET() {
   try {
     const supabase = await createClient()
+    const db = getServiceClient()
 
     const {
       data: { user },
@@ -18,7 +20,7 @@ export async function GET() {
     const userEmail = user.email || ""
 
     // 1. GCs directamente usadas por el usuario (used_by = user.id)
-    const { data: directGiftCards } = await supabase
+    const { data: directGiftCards } = await db
       .from("gift_cards")
       .select("id, code, amount, original_amount, status, expires_at, created_at, used_by, used_at")
       .eq("used_by", user.id)
@@ -27,7 +29,7 @@ export async function GET() {
     // 2. GCs asignadas por recipient_email (cubre el caso en que se asignaron
     //    antes de que existiera el user_id vinculado, o GCs con saldo disponible)
     const { data: recipientGiftCards } = userEmail
-      ? await supabase
+      ? await db
           .from("gift_cards")
           .select("id, code, amount, original_amount, status, expires_at, created_at, used_by, used_at")
           .eq("recipient_email", userEmail)
@@ -45,7 +47,7 @@ export async function GET() {
 
     let intentGiftCards: any[] = []
     if (intentGiftCardIds.length > 0) {
-      const { data } = await supabase
+      const { data } = await db
         .from("gift_cards")
         .select("id, code, amount, original_amount, status, expires_at, created_at, used_by, used_at")
         .in("id", intentGiftCardIds)
@@ -65,7 +67,7 @@ export async function GET() {
 
     const cardsWithTransactions = await Promise.all(
       (giftCards || []).map(async (card) => {
-        const { data: transactions } = await supabase
+        const { data: transactions } = await db
           .from("gift_card_transactions")
           .select("amount_used, created_at, order_reference")
           .eq("gift_card_id", card.id)
