@@ -661,7 +661,7 @@
       "features": [
         "Up to 4 passes per month (1 per week)",
         "Buy passes only when you need them",
-        "Essentiel pass: €52 · Signature pass: €99 · Privé pass: €137",
+        "Essentiel pass: €52 · Signature pass: €99 · Privé pass: €149",
         "Free shipping in 24–48h",
         "Insurance included with each loan",
         "No lock-in"
@@ -925,7 +925,7 @@
     "passes": [
       { "name": "L'Essentiel", "desc": "A piece from the L'Essentiel collection for one week", "price": "52€" },
       { "name": "Signature", "desc": "A piece from the Signature collection for one week", "price": "99€" },
-      { "name": "Privé", "desc": "An exclusive piece from the Privé collection for one week", "price": "137€" }
+      { "name": "Privé", "desc": "An exclusive piece from the Privé collection for one week", "price": "149€" }
     ],
     "passesNote": "Passes are activated from your private member area when you reserve the piece. Option to extend available.",
     "perksTitle1": "Membership",
@@ -946,7 +946,7 @@
     "faqTitle1": "Frequently asked",
     "faqTitle2": "questions",
     "faqs": [
-      { "q": "How much does it cost to rent a luxury handbag and what does the membership include?", "a": "You can access a luxury handbag from €59 a month. SEMZO PRIVÉ offers different memberships depending on the collection: L'Essentiel (€59/month), Signature (€149/month) and Privé (€279/month). Each includes one bag per month from its corresponding collection, with shipping and insurance included. There is also Petite (€19.99/month), which gives you access to weekly Bag Passes for special occasions. Each pass is paid separately according to the bag's category: €52 (L'Essentiel), €99 (Signature) or €137 (Privé) per week." },
+      { "q": "How much does it cost to rent a luxury handbag and what does the membership include?", "a": "You can access a luxury handbag from €59 a month. SEMZO PRIVÉ offers different memberships depending on the collection: L'Essentiel (€59/month), Signature (€149/month) and Privé (€279/month). Each includes one bag per month from its corresponding collection, with shipping and insurance included. There is also Petite (€19.99/month), which gives you access to weekly Bag Passes for special occasions. Each pass is paid separately according to the bag's category: €52 (L'Essentiel), €99 (Signature) or €149 (Privé) per week." },
       { "q": "Are the bags authentic and how are they verified?", "a": "Yes. All SEMZO PRIVÉ bags are authentic and original. Each piece is reviewed and authenticated by experts before joining the collection and is inspected again between rentals. Some items also carry an identification chip used to monitor the integrity of the piece and the inventory." },
       { "q": "What happens if the bag arrives damaged or I damage it?", "a": "Normal wear from everyday use is covered. All bags are inspected and documented before shipping, and you have 48 hours from receipt to report any pre-existing damage. If the bag arrives damaged, you must report it immediately and provide photos. In the case of serious accidental damage, loss or theft, SEMZO PRIVÉ assesses the incident and applies the relevant conditions according to the type of damage and the category of the bag. In the case of theft or loss, a police report must be filed and the incident reported to SEMZO PRIVÉ within the deadlines set out in the terms of service." },
       { "q": "Can I rent a bag just for a wedding or an event?", "a": "Yes. If you want to enjoy a luxury bag for a wedding, an event or a special occasion without taking a traditional rotation membership, you can do so through the Petite membership and purchase a weekly Bag Pass. Passes give you access for one week to pieces from the higher collections, subject to availability." },
