@@ -819,7 +819,12 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                           {appliedCoupon.type === "percent" ? "%" : "€"})
                         </span>
                       </div>
-                      <button onClick={() => setAppliedCoupon(null)} className="text-indigo-dark/40 hover:text-indigo-dark">
+                      <button
+                        type="button"
+                        aria-label="Quitar cupón"
+                        onClick={() => setAppliedCoupon(null)}
+                        className="-m-2 rounded-md p-2 text-indigo-dark/60 hover:bg-white hover:text-indigo-dark"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -857,7 +862,12 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                           Gift Card aplicada (Saldo: {appliedGiftCard.balance.toFixed(2)}€)
                         </span>
                       </div>
-                      <button onClick={() => setAppliedGiftCard(null)} className="text-indigo-dark/40 hover:text-indigo-dark">
+                      <button
+                        type="button"
+                        aria-label="Quitar gift card"
+                        onClick={() => setAppliedGiftCard(null)}
+                        className="-m-2 rounded-md p-2 text-indigo-dark/60 hover:bg-white hover:text-indigo-dark"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>

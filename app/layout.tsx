@@ -14,6 +14,7 @@ import ContactWidget from "./components/contact-widget"
 import { CartProvider } from "./contexts/cart-context"
 import { AuthProvider } from "./hooks/useAuth"
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner"
 import IntlProvider from "@/providers/IntlProvider"
 // Solo el idioma por defecto (es) entra en el bundle inicial. El inglés se
 // carga bajo demanda dentro de IntlProvider (import() -> chunk aparte).
@@ -268,6 +269,18 @@ export default function RootLayout({
               <AttributionCapture />
               <ContactWidget />
               <Toaster />
+              {/* Avisos tipo "Codigo copiado": varias pantallas usan sonner y hasta ahora no se mostraban. Estilo de marca, sin rojo. */}
+              <SonnerToaster
+                position="top-center"
+                toastOptions={{
+                  style: {
+                    background: "#ffffff",
+                    color: "#1a1a4b",
+                    border: "1px solid #f4c4cc",
+                    boxShadow: "0 8px 24px rgba(26,26,75,0.12)",
+                  },
+                }}
+              />
             </CartProvider>
           </AuthProvider>
         </IntlProvider>

@@ -66,9 +66,38 @@ export default function UserGiftCardsPage() {
     }
   }
 
+  // Safari solo deja copiar dentro del propio clic: se intenta primero el metodo clasico (sincrono) y despues el moderno.
   const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    toast.success("Código copiado")
+    let copied = false
+    try {
+      const area = document.createElement("textarea")
+      area.value = code
+      area.setAttribute("readonly", "")
+      area.style.position = "fixed"
+      area.style.top = "0"
+      area.style.left = "0"
+      area.style.opacity = "0"
+      document.body.appendChild(area)
+      area.focus()
+      area.select()
+      area.setSelectionRange(0, code.length)
+      copied = document.execCommand("copy")
+      document.body.removeChild(area)
+    } catch {
+      copied = false
+    }
+    if (copied) {
+      toast.success("Código copiado")
+      return
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(
+        () => toast.success("Código copiado"),
+        () => toast.error("No se pudo copiar. Mantén pulsado el código y cópialo a mano."),
+      )
+    } else {
+      toast.error("No se pudo copiar. Mantén pulsado el código y cópialo a mano.")
+    }
   }
 
   const totalAvailable = giftCards.filter((gc) => gc.status === "active").reduce((sum, gc) => sum + gc.amount, 0)
@@ -137,7 +166,7 @@ export default function UserGiftCardsPage() {
                           <code className="rounded-md bg-[#b08d57]/10 px-3 py-1 font-serif text-lg tracking-wider text-indigo-dark">
                             {card.code}
                           </code>
-                          <Button variant="ghost" size="sm" onClick={() => copyCode(card.code)} aria-label="Copiar código">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => copyCode(card.code)} aria-label="Copiar código">
                             <Copy className="h-3.5 w-3.5 text-slate-500" />
                           </Button>
                         </div>
