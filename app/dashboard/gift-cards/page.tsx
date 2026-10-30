@@ -66,9 +66,28 @@ export default function UserGiftCardsPage() {
     }
   }
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    toast.success("Código copiado")
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      toast.success("Código copiado")
+    } catch {
+      // Safari o webviews sin permiso de portapapeles: se copia seleccionando un campo temporal
+      try {
+        const area = document.createElement("textarea")
+        area.value = code
+        area.style.position = "fixed"
+        area.style.opacity = "0"
+        document.body.appendChild(area)
+        area.focus()
+        area.select()
+        const ok = document.execCommand("copy")
+        document.body.removeChild(area)
+        if (!ok) throw new Error("copy failed")
+        toast.success("Código copiado")
+      } catch {
+        toast.error("No se pudo copiar. Selecciona el código y cópialo a mano.")
+      }
+    }
   }
 
   const totalAvailable = giftCards.filter((gc) => gc.status === "active").reduce((sum, gc) => sum + gc.amount, 0)
@@ -137,7 +156,7 @@ export default function UserGiftCardsPage() {
                           <code className="rounded-md bg-[#b08d57]/10 px-3 py-1 font-serif text-lg tracking-wider text-indigo-dark">
                             {card.code}
                           </code>
-                          <Button variant="ghost" size="sm" onClick={() => copyCode(card.code)} aria-label="Copiar código">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => copyCode(card.code)} aria-label="Copiar código">
                             <Copy className="h-3.5 w-3.5 text-slate-500" />
                           </Button>
                         </div>
