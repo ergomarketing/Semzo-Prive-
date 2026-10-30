@@ -59,7 +59,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = await supabase.auth.getSession()
         if (!isMounted) return
 
-        const sessionUser = data.session?.user ?? null
+        let sessionUser = data.session?.user ?? null
+        if (sessionUser) {
+          // Si la sesion guardada en este navegador ya no existe en el servidor (p. ej. se cerro sesion en otro
+          // dispositivo), se limpia aqui en vez de dejar la web intentando usarla una y otra vez.
+          const { error: sessionError } = await supabase.auth.getUser()
+          if (sessionError && (sessionError.status === 401 || sessionError.status === 403)) {
+            await supabase.auth.signOut({ scope: "local" })
+            sessionUser = null
+          }
+        }
+        if (!isMounted) return
         setUser(sessionUser)
         if (sessionUser) {
           // No bloqueamos la UI por fetchProfile: corre en paralelo
@@ -97,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (!supabase) return
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: "local" }) // solo este dispositivo: no expulsa a la socia de sus otros navegadores
     setUser(null)
     setProfile(null)
   }
