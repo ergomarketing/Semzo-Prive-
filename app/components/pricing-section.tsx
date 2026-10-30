@@ -226,7 +226,7 @@ export default function PricingSection() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-medium">{t("passPrive")}</span>
-                <span className="text-slate-900 font-bold">+149€/mes</span>
+                <span className="text-slate-900 font-bold">+137€/mes</span>
               </div>
             </div>
 

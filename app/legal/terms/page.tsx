@@ -246,7 +246,7 @@ export default function TermsPage() {
                 <ul className="list-disc pl-6 text-slate-700 space-y-2">
                   <li><strong>L'Essentiel:</strong> 52 € {es ? "por Pase de Bolso" : "per Bag Pass"}</li>
                   <li><strong>Signature:</strong> 99 € {es ? "por Pase de Bolso" : "per Bag Pass"}</li>
-                  <li><strong>Privé:</strong> 149 € {es ? "por Pase de Bolso" : "per Bag Pass"}</li>
+                  <li><strong>Privé:</strong> 137 € {es ? "por Pase de Bolso" : "per Bag Pass"}</li>
                 </ul>
                 <p className="text-slate-700 mt-3">
                   {es

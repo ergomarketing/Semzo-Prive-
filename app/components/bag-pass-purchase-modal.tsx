@@ -17,7 +17,7 @@ interface BagPassPurchaseModalProps {
 const PASS_PRICES = {
   lessentiel: 52,
   signature: 99,
-  prive: 149,
+  prive: 137,
 }
 
 const TIER_NAMES = {

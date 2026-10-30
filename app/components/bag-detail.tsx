@@ -204,7 +204,7 @@ export default function BagDetail({ bag, relatedBags }: BagDetailProps) {
       badgeColor: "bg-rose-50 text-rose-500",
       description: t("petiteDesc"),
       basePrice: 19.99,
-      bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 149,
+      bagPass: bag.membership === "essentiel" ? 52 : bag.membership === "signature" ? 99 : 137,
       period: t("perWeek"),
       billingCycle: "weekly",
     },
