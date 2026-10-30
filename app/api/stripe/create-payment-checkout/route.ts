@@ -7,6 +7,13 @@ import { getServiceClient } from "@/lib/supabase-service"
 
 export const dynamic = "force-dynamic"
 
+// Precios oficiales de los pases en Stripe (fuente de verdad). El importe NO lo decide el navegador.
+const PASS_PRICE_IDS: Record<string, string> = {
+  essentiel: "price_1SxPZoKBSKEgBoTngB9BgrSI", // 52 EUR
+  signature: "price_1SxPbgKBSKEgBoTn0FSyrfah", // 99 EUR
+  prive: "price_1SxPcqKBSKEgBoTngpQRUR8B", // 137 EUR
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
 
 /**
@@ -167,6 +174,48 @@ export async function POST(req: NextRequest) {
           ? `https://${process.env.VERCEL_URL}`
           : "http://localhost:3000")
 
+    // PRECIO EN SERVIDOR: el pase vale lo que dice Stripe para su categoria (la del bolso). Con gift card parcial el importe
+    // puede bajar, pero solo por el saldo REAL de la gift card en BD; nunca por debajo.
+    let passTier: string | null = null
+    if (bagId) {
+      const { data: bagRow } = await db.from("bags").select("membership_type").eq("id", bagId).maybeSingle()
+      const t = String(bagRow?.membership_type || "").toLowerCase().replace(/^l'/, "")
+      passTier = PASS_PRICE_IDS[t] ? t : null
+    }
+    const priceIds = passTier ? [PASS_PRICE_IDS[passTier]] : Object.values(PASS_PRICE_IDS)
+    const prices = await Promise.all(priceIds.map((id) => stripe.prices.retrieve(id)))
+    const passPriceCents = Math.min(...prices.map((pr) => pr.unit_amount || 0))
+    // Cupon: se vuelve a leer en Stripe (el navegador solo manda su id); solo cuenta si sigue siendo valido.
+    let couponOffCents = 0
+    const couponId: string | undefined = body.coupon?.code
+    if (couponId && typeof couponId === "string") {
+      try {
+        const cp = await stripe.coupons.retrieve(couponId)
+        if (cp.valid) {
+          couponOffCents = cp.percent_off
+            ? Math.round((passPriceCents * cp.percent_off) / 100)
+            : cp.currency === "eur"
+              ? cp.amount_off || 0
+              : 0
+        }
+      } catch {
+        couponOffCents = 0
+      }
+    }
+    const afterCouponCents = Math.max(0, passPriceCents - couponOffCents)
+    let validatedGiftCents = 0
+    if (giftCardId && giftCardAmountEuros) {
+      const { data: gcCheck } = await db.from("gift_cards").select("amount, status").eq("id", giftCardId).maybeSingle()
+      if (gcCheck && gcCheck.status === "active") {
+        validatedGiftCents = Math.min(Math.round(giftCardAmountEuros * 100), gcCheck.amount || 0, afterCouponCents)
+      }
+    }
+    const minAllowedCents = Math.max(50, afterCouponCents - validatedGiftCents - 1) // -1: redondeo de centimos
+    if (!passPriceCents || amountCents < minAllowedCents || amountCents > Math.max(...prices.map((pr) => pr.unit_amount || 0))) {
+      console.error("[create-payment-checkout] importe no valido", { amountCents, minAllowedCents, passTier, userId })
+      return NextResponse.json({ error: "Importe no válido para este pase" }, { status: 400 })
+    }
+
     // Persistir cuánto cubre la gift card en membership_intents ANTES de Stripe.
     // El webhook lo leerá de aquí como fuente de verdad para consumirla.
     // PROTECCIÓN: verificar el saldo real de la GC en BD y usar Math.min para
@@ -198,19 +247,22 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       customer: stripeCustomerId,
       payment_method_types: ["card"],  // sepa_debit solo es válido en mode: subscription
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: productName,
-              description: "Acceso semanal a un bolso de lujo",
-            },
-            unit_amount: amountCents,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items:
+        passTier && amountCents === passPriceCents
+          ? [{ price: PASS_PRICE_IDS[passTier], quantity: 1 }] // pase completo: queda enlazado al producto de Stripe
+          : [
+              {
+                price_data: {
+                  currency: "eur",
+                  product_data: {
+                    name: productName,
+                    description: "Acceso semanal a un bolso de lujo",
+                  },
+                  unit_amount: amountCents,
+                },
+                quantity: 1,
+              },
+            ],
       metadata: {
         intent_id: intentId,
         user_id: userId,
