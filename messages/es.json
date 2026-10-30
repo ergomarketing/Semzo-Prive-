@@ -661,7 +661,7 @@
       "features": [
         "Hasta 4 pases por mes (1 por semana)",
         "Compra pases solo cuando los necesites",
-        "Pase Essentiel: 52€ · Pase Signature: 99€ · Pase Privé: 149€",
+        "Pase Essentiel: 52€ · Pase Signature: 99€ · Pase Privé: 137€",
         "Envío gratuito en 24-48h",
         "Seguro incluido en cada préstamo",
         "Sin permanencia"
@@ -925,7 +925,7 @@
     "passes": [
       { "name": "L'Essentiel", "desc": "Una pieza de la colección L'Essentiel durante una semana", "price": "52€" },
       { "name": "Signature", "desc": "Una pieza de la colección Signature durante una semana", "price": "99€" },
-      { "name": "Privé", "desc": "Una pieza exclusiva de la colección Privé durante una semana", "price": "149€" }
+      { "name": "Privé", "desc": "Una pieza exclusiva de la colección Privé durante una semana", "price": "137€" }
     ],
     "passesNote": "Los Pases se activan desde tu área privada de socia al reservar la pieza. Opción de extender disponible.",
     "perksTitle1": "Beneficios de",
@@ -946,7 +946,7 @@
     "faqTitle1": "Preguntas",
     "faqTitle2": "frecuentes",
     "faqs": [
-      { "q": "¿Cuánto cuesta alquilar un bolso de lujo y qué incluye la membresía?", "a": "Puedes acceder a un bolso de lujo desde 59 € al mes. SEMZO PRIVÉ ofrece diferentes membresías según la colección: L'Essentiel (59 €/mes), Signature (149 €/mes) y Privé (279 €/mes). Cada una incluye un bolso al mes dentro de su colección correspondiente, con envío y seguro incluidos. También existe Petite (19,99 €/mes), que te da acceso a los Pases de Bolso semanales para ocasiones especiales. Cada pase se paga aparte según la categoría del bolso: 52 € (L'Essentiel), 99 € (Signature) o 149 € (Privé) por semana." },
+      { "q": "¿Cuánto cuesta alquilar un bolso de lujo y qué incluye la membresía?", "a": "Puedes acceder a un bolso de lujo desde 59 € al mes. SEMZO PRIVÉ ofrece diferentes membresías según la colección: L'Essentiel (59 €/mes), Signature (149 €/mes) y Privé (279 €/mes). Cada una incluye un bolso al mes dentro de su colección correspondiente, con envío y seguro incluidos. También existe Petite (19,99 €/mes), que te da acceso a los Pases de Bolso semanales para ocasiones especiales. Cada pase se paga aparte según la categoría del bolso: 52 € (L'Essentiel), 99 € (Signature) o 137 € (Privé) por semana." },
       { "q": "¿Los bolsos son auténticos y cómo se verifican?", "a": "Sí. Todos los bolsos de SEMZO PRIVÉ son auténticos y originales. Cada pieza es revisada y autenticada por expertos antes de incorporarse a la colección y vuelve a ser inspeccionada entre alquileres. Algunos artículos incorporan además un chip de identificación utilizado para controlar la integridad de la pieza y el inventario." },
       { "q": "¿Qué pasa si el bolso llega dañado o lo rompo?", "a": "El desgaste habitual derivado de un uso normal está cubierto. Todos los bolsos se inspeccionan y documentan antes del envío, y dispones de 48 horas desde la recepción para comunicar cualquier daño preexistente. Si el bolso llega dañado, debes comunicarlo inmediatamente y aportar fotografías. En caso de daño accidental grave, pérdida o robo, SEMZO PRIVÉ evalúa la incidencia y aplica las condiciones correspondientes según el tipo de daño y la categoría del bolso. En caso de robo o pérdida, se debe presentar la correspondiente denuncia y comunicar la incidencia a SEMZO PRIVÉ dentro de los plazos establecidos en las condiciones del servicio." },
       { "q": "¿Puedo alquilar un bolso solo para una boda o evento?", "a": "Sí. Si quieres disfrutar de un bolso de lujo para una boda, evento o una ocasión especial sin contratar una membresía tradicional de rotación, puedes hacerlo a través de la membresía Petite y adquirir un Pase de Bolso semanal. Los pases permiten acceder durante una semana a piezas de las colecciones superiores, según disponibilidad." },
