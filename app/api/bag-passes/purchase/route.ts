@@ -14,7 +14,6 @@ export async function POST(request: Request) {
       passTier,
       bagPassTier, // alias
       bagId,
-      quantity = 1,
       paymentMethod,
       stripePaymentId,
       giftCardCode,
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
     // Usar passTier o bagPassTier
     const tier = passTier || bagPassTier
 
-    console.log("[v0] bag-passes/purchase received:", { userId, tier, bagId, quantity, paymentMethod, giftCardCode })
+    console.log("[v0] bag-passes/purchase received:", { tier, bagId, paymentMethod, hasGiftCard: !!giftCardCode })
 
     // Validar tier
     const validTiers = ["essentiel", "lessentiel", "signature", "prive"]
@@ -48,21 +47,26 @@ export async function POST(request: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Si no viene userId, intentar obtenerlo de la sesión
-    let finalUserId = userId
-    if (!finalUserId) {
-      const supabaseClient = await getSupabaseServer()
-      if (supabaseClient) {
-        const {
-          data: { user },
-        } = await supabaseClient.auth.getUser()
-        finalUserId = user?.id
-      }
-    }
+    // La identidad sale SIEMPRE de la sesion del servidor; el userId que mande el navegador se ignora.
+    const supabaseClient = await getSupabaseServer()
+    const {
+      data: { user: sessionUser },
+    } = supabaseClient ? await supabaseClient.auth.getUser() : { data: { user: null } }
+    const finalUserId = sessionUser?.id
 
     if (!finalUserId) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
+
+    // Este endpoint solo registra pases pagados por completo con una gift card. El pago con tarjeta lo cobra
+    // Stripe en el carrito y el pase lo crea el webhook, nunca esta ruta.
+    if (!giftCardCode) {
+      return NextResponse.json(
+        { error: "El pase se paga desde el carrito.", code: "PAYMENT_REQUIRED" },
+        { status: 402 },
+      )
+    }
+    const quantity = 1
 
     // Precios de pases según tier
     const passPrices: Record<string, number> = {
@@ -181,6 +185,24 @@ export async function POST(request: Request) {
       )
     }
 
+    // Gift card validada ANTES de crear nada: activa, sin caducar y con saldo para el pase completo.
+    const giftCodeNormalized = String(giftCardCode).toUpperCase().trim()
+    const { data: gcPre } = await supabase
+      .from("gift_cards")
+      .select("id, amount, status, expires_at")
+      .eq("code", giftCodeNormalized)
+      .maybeSingle()
+    const expired = !!gcPre?.expires_at && new Date(gcPre.expires_at) < new Date()
+    if (!gcPre || gcPre.status !== "active" || expired) {
+      return NextResponse.json({ error: "Gift card no válida o inactiva" }, { status: 400 })
+    }
+    if ((gcPre.amount || 0) < Math.round(totalPrice * 100)) {
+      return NextResponse.json(
+        { error: "La gift card no cubre el importe del pase. Págalo desde el carrito." },
+        { status: 400 },
+      )
+    }
+
     // Crear los pases - pass_tier debe ser 'lessentiel', 'signature', o 'prive'
     const dbTier = normalizedTier === "essentiel" ? "lessentiel" : normalizedTier
     const passes = []
@@ -197,26 +219,16 @@ export async function POST(request: Request) {
 
     const { data: createdPasses, error: insertError } = await supabase.from("bag_passes").insert(passes).select()
 
-    if (insertError) {
+    if (insertError || !createdPasses?.length) {
       console.error("Error creating passes:", insertError)
-      // Si la tabla no existe, crear una alternativa en admin_notifications
       await supabase.from("admin_notifications").insert({
         type: "bag_pass_purchase",
         priority: "high",
-        title: `Compra de Pase - ${normalizedTier.toUpperCase()}`,
-        message: `${profile.full_name || profile.email} compró ${quantity} pase(s) ${normalizedTier}`,
-        metadata: {
-          user_id: finalUserId,
-          email: profile.email,
-          pass_tier: normalizedTier,
-          quantity,
-          total_price: totalPrice,
-          payment_method: paymentMethod || (giftCardCode ? "gift_card" : "stripe"),
-        },
+        title: `Fallo al crear pase - ${normalizedTier.toUpperCase()}`,
+        message: `No se pudo crear el pase de ${profile.full_name || profile.email}. No se ha descontado nada.`,
+        metadata: { user_id: finalUserId, pass_tier: normalizedTier, error: insertError?.message || "sin filas" },
       })
-
-      // Continuar sin error fatal - el pase queda registrado en notificaciones
-      console.log("[v0] Pase registrado en admin_notifications")
+      return NextResponse.json({ error: "No se pudo crear el pase. No se ha cobrado nada." }, { status: 500 })
     }
 
     // Si se usó gift card, descontar saldo (idempotente via reference_id = passId)
@@ -246,6 +258,7 @@ export async function POST(request: Request) {
           const totalPriceCents = Math.round(totalPrice * 100)
 
           if (previousAmountCents < totalPriceCents) {
+            await supabase.from("bag_passes").delete().eq("id", passId)
             return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
           }
 
@@ -267,6 +280,7 @@ export async function POST(request: Request) {
 
           if (updateError || !updatedRows || updatedRows.length === 0) {
             console.error("[v0] Error al descontar gift card:", updateError)
+            await supabase.from("bag_passes").delete().eq("id", passId)
             return NextResponse.json({ error: "Saldo insuficiente en la gift card" }, { status: 400 })
           }
 
@@ -288,6 +302,8 @@ export async function POST(request: Request) {
         }
       } else {
         console.error("[v0] Gift card no encontrada para codigo:", normalizedCode)
+        await supabase.from("bag_passes").delete().eq("id", passId)
+        return NextResponse.json({ error: "Gift card no válida" }, { status: 400 })
       }
     }
 
