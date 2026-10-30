@@ -503,7 +503,7 @@ export default function MembresiaPage() {
                           </div>
                           <div className="bg-white p-2 rounded-lg text-center border border-indigo-dark/10">
                             <p className="text-xs text-indigo-dark/60 mb-1">Priv&eacute;</p>
-                            <p className="font-medium text-indigo-dark text-lg">137€</p>
+                            <p className="font-medium text-indigo-dark text-lg">149€</p>
                             <p className="text-xs text-indigo-dark/60 mt-1">{t("perWeek")}</p>
                           </div>
                         </div>

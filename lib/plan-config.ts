@@ -62,7 +62,7 @@ export const BAG_PASSES = {
     description: "Acceso a un bolso de la selección Signature",
   },
   prive: {
-    price: 137,
+    price: 149,
     label: "Pase Privé",
     description: "Acceso a un bolso de la selección Privé",
   },

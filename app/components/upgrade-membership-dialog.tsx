@@ -15,7 +15,7 @@ const TIER_NAMES: Record<string, string> = {
 const TIER_PASS_PRICE: Record<string, number> = {
   essentiel: 52,
   signature: 99,
-  prive: 137,
+  prive: 149,
 }
 
 const TIER_MEMBERSHIP_PRICE: Record<string, number> = {
@@ -49,7 +49,7 @@ export function UpgradeMembershipDialog({
 
   const requiredTierName = TIER_NAMES[requiredTier] || "Privé"
   const currentTierName = currentMembership ? TIER_NAMES[currentMembership] || currentMembership : ""
-  const passPrice = TIER_PASS_PRICE[requiredTier] || 137
+  const passPrice = TIER_PASS_PRICE[requiredTier] || 149
   const membershipPrice = TIER_MEMBERSHIP_PRICE[requiredTier] || 279
 
   const handleUpgrade = () => {

@@ -514,7 +514,7 @@ function BagCard({
 
       if (passes.length === 0) {
         const tierNames = { essentiel: "L'Essentiel", signature: "Signature", prive: "Privé" }
-        const tierPrices = { essentiel: 52, signature: 99, prive: 137 }
+        const tierPrices = { essentiel: 52, signature: 99, prive: 149 }
         const bagTier = bag.membership_type?.toLowerCase() || "essentiel"
 
       const bagPassItem = {
@@ -962,13 +962,13 @@ function BagCard({
           const tierPrices: Record<string, number> = {
             essentiel: 52,
             signature: 99,
-            prive: 137,
+            prive: 149,
           }
           const tier = upgradeRequiredTier
                 const bagPassItem = {
                   id: `bag-pass-${bag.id}-${Date.now()}`,
                   name: `Pase Bolso ${tierNames[tier] ?? tier}`,
-                  price: `${tierPrices[tier] ?? 137}€`,
+                  price: `${tierPrices[tier] ?? 149}€`,
                   billingCycle: "weekly" as const,
                   description: `${bag.brand} ${bag.name}`,
                   image: bag.images?.[0] || bag.image_url || "/placeholder.svg?height=200&width=200",

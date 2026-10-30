@@ -1154,7 +1154,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       quarterly: "price_1TMTUrKBSKEgBoTnBT60oMX0", // Signature 357€/3 meses
     },
     prive: {
-      // Pase Prive 137€/sem: actualmente apunta al price del mensual.
+      // Pase Prive 149€/sem: actualmente apunta al price del mensual.
       // Sustituir por el price_id real del pase semanal cuando este disponible.
       weekly: "price_1TMTIiKBSKEgBoTnJiVwAkWT",
       monthly: "price_1TMTIiKBSKEgBoTnJiVwAkWT", // Prive 279€/mes
