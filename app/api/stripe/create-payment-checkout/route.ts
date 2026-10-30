@@ -3,6 +3,7 @@ import Stripe from "stripe"
 import { createClient } from "@/app/lib/supabase/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
 import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export const dynamic = "force-dynamic"
 
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
 
     // Autenticacion: mismo patron que create-subscription-checkout
     const supabase = await createClient()
+    const db = getServiceClient()
     const { data: { session }, error: authError } = await supabase.auth.getSession()
 
     if (authError || !session) {
@@ -173,7 +175,7 @@ export async function POST(req: NextRequest) {
     // frontend envíe un valor erróneo.
     if (giftCardId && giftCardAmountEuros && intentId) {
       // Saldo real de la GC directamente desde BD (fuente de verdad)
-      const { data: gcRow } = await supabase
+      const { data: gcRow } = await db
         .from("gift_cards")
         .select("amount")
         .eq("id", giftCardId)

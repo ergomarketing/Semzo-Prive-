@@ -1,9 +1,11 @@
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
+    const db = getServiceClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     // Validar gift card
-    const { data: giftCard, error: fetchError } = await supabase
+    const { data: giftCard, error: fetchError } = await db
       .from("gift_cards")
       .select("*")
       .eq("code", code.toUpperCase().trim())
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
     const newStatus = newAmount <= 0 ? "used" : "active"
 
     // Actualizar gift card
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("gift_cards")
       .update({
         amount: Math.max(0, newAmount),
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     }
 
     // Registrar transacción
-    await supabase.from("gift_card_transactions").insert({
+    await db.from("gift_card_transactions").insert({
       gift_card_id: giftCard.id,
       user_id: user.id,
       amount_used: amountInCents,

@@ -76,15 +76,18 @@ export function SMSAuthModal({ isOpen, onClose, onSuccess, mode = "signup", plan
 
       // Check if phone already exists ONLY in signup mode
       if (!isResend && mode === "signup") {
-        const { data: existingPhone, error: checkError } = await supabase
-          .from("profiles")
-          .select("phone, full_name")
-          .eq("phone", phone)
-          .limit(1)
-          .maybeSingle()
+        // La comprobacion devuelve solo si/no (nunca datos de otra persona). Si la funcion aun no existe, se usa la consulta antigua.
+        let phoneTaken = false
+        const { data: taken, error: rpcError } = await supabase.rpc("phone_registered", { p_phone: phone })
+        if (!rpcError) {
+          phoneTaken = taken === true
+        } else {
+          const { data: legacy } = await supabase.from("profiles").select("phone").eq("phone", phone).limit(1).maybeSingle()
+          phoneTaken = !!legacy
+        }
 
-        if (existingPhone) {
-          setError(`Este número ya está registrado${existingPhone.full_name ? ` a nombre de ${existingPhone.full_name}` : ""}. Por favor inicia sesión en lugar de crear una nueva cuenta.`)
+        if (phoneTaken) {
+          setError("Este número ya está registrado. Por favor inicia sesión en lugar de crear una nueva cuenta.")
           setLoading(false)
           return
         }
