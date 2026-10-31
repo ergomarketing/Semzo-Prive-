@@ -9,6 +9,7 @@ import { sendShipmentOnItsWay } from "@/lib/shipment-on-its-way"
 import { buildReturnLabelUrl } from "@/lib/return-label-link"
 import { buildReturnLabelReminderEmail } from "@/app/lib/email-service-production"
 import { logEmail } from "@/lib/email-logger"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailService = new EmailServiceProduction()
@@ -38,8 +39,7 @@ const CORREOS_STATUS_MAP: Record<string, string> = {
  * y pulsaba "Verificar estado" manualmente para cada envio.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization")
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

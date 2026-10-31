@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 /**
  * Fallback Vercel Cron para tarea 3 (limpieza de membership_intents huerfanos).
@@ -15,8 +16,7 @@ import { NextResponse } from "next/server"
  */
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization")
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

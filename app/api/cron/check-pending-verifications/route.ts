@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { promoteStuckMemberships } from "@/lib/membership-safety-net"
 import { fetchProfilesById } from "@/lib/profile-lookup"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 // CRITICAL: No cache - cron job
 export const dynamic = "force-dynamic"
@@ -11,8 +12,7 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "mailbox@semzoprive.c
 export async function GET(request: Request) {
   try {
     // Verify cron secret
-    const authHeader = request.headers.get("authorization")
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

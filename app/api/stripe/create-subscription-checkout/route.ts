@@ -3,6 +3,7 @@ import Stripe from "stripe"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { getServiceClient } from "@/lib/supabase-service"
+import { MEMBERSHIP_PRICES } from "@/lib/membership-prices"
 
 // CRITICAL: No cache - authenticated mutation endpoint
 export const dynamic = "force-dynamic"
@@ -50,8 +51,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       priceId,
-      membershipType,
-      billingCycle,
+      membershipType: clientMembershipType,
+      billingCycle: clientBillingCycle,
       intentId: clientIntentId,
       amountCents,
       productName,
@@ -59,6 +60,24 @@ export async function POST(request: NextRequest) {
       giftCardAmountEuros, // NUEVO: monto en euros de la gift card a aplicar como coupon
       coupon,
     } = body
+
+    // El precio manda: solo se aceptan los precios de membresia de la lista del servidor, y el plan y el ciclo se
+    // sacan de ese precio (lo que diga el navegador sobre el plan no puede dar mas de lo que se paga).
+    const membershipPlan = priceId ? MEMBERSHIP_PRICES[priceId] : undefined
+    if (priceId && !membershipPlan) {
+      console.error("[CHECKOUT] priceId no permitido para membresias:", priceId)
+      return NextResponse.json({ error: "Plan no válido" }, { status: 400 })
+    }
+    if (membershipPlan && clientMembershipType && clientMembershipType !== membershipPlan.type) {
+      console.error("[CHECKOUT] plan y precio no coinciden:", { priceId, clientMembershipType })
+      return NextResponse.json({ error: "El plan no coincide con el precio" }, { status: 400 })
+    }
+    const membershipType: string | undefined = membershipPlan?.type ?? clientMembershipType
+    const billingCycle: string | undefined = membershipPlan
+      ? membershipPlan.cycles.includes(clientBillingCycle)
+        ? clientBillingCycle
+        : membershipPlan.cycles[0]
+      : clientBillingCycle
 
     console.log("[CHECKOUT DEBUG] 1. body received", {
       priceId,

@@ -25,6 +25,7 @@ import Stripe from "stripe"
 import { sendSepaExecutionEmail, sendSepaExecutionAdminEmail } from "@/lib/emails/send-sepa-execution-email"
 import { adminNotifications } from "@/lib/admin-notifications"
 import { SEPA_PRENOTICE_DAYS } from "@/lib/sepa-notice"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -44,8 +45,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization")
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

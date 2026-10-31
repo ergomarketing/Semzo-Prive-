@@ -22,6 +22,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { sendSepaPreExecutionEmail } from "@/lib/emails/send-sepa-pre-execution-email"
 import { SEPA_PRENOTICE_DAYS } from "@/lib/sepa-notice"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -43,8 +44,7 @@ const supabaseAdmin = createClient(
 export async function GET(request: NextRequest) {
   try {
     // Verificar autorización del cron (opcional pero recomendado)
-    const authHeader = request.headers.get("authorization")
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

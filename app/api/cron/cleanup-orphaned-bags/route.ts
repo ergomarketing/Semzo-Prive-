@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 // Vercel Cron - runs every 5 minutes
 export const runtime = "nodejs"
@@ -13,10 +14,7 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   // Verify cron secret for security
-  const authHeader = request.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!isAuthorizedCron(request)) {
     console.log("[CRON] Unauthorized cleanup attempt")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
