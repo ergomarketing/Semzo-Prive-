@@ -1,74 +1,61 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/utils/supabase/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+export const dynamic = "force-dynamic"
+
+// Texto limpio y acotado: sin espacios sobrantes y con un maximo razonable por campo.
+const clean = (value: unknown, max: number): string | null => {
+  if (typeof value !== "string") return null
+  const v = value.trim().slice(0, max)
+  return v.length ? v : null
+}
 
 export async function POST(request: Request) {
   try {
-    const { userId, fullName, phone, documentType, documentNumber, address, city, postalCode, country } =
-      await request.json()
+    // La persona sale SIEMPRE de la sesion del servidor. El userId que mande el navegador se ignora.
+    const session = await createClient()
+    const {
+      data: { user },
+    } = await session.auth.getUser()
 
-    console.log("[v0 API] Recibiendo datos:", {
-      userId,
-      fullName,
-      phone,
-      documentType,
-      documentNumber,
-      address,
-      city,
-      postalCode,
-      country,
-    }) // Log para debug
-
-    if (!userId) {
-      return NextResponse.json({ error: "userId es requerido" }, { status: 400 })
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single()
+    const body = await request.json().catch(() => ({}))
+    const fullName = clean(body.fullName, 120)
+    const nameParts = (fullName || "").split(/\s+/)
 
-    if (fetchError) {
-      console.error("[v0 API] Error al buscar perfil:", fetchError)
-      return NextResponse.json({ error: "Perfil no encontrado: " + fetchError.message }, { status: 404 })
-    }
-
-    console.log("[v0 API] Perfil existente encontrado:", existingProfile)
-
-    // Split fullName into first_name and last_name
-    const nameParts = (fullName || "").trim().split(" ")
-    const firstName = nameParts[0] || ""
-    const lastName = nameParts.slice(1).join(" ") || ""
-
-    const { data, error } = await supabase
+    const { error } = await getServiceClient()
       .from("profiles")
       .update({
         full_name: fullName,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        document_type: documentType,
-        document_number: documentNumber,
-        shipping_address: address, // Corrected column name
-        shipping_city: city,       // Corrected column name
-        shipping_postal_code: postalCode, // Corrected column name
-        shipping_country: country || "España",
+        first_name: nameParts[0] || null,
+        last_name: nameParts.slice(1).join(" ") || null,
+        phone: clean(body.phone, 30),
+        document_type: clean(body.documentType, 30),
+        document_number: clean(body.documentNumber, 40),
+        shipping_address: clean(body.address, 200),
+        shipping_city: clean(body.city, 100),
+        shipping_postal_code: clean(body.postalCode, 20),
+        shipping_country: clean(body.country, 80) || "España",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", userId)
-      .select()
+      .eq("id", user.id)
 
     if (error) {
-      console.error("[v0 API] Error updating profile:", error)
-      return NextResponse.json({ error: "Error al actualizar perfil: " + error.message }, { status: 500 })
+      // Solo datos tecnicos en el log: nunca el documento, el telefono ni la direccion.
+      console.error("[update-profile] error al guardar", { userId: user.id, code: error.code })
+      if (error.code === "23505") {
+        return NextResponse.json({ error: "Ese teléfono ya está asociado a otra cuenta." }, { status: 409 })
+      }
+      return NextResponse.json({ error: "No se pudieron guardar los datos. Inténtalo de nuevo." }, { status: 500 })
     }
 
-    console.log("[v0 API] Perfil actualizado exitosamente:", data)
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("[v0 API] Error:", error)
-    return NextResponse.json({ error: error.message || "Error interno" }, { status: 500 })
+    console.error("[update-profile] error", error?.message)
+    return NextResponse.json({ error: "Error interno" }, { status: 500 })
   }
 }
