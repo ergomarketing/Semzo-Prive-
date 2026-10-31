@@ -39,7 +39,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Cuánto tarda un bolso en ser mío?",
         answer:
-          "Cada bolso tiene un precio de compra fijado. Cada cuota mensual que pagas se acumula como crédito de compra hacia ese precio. Para hacerlo tuyo, finalizas la compra desde tu panel de socia: ves el desglose (precio, crédito aplicado e importe a pagar), aceptas las condiciones de compra y pagas la diferencia con tu tarjeta guardada.",
+          "Cada bolso tiene un precio de compra fijado. Cada cuota mensual que pagas se acumula como crédito personal para comprar el bolso, con un descuento máximo del 20 % sobre su precio de venta. Para hacerlo tuyo, finalizas la compra desde tu panel de socia: ves el desglose (precio, crédito aplicado e importe a pagar), aceptas las condiciones de compra y pagas la diferencia con tu tarjeta guardada.",
       },
       {
         question: "¿Qué pasa si cancelo la membresía estando en Modo Colecciona?",
@@ -64,7 +64,7 @@ export const faqCategoriesData: FaqCategoryData[] = [
       {
         question: "¿Cómo funciona el crédito que genera mi cuota mensual?",
         answer:
-          "Todo lo que pagas en cuotas de membresía mientras estás en Modo Colecciona se acumula como crédito (Private Purchase Credit) hacia el precio del bolso. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito. El crédito se pierde si cancelas la membresía. El crédito no es dinero, no es reembolsable ni transferible. Solo puede aplicarse a una compra y no se combina con otras promociones, salvo que Semzo Privé lo indique expresamente. Consulta el detalle en nuestras Condiciones de Membresía.",
+          "Todo lo que pagas en cuotas de membresía mientras estás en Modo Colecciona se acumula al 100 % como crédito personal (Private Purchase Credit) para comprar cualquier bolso elegible de SEMZO PRIVÉ, con un descuento máximo del 20 % sobre el precio de venta del bolso elegido. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito. El crédito se pierde si cancelas la membresía. El crédito no es dinero, no es reembolsable ni transferible. Solo puede aplicarse a una compra y no se combina con otras promociones, salvo que Semzo Privé lo indique expresamente. Consulta el detalle en nuestras Condiciones de Membresía.",
       },
     ],
   },

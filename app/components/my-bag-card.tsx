@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ColeccionaPurchaseDialog, type PurchaseConfirmation } from "@/app/components/colecciona-purchase-dialog"
-import { getAmountDue, getAppliedCredit } from "@/lib/ownership-credit"
+import { getAmountDue, getAppliedCredit, getMaxCredit } from "@/lib/ownership-credit"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -170,7 +170,8 @@ export function MyBagCard() {
   const targetPrice = ownership?.purchase_price_snapshot ?? bag.purchase_price ?? 0
   const appliedCredit = getAppliedCredit(accumulated, targetPrice)
   const amountDue = getAmountDue(accumulated, targetPrice)
-  const progressPct = targetPrice > 0 ? Math.min((appliedCredit / targetPrice) * 100, 100) : 0
+  const maxCredit = getMaxCredit(targetPrice)
+  const progressPct = maxCredit > 0 ? Math.min((appliedCredit / maxCredit) * 100, 100) : 0
 
   return (
     <Card className="overflow-hidden border-slate-200">
@@ -219,7 +220,7 @@ export function MyBagCard() {
                 <div className="mb-2 flex items-baseline justify-between gap-2">
                   <span className="text-sm text-slate-600">Crédito acumulado</span>
                   <span className="font-serif text-base text-indigo-dark">
-                    {formatEUR(appliedCredit)} <span className="text-slate-400">/ {formatEUR(targetPrice)}</span>
+                    {formatEUR(accumulated)} <span className="text-slate-400">/ descuento máx. {formatEUR(maxCredit)}</span>
                   </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-rose-nude">
@@ -229,8 +230,8 @@ export function MyBagCard() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Cada cuota suma al precio del bolso ({formatEUR(targetPrice)}). Si compras hoy, pagarías{" "}
-                  {formatEUR(amountDue)}.
+                  Cada cuota suma crédito. Al comprar, el crédito descuenta hasta el 20 % del precio del bolso (
+                  {formatEUR(targetPrice)}). Si compras hoy, pagarías {formatEUR(amountDue)}.
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -344,9 +345,10 @@ export function MyBagCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Quieres hacer tuyo este bolso?</AlertDialogTitle>
             <AlertDialogDescription>
-              Las cuotas de alquiler que ya has pagado en tu membresía actual se suman como crédito hacia su precio
-              {bag.purchase_price ? ` (${formatEUR(bag.purchase_price)})` : ""}, y cada cuota nueva que pagues también.
-              El bolso solo pasa a ser tuyo cuando finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
+              Las cuotas de alquiler que ya has pagado en tu membresía actual se suman como crédito
+              {bag.purchase_price ? ` para comprar este bolso (${formatEUR(bag.purchase_price)})` : ""}, y cada cuota nueva que
+              pagues también. El crédito descuenta hasta el 20 % del precio de venta. El bolso solo pasa a ser tuyo cuando
+              finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
               de SEMZO PRIVÉ.
             </AlertDialogDescription>
           </AlertDialogHeader>

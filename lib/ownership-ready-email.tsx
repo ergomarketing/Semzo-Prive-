@@ -3,7 +3,7 @@ import { EmailServiceProduction, buildColeccionaReadyEmail } from "@/app/lib/ema
 import { logEmail } from "@/lib/email-logger"
 
 /**
- * Avisa a la socia de que su crédito ya cubre el precio y puede finalizar la compra (plantilla de Erika:
+ * Avisa a la socia de que su crédito ya alcanza el descuento máximo (20 % del precio) y puede finalizar la compra (plantilla de Erika:
  * lib/service-emails/colecciona-ready.ts). No la marca como propietaria: la compra solo se cierra en el webhook de Stripe.
  * Best-effort: nunca lanza.
  */

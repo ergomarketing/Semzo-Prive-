@@ -21,7 +21,7 @@ export const commonFaqs: LpFaqItem[] = [
   {
     question: "¿Cómo suma mi cuota hacia la compra?",
     answer:
-      "Si te enamoras de un bolso, puedes pasar al Modo Colecciona desde tu panel. Las cuotas de alquiler que ya hayas pagado en tu membresía actual se suman como crédito de compra, y cada cuota nueva también, hasta el precio fijado del bolso. Para hacerlo tuyo finalizas la compra desde tu panel y pagas la diferencia. Si cancelas la membresía, el crédito acumulado se pierde: no es dinero ni es reembolsable.",
+      "Si te enamoras de un bolso, puedes pasar al Modo Colecciona desde tu panel. Las cuotas de alquiler que ya hayas pagado en tu membresía actual se suman como crédito de compra, y cada cuota nueva también. El crédito descuenta como máximo el 20 % del precio de venta del bolso elegido. Para hacerlo tuyo finalizas la compra desde tu panel y pagas la diferencia. Si cancelas la membresía, el crédito acumulado se pierde: no es dinero ni es reembolsable.",
   },
   {
     question: "¿Los bolsos son auténticos?",
