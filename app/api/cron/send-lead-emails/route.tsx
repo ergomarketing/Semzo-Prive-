@@ -6,6 +6,7 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import LeadSequenceEmail from "@/emails/templates/lead-sequence"
 import { rewriteLeadEmailLinks } from "@/lib/email-tracking"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const resend = new Resend(getResendApiKey())
@@ -15,8 +16,7 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 

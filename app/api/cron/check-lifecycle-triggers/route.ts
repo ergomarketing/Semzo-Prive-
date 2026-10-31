@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
 import { enrollLifecycleSequence } from "@/lib/lifecycle-emails/enroll"
 import { klaviyoTrack } from "@/lib/klaviyo"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 /**
  * Cron diario de detección/enrolamiento para las secuencias de lifecycle de
@@ -342,8 +343,7 @@ async function checkNps() {
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 

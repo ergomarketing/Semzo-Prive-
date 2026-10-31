@@ -15,6 +15,7 @@ import { Resend } from "resend"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -29,8 +30,7 @@ function getSupabase() {
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization")
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

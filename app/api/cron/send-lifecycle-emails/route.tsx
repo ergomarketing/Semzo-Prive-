@@ -6,6 +6,7 @@ import { logEmail } from "@/lib/email-logger"
 import { MARKETING_LIFECYCLE_SEQUENCES } from "@/lib/lifecycle-emails/enroll"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import LifecycleSequenceEmail from "@/emails/templates/lifecycle-sequence"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 /**
  * Cron de envío único y genérico para TODAS las secuencias de lifecycle de
@@ -43,8 +44,7 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 

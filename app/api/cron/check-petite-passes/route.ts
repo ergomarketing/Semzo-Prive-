@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -24,8 +25,7 @@ const ADMIN_EMAIL = "soporte@semzoprive.com"
  */
 export async function GET(request: Request) {
   // Validacion de secret de cron (Vercel Cron)
-  const authHeader = request.headers.get("authorization")
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

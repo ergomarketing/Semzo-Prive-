@@ -7,6 +7,7 @@ import { SUSPEND_AFTER_DAYS, SUSPENDED_RETURN_DAYS } from "@/lib/delinquency"
 import AdminNotificationEmail from "@/emails/templates/admin-notification"
 import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -38,9 +39,7 @@ function capitalize(s: string): string {
  * Guard de deduplicación: no reenvía si ya se envió el paso correspondiente.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 

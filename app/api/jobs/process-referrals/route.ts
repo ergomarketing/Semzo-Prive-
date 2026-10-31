@@ -23,6 +23,7 @@
  */
 import { NextResponse } from "next/server"
 import { getSupabaseServiceRole } from "@/lib/supabase"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -35,15 +36,7 @@ const REWARD_AMOUNT_EUR = 50
 // Vercel Cron tiene un timeout de 60s en Hobby / 300s en Pro.
 const BATCH_LIMIT = 200
 
-function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    console.error("[v0] process-referrals: CRON_SECRET no configurado")
-    return false
-  }
-  const auth = req.headers.get("authorization") || ""
-  return auth === `Bearer ${secret}`
-}
+const isAuthorized = isAuthorizedCron
 
 async function handleRequest(req: Request) {
   // 1) Autorizacion estricta.
