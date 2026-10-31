@@ -18,7 +18,15 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  CalendarClock,
 } from "lucide-react"
+import { personalizeNewsletter as personalize } from "@/lib/newsletter-personalize"
+import {
+  formatMadridDay,
+  formatMadridTime,
+  madridInputValue,
+  madridLocalToUtc,
+} from "@/lib/madrid-time"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,7 +43,18 @@ interface CampaignBlock {
   body: string        // HTML completo del email — se envía EXACTAMENTE tal cual, sin envolver
 }
 
+interface ScheduledCampaign {
+  campaign_id: string
+  subject: string
+  scheduled_at: string
+  recipients: number
+}
+
 type Audience = "newsletter" | "leads" | "both"
+type SendMode = "now" | "later"
+
+const SCHEDULE_MIN_MS = 5 * 60 * 1000
+const SCHEDULE_MAX_MS = 30 * 24 * 60 * 60 * 1000
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
   newsletter: "Solo newsletter",
@@ -52,14 +71,8 @@ const DEFAULT_BLOCK: CampaignBlock = {
 //
 // El HTML que se pega en "Cuerpo del email" se envía tal cual. Lo único que
 // se sustituye son placeholders que el propio HTML pegado ya contenga:
-// {{name}} / {{nombre}} y, si se incluye, {{unsubscribe_url}}.
-
-function personalize(html: string, name: string, unsubUrl: string): string {
-  return html
-    .replace(/\{\{\s*name\s*\}\}/gi, name)
-    .replace(/\{\{\s*nombre\s*\}\}/gi, name)
-    .replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, unsubUrl)
-}
+// {{name}} / {{nombre}} y, si se incluye, {{unsubscribe_url}}. La lógica vive en
+// lib/newsletter-personalize.ts y es la misma que usa el servidor al enviar.
 
 // El preheader es opcional y solo se añade si el campo está relleno — nunca
 // por defecto. Se inserta como texto invisible justo tras <body> (o al
@@ -86,17 +99,24 @@ export default function NewsletterPage() {
   const [subject,      setSubject]      = useState("")
   const [audience,     setAudience]     = useState<Audience>("both")
   const [block,        setBlock]        = useState<CampaignBlock>(DEFAULT_BLOCK)
+  const [sendMode,     setSendMode]     = useState<SendMode>("now")
+  const [scheduledLocal, setScheduledLocal] = useState("")
   const [sending,      setSending]      = useState(false)
   const [result,       setResult]       = useState<{ type: "success" | "error"; message: string } | null>(null)
+
+  // Scheduled campaigns
+  const [scheduled,    setScheduled]    = useState<ScheduledCampaign[]>([])
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [nsRes, leadsRes] = await Promise.all([
+      const [nsRes, leadsRes, scheduledRes] = await Promise.all([
         fetch("/api/admin/newsletter"),
         fetch("/api/admin/leads?page=1&status=lead"),
+        fetch("/api/admin/newsletter/scheduled"),
       ])
       if (nsRes.ok) {
         const d = await nsRes.json()
@@ -105,6 +125,10 @@ export default function NewsletterPage() {
       if (leadsRes.ok) {
         const d = await leadsRes.json()
         setLeadsCount(d.stats?.active ?? 0)
+      }
+      if (scheduledRes.ok) {
+        const d = await scheduledRes.json()
+        setScheduled(d.campaigns || [])
       }
     } finally {
       setLoading(false)
@@ -121,6 +145,33 @@ export default function NewsletterPage() {
       setResult({ type: "error", message: "Pega el HTML del email en el campo Cuerpo" })
       return
     }
+
+    let scheduledIso: string | undefined
+    let scheduledText = ""
+    if (sendMode === "later") {
+      if (!scheduledLocal) { setResult({ type: "error", message: "Elige la fecha y hora de envío" }); return }
+      const target = madridLocalToUtc(scheduledLocal)
+      if (!target) {
+        setResult({ type: "error", message: "Esa hora no existe en España por el cambio de horario. Elige otra." })
+        return
+      }
+      const ahead = target.date.getTime() - Date.now()
+      if (ahead < SCHEDULE_MIN_MS) {
+        setResult({ type: "error", message: "La fecha de envío debe estar al menos 5 minutos en el futuro" })
+        return
+      }
+      if (ahead > SCHEDULE_MAX_MS) {
+        setResult({ type: "error", message: "No se puede programar a más de 30 días (límite de Resend)" })
+        return
+      }
+      scheduledText = `${formatMadridDay(target.date)} a las ${formatMadridTime(target.date)}`
+      const confirmed = window.confirm(
+        `¿Programar la campaña "${subject}" para el ${scheduledText} (hora de España) a ${audienceCount} destinatarios?`,
+      )
+      if (!confirmed) return
+      scheduledIso = target.iso
+    }
+
     setSending(true)
     setResult(null)
     try {
@@ -132,18 +183,60 @@ export default function NewsletterPage() {
           content: withPreheader(block.body, block.preheader), // HTML pegado, sin envolver
           audience,
           raw_html: true,              // tell the server the content is already wrapped HTML
+          scheduled_at: scheduledIso,
         }),
       })
       const data = await res.json()
-      if (res.ok) {
-        setResult({ type: "success", message: `Enviado a ${data.sent} destinatario${data.sent !== 1 ? "s" : ""}${data.failed ? ` (${data.failed} fallidos)` : ""}` })
-      } else {
+      if (!res.ok) {
         setResult({ type: "error", message: data.error || "Error al enviar" })
+      } else if (scheduledIso) {
+        if (!data.scheduled) {
+          setResult({ type: "error", message: "No se pudo programar ningún envío. Revisa los logs de email." })
+        } else {
+          setResult({
+            type: "success",
+            message: `Programada para el ${scheduledText} · ${data.scheduled} destinatario${data.scheduled !== 1 ? "s" : ""}${data.failed ? ` (${data.failed} fallidos)` : ""}`,
+          })
+          await load()
+        }
+      } else {
+        setResult({ type: "success", message: `Enviado a ${data.sent} destinatario${data.sent !== 1 ? "s" : ""}${data.failed ? ` (${data.failed} fallidos)` : ""}` })
       }
     } catch {
       setResult({ type: "error", message: "Error de red al enviar" })
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleCancel(campaign: ScheduledCampaign) {
+    const when = new Date(campaign.scheduled_at)
+    const confirmed = window.confirm(
+      `¿Cancelar el envío programado "${campaign.subject}" (${formatMadridDay(when)} a las ${formatMadridTime(when)})? Los ${campaign.recipients} destinatarios no recibirán este email.`,
+    )
+    if (!confirmed) return
+    setCancellingId(campaign.campaign_id)
+    setResult(null)
+    try {
+      const res = await fetch("/api/admin/newsletter/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaign.campaign_id }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setResult({ type: "success", message: `Campaña cancelada · ${data.cancelled} envío${data.cancelled !== 1 ? "s" : ""} cancelado${data.cancelled !== 1 ? "s" : ""}` })
+      } else {
+        setResult({
+          type: "error",
+          message: `${data.cancelled ?? 0} cancelados, ${data.failed ?? 0} con error${data.error ? `: ${data.error}` : ""}`,
+        })
+      }
+      await load()
+    } catch {
+      setResult({ type: "error", message: "Error de red al cancelar" })
+    } finally {
+      setCancellingId(null)
     }
   }
 
@@ -154,6 +247,11 @@ export default function NewsletterPage() {
     audience === "newsletter" ? activeSubscribers.length :
     audience === "leads"      ? leadsCount :
     activeSubscribers.length + leadsCount
+
+  const schedule = sendMode === "later" && scheduledLocal ? madridLocalToUtc(scheduledLocal) : null
+  const scheduleLabel = schedule
+    ? `${formatMadridDay(schedule.date)} a las ${formatMadridTime(schedule.date)}`
+    : null
 
   const previewHtml = withPreheader(personalize(block.body, "María", "#"), block.preheader)
 
@@ -231,6 +329,46 @@ export default function NewsletterPage() {
               </div>
             </Field>
 
+            {/* Send mode */}
+            <Field label="Envío">
+              <div className="flex flex-wrap gap-2">
+                {([["now", "Enviar ahora"], ["later", "Programar"]] as [SendMode, string][]).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setSendMode(mode)}
+                    aria-pressed={sendMode === mode}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      sendMode === mode
+                        ? "border-[#1a1f3a] bg-[#1a1f3a] text-white"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {sendMode === "later" && (
+                <div className="mt-3 space-y-1.5">
+                  <Input
+                    type="datetime-local"
+                    value={scheduledLocal}
+                    min={madridInputValue(Date.now() + SCHEDULE_MIN_MS)}
+                    max={madridInputValue(Date.now() + SCHEDULE_MAX_MS)}
+                    onChange={(e) => setScheduledLocal(e.target.value)}
+                    aria-label="Fecha y hora de envío (hora de España)"
+                    className="max-w-xs"
+                  />
+                  <p className="text-xs text-gray-400">
+                    Hora de España (Europe/Madrid). Entre 5 minutos y 30 días desde ahora.
+                  </p>
+                  {scheduledLocal && !schedule && (
+                    <p className="text-xs text-red-600">Esa hora no existe en España por el cambio de horario.</p>
+                  )}
+                </div>
+              )}
+            </Field>
+
             {/* Body — HTML completo, sin envolver */}
             <Field
               label="Cuerpo del email (HTML completo)"
@@ -272,7 +410,16 @@ export default function NewsletterPage() {
               {sending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando a {audienceCount} destinatarios...
+                  {sendMode === "later" ? "Programando" : "Enviando"} a {audienceCount} destinatarios...
+                </>
+              ) : sendMode === "later" ? (
+                <>
+                  <CalendarClock className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="text-pretty">
+                    {scheduleLabel
+                      ? `Programar campaña para el ${scheduleLabel} · ${audienceCount} destinatarios`
+                      : `Programar campaña · ${audienceCount} destinatarios`}
+                  </span>
                 </>
               ) : (
                 <>
@@ -330,6 +477,48 @@ export default function NewsletterPage() {
             )}
           </div>
         </div>
+
+        {/* ── Scheduled campaigns ─────────────────────────────────────────── */}
+        <section className="mt-10 rounded-lg border border-gray-200 bg-white" aria-labelledby="scheduled-heading">
+          <h2 id="scheduled-heading" className="px-6 py-4 font-semibold text-[#1a1f3a]">
+            Campañas programadas ({scheduled.length})
+          </h2>
+          <div className="border-t border-gray-100">
+            {scheduled.length === 0 ? (
+              <p className="px-6 py-8 text-sm text-gray-400">No hay campañas programadas</p>
+            ) : (
+              <ul className="divide-y">
+                {scheduled.map((c) => {
+                  const when = new Date(c.scheduled_at)
+                  return (
+                    <li key={c.campaign_id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-[#1a1f3a]">{c.subject}</p>
+                        <p className="mt-0.5 text-sm text-gray-500">
+                          {formatMadridDay(when)} a las {formatMadridTime(when)} · {c.recipients} destinatario{c.recipients !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancel(c)}
+                        disabled={cancellingId === c.campaign_id}
+                        className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                      >
+                        {cancellingId === c.campaign_id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Cancelar envío
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
 
         {/* ── Subscriber list ─────────────────────────────────────────────── */}
         <div className="mt-10 rounded-lg border border-gray-200 bg-white">
