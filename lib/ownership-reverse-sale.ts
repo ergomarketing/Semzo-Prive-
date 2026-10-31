@@ -155,6 +155,13 @@ export async function reverseColeccionaSale(
     .update({ status: "active", completed_at: null, accumulated: restoredCredit, updated_at: now })
     .eq("id", progress.id)
   if (progressError) throw new Error(`ownership_progress: ${progressError.message}`)
+  // El credito que se gasto en la venta vuelve a estar disponible.
+  const { error: unspendError } = await supabase
+    .from("ownership_credit_entries")
+    .update({ spent_at: null })
+    .eq("ownership_progress_id", progress.id)
+    .not("spent_at", "is", null)
+  if (unspendError) throw new Error(`ownership_credit_entries: ${unspendError.message}`)
 
   if (!bagReturned) {
     // Sigue en poder de la socia: se reabre su ultima reserva cerrada por la venta y el bolso vuelve a 'rented'.

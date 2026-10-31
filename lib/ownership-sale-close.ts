@@ -18,6 +18,8 @@ import { renderAdminEmail } from "@/app/lib/email-layout"
 import { archiveColeccionaContract, type ArchivedContract } from "@/lib/ownership-contract-archive"
 import { logEmail } from "@/lib/email-logger"
 import { klaviyoTrackForUser } from "@/lib/klaviyo"
+import { spendCreditOnSale } from "@/lib/ownership-credit-carry"
+import { getMaxCredit } from "@/lib/ownership-credit"
 
 export interface CloseSaleInput {
   progressId: string
@@ -50,9 +52,31 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
 
   const now = new Date().toISOString()
 
+  const spendSaleCredit = async () => {
+    // El credito es de la socia: solo se gasta lo descontado en esta compra (precio - cobrado, con tope del 20 %);
+    // el resto de su credito sigue disponible para otra compra. Un fallo aqui no deshace la venta: se avisa.
+    try {
+      const priceCents = Math.round(Number(progress.purchase_price) * 100)
+      const maxCents = Math.round(getMaxCredit(Number(progress.purchase_price)) * 100)
+      const appliedCents = Math.min(Math.max(0, priceCents - input.amountPaidCents), maxCents)
+      const credit = await spendCreditOnSale(supabase, progress.id, appliedCents)
+      console.log("[colecciona] credito gastado en la venta:", { progress_id: progress.id, appliedCents, ...credit })
+    } catch (creditErr) {
+      console.error("[colecciona] no se pudo repartir el credito de la venta:", creditErr)
+      await supabase.from("admin_notifications").insert({
+        type: "colecciona_credit_error",
+        priority: "high",
+        title: "Venta Colecciona cerrada, pero el crédito no se repartió",
+        message: `No se pudo marcar el crédito gastado del progreso ${progress.id}. Revisa ownership_credit_entries antes de que la socia use su saldo.`,
+        metadata: { progress_id: progress.id, user_id: progress.user_id },
+      })
+    }
+  }
+
   // 1. Progreso completado
   if (progress.status !== "completed") {
-    const { error } = await supabase
+    // Actualizacion atomica: solo la llamada que de verdad completa el progreso reparte el credito.
+    const { data: completedRows, error } = await supabase
       .from("ownership_progress")
       .update({
         accumulated: progress.purchase_price,
@@ -61,7 +85,10 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
         updated_at: now,
       })
       .eq("id", progress.id)
+      .neq("status", "completed")
+      .select("id")
     if (error) throw new Error(`ownership_progress: ${error.message}`)
+    if ((completedRows?.length ?? 0) > 0) await spendSaleCredit()
   }
 
   // 2. Bolso vendido PRIMERO. Si la fila cambia es la primera vez que se cierra; la

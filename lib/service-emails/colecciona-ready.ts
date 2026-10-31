@@ -1,6 +1,6 @@
 /**
- * Correo · "Ya puedes finalizar tu compra" (Colecciona: el crédito acumulado ya cubre el precio).
- * Diseño de Erika (2026-10-19). Se envía una vez, cuando el crédito alcanza el precio; la compra solo se cierra
+ * Correo · "Ya puedes finalizar tu compra" (Colecciona: el crédito acumulado ya alcanza el descuento máximo del 20 % del precio).
+ * Diseño de Erika (2026-10-19). Se envía una vez, cuando el crédito alcanza el descuento máximo; la compra solo se cierra
  * cuando la socia confirma y paga desde su panel.
  *
  * Variables:
@@ -98,7 +98,7 @@ export const COLECCIONA_READY_HTML = `<!DOCTYPE html>
                 <tr>
                   <td style="color:#1a1a4b;font-size:16px;line-height:1.8;padding:0;">
                     <p style="margin:0 0 24px 0;">Hola {{nombre}},</p>
-                    <p style="margin:0 0 24px 0;">Tu crédito acumulado ya cubre el precio de <strong>{{nombre_bolso}}</strong>.</p>
+                    <p style="margin:0 0 24px 0;">Tu crédito acumulado ya alcanza el descuento máximo (el 20 % del precio) de <strong>{{nombre_bolso}}</strong>.</p>
                     <p style="margin:0 0 24px 0;">Confirma la compra desde tu panel para completarla. Hasta entonces, el bolso seguirá reservado y no pasará a tu colección.</p>
                   </td>
                 </tr>

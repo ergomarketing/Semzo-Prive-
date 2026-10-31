@@ -6,6 +6,7 @@ import {
   type LedgerRow,
 } from "@/lib/ownership-credit-ledger"
 import { notifyReadyToFinalize } from "@/lib/ownership-ready-email"
+import { getMaxCredit } from "@/lib/ownership-credit"
 import { carryOverCredit, restoreCarriedCredit, type CarriedEntry } from "@/lib/ownership-credit-carry"
 
 /**
@@ -206,7 +207,7 @@ export async function startCollectProgress(
     .eq("status", "active")
   if (cancelErr) console.error("[v0] startCollectProgress no se pudo cancelar el Descubre activo:", cancelErr)
 
-  const readyToFinalize = initialCredit >= target
+  const readyToFinalize = target > 0 && initialCredit >= getMaxCredit(target)
   if (readyToFinalize) {
     await notifyReadyToFinalize(supabase, userId, bagId)
   }

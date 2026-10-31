@@ -3,8 +3,8 @@
  * contrato. Lo usan la pantalla de compra (preview), el cobro (checkout) y el PDF, para que
  * todos trabajen con los MISMOS numeros y textos.
  *
- * Importes: precio - credito aplicado = importe final. Si el crédito cubre todo el precio se cobra
- * 1 € simbolico (getAmountDue) y el descuento es precio - 1 €.
+ * Importes: precio - credito aplicado = importe final. El crédito aplicado nunca supera el 20 % del
+ * precio de venta (getAppliedCredit), así que el importe final es como mínimo el 80 % del precio.
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getAmountDue } from "@/lib/ownership-credit"

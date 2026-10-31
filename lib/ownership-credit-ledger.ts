@@ -1,5 +1,6 @@
 import type Stripe from "stripe"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { getMaxCredit } from "@/lib/ownership-credit"
 
 /**
  * Libro de crédito de Modo Colecciona (tabla ownership_credit_entries).
@@ -75,7 +76,8 @@ export async function deleteLedgerEntry(supabase: SupabaseClient, stripeInvoiceI
 }
 
 /**
- * Suma crédito a un progreso activo sin superar el precio. Usa comparación del
+ * Suma crédito a un progreso activo sin superar el precio. `reachedPrice` indica que se acaba de alcanzar el
+ * descuento máximo (20 % del precio): a partir de ahí más crédito ya no abarata la compra. Usa comparación del
  * valor leído para no pisar un cambio concurrente (reintenta si cambió).
  * Nunca cambia el estado: alcanzar el precio deja status='active'.
  */
@@ -96,6 +98,7 @@ export async function addCreditToProgress(
 
     const previous = Number(row.accumulated || 0)
     const accumulated = roundCents(Math.min(previous + creditEuros, target))
+    const maxCredit = getMaxCredit(target)
     const { data: updated } = await supabase
       .from("ownership_progress")
       .update({ accumulated, updated_at: new Date().toISOString() })
@@ -104,7 +107,7 @@ export async function addCreditToProgress(
       .eq("accumulated", row.accumulated)
       .select("id")
     if (updated && updated.length > 0) {
-      return { previous, accumulated, reachedPrice: previous < target && accumulated >= target }
+      return { previous, accumulated, reachedPrice: previous < maxCredit && accumulated >= maxCredit }
     }
   }
   throw new Error("No se pudo actualizar el crédito por cambios concurrentes")
@@ -218,7 +221,7 @@ export async function simulateConversion(
     purchase_price: purchasePrice,
     initial_credit: initialCredit,
     resulting_status: "active",
-    ready_to_finalize: initialCredit >= purchasePrice,
+    ready_to_finalize: purchasePrice > 0 && initialCredit >= getMaxCredit(purchasePrice),
     persisted: false,
   }
 }
