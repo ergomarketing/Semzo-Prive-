@@ -194,6 +194,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/alternativa-a-efimero-club`,
+      lastModified: "2026-11-01",
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: `${baseUrl}/lista-privada`,
       lastModified: STATIC_PAGES_LASTMOD,
       changeFrequency: "monthly",
