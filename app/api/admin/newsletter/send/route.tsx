@@ -15,6 +15,7 @@ export const maxDuration = 60
 // Resend permite 10 peticiones/segundo; vamos a 5 para dejar margen.
 const SEND_INTERVAL_MS = 200
 const MAX_RATE_LIMIT_RETRIES = 3
+const ALREADY_SENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -124,6 +125,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No hay destinatarios para la audiencia seleccionada", sent: 0 }, { status: 400 })
     }
 
+    // Reenvio seguro: quien ya recibio (o tiene programado) este mismo asunto en los ultimos 7 dias se salta.
+    // Asi, si un envio se queda a medias, se repite la misma campana y solo llega a los que faltaron.
+    const sinceIso = new Date(Date.now() - ALREADY_SENT_WINDOW_MS).toISOString()
+    const { data: alreadyRows, error: alreadyError } = await supabase
+      .from("email_logs")
+      .select("recipient_email")
+      .eq("email_type", "newsletter_campaign")
+      .eq("subject", subject)
+      .in("status", ["sent", "delivered", "pending"])
+      .gte("created_at", sinceIso)
+      .limit(5000)
+    if (alreadyError) {
+      // Sin esta comprobacion se podria duplicar el envio: mejor parar que arriesgarse.
+      console.error("[newsletter/send] No se pudo comprobar quien ya recibio la campana:", alreadyError)
+      return NextResponse.json({ error: "No se pudo comprobar a quién se envió ya. Inténtalo de nuevo." }, { status: 500 })
+    }
+    const alreadySent = new Set((alreadyRows ?? []).map((r) => String(r.recipient_email).toLowerCase().trim()))
+    const skipped = alreadySent.size > 0 ? recipients.filter((r) => alreadySent.has(r.email.toLowerCase().trim())).length : 0
+    if (skipped > 0) {
+      for (let i = recipients.length - 1; i >= 0; i--) {
+        if (alreadySent.has(recipients[i].email.toLowerCase().trim())) recipients.splice(i, 1)
+      }
+    }
+    if (recipients.length === 0) {
+      return NextResponse.json({ success: true, sent: 0, failed: 0, skipped, message: "Todos los destinatarios ya recibieron esta campaña" })
+    }
+
     const resendApiKey = getResendApiKey()
     if (!resendApiKey) {
       // Modo simulación (entorno sin API key)
@@ -223,12 +251,13 @@ export async function POST(request: Request) {
         success: true,
         scheduled,
         failed,
+        skipped,
         campaign_id: campaignId,
         scheduled_at: scheduledAtIso,
       })
     }
 
-    return NextResponse.json({ success: true, sent, failed })
+    return NextResponse.json({ success: true, sent, failed, skipped })
   } catch (error) {
     console.error("[newsletter/send] Unexpected error:", error)
     return NextResponse.json(
