@@ -116,8 +116,9 @@ export default function AlternativaEfimeroClubPage() {
                   </Link>
                 </div>
               </div>
-              {/* Recorte sin fondo, entero (sin object-cover): apoyado en el borde inferior de la franja rosa. */}
-              <div className="flex justify-center md:justify-end">
+              {/* Recorte sin fondo, entero (sin object-cover): apoyado en el borde inferior de la franja rosa.
+              // A la izquierda en escritorio: mira hacia el texto (en movil queda debajo del texto). */}
+              <div className="flex justify-center md:justify-start md:order-first">
                 <Image
                   src="/images/alternativa-hero.webp"
                   alt="Mujer pensativa con un bolso acolchado color crema colgado del hombro"
