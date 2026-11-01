@@ -33,30 +33,28 @@ export async function GET(request: Request) {
       if (error.message.includes("does not exist")) {
         return NextResponse.json({
           logs: [],
-          stats: { total: 0, sent: 0, failed: 0, pending: 0 },
+          stats: { total: 0, sent: 0, delivered: 0, failed: 0, pending: 0 },
         })
       }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Calculate stats
-    const { data: allLogs, error: statsError } = await supabase.from("email_logs").select("status")
-
-    if (statsError) {
-      return NextResponse.json({
-        logs: logs || [],
-        stats: { total: 0, sent: 0, failed: 0, pending: 0 },
-      })
+    const countByStatus = async (statusFilter?: string) => {
+      let countQuery = supabase.from("email_logs").select("id", { count: "exact", head: true })
+      if (statusFilter) countQuery = countQuery.eq("status", statusFilter)
+      const { count } = await countQuery
+      return count ?? 0
     }
 
-    const stats = {
-      total: allLogs?.length || 0,
-      sent: allLogs?.filter((l) => l.status === "sent").length || 0,
-      failed: allLogs?.filter((l) => l.status === "failed").length || 0,
-      pending: allLogs?.filter((l) => l.status === "pending").length || 0,
-    }
+    const [total, sent, delivered, failed, pending] = await Promise.all([
+      countByStatus(),
+      countByStatus("sent"),
+      countByStatus("delivered"),
+      countByStatus("failed"),
+      countByStatus("pending"),
+    ])
 
-    return NextResponse.json({ logs, stats })
+    return NextResponse.json({ logs, stats: { total, sent, delivered, failed, pending } })
   } catch (error) {
     return NextResponse.json(
       {

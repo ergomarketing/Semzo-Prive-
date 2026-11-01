@@ -21,6 +21,7 @@ import {
   CalendarClock,
 } from "lucide-react"
 import { personalizeNewsletter as personalize } from "@/lib/newsletter-personalize"
+import { CampaignStats } from "@/components/admin/campaign-stats"
 import {
   formatMadridDay,
   formatMadridTime,
@@ -519,6 +520,10 @@ export default function NewsletterPage() {
             )}
           </div>
         </section>
+
+        <div className="mt-10">
+          <CampaignStats />
+        </div>
 
         {/* ── Subscriber list ─────────────────────────────────────────────── */}
         <div className="mt-10 rounded-lg border border-gray-200 bg-white">

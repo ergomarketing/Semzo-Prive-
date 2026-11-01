@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mail, CheckCircle2, XCircle, Clock, RefreshCw, Send, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CampaignStats } from "@/components/admin/campaign-stats"
 
 interface EmailLog {
   id: string
@@ -16,7 +17,7 @@ interface EmailLog {
   recipient_name: string | null
   subject: string
   email_type: string
-  status: "pending" | "sent" | "failed"
+  status: "pending" | "sent" | "delivered" | "failed"
   sent_at: string | null
   error_message: string | null
   resend_id: string | null
@@ -32,6 +33,7 @@ export default function EmailLogsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [stats, setStats] = useState({
     sent: 0,
+    delivered: 0,
     failed: 0,
     pending: 0,
     total: 0,
@@ -50,7 +52,7 @@ export default function EmailLogsPage() {
 
       setLogs(data.logs || [])
       setFilteredLogs(data.logs || [])
-      setStats(data.stats || { sent: 0, failed: 0, pending: 0, total: 0 })
+      setStats(data.stats || { sent: 0, delivered: 0, failed: 0, pending: 0, total: 0 })
     } catch (error) {
       console.error("[v0] Error fetching logs:", error)
     } finally {
@@ -94,6 +96,7 @@ export default function EmailLogsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "sent":
+      case "delivered":
         return <CheckCircle2 className="h-4 w-4 text-[#b08d57]" />
       case "failed":
         return <XCircle className="h-4 w-4 text-red-600" />
@@ -107,13 +110,20 @@ export default function EmailLogsPage() {
   const getStatusBadge = (status: string) => {
     const variants = {
       sent: "bg-[#b08d57]/15 text-[#7a5f33]",
+      delivered: "bg-emerald-100 text-emerald-800",
       failed: "bg-red-100 text-red-800",
       pending: "bg-slate-100 text-slate-700",
+    }
+    const labels: Record<string, string> = {
+      sent: "Enviado",
+      delivered: "Entregado",
+      failed: "Fallido",
+      pending: "Pendiente",
     }
 
     return (
       <Badge className={variants[status as keyof typeof variants] || "bg-gray-100 text-gray-800"}>
-        {status === "sent" ? "Enviado" : status === "failed" ? "Fallido" : "Pendiente"}
+        {labels[status] ?? status}
       </Badge>
     )
   }
@@ -145,12 +155,12 @@ export default function EmailLogsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Total Enviados</p>
+                <p className="text-sm text-slate-600">Total registrados</p>
                 <p className="font-serif text-3xl font-normal text-indigo-dark">{stats.total}</p>
               </div>
               <Send className="h-8 w-8 text-slate-600" />
@@ -162,10 +172,22 @@ export default function EmailLogsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Exitosos</p>
+                <p className="text-sm text-slate-600">Enviados</p>
                 <p className="font-serif text-3xl font-normal text-indigo-dark text-[#b08d57]">{stats.sent}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-[#b08d57]" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Entregados</p>
+                <p className="font-serif text-3xl font-normal text-indigo-dark text-emerald-700">{stats.delivered}</p>
+              </div>
+              <CheckCircle2 className="h-8 w-8 text-emerald-700" />
             </div>
           </CardContent>
         </Card>
@@ -194,6 +216,8 @@ export default function EmailLogsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <CampaignStats />
 
       <Card>
         <CardContent className="p-6">
@@ -235,6 +259,7 @@ export default function EmailLogsPage() {
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="sent">Enviados</SelectItem>
+                    <SelectItem value="delivered">Entregados</SelectItem>
                     <SelectItem value="failed">Fallidos</SelectItem>
                     <SelectItem value="pending">Pendientes</SelectItem>
                   </SelectContent>
@@ -283,6 +308,9 @@ export default function EmailLogsPage() {
                         {log.email_type}
                       </Badge>
                       {getStatusBadge(log.status)}
+                      {log.metadata?.opened_at && <Badge className="bg-sky-100 text-sky-800">Abierto</Badge>}
+                      {log.metadata?.clicked_at && <Badge className="bg-indigo-100 text-indigo-800">Clic</Badge>}
+                      {log.metadata?.complained_at && <Badge className="bg-amber-100 text-amber-800">Queja</Badge>}
                       <span className="text-sm text-slate-500">{formatDate(log.created_at)}</span>
                     </div>
                   </div>
