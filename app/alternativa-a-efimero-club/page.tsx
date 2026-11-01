@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 
 // Pagina estatica de captacion: gente que busca "efimero club" y no encuentra un servicio activo.
@@ -84,34 +85,48 @@ export default function AlternativaEfimeroClubPage() {
     <div className="min-h-screen bg-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="pt-20">
-        <section className="py-20 md:py-24" style={{ backgroundColor: "#fff0f3" }}>
+        <section className="pt-20 md:pt-24 overflow-hidden" style={{ backgroundColor: "#fff0f3" }}>
           <div className="container mx-auto px-4">
-            <div className="max-w-3xl">
-              <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
-                Alquiler de bolsos de lujo en España
-              </p>
-              <h1 className="font-serif text-4xl md:text-5xl font-light leading-tight mb-6" style={{ color: "#1a1a4b" }}>
-                ¿Buscabas Efímero Club? Una alternativa para llevar bolsos de lujo sin comprarlos.
-              </h1>
-              <p className="text-slate-600 text-lg leading-relaxed font-light mb-10">
-                SEMZO PRIVÉ es un club privado de alquiler de bolsos de lujo por suscripción. Una cuota fija, un bolso
-                auténtico en tu casa en 24-48 horas y la libertad de cambiarlo cuando quieras.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link
-                  href="/membresias"
-                  className="inline-block px-8 py-4 text-sm uppercase tracking-widest text-white"
-                  style={{ backgroundColor: "#1a1a4b" }}
-                >
-                  Ver membresías
-                </Link>
-                <Link
-                  href="/catalog"
-                  className="inline-block px-8 py-4 text-sm uppercase tracking-widest border"
-                  style={{ borderColor: "#1a1a4b", color: "#1a1a4b" }}
-                >
-                  Ver el catálogo
-                </Link>
+            <div className="grid md:grid-cols-2 gap-10 items-end">
+              <div className="pb-4 md:pb-24">
+                <p className="text-xs uppercase tracking-widest mb-6 font-medium" style={{ color: "#1a1a4b" }}>
+                  Alquiler de bolsos de lujo en España
+                </p>
+                <h1 className="font-serif text-4xl md:text-5xl font-light leading-tight mb-6" style={{ color: "#1a1a4b" }}>
+                  ¿Buscabas Efímero Club? Una alternativa para llevar bolsos de lujo sin comprarlos.
+                </h1>
+                <p className="text-slate-600 text-lg leading-relaxed font-light mb-10">
+                  SEMZO PRIVÉ es un club privado de alquiler de bolsos de lujo por suscripción. Una cuota fija, un bolso
+                  auténtico en tu casa en 24-48 horas y la libertad de cambiarlo cuando quieras.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <Link
+                    href="/membresias"
+                    className="inline-block px-8 py-4 text-sm uppercase tracking-widest text-white"
+                    style={{ backgroundColor: "#1a1a4b" }}
+                  >
+                    Ver membresías
+                  </Link>
+                  <Link
+                    href="/catalog"
+                    className="inline-block px-8 py-4 text-sm uppercase tracking-widest border"
+                    style={{ borderColor: "#1a1a4b", color: "#1a1a4b" }}
+                  >
+                    Ver el catálogo
+                  </Link>
+                </div>
+              </div>
+              {/* Recorte sin fondo, entero (sin object-cover): apoyado en el borde inferior de la franja rosa. */}
+              <div className="flex justify-center md:justify-end">
+                <Image
+                  src="/images/alternativa-hero.webp"
+                  alt="Mujer pensativa con un bolso acolchado color crema colgado del hombro"
+                  width={1086}
+                  height={1448}
+                  priority
+                  sizes="(min-width: 768px) 40vw, 80vw"
+                  className="block h-auto w-full max-w-sm md:max-w-md"
+                />
               </div>
             </div>
           </div>
