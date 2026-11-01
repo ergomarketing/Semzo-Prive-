@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { applyResendEvent, verifyResendSignature, type ResendWebhookEvent } from "@/lib/resend-webhook"
+import { suppressEmailAddress, suppressionReasonFor } from "@/lib/email-suppression"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -48,13 +49,20 @@ export async function POST(request: NextRequest) {
 
     const { data: row, error: findError } = await supabase
       .from("email_logs")
-      .select("id, status, sent_at, error_message, metadata")
+      .select("id, status, sent_at, error_message, metadata, recipient_email")
       .eq("resend_id", emailId)
       .limit(1)
       .maybeSingle()
 
     if (findError) throw findError
     if (!row) return NextResponse.json({ ignored: "email no registrado en email_logs" })
+
+    // Rebote permanente o queja de spam: se excluye la direccion de los envios de marketing. Va antes de
+    // guardar el log para que, si falla, Resend reintente el evento completo (la exclusion es idempotente).
+    const suppressionReason = suppressionReasonFor(event)
+    if (suppressionReason && row.recipient_email) {
+      await suppressEmailAddress(supabase, row.recipient_email, suppressionReason)
+    }
 
     const update = applyResendEvent(row, event, svixId)
     if (!update) return NextResponse.json({ ignored: event.type })
