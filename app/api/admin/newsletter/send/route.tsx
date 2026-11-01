@@ -10,6 +10,22 @@ import { personalizeNewsletter } from "@/lib/newsletter-personalize"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+export const maxDuration = 60
+
+// Resend permite 10 peticiones/segundo; vamos a 5 para dejar margen.
+const SEND_INTERVAL_MS = 200
+const MAX_RATE_LIMIT_RETRIES = 3
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function isRateLimited(error: { name?: string; message?: string; statusCode?: number | null } | null) {
+  if (!error) return false
+  return (
+    error.statusCode === 429 ||
+    error.name === "rate_limit_exceeded" ||
+    /too many requests|rate limit/i.test(error.message || "")
+  )
+}
 
 const MIN_SCHEDULE_AHEAD_MS = 5 * 60 * 1000
 const MAX_SCHEDULE_AHEAD_MS = 30 * 24 * 60 * 60 * 1000
@@ -145,7 +161,7 @@ export async function POST(request: Request) {
               <NewsletterEmail recipientName={personalName || undefined} bodyHtml={content} unsubscribeUrl={recipientUnsubscribeUrl} />,
             )
 
-        const { data: sendData, error } = await resend.emails.send({
+        let result = await resend.emails.send({
           from:    fromEmail,
           to:      [recipient.email],
           subject,
@@ -156,6 +172,23 @@ export async function POST(request: Request) {
           },
           ...(scheduledAtIso ? { scheduledAt: scheduledAtIso } : {}),
         })
+
+        for (let attempt = 1; attempt <= MAX_RATE_LIMIT_RETRIES && isRateLimited(result.error); attempt++) {
+          await sleep(1000 * attempt)
+          result = await resend.emails.send({
+            from:    fromEmail,
+            to:      [recipient.email],
+            subject,
+            html,
+            headers: {
+              "List-Unsubscribe": `<${recipientUnsubscribeUrl}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+            ...(scheduledAtIso ? { scheduledAt: scheduledAtIso } : {}),
+          })
+        }
+
+        const { data: sendData, error } = result
 
         if (error) {
           console.error(`[newsletter/send] Resend error to ${recipient.email}:`, error)
@@ -182,6 +215,7 @@ export async function POST(request: Request) {
         console.error(`[newsletter/send] Exception sending to ${recipient.email}:`, err)
         failed++
       }
+      await sleep(SEND_INTERVAL_MS)
     }
 
     if (scheduledAtIso) {
