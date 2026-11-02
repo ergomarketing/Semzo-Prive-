@@ -29,6 +29,7 @@ import {
   UserPlus,
   Handshake,
   Send,
+  Sparkles,
 } from "lucide-react"
 
 interface NavItem {
@@ -125,6 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { label: "Email Logs", href: "/admin/email-logs", icon: <Mail className="h-4 w-4" /> },
         { label: "Prueba de Emails", href: "/admin/email-preview", icon: <Send className="h-4 w-4" /> },
         { label: "Chat", href: "/admin/chat", icon: <MessageSquare className="h-4 w-4" /> },
+        { label: "Probador virtual", href: "/admin/probador", icon: <Sparkles className="h-4 w-4" /> },
       ],
     },
     system: {
