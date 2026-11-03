@@ -203,6 +203,11 @@ export default function ProbadorPage() {
           {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           {generating ? "Generando… (unos 10-20 segundos)" : "Generar imagen"}
         </Button>
+        {!ready && !generating && (
+          <span className="text-sm text-amber-700">
+            Falta elegir: {[!selfie && "la foto (paso 1)", !bagId && "un bolso (paso 3)"].filter(Boolean).join(" y ")}
+          </span>
+        )}
         {selectedBag && (
           <span className="text-sm text-slate-600">
             {selectedBag.brand} {selectedBag.name} · {TRYON_SCENES[scene].label}
