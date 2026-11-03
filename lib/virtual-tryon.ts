@@ -53,16 +53,25 @@ export function clampHeightCm(value: unknown): number {
   return Math.min(MAX_HEIGHT_CM, Math.max(MIN_HEIGHT_CM, Math.round(n)))
 }
 
-export function buildTryOnPrompt(dims: BagDimensions, scene: TryOnScene, personHeightCm: number, bagPhotos = 1): string {
-  const k = personHeightCm / DEFAULT_HEIGHT_CM
-  const handCm = Math.round(18 * k)
-  const hipsCm = Math.round(36 * k)
+export function buildTryOnPrompt(
+  dims: BagDimensions,
+  scene: TryOnScene,
+  personHeightCm: number,
+  bagPhotos = 1,
+  correction = "",
+): string {
   const depthText = dims.depth ? ` and ${dims.depth} cm deep` : ""
+  // Una proporcion geometrica ("X % de su altura") la sigue mejor el modelo que unas medidas sueltas en cm.
+  const widthPct = Math.round((dims.width / personHeightCm) * 100)
+  const heightPct = Math.round((dims.height / personHeightCm) * 100)
   const size =
-    `SIZE IS CRITICAL. The real bag measures exactly ${dims.width} cm wide, ${dims.height} cm tall${depthText}. ` +
-    `The woman is about ${personHeightCm} cm tall (her hand is about ${handCm} cm long, her hips about ${hipsCm} cm wide), ` +
-    `so the bag must be drawn about ${(dims.width / handCm).toFixed(1)} hand-lengths wide and ` +
-    `${Math.round((dims.width / hipsCm) * 100)}% of her hip width, scaled correctly to her body. Do not enlarge or shrink it. `
+    `SIZE IS CRITICAL. The real bag measures exactly ${dims.width} cm wide, ${dims.height} cm tall${depthText}; ` +
+    `the woman is ${personHeightCm} cm tall. Full-body shot: show her entirely from head to shoes. ` +
+    `In the image, the width of the bag body (excluding handles and straps) must be exactly ${widthPct}% of her full body height ` +
+    `(top of head to soles) and its height ${heightPct}% of her body height. ` +
+    "A bag this size is " +
+    (dims.width <= 16 ? "tiny: smaller than her hand spread open" : dims.width <= 24 ? "small: a bit wider than her hand" : dims.width <= 30 ? "medium: about as wide as her forearm is long" : "large") +
+    ". Do not enlarge or shrink it, and do not make it look bigger by holding it close to the camera. "
   const bagRef =
     bagPhotos > 1
       ? `Images 2 to ${bagPhotos + 1} are product photos of ONE single luxury handbag from different angles. `
@@ -79,7 +88,8 @@ export function buildTryOnPrompt(dims: BagDimensions, scene: TryOnScene, personH
     "the exact shape of the body, flap and handles or straps, and the exact metal hardware, lock or logo design and its position. " +
     "Do not simplify, restyle or invent details. Lighting must be soft and even so the bag's true colors are preserved. " +
     "She wears the same outfit as in image 1, and any other bag or clutch she holds in image 1 is replaced by this handbag. " +
-    "Natural pose, photorealistic, no text, no watermark."
+    "Natural pose, photorealistic, no text, no watermark." +
+    correction
   )
 }
 
@@ -97,6 +107,7 @@ export async function generateTryOnImage(params: {
   dims: BagDimensions
   scene: TryOnScene
   personHeightCm: number
+  correction?: string
 }): Promise<InlineImage> {
   // Se limpian espacios, saltos de linea y comillas: es un fallo frecuente al pegar la clave en Vercel.
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']+|["']+$/g, "").trim()
@@ -106,7 +117,7 @@ export async function generateTryOnImage(params: {
     contents: [
       {
         parts: [
-          { text: buildTryOnPrompt(params.dims, params.scene, params.personHeightCm, params.bags.length) },
+          { text: buildTryOnPrompt(params.dims, params.scene, params.personHeightCm, params.bags.length, params.correction) },
           { inline_data: { mime_type: params.person.mimeType, data: params.person.base64 } },
           ...params.bags.map((b) => ({ inline_data: { mime_type: b.mimeType, data: b.base64 } })),
         ],
@@ -150,4 +161,108 @@ export async function generateTryOnImage(params: {
     break
   }
   throw new Error(`No se pudo generar la imagen (${lastError})`)
+}
+
+// ─── Verificacion del tamano ─────────────────────────────────────────────────
+// El modelo de imagen estima el tamano "a ojo" y suele agrandar el bolso. Despues de generar, un modelo de vision
+// mide el ancho del cuerpo del bolso frente a la altura de la persona; si se desvia mas de la tolerancia, se repite.
+
+const VISION_MODEL = process.env.TRYON_VISION_MODEL || "gemini-3.5-flash"
+const SIZE_TOLERANCE = 0.12
+const MAX_ATTEMPTS = 3
+
+/** Ancho y alto en pixeles de un PNG o JPEG (el modelo puede devolver cualquiera de los dos). */
+function imageSize(base64: string): { w: number; h: number } | null {
+  const buf = Buffer.from(base64, "base64")
+  if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) }
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) { i++; continue }
+      const marker = buf[i + 1]
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) }
+      }
+      i += 2 + buf.readUInt16BE(i + 2)
+    }
+  }
+  return null
+}
+
+/**
+ * Error relativo del tamano del bolso: +0.2 = sale un 20 % mas grande de lo real, -0.1 = un 10 % mas pequeno.
+ * null si no se puede medir (pies cortados, respuesta rara...): en ese caso no se afirma nada.
+ */
+export async function measureSizeError(image: InlineImage, widthCm: number, personHeightCm: number): Promise<number | null> {
+  const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']+|["']+$/g, "").trim()
+  const size = imageSize(image.base64)
+  if (!apiKey || !size) return null
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${VISION_MODEL}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text:
+                  "Look at this photo of a woman holding a handbag. Return ONLY JSON with these keys, each a bounding box " +
+                  "[ymin,xmin,ymax,xmax] normalized 0-1000: \"person\": the whole woman from the top of her head to the soles of her shoes; " +
+                  "\"bag_body\": ONLY the main body of the handbag, EXCLUDING handles, straps and chains. " +
+                  "Also \"feet_visible\": true or false (are her shoes fully visible).",
+              },
+              { inline_data: { mime_type: image.mimeType, data: image.base64 } },
+            ],
+          },
+        ],
+        generationConfig: { responseMimeType: "application/json", temperature: 0 },
+      }),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    const o = JSON.parse(json.candidates?.[0]?.content?.parts?.[0]?.text ?? "null")
+    if (!o || o.feet_visible === false || !Array.isArray(o.person) || !Array.isArray(o.bag_body)) return null
+    const personPx = ((o.person[2] - o.person[0]) / 1000) * size.h
+    const bagPx = ((o.bag_body[3] - o.bag_body[1]) / 1000) * size.w
+    if (!(personPx > 0) || !(bagPx > 0)) return null
+    const expected = widthCm / personHeightCm
+    return bagPx / personPx / expected - 1
+  } catch {
+    return null
+  }
+}
+
+export type VerifiedTryOn = {
+  image: InlineImage
+  /** Error de tamano medido (+0.2 = 20 % mas grande). null = no se pudo medir. */
+  sizeError: number | null
+  attempts: number
+  withinTolerance: boolean
+}
+
+/** Genera y mide; repite (hasta 3 intentos) con una correccion explicita si el bolso sale fuera de tamano. */
+export async function generateVerifiedTryOn(params: {
+  person: InlineImage
+  bags: InlineImage[]
+  dims: BagDimensions
+  scene: TryOnScene
+  personHeightCm: number
+}): Promise<VerifiedTryOn> {
+  let best: VerifiedTryOn | null = null
+  let correction = ""
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const image = await generateTryOnImage({ ...params, correction })
+    const sizeError = await measureSizeError(image, params.dims.width, params.personHeightCm)
+    const within = sizeError === null ? false : Math.abs(sizeError) <= SIZE_TOLERANCE
+    const current: VerifiedTryOn = { image, sizeError, attempts: attempt, withinTolerance: within }
+    if (!best || (sizeError !== null && (best.sizeError === null || Math.abs(sizeError) < Math.abs(best.sizeError)))) best = current
+    // Sin medida no hay nada que corregir: se devuelve tal cual, marcada como no verificada.
+    if (sizeError === null || within) return { ...best, attempts: attempt }
+    const pct = Math.round(Math.abs(sizeError) * 100)
+    correction =
+      ` CORRECTION: in the previous attempt the bag looked about ${pct}% too ${sizeError > 0 ? "big" : "small"}. ` +
+      `Draw it ${pct}% ${sizeError > 0 ? "smaller" : "larger"} than before, relative to her body.`
+  }
+  return { ...best!, attempts: MAX_ATTEMPTS }
 }

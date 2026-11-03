@@ -42,6 +42,7 @@ export default function ProbadorPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
+  const [sizeInfo, setSizeInfo] = useState<{ errorPct: number | null; attempts: number; ok: boolean } | null>(null)
   const [count, setCount] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -78,6 +79,7 @@ export default function ProbadorPage() {
     setGenerating(true)
     setError(null)
     setResult(null)
+    setSizeInfo(null)
     try {
       const form = new FormData()
       form.append("selfie", selfie, "selfie.jpg")
@@ -88,7 +90,8 @@ export default function ProbadorPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "No se pudo generar la imagen")
       setResult(data.image)
-      setCount((c) => c + 1)
+      setSizeInfo(data.size ?? null)
+      setCount((c) => c + (data.size?.attempts ?? 1))
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar la imagen")
     } finally {
@@ -201,7 +204,7 @@ export default function ProbadorPage() {
       <div className="mt-8 flex flex-wrap items-center gap-4">
         <Button onClick={generate} disabled={!ready} className="bg-indigo-dark text-white">
           {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {generating ? "Generando… (unos 10-20 segundos)" : "Generar imagen"}
+          {generating ? "Generando y midiendo el tamaño… (hasta 1 minuto)" : "Generar imagen"}
         </Button>
         {!ready && !generating && (
           <span className="text-sm text-amber-700">
@@ -226,6 +229,14 @@ export default function ProbadorPage() {
         <div className="mt-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={result} alt="Resultado del probador virtual" className="max-h-[80vh] rounded-xl border border-slate-200" />
+          {sizeInfo && (
+            <p className={`mt-2 text-sm ${sizeInfo.ok ? "text-emerald-700" : "text-amber-700"}`}>
+              {sizeInfo.errorPct === null
+                ? "Tamaño no verificado (no se pudo medir en esta imagen)."
+                : `Tamaño medido: ${sizeInfo.errorPct > 0 ? "+" : ""}${sizeInfo.errorPct} % respecto al real${sizeInfo.ok ? "" : " (fuera de tolerancia: conviene repetir)"}.`}
+              {sizeInfo.attempts > 1 ? ` Se corrigió automáticamente (${sizeInfo.attempts} intentos).` : ""}
+            </p>
+          )}
           <p className="mt-2 text-xs text-slate-500">Imagen ilustrativa: el tamaño y los detalles del bolso son aproximados.</p>
           <a href={result} download="probador-semzo.png" className="mt-3 inline-flex items-center gap-2 text-sm text-indigo-dark underline">
             <Download className="h-4 w-4" /> Descargar

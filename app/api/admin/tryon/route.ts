@@ -4,14 +4,14 @@ import { requireAdminAuth } from "@/lib/admin-auth"
 import {
   TRYON_SCENES,
   clampHeightCm,
-  generateTryOnImage,
+  generateVerifiedTryOn,
   parseBagDimensions,
   type TryOnScene,
 } from "@/lib/virtual-tryon"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
-export const maxDuration = 60
+export const maxDuration = 120
 
 const MAX_SELFIE_BYTES = 4 * 1024 * 1024 // Vercel limita el cuerpo de la peticion a ~4,5 MB
 const MAX_BAG_PHOTOS = 3
@@ -83,14 +83,17 @@ export async function POST(request: Request) {
     ).filter((x): x is { mimeType: string; base64: string } => x !== null)
     if (bagImages.length === 0) return NextResponse.json({ error: "No se pudo leer la foto del bolso" }, { status: 502 })
 
-    const image = await generateTryOnImage({
+    const result = await generateVerifiedTryOn({
       person: { mimeType: selfie.type, base64: Buffer.from(await selfie.arrayBuffer()).toString("base64") },
       bags: bagImages,
       dims,
       scene,
       personHeightCm: clampHeightCm(form.get("height_cm")),
     })
-    return NextResponse.json({ image: `data:${image.mimeType};base64,${image.base64}` })
+    return NextResponse.json({
+      image: `data:${result.image.mimeType};base64,${result.image.base64}`,
+      size: { errorPct: result.sizeError === null ? null : Math.round(result.sizeError * 100), attempts: result.attempts, ok: result.withinTolerance },
+    })
   } catch (error) {
     console.error("[tryon] error:", error)
     return NextResponse.json(
