@@ -90,7 +90,8 @@ export async function generateTryOnImage(params: {
   scene: TryOnScene
   personHeightCm: number
 }): Promise<InlineImage> {
-  const apiKey = process.env.GEMINI_API_KEY
+  // Se limpian espacios, saltos de linea y comillas: es un fallo frecuente al pegar la clave en Vercel.
+  const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']+|["']+$/g, "").trim()
   if (!apiKey) throw new Error("Falta GEMINI_API_KEY en el servidor")
 
   const body = {
@@ -129,6 +130,10 @@ export async function generateTryOnImage(params: {
     }
 
     lastError = `${res.status}: ${String(json.error?.message ?? "").slice(0, 200)}`
+    if (res.status === 400 && /api key/i.test(lastError)) {
+      // Solo el largo y el prefijo estandar ("AIza"), nunca la clave: ayuda a ver si Vercel la recibe bien.
+      lastError += ` · la clave que recibe el servidor tiene ${apiKey.length} caracteres y empieza por "${apiKey.slice(0, 4)}" (una clave de Google tiene 39 y empieza por "AIza")`
+    }
     // 503/429 suelen ser puntuales: un reintento corto antes de rendirse.
     if ((res.status === 503 || res.status === 429) && attempt < RETRIES) {
       await new Promise((r) => setTimeout(r, 2500))
