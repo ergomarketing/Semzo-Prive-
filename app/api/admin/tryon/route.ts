@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
 const MAX_SELFIE_BYTES = 4 * 1024 * 1024 // Vercel limita el cuerpo de la peticion a ~4,5 MB
+const MAX_BAG_PHOTOS = 3
 const SELFIE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 /**
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { data: bag, error: bagError } = await supabase
       .from("bags")
-      .select("id, status, description, image_url")
+      .select("id, status, description, image_url, images")
       .eq("id", bagId)
       .maybeSingle()
     if (bagError) return NextResponse.json({ error: "No se pudo leer el bolso" }, { status: 500 })
@@ -61,14 +62,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ese bolso no tiene medidas en su descripción" }, { status: 422 })
     }
 
-    const bagUrl = bag.image_url.startsWith("http") ? bag.image_url : new URL(bag.image_url, request.url).toString()
-    const bagRes = await fetch(bagUrl)
-    if (!bagRes.ok) return NextResponse.json({ error: "No se pudo leer la foto del bolso" }, { status: 502 })
-    const bagMime = (bagRes.headers.get("content-type") || "image/jpeg").split(";")[0]
+    // Hasta 3 fotos del mismo bolso (la principal primero): con mas angulos el modelo copia mejor el herraje y el color.
+    const photoUrls = [bag.image_url, ...(Array.isArray(bag.images) ? bag.images : [])]
+      .filter((u, i, all): u is string => typeof u === "string" && all.indexOf(u) === i)
+      .slice(0, MAX_BAG_PHOTOS)
+    const bagImages = (
+      await Promise.all(
+        photoUrls.map(async (u) => {
+          try {
+            const r = await fetch(u.startsWith("http") ? u : new URL(u, request.url).toString())
+            if (!r.ok) return null
+            const mime = (r.headers.get("content-type") || "image/jpeg").split(";")[0]
+            if (!mime.startsWith("image/")) return null
+            return { mimeType: mime, base64: Buffer.from(await r.arrayBuffer()).toString("base64") }
+          } catch {
+            return null
+          }
+        }),
+      )
+    ).filter((x): x is { mimeType: string; base64: string } => x !== null)
+    if (bagImages.length === 0) return NextResponse.json({ error: "No se pudo leer la foto del bolso" }, { status: 502 })
 
     const image = await generateTryOnImage({
       person: { mimeType: selfie.type, base64: Buffer.from(await selfie.arrayBuffer()).toString("base64") },
-      bag: { mimeType: bagMime, base64: Buffer.from(await bagRes.arrayBuffer()).toString("base64") },
+      bags: bagImages,
       dims,
       scene,
       personHeightCm: clampHeightCm(form.get("height_cm")),

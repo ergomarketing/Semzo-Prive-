@@ -53,7 +53,7 @@ export function clampHeightCm(value: unknown): number {
   return Math.min(MAX_HEIGHT_CM, Math.max(MIN_HEIGHT_CM, Math.round(n)))
 }
 
-export function buildTryOnPrompt(dims: BagDimensions, scene: TryOnScene, personHeightCm: number): string {
+export function buildTryOnPrompt(dims: BagDimensions, scene: TryOnScene, personHeightCm: number, bagPhotos = 1): string {
   const k = personHeightCm / DEFAULT_HEIGHT_CM
   const handCm = Math.round(18 * k)
   const hipsCm = Math.round(36 * k)
@@ -63,13 +63,21 @@ export function buildTryOnPrompt(dims: BagDimensions, scene: TryOnScene, personH
     `The woman is about ${personHeightCm} cm tall (her hand is about ${handCm} cm long, her hips about ${hipsCm} cm wide), ` +
     `so the bag must be drawn about ${(dims.width / handCm).toFixed(1)} hand-lengths wide and ` +
     `${Math.round((dims.width / hipsCm) * 100)}% of her hip width, scaled correctly to her body. Do not enlarge or shrink it. `
+  const bagRef =
+    bagPhotos > 1
+      ? `Images 2 to ${bagPhotos + 1} are product photos of ONE single luxury handbag from different angles. `
+      : "Image 2 is a luxury handbag product photo. "
 
   return (
-    "Image 1 is a photo of a real woman. Image 2 is a luxury handbag product photo. " +
+    "Image 1 is a photo of a real woman. " +
+    bagRef +
     "Create a realistic, editorial fashion photograph of the SAME woman from image 1 (keep her face, hair, skin tone and body exactly), " +
-    `carrying the EXACT handbag from image 2 ${TRYON_SCENES[scene].prompt}. ` +
+    `carrying that EXACT handbag ${TRYON_SCENES[scene].prompt}. ` +
     size +
-    "Reproduce the bag faithfully: same shape, color, material, hardware, logo and proportions. " +
+    "BAG FIDELITY IS THE TOP PRIORITY: copy the bag exactly as in the product photos, like a catalogue reproduction. " +
+    "Keep its exact color and shade (do not wash out or lighten it), its exact material texture and stitching, " +
+    "the exact shape of the body, flap and handles or straps, and the exact metal hardware, lock or logo design and its position. " +
+    "Do not simplify, restyle or invent details. Lighting must be soft and even so the bag's true colors are preserved. " +
     "She wears the same outfit as in image 1, and any other bag or clutch she holds in image 1 is replaced by this handbag. " +
     "Natural pose, photorealistic, no text, no watermark."
   )
@@ -85,7 +93,7 @@ type GeminiPart = { inlineData?: { mimeType?: string; data?: string }; inline_da
 /** Llama al modelo de imagen. Lanza Error con un mensaje legible si falla. */
 export async function generateTryOnImage(params: {
   person: InlineImage
-  bag: InlineImage
+  bags: InlineImage[]
   dims: BagDimensions
   scene: TryOnScene
   personHeightCm: number
@@ -98,9 +106,9 @@ export async function generateTryOnImage(params: {
     contents: [
       {
         parts: [
-          { text: buildTryOnPrompt(params.dims, params.scene, params.personHeightCm) },
+          { text: buildTryOnPrompt(params.dims, params.scene, params.personHeightCm, params.bags.length) },
           { inline_data: { mime_type: params.person.mimeType, data: params.person.base64 } },
-          { inline_data: { mime_type: params.bag.mimeType, data: params.bag.base64 } },
+          ...params.bags.map((b) => ({ inline_data: { mime_type: b.mimeType, data: b.base64 } })),
         ],
       },
     ],
