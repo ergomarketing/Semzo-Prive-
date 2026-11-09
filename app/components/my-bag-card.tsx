@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ColeccionaAutochargeBox } from "@/app/components/colecciona-autocharge-box"
 import { ColeccionaPurchaseDialog, type PurchaseConfirmation } from "@/app/components/colecciona-purchase-dialog"
 import { getAmountDue, getAppliedCredit, getMaxCredit } from "@/lib/ownership-credit"
 import {
@@ -233,6 +234,8 @@ export function MyBagCard() {
                   Cada cuota suma crédito. Al comprar, el crédito descuenta hasta el 20 % del precio del bolso (
                   {formatEUR(targetPrice)}). Si compras hoy, pagarías {formatEUR(amountDue)}.
                 </p>
+
+                <ColeccionaAutochargeBox />
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button

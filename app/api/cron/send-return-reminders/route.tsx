@@ -16,6 +16,7 @@ import { logEmail } from "@/lib/email-logger"
 import { getResendApiKey } from "@/lib/resend-api-key"
 import { renderReturnReminderBrandEmail } from "@/emails/templates/return-reminder-brand"
 import { isAuthorizedCron } from "@/lib/cron-auth"
+import { getAutoRenewalCoveredReservationIds } from "@/lib/colecciona-autocharge"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id,
       user_id,
+      bag_id,
       membership_type,
       delivered_at,
       end_date,
@@ -62,7 +64,14 @@ export async function GET(request: NextRequest) {
   let sent = 0
   let skipped = 0
 
+  // Las socias con renovacion automatica de pase (Colecciona) reciben el aviso del cobro, no este de devolucion.
+  const covered = await getAutoRenewalCoveredReservationIds(supabase, (reservations || []) as any)
+
   for (const res of reservations || []) {
+    if (covered.has(res.id)) {
+      skipped++
+      continue
+    }
     const bag = res.bags as any
     const profile = res.profiles as any
     if (!profile?.email || !bag) {
