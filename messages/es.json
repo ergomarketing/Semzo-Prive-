@@ -666,7 +666,8 @@
         "Seguro incluido en cada préstamo",
         "Sin permanencia"
       ],
-      "forWhom": "Ideal para descubrir, ocasiones puntuales o uso ligero."
+      "forWhom": "Ideal para descubrir, ocasiones puntuales o uso ligero.",
+      "cta": "DESCUBRIR PETITE"
     },
     "essentiel": {
       "tagline": "Un bolso, nuevas posibilidades",
@@ -680,7 +681,8 @@
         "Seguro incluido",
         "Atención al cliente prioritaria"
       ],
-      "forWhom": "Para quien desea elegancia diaria con un toque de lujo accesible."
+      "forWhom": "Para quien desea elegancia diaria con un toque de lujo accesible.",
+      "cta": "QUIERO ESSENTIEL"
     },
     "signature": {
       "tagline": "Eleva tu estilo",
@@ -694,7 +696,8 @@
         "Acceso a colecciones exclusivas",
         "Personal shopper dedicado"
       ],
-      "forWhom": "La opción más elegida. Para quienes buscan presencia y distinción."
+      "forWhom": "La opción más elegida. Para quienes buscan presencia y distinción.",
+      "cta": "ELEGIR SIGNATURE"
     },
     "prive": {
       "tagline": "Una experiencia excepcional",
@@ -710,7 +713,8 @@
         "Eventos exclusivos para socias Privé",
         "Servicio de conserjería personal"
       ],
-      "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos."
+      "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos.",
+      "cta": "ACCEDER A PRIVÉ"
     }
   },
   "colecciona": {
@@ -892,7 +896,7 @@
         ]
       },
       {
-        "title": "Úsalo. Está asegurado y es tuyo mientras lo tengas.",
+        "title": "Úsalo. Est�� asegurado y es tuyo mientras lo tengas.",
         "desc": "Cada bolso sale de nuestras manos perfectamente preparado. Envío express en 24-48h, seguro incluido, soporte directo si lo necesitas.",
         "features": [
           "Seguro completo contra daños accidentales incluido",

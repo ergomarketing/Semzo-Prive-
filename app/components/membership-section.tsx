@@ -74,6 +74,7 @@ type Membership = (typeof membershipBase)[number] & {
   longDescription: string
   features: string[]
   forWhom: string
+  cta: string
 }
 
 export default function MembershipSection() {
@@ -86,6 +87,7 @@ export default function MembershipSection() {
     longDescription: t(`${m.id}.longDesc`),
     features: t.raw(`${m.id}.features`) as string[],
     forWhom: t(`${m.id}.forWhom`),
+    cta: t(`${m.id}.cta`),
   }))
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
   const [openDetails, setOpenDetails] = useState<Membership | null>(null)
@@ -248,7 +250,7 @@ export default function MembershipSection() {
                         : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                     }`}
                   >
-                    {t("select")}
+                    {m.cta}
                     <ArrowRight className="h-3 w-3 transition group-hover:translate-x-1" />
                   </button>
                 </div>
@@ -335,7 +337,7 @@ export default function MembershipSection() {
                       : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                   }`}
                 >
-                  {t("selectNamed")} {openDetails.name.toUpperCase()}
+                  {openDetails.cta}
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </div>

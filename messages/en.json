@@ -666,7 +666,8 @@
         "Insurance included with each loan",
         "No lock-in"
       ],
-      "forWhom": "Ideal for discovering, special occasions or light use."
+      "forWhom": "Ideal for discovering, special occasions or light use.",
+      "cta": "DISCOVER PETITE"
     },
     "essentiel": {
       "tagline": "One bag, new possibilities",
@@ -680,7 +681,8 @@
         "Insurance included",
         "Priority customer support"
       ],
-      "forWhom": "For those who want daily elegance with an accessible touch of luxury."
+      "forWhom": "For those who want daily elegance with an accessible touch of luxury.",
+      "cta": "I WANT ESSENTIEL"
     },
     "signature": {
       "tagline": "Elevate your style",
@@ -694,7 +696,8 @@
         "Access to exclusive collections",
         "Dedicated personal shopper"
       ],
-      "forWhom": "The most chosen option. For those seeking presence and distinction."
+      "forWhom": "The most chosen option. For those seeking presence and distinction.",
+      "cta": "CHOOSE SIGNATURE"
     },
     "prive": {
       "tagline": "An exceptional experience",
@@ -710,7 +713,8 @@
         "Exclusive events for Privé members",
         "Personal concierge service"
       ],
-      "forWhom": "For connoisseurs who aspire to the exceptional, no compromises."
+      "forWhom": "For connoisseurs who aspire to the exceptional, no compromises.",
+      "cta": "ACCESS PRIVÉ"
     }
   },
   "colecciona": {
