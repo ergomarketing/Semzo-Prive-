@@ -74,6 +74,7 @@ type Membership = (typeof membershipBase)[number] & {
   longDescription: string
   features: string[]
   forWhom: string
+  cta: string
 }
 
 export default function MembershipSection() {
@@ -86,6 +87,7 @@ export default function MembershipSection() {
     longDescription: t(`${m.id}.longDesc`),
     features: t.raw(`${m.id}.features`) as string[],
     forWhom: t(`${m.id}.forWhom`),
+    cta: t(`${m.id}.cta`),
   }))
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
   const [openDetails, setOpenDetails] = useState<Membership | null>(null)
@@ -217,6 +219,7 @@ export default function MembershipSection() {
                 <div className="relative z-20 flex flex-1 flex-col p-5">
                   <h3 className="font-serif text-2xl text-indigo-dark">{m.name}</h3>
                   <p className="mt-1 text-[10px] tracking-[0.25em] text-indigo-dark/60">{m.tagline.toUpperCase()}</p>
+                  <p className="mt-3 text-pretty text-sm leading-relaxed text-indigo-dark/75">{m.description}</p>
 
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className="font-serif text-3xl text-indigo-dark">{displayPrice}</span>
@@ -247,7 +250,7 @@ export default function MembershipSection() {
                         : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                     }`}
                   >
-                    {t("select")}
+                    {m.cta}
                     <ArrowRight className="h-3 w-3 transition group-hover:translate-x-1" />
                   </button>
                 </div>
@@ -334,7 +337,7 @@ export default function MembershipSection() {
                       : "border border-indigo-dark text-indigo-dark hover:bg-indigo-dark hover:text-white"
                   }`}
                 >
-                  {t("selectNamed")} {openDetails.name.toUpperCase()}
+                  {openDetails.cta}
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </div>

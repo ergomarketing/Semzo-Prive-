@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { listPosts, getPost, createPost, deletePost, listAllPosts } from "@/lib/blog-supabase"
+import { slugifyBlog } from "@/lib/blog-slug"
 
 export const dynamic = "force-dynamic"
 
@@ -26,7 +27,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, slug, content, excerpt, image_url, author, published, category } = body
+    const { content, excerpt, image_url, author, published, category } = body
+    const title = typeof body.title === "string" ? body.title.trim() : ""
+    const slug = typeof body.slug === "string" ? slugifyBlog(body.slug) : ""
 
     if (!title || !slug || !content) {
       return NextResponse.json({ error: "title, slug y content son obligatorios" }, { status: 400 })

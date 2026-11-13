@@ -655,8 +655,8 @@
     "selectNamed": "ELEGIR",
     "stylistNote": "Si no encuentras el bolso perfecto para ti, agenda una cita personalizada con nuestro Fashion Stylist para una experiencia completamente a medida.",
     "petite": {
-      "tagline": "Pases sueltos",
-      "desc": "Favoritos del día a día. Pide un bolso por semana sin compromiso.",
+      "tagline": "Descubre el lujo",
+      "desc": "Para quienes quieren disfrutar de bolsos especiales mediante pases individuales.",
       "longDesc": "Para quien quiere descubrir el mundo de los bolsos de lujo a su propio ritmo. Activa tu membresía mensual y compra pases sueltos cada vez que quieras llevar un bolso. Ideal para eventos puntuales, fines de semana o probar antes de comprometerte con un plan superior.",
       "features": [
         "Hasta 4 pases por mes (1 por semana)",
@@ -666,11 +666,12 @@
         "Seguro incluido en cada préstamo",
         "Sin permanencia"
       ],
-      "forWhom": "Ideal para descubrir, ocasiones puntuales o uso ligero."
+      "forWhom": "Ideal para descubrir, ocasiones puntuales o uso ligero.",
+      "cta": "DESCUBRIR PETITE"
     },
     "essentiel": {
-      "tagline": "Un bolso al mes",
-      "desc": "La introducción perfecta al mundo de los bolsos de lujo.",
+      "tagline": "Un bolso, nuevas posibilidades",
+      "desc": "Para disfrutar de un bolso de diseñador cada mes.",
       "longDesc": "El primer paso al universo Semzo. Disfruta de un bolso premium cada mes, cámbialo cuando quieras y siente la libertad de renovar tu estilo sin acumular. Pensado para clientas que quieren incorporar el lujo a su día a día con elegancia y consistencia.",
       "features": [
         "1 bolso al mes incluido",
@@ -680,11 +681,12 @@
         "Seguro incluido",
         "Atención al cliente prioritaria"
       ],
-      "forWhom": "Para quien desea elegancia diaria con un toque de lujo accesible."
+      "forWhom": "Para quien desea elegancia diaria con un toque de lujo accesible.",
+      "cta": "QUIERO ESSENTIEL"
     },
     "signature": {
-      "tagline": "Marcas premium",
-      "desc": "La experiencia preferida por nuestras clientas más exigentes.",
+      "tagline": "Eleva tu estilo",
+      "desc": "Acceso a una selección de bolsos de firmas premium.",
       "longDesc": "El equilibrio perfecto entre lujo y exclusividad. Accede a las casas más deseadas con un bolso premium cada mes, atención personalizada y prioridad en novedades. La membresía favorita de quienes ya saben lo que quieren.",
       "features": [
         "1 bolso al mes incluido",
@@ -694,11 +696,12 @@
         "Acceso a colecciones exclusivas",
         "Personal shopper dedicado"
       ],
-      "forWhom": "La opción más elegida. Para quienes buscan presencia y distinción."
+      "forWhom": "La opción más elegida. Para quienes buscan presencia y distinción.",
+      "cta": "ELEGIR SIGNATURE"
     },
     "prive": {
-      "tagline": "Coleccion exclusiva",
-      "desc": "La experiencia definitiva para verdaderas conocedoras.",
+      "tagline": "Una experiencia excepcional",
+      "desc": "Acceso a nuestra selección más exclusiva.",
       "longDesc": "El círculo más íntimo de Semzo Privé. Bolsos icónicos de Hermès, Chanel y Louis Vuitton, atención de conserjería personal, eventos privados y acceso anticipado a piezas raras. Pensado para clientas que valoran lo único, lo exclusivo y lo irrepetible.",
       "features": [
         "1 bolso al mes incluido",
@@ -710,7 +713,8 @@
         "Eventos exclusivos para socias Privé",
         "Servicio de conserjería personal"
       ],
-      "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos."
+      "forWhom": "Para conocedoras que aspiran a lo excepcional, sin compromisos.",
+      "cta": "ACCEDER A PRIVÉ"
     }
   },
   "colecciona": {
@@ -892,7 +896,7 @@
         ]
       },
       {
-        "title": "Úsalo. Está asegurado y es tuyo mientras lo tengas.",
+        "title": "Úsalo. Est�� asegurado y es tuyo mientras lo tengas.",
         "desc": "Cada bolso sale de nuestras manos perfectamente preparado. Envío express en 24-48h, seguro incluido, soporte directo si lo necesitas.",
         "features": [
           "Seguro completo contra daños accidentales incluido",
