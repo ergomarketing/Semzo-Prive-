@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import BlogContent from "./BlogContent"
 import type { Metadata } from "next"
 import { dbBlogSlug } from "@/lib/blog-slug-map"
@@ -24,6 +24,21 @@ interface BlogPost {
   category?: string | null
 }
 
+// Una URL con espacios alrededor del slug (/blog/%20%20mi-articulo) nunca
+// coincide con un articulo. Se redirige a la URL limpia en vez de dar 404.
+function redirectIfPaddedSlug(rawSlug: string) {
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(rawSlug)
+  } catch {
+    return
+  }
+  const trimmed = decoded.trim()
+  if (trimmed && trimmed !== decoded) {
+    permanentRedirect(`/blog/${encodeURIComponent(trimmed)}`)
+  }
+}
+
 async function getPost(slug: string): Promise<BlogPost | null> {
   try {
     const response = await fetch(
@@ -42,6 +57,7 @@ async function getPost(slug: string): Promise<BlogPost | null> {
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const { slug } = await props.params
+  redirectIfPaddedSlug(slug)
   const post = await getPost(slug)
 
   // CAUSA RAIZ del "Excluida por noindex" en GSC:
@@ -114,6 +130,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 
 export default async function BlogPostPage(props: PageProps) {
   const { slug } = await props.params
+  redirectIfPaddedSlug(slug)
   const post = await getPost(slug)
 
   if (!post) {

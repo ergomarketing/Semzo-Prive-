@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Upload, FileText, Trash2, ExternalLink, Plus, Loader2, Pencil } from "lucide-react"
 import Link from "next/link"
 import { publicBlogSlug } from "@/lib/blog-slug-map"
+import { slugifyBlog } from "@/lib/blog-slug"
 import { BLOG_CATEGORIES } from "@/lib/blog-categories"
 import { ImageUploader } from "@/app/components/image-uploader"
 
@@ -159,7 +160,10 @@ export default function AdminBlogPage() {
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!newPost.title || !newPost.slug || !newPost.content) {
+    const title = newPost.title.trim()
+    const slug = slugifyBlog(newPost.slug)
+
+    if (!title || !slug || !newPost.content) {
       alert("Por favor completa todos los campos requeridos")
       return
     }
@@ -170,8 +174,8 @@ export default function AdminBlogPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: newPost.title,
-          slug: newPost.slug,
+          title,
+          slug,
           excerpt: newPost.excerpt,
           author: newPost.author,
           category: newPost.category || null,
@@ -215,17 +219,6 @@ export default function AdminBlogPage() {
       console.error("Error deleting post:", error)
       alert("Error al eliminar el artículo")
     }
-  }
-
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim()
   }
 
   return (
@@ -477,7 +470,7 @@ export default function AdminBlogPage() {
                         setNewPost({
                           ...newPost,
                           title: e.target.value,
-                          slug: generateSlug(e.target.value),
+                          slug: slugifyBlog(e.target.value),
                         })
                       }}
                       placeholder="Título del artículo"
@@ -490,6 +483,7 @@ export default function AdminBlogPage() {
                       id="slug"
                       value={newPost.slug}
                       onChange={(e) => setNewPost({ ...newPost, slug: e.target.value })}
+                      onBlur={(e) => setNewPost({ ...newPost, slug: slugifyBlog(e.target.value) })}
                       placeholder="url-del-articulo"
                       required
                     />

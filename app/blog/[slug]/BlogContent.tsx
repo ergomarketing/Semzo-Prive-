@@ -281,20 +281,22 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
   return (
     <main className="min-h-screen bg-white">
         {/* Hero Image */}
-        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-indigo-dark">
+        <header className="w-full bg-indigo-dark pt-16 md:pt-20">
           {post.image_url && (
-            <Image
-              src={post.image_url || "/placeholder.svg"}
-              alt={post.title}
-              fill
-              sizes="100vw"
-              className="object-cover object-center"
-              priority
-            />
+            <div className="flex w-full justify-center">
+              <Image
+                src={post.image_url || "/placeholder.svg"}
+                alt={post.title}
+                width={1600}
+                height={1600}
+                sizes="100vw"
+                className="h-auto w-full max-h-[80svh] object-contain"
+                priority
+              />
+            </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-indigo-dark/90 via-indigo-dark/40 to-transparent" />
-          <div className="absolute inset-0 flex items-end">
-            <div className="container mx-auto max-w-4xl p-8">
+          <div className="flex">
+            <div className="container mx-auto max-w-4xl px-4 py-8 md:p-8">
               <Link href="/blog">
                 <Button variant="ghost" className="text-white hover:bg-white/20 mb-4">
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -325,7 +327,7 @@ export default function BlogContent({ post, slug }: { post: BlogPost; slug: stri
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Content */}
         <article className="py-12">
