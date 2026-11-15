@@ -27,6 +27,11 @@ interface ReturnStatus {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
+/** Estado de la etiqueta de Correos de la reserva en curso (la misma que ve la socia en su panel). */
+interface LabelInfo {
+  available?: boolean
+}
+
 const SLOTS = [
   { value: "09:00-14:00", label: "Mañana (9:00 - 14:00)" },
   { value: "14:00-19:00", label: "Tarde (14:00 - 19:00)" },
@@ -52,9 +57,14 @@ export function ReturnBagDialog({
   const [address, setAddress] = useState("")
   const [tracking, setTracking] = useState("")
   const [note, setNote] = useState("")
+  const [labelAvailable, setLabelAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!open) return
+    setLabelAvailable(null)
+    fetcher("/api/user/return-label?info=1")
+      .then((data: LabelInfo) => setLabelAvailable(!!data?.available))
+      .catch(() => setLabelAvailable(false))
     setLoading(true)
     fetcher("/api/user/returns")
       .then((data: ReturnStatus) => {
@@ -124,10 +134,23 @@ export function ReturnBagDialog({
           <p className="py-6 text-center text-sm text-slate-600">No tienes ningún bolso pendiente de devolver.</p>
         ) : (
           <div className="space-y-4">
-            {/* La etiqueta ya va en el paquete */}
+            {/* La etiqueta se descarga e imprime desde el panel; ya no va dentro del paquete */}
             <div className="flex gap-2 rounded-md bg-rose-nude/50 p-3 text-xs text-indigo-dark">
               <Info className="h-4 w-4 shrink-0" />
-              <span>La etiqueta de devolución viene incluida en tu paquete original. No necesitas imprimir nada.</span>
+              {labelAvailable ? (
+                <span>
+                  Antes de la recogida o la entrega, descarga e imprime tu etiqueta de devolución y pégala en el paquete.{" "}
+                  <a href="/api/user/return-label?download=1" download className="font-medium underline">
+                    Descargar etiqueta (PDF)
+                  </a>
+                  . También la tienes en tu panel, en «Tu etiqueta de devolución».
+                </span>
+              ) : (
+                <span>
+                  Tendrás que imprimir la etiqueta de devolución y pegarla en el paquete. La encontrarás en tu panel, en
+                  «Tu etiqueta de devolución». Si aún no aparece, escríbenos a info@semzoprive.com y te la enviamos.
+                </span>
+              )}
             </div>
 
             {/* Selector de método */}
