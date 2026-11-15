@@ -99,8 +99,20 @@ async function notifyAdmin(
   if (error) console.error("[colecciona-renewal] No se pudo avisar a administracion:", error.message)
 }
 
-/** Tarjeta con la que cobrar: la predeterminada del cliente de Stripe o, si no hay, la primera tarjeta guardada. */
-async function resolvePaymentMethod(stripe: Stripe, customerId: string): Promise<string | null> {
+/**
+ * Tarjeta con la que cobrar: la de la suscripcion de la socia (la que paga la cuota cada mes), si no la
+ * predeterminada del cliente y, como ultimo recurso, la primera tarjeta guardada.
+ */
+async function resolvePaymentMethod(stripe: Stripe, customerId: string, subscriptionId?: string | null): Promise<string | null> {
+  if (subscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId)
+      const fromSub = sub.default_payment_method
+      if (fromSub) return typeof fromSub === "string" ? fromSub : fromSub.id
+    } catch {
+      // Si la suscripcion ya no existe se sigue con las otras opciones.
+    }
+  }
   const customer = await stripe.customers.retrieve(customerId)
   if (customer.deleted) return null
   const def = customer.invoice_settings?.default_payment_method
@@ -133,7 +145,7 @@ export async function runColeccionaPassRenewals(supabase: SupabaseClient, now = 
 
   const [progressRes, membershipsRes, profilesRes, bagsRes, passesRes] = await Promise.all([
     supabase.from("ownership_progress").select("id, user_id, bag_id, purchase_price").eq("mode", "collect").eq("status", "active").in("user_id", userIds),
-    supabase.from("user_memberships").select("user_id, status, stripe_customer_id").in("user_id", userIds),
+    supabase.from("user_memberships").select("user_id, status, stripe_customer_id, stripe_subscription_id").in("user_id", userIds),
     supabase.from("profiles").select("id, email, first_name, last_name, stripe_customer_id").in("id", userIds),
     supabase.from("bags").select("id, name, brand").in("id", bagIds),
     supabase.from("bag_passes").select("id, pass_tier").in("id", passIds),
@@ -287,7 +299,9 @@ export async function runColeccionaPassRenewals(supabase: SupabaseClient, now = 
 
       const customerId = (membership?.stripe_customer_id as string | null) || (profile.stripe_customer_id as string | null)
       try {
-        const paymentMethod = customerId ? await resolvePaymentMethod(stripe, customerId) : null
+        const paymentMethod = customerId
+          ? await resolvePaymentMethod(stripe, customerId, (membership?.stripe_subscription_id as string | null) ?? null)
+          : null
         if (!customerId || !paymentMethod) {
           await registerFailure(supabase, current, base, amountCents, "Sin tarjeta guardada", now, summary, bagName, profile.email as string, r.id as string)
           continue
