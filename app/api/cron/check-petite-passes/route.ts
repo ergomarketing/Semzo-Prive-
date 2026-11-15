@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
 import { isAuthorizedCron } from "@/lib/cron-auth"
+import { getAutoRenewalCoveredReservationIds } from "@/lib/colecciona-autocharge"
 
 export const dynamic = "force-dynamic"
 
@@ -58,7 +59,10 @@ export async function GET(request: Request) {
       .gte("pass_expires_at", in2Days.toISOString())
       .lt("pass_expires_at", in3Days.toISOString())
 
+    // Las socias con renovacion automatica de pase (Colecciona) reciben el aviso del cobro, no este de devolucion.
+    const coveredReminders = await getAutoRenewalCoveredReservationIds(supabase, (reminderCandidates || []) as any)
     for (const r of reminderCandidates || []) {
+      if (coveredReminders.has((r as any).id)) continue
       const profile: any = (r as any).profiles
       const bag: any = (r as any).bags
       if (!profile?.email) continue
@@ -108,7 +112,9 @@ export async function GET(request: Request) {
       .lt("pass_expires_at", yesterday.toISOString())
       .gte("pass_expires_at", twoDaysAgo.toISOString())
 
+    const coveredOverdue = await getAutoRenewalCoveredReservationIds(supabase, (overdueCandidates || []) as any)
     for (const r of overdueCandidates || []) {
+      if (coveredOverdue.has((r as any).id)) continue
       const profile: any = (r as any).profiles
       const bag: any = (r as any).bags
       if (!profile?.email) continue
@@ -150,7 +156,9 @@ export async function GET(request: Request) {
       .is("overdue_admin_notified_at", null)
       .lt("pass_expires_at", yesterday.toISOString())
 
+    const coveredAdmin = await getAutoRenewalCoveredReservationIds(supabase, (adminCandidates || []) as any)
     for (const r of adminCandidates || []) {
+      if (coveredAdmin.has((r as any).id)) continue
       const profile: any = (r as any).profiles
       const bag: any = (r as any).bags
       const daysOverdue = Math.floor(

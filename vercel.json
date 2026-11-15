@@ -45,6 +45,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/colecciona-pass-renewals",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/send-dunning-emails",
       "schedule": "0 8 * * *"
     },
