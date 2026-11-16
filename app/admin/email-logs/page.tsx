@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Mail, CheckCircle2, XCircle, Clock, RefreshCw, Send, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CampaignStats } from "@/components/admin/campaign-stats"
+import { EmailTypeStats } from "@/components/admin/email-type-stats"
 
 interface EmailLog {
   id: string
@@ -218,6 +219,8 @@ export default function EmailLogsPage() {
       </div>
 
       <CampaignStats />
+
+      <EmailTypeStats />
 
       <Card>
         <CardContent className="p-6">
