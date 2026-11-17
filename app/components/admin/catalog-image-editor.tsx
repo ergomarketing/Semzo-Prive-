@@ -533,6 +533,7 @@ export default function CatalogImageEditor() {
   }
 
   const clearAll = () => setImages([])
+  const removeImage = (id: string) => setImages((prev) => prev.filter((i) => i.id !== id))
   const readyCount = images.filter((i) => i.status === "done").length
 
   return (
@@ -681,6 +682,19 @@ export default function CatalogImageEditor() {
                     <span className="absolute left-2 top-2 rounded-full bg-sky-700 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
                       En librería
                     </span>
+                  )}
+                  {/* Descartar esta foto (recorte malo): no se sube ni se asigna */}
+                  {img.status !== "processing" && !img.assignedBagId && (
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      disabled={img.uploading || img.assigning}
+                      aria-label="Descartar esta foto"
+                      title="Descartar esta foto"
+                      className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-red-600 shadow ring-1 ring-slate-200 transition hover:bg-red-600 hover:text-white disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
 
