@@ -808,7 +808,14 @@
     "errorEmail": "Enter a valid email",
     "errorName": "Enter your name",
     "errorRequest": "Error requesting access",
-    "errorUnexpected": "Unexpected error"
+    "errorUnexpected": "Unexpected error",
+    "offerEyebrow": "Welcome offer",
+    "offerTitle": "Your access is ready. And there's a gift.",
+    "offerHeadline": "Your first month at 50% off with code {code}",
+    "offerFine": "For new members only. Applies to your first membership purchase.",
+    "offerCodeLabel": "Copy code",
+    "offerCta": "Choose my membership",
+    "offerSkip": "Browse the catalogue first"
   },
   "catalog": {
     "title": "Our Collection",

@@ -1,9 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import Link from "next/link"
+import { Check, Copy, Loader2 } from "lucide-react"
 import { useTranslations, useLocale } from "next-intl"
 import { MarketingConsentCheckbox } from "@/app/components/marketing-consent-checkbox"
+import { WELCOME_PROMO_CODE, setPendingPromo } from "@/lib/promo-code"
+
+function trackEvent(name: string, params: Record<string, unknown> = {}) {
+  if (typeof window === "undefined") return
+  const w = window as unknown as { dataLayer?: unknown[] }
+  w.dataLayer = w.dataLayer || []
+  w.dataLayer.push({ event: name, ...params })
+}
 
 interface CatalogGateOverlayProps {
   onUnlock: () => void
@@ -18,6 +27,33 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
   const [whatsapp, setWhatsapp] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Tras registrarse se muestra la oferta de bienvenida antes de abrir el catalogo.
+  const [done, setDone] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    try {
+      navigator.clipboard.writeText(WELCOME_PROMO_CODE)
+    } catch {
+      // sin portapapeles: la clienta puede escribir el codigo a mano
+    }
+    setPendingPromo()
+    setCopied(true)
+    trackEvent("copy_discount_code", { code: WELCOME_PROMO_CODE, source: "catalog_gate" })
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleChoosePlan() {
+    // /cart aplica PRIVE50 solo al cargar (lib/promo-code.ts).
+    setPendingPromo()
+    trackEvent("catalog_gate_offer_cta_click", { code: WELCOME_PROMO_CODE })
+    onUnlock()
+  }
+
+  function handleSkip() {
+    trackEvent("catalog_gate_offer_skip", { code: WELCOME_PROMO_CODE })
+    onUnlock()
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -53,7 +89,8 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
         const d = await res.json().catch(() => ({}))
         throw new Error(d.error || t("errorRequest"))
       }
-      onUnlock()
+      trackEvent("catalog_gate_registered", { offer_shown: true })
+      setDone(true)
     } catch (err: any) {
       setError(err.message || t("errorUnexpected"))
     } finally {
@@ -85,6 +122,52 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
           {/* Formulario lado derecho */}
           <div className="p-8 md:p-10 flex items-center">
             <div className="w-full max-w-sm mx-auto">
+              {done ? (
+                <div className="text-center">
+                  <p className="text-xs tracking-[0.25em] uppercase text-slate-500 mb-3">{t("offerEyebrow")}</p>
+                  <h2 className="font-serif text-3xl font-light mb-4 text-balance" style={{ color: "#1a1a4b" }}>
+                    {t("offerTitle")}
+                  </h2>
+                  <p className="font-serif text-xl leading-snug mb-2 text-balance" style={{ color: "#1a1a4b" }}>
+                    {t("offerHeadline", { code: WELCOME_PROMO_CODE })}
+                  </p>
+                  <p className="text-sm text-slate-600 mb-6">{t("offerFine")}</p>
+
+                  <div className="mx-auto flex max-w-xs items-center justify-center gap-3">
+                    <span
+                      className="flex-1 border border-dashed px-4 py-3 font-serif text-xl font-bold tracking-[0.2em]"
+                      style={{ borderColor: "rgba(26,26,75,0.4)", backgroundColor: "#fff0f3", color: "#1a1a4b" }}
+                    >
+                      {WELCOME_PROMO_CODE}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      aria-label={t("offerCodeLabel")}
+                      className="flex h-12 w-12 items-center justify-center border border-slate-300 transition hover:bg-slate-900 hover:text-white"
+                    >
+                      {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                    </button>
+                  </div>
+
+                  <Link
+                    href="/membresias#planes"
+                    onClick={handleChoosePlan}
+                    className="mt-6 flex h-12 w-full items-center justify-center rounded-lg text-sm uppercase tracking-widest font-medium transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#1a1a4b", color: "#ffffff" }}
+                  >
+                    {t("offerCta")}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    className="mt-4 text-sm text-slate-600 underline underline-offset-4 hover:text-slate-900"
+                  >
+                    {t("offerSkip")}
+                  </button>
+                </div>
+              ) : (
+              <>
               <div className="text-center mb-8">
                 <p className="text-xs tracking-[0.25em] uppercase text-slate-500 mb-3">
                   {t("eyebrow")}
@@ -174,6 +257,8 @@ export default function CatalogGateOverlay({ onUnlock }: CatalogGateOverlayProps
               <p className="text-center text-xs text-slate-500 mt-6 leading-relaxed">
                 {t("consent")}
               </p>
+              </>
+              )}
             </div>
           </div>
         </div>
