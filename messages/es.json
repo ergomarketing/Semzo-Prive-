@@ -808,7 +808,14 @@
     "errorEmail": "Introduce un email valido",
     "errorName": "Introduce tu nombre",
     "errorRequest": "Error al solicitar acceso",
-    "errorUnexpected": "Error inesperado"
+    "errorUnexpected": "Error inesperado",
+    "offerEyebrow": "Oferta de bienvenida",
+    "offerTitle": "Tu acceso está listo. Y tienes un regalo.",
+    "offerHeadline": "Tu primera mensualidad al 50 % con el código {code}",
+    "offerFine": "Solo para nuevas socias. Aplica en tu primera compra de membresía.",
+    "offerCodeLabel": "Copiar código",
+    "offerCta": "Elegir mi membresía",
+    "offerSkip": "Ver primero el catálogo"
   },
   "catalog": {
     "title": "Nuestra Colección",
