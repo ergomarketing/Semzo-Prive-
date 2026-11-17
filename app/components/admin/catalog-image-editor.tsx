@@ -484,7 +484,7 @@ export default function CatalogImageEditor() {
 
   const uploadToLibrary = async (img: EditedImage) => {
     if (!img.resultBlob) return
-    updateImage(img.id, { uploading: true })
+    updateImage(img.id, { uploading: true, error: undefined })
     try {
       const form = new FormData()
       form.append("file", new File([img.resultBlob], img.fileName, { type: img.resultBlob.type }))
@@ -505,7 +505,7 @@ export default function CatalogImageEditor() {
 
   const assignToBag = async (img: EditedImage, bagId: string) => {
     if (!img.uploadedUrl || !bagId) return
-    updateImage(img.id, { assigning: true })
+    updateImage(img.id, { assigning: true, error: undefined })
     try {
       // La foto nueva pasa a ser la primera de la galeria (la que usan el catalogo y la ficha).
       const existing = (bags.find((b) => b.id === bagId)?.images || []).filter((u) => u && u !== img.uploadedUrl)
@@ -708,6 +708,12 @@ export default function CatalogImageEditor() {
                     )}
                   </p>
                   {img.notice && <p className="text-[11px] text-amber-700">{img.notice}</p>}
+                  {/* Errores al subir o asignar (el recorte sigue "Listo", pero el paso falló) */}
+                  {img.status !== "error" && img.error && (
+                    <p className="rounded-md bg-red-50 px-3 py-2 text-[11px] font-medium text-red-700">
+                      {img.error}
+                    </p>
+                  )}
 
                   {img.status === "done" && (
                     <>
@@ -810,6 +816,7 @@ export default function CatalogImageEditor() {
                               onClick={() => {
                                 const sel = document.getElementById(`bag-select-${img.id}`) as HTMLSelectElement
                                 if (sel?.value) assignToBag(img, sel.value)
+                                else updateImage(img.id, { error: "Elige primero un bolso de la lista." })
                               }}
                             >
                               {img.assigning ? (
