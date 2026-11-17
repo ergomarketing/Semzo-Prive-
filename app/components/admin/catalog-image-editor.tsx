@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2 } from "lucide-react"
+import { Upload, Loader2, Check, X, Download, Trash2, CloudUpload, Link2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -792,10 +792,12 @@ export default function CatalogImageEditor() {
                       {/* Asignar a bolso — aparece una vez subida a la librería */}
                       {img.uploadedUrl && !img.assignedBagId && (
                         <div className="space-y-1.5">
-                          <p className="text-[11px] font-medium text-slate-600">Asignar a un bolso del catálogo:</p>
-                          <div className="flex gap-1.5">
+                          <p className="text-[11px] font-medium text-slate-600">
+                            1. Elige el bolso &nbsp;·&nbsp; 2. Pulsa «Añadir al bolso»
+                          </p>
+                          <div className="flex flex-col gap-1.5">
                             <select
-                              className="h-8 flex-1 rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-slate-900 disabled:opacity-50"
+                              className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-slate-900 disabled:opacity-50"
                               defaultValue=""
                               id={`bag-select-${img.id}`}
                               disabled={bagsLoading || img.assigning}
@@ -811,7 +813,7 @@ export default function CatalogImageEditor() {
                             </select>
                             <Button
                               size="sm"
-                              className="h-8 bg-[#1a1a4b] px-3 text-[11px] text-white hover:bg-[#2a2a6b]"
+                              className="h-10 w-full bg-[#1a1a4b] px-3 text-xs font-semibold uppercase tracking-wide text-white hover:bg-[#2a2a6b]"
                               disabled={img.assigning}
                               onClick={() => {
                                 const sel = document.getElementById(`bag-select-${img.id}`) as HTMLSelectElement
@@ -820,9 +822,12 @@ export default function CatalogImageEditor() {
                               }}
                             >
                               {img.assigning ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Link2 className="h-3.5 w-3.5" />
+                                <>
+                                  <ArrowRight className="mr-2 h-4 w-4" />
+                                  Añadir al bolso
+                                </>
                               )}
                             </Button>
                           </div>
