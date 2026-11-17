@@ -43,6 +43,7 @@ interface Bag {
   name: string
   brand: string
   image_url: string | null
+  images?: string[] | null
 }
 
 interface EditedImage {
@@ -506,10 +507,13 @@ export default function CatalogImageEditor() {
     if (!img.uploadedUrl || !bagId) return
     updateImage(img.id, { assigning: true })
     try {
+      // La foto nueva pasa a ser la primera de la galeria (la que usan el catalogo y la ficha).
+      const existing = (bags.find((b) => b.id === bagId)?.images || []).filter((u) => u && u !== img.uploadedUrl)
+      const newImages = [img.uploadedUrl, ...existing]
       const res = await fetch(`/api/admin/inventory/${bagId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_url: img.uploadedUrl }),
+        body: JSON.stringify({ image_url: img.uploadedUrl, images: newImages }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -517,7 +521,9 @@ export default function CatalogImageEditor() {
       }
       updateImage(img.id, { assigning: false, assignedBagId: bagId })
       // Actualizar lista local de bolsos para reflejar la nueva imagen
-      setBags((prev) => prev.map((b) => (b.id === bagId ? { ...b, image_url: img.uploadedUrl! } : b)))
+      setBags((prev) =>
+        prev.map((b) => (b.id === bagId ? { ...b, image_url: img.uploadedUrl!, images: newImages } : b)),
+      )
     } catch (e) {
       updateImage(img.id, {
         assigning: false,

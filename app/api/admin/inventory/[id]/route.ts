@@ -18,15 +18,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const { data: oldBag } = await supabase.from("bags").select("*").eq("id", bagId).single()
 
+    // Actualizacion parcial: solo se tocan los campos que llegan en la peticion.
+    // (El editor de fotos envia solo la imagen; antes eso vaciaba el precio de retail.)
     const updateData: Record<string, any> = {
-      name: body.name,
-      brand: body.brand,
-      description: body.description,
-      membership_type: body.membership_type,
-      retail_price: body.retail_price ? Number.parseFloat(body.retail_price) : null,
-      condition: body.condition,
-      status: body.status,
       updated_at: new Date().toISOString(),
+    }
+    if (body.name !== undefined) updateData.name = body.name
+    if (body.brand !== undefined) updateData.brand = body.brand
+    if (body.description !== undefined) updateData.description = body.description
+    if (body.membership_type !== undefined) updateData.membership_type = body.membership_type
+    if (body.condition !== undefined) updateData.condition = body.condition
+    if (body.status !== undefined) updateData.status = body.status
+    if (body.retail_price !== undefined) {
+      updateData.retail_price = body.retail_price ? Number.parseFloat(body.retail_price) : null
     }
 
     // Campos de referencia interna (solo admin). Se aceptan strings vacios → null

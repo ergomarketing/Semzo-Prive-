@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest) {
   if (authError) return authError
   const { data, error } = await supabase
     .from("bags")
-    .select("id, name, brand, image_url")
+    .select("id, name, brand, image_url, images")
     .order("brand", { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
