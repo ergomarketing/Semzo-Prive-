@@ -1001,8 +1001,19 @@ function BagForm({
     })
   }
 
+  // La foto principal es siempre la primera de la galeria (el catalogo y la ficha publica usan esa).
   const setMainImage = (url: string) => {
-    setFormData({ ...formData, image_url: url })
+    const rest = formData.images.filter((u) => u !== url)
+    setFormData({ ...formData, image_url: url, images: [url, ...rest] })
+  }
+
+  // Mueve una foto una posicion a la izquierda (-1) o a la derecha (+1).
+  const moveImage = (index: number, direction: -1 | 1) => {
+    const target = index + direction
+    if (target < 0 || target >= formData.images.length) return
+    const newImages = [...formData.images]
+    ;[newImages[index], newImages[target]] = [newImages[target], newImages[index]]
+    setFormData({ ...formData, images: newImages, image_url: newImages[0] })
   }
 
   return (
@@ -1344,6 +1355,29 @@ function BagForm({
                 >
                   ×
                 </button>
+                {/* Reordenar: la primera foto es la principal */}
+                <div className="mt-1 flex w-20 justify-between">
+                  <button
+                    type="button"
+                    onClick={() => moveImage(index, -1)}
+                    disabled={index === 0}
+                    aria-label="Mover a la izquierda"
+                    title="Mover a la izquierda"
+                    className="flex h-6 w-9 items-center justify-center rounded border border-slate-300 text-sm text-[#1a1a4b] hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveImage(index, 1)}
+                    disabled={index === formData.images.length - 1}
+                    aria-label="Mover a la derecha"
+                    title="Mover a la derecha"
+                    className="flex h-6 w-9 items-center justify-center rounded border border-slate-300 text-sm text-[#1a1a4b] hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    →
+                  </button>
+                </div>
               </div>
             ))}
           </div>
