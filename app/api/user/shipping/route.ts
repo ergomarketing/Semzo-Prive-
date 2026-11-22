@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
 
     const selectFields = [...SHIPPING_FIELDS, "shipping_address", "phone"].join(", ")
 
-    const { data: profile, error } = await supabase
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+    const { data: profile, error } = await supabaseAdmin
       .from("profiles")
       .select(selectFields)
       .eq("id", user.id)
@@ -129,7 +132,10 @@ export async function PUT(request: NextRequest) {
     })
 
     // Asegurar perfil
-    const { data: profileCheck } = await supabase
+    // La conexion "supabase" de arriba solo lleva la clave anonima (sin la sesion de la usuaria), asi que la
+    // seguridad por filas no le deja ver el perfil y creia que no existia. La usuaria ya esta validada con su
+    // token; se usa la conexion de servidor y todo se acota a su propio id.
+    const { data: profileCheck } = await supabaseAdmin
       .from("profiles")
       .select([...SHIPPING_FIELDS, "first_name", "last_name", "email"].join(", "))
       .eq("id", user.id)
@@ -149,7 +155,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("profiles")
       .update(update)
       .eq("id", user.id)
