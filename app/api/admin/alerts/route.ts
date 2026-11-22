@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminAuth } from "@/lib/admin-auth"
 import { fetchProfilesById } from "@/lib/profile-lookup"
 
@@ -82,9 +82,43 @@ export async function GET() {
       return 0
     })
 
-    return NextResponse.json({ alerts })
+    // Avisos del sistema sin leer (compras de pases, ventas Colecciona, tareas automaticas...).
+    // Son los que cuenta el panel de inicio en "Avisos sin leer".
+    const { data: notifications } = await supabase
+      .from("admin_notifications")
+      .select("id, type, priority, title, message, created_at")
+      .eq("read", false)
+      .order("created_at", { ascending: false })
+      .limit(100)
+
+    return NextResponse.json({ alerts, notifications: notifications || [] })
   } catch (error) {
     console.error("Error fetching alerts:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// Marcar avisos del sistema como leidos: { id } para uno, { all: true } para todos.
+export async function PATCH(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
+  try {
+    const body = await request.json().catch(() => ({}))
+    const supabase = getServiceClient()
+    const patch = { read: true, read_at: new Date().toISOString() }
+
+    if (body?.all === true) {
+      const { error } = await supabase.from("admin_notifications").update(patch).eq("read", false)
+      if (error) throw error
+    } else if (typeof body?.id === "string" && body.id) {
+      const { error } = await supabase.from("admin_notifications").update(patch).eq("id", body.id)
+      if (error) throw error
+    } else {
+      return NextResponse.json({ error: "Falta id o all" }, { status: 400 })
+    }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error marking notifications read:", error)
+    return NextResponse.json({ error: "No se pudo marcar como leido" }, { status: 500 })
   }
 }

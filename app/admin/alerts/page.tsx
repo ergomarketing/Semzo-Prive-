@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/panel/page-header"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/panel/card"
 import { Badge } from "@/components/ui/badge"
-import { Bell, AlertTriangle, Clock, DollarSign, TrendingDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Bell, AlertTriangle, Clock, DollarSign, TrendingDown, Check, CheckCheck } from "lucide-react"
 
 interface Alert {
   id: string
@@ -18,8 +19,19 @@ interface Alert {
   created_at: string
 }
 
+interface SystemNotification {
+  id: string
+  type: string
+  priority: string | null
+  title: string
+  message: string
+  created_at: string
+}
+
 export default function AdminAlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [notifications, setNotifications] = useState<SystemNotification[]>([])
+  const [marking, setMarking] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,11 +44,30 @@ export default function AdminAlertsPage() {
       if (res.ok) {
         const data = await res.json()
         setAlerts(data.alerts || [])
+        setNotifications(data.notifications || [])
       }
     } catch (error) {
       console.error("Error fetching alerts:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const markRead = async (body: { id: string } | { all: true }) => {
+    setMarking(true)
+    try {
+      const res = await fetch("/api/admin/alerts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        setNotifications((prev) => ("all" in body ? [] : prev.filter((n) => n.id !== body.id)))
+      }
+    } catch (error) {
+      console.error("Error marking notifications read:", error)
+    } finally {
+      setMarking(false)
     }
   }
 
@@ -123,6 +154,43 @@ export default function AdminAlertsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-0 shadow">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>Avisos del sistema ({notifications.length})</CardTitle>
+          {notifications.length > 0 && (
+            <Button variant="outline" size="sm" disabled={marking} onClick={() => markRead({ all: true })}>
+              <CheckCheck className="mr-2 h-4 w-4" />
+              Marcar todos como leídos
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {loading ? null : notifications.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">No hay avisos sin leer</div>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((n) => (
+                <div key={n.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 p-4">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold text-slate-900">{n.title}</h3>
+                      <Badge variant="outline" className="text-xs">
+                        {new Date(n.created_at).toLocaleDateString("es-ES")}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">{n.message}</p>
+                  </div>
+                  <Button variant="outline" size="sm" disabled={marking} onClick={() => markRead({ id: n.id })}>
+                    <Check className="mr-1 h-4 w-4" />
+                    Leído
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-0 shadow">
         <CardHeader>
