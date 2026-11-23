@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", giftCardMembership.id)
 
-      await supabase
+      await getAdminClient()
         .from("profiles")
         .update({
           membership_status: "active",

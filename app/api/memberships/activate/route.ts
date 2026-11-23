@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 /**
  * ============================================================================
@@ -102,7 +103,8 @@ export async function POST() {
   }
 
   // 8. Sincronizar profiles.membership_status para que el dashboard refleje estado correcto
-  await supabase
+  // Campos de membresia del perfil: solo el servidor puede escribirlos (la socia no, via RLS/trigger)
+  await getServiceClient()
     .from("profiles")
     .update({
       membership_status: "active",
