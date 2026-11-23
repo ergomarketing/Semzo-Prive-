@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { getSessionUser } from "@/lib/session-user"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
@@ -15,6 +16,11 @@ export async function POST(request: Request) {
     if (!userId) {
       return NextResponse.json({ error: "userId es requerido" }, { status: 400 })
     }
+
+    // La identidad sale de la sesion: el userId del cuerpo solo vale si coincide con la usuaria que ha iniciado sesion.
+    const sessionUser = await getSessionUser()
+    if (!sessionUser) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    if (sessionUser.id !== userId) return NextResponse.json({ error: "Prohibido" }, { status: 403 })
 
     // Obtener datos del usuario
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", userId).single()
