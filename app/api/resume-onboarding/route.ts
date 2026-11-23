@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
           verificationUrl = created.url || null
           verificationId = created.id
 
-          await supabase.from("identity_verifications").upsert(
+          await getAdminClient().from("identity_verifications").upsert(
             {
               user_id: user.id,
               stripe_verification_id: created.id,
@@ -482,7 +482,7 @@ export async function POST(request: NextRequest) {
           verificationUrl = created.url || null
           verificationId = created.id
 
-          await supabase.from("identity_verifications").upsert(
+          await getAdminClient().from("identity_verifications").upsert(
             {
               user_id: user.id,
               stripe_verification_id: created.id,

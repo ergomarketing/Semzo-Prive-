@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { getServiceClient } from "@/lib/supabase-service"
 import { createClient as createBrowserClient } from "@supabase/supabase-js"
 
 export interface BlogPost {
@@ -36,7 +36,7 @@ export async function listPosts(): Promise<BlogPost[]> {
 }
 
 export async function listAllPosts(): Promise<BlogPost[]> {
-  const supabase = await createClient()
+  const supabase = getServiceClient() // solo se llama desde rutas que ya exigen sesion de administracion
   const { data, error } = await supabase
     .from("blog_posts")
     .select("*")
@@ -68,7 +68,7 @@ export async function getPost(slug: string): Promise<BlogPost | null> {
 }
 
 export async function createPost(post: Omit<BlogPost, "id" | "created_at" | "updated_at">): Promise<{ success: boolean; data?: BlogPost; error?: string }> {
-  const supabase = await createClient()
+  const supabase = getServiceClient() // solo se llama desde rutas que ya exigen sesion de administracion
   const { data, error } = await supabase
     .from("blog_posts")
     .insert([{ ...post, updated_at: new Date().toISOString() }])
@@ -83,7 +83,7 @@ export async function createPost(post: Omit<BlogPost, "id" | "created_at" | "upd
 }
 
 export async function updatePost(slug: string, updates: Partial<BlogPost>): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient()
+  const supabase = getServiceClient() // solo se llama desde rutas que ya exigen sesion de administracion
   const { error } = await supabase
     .from("blog_posts")
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -97,7 +97,7 @@ export async function updatePost(slug: string, updates: Partial<BlogPost>): Prom
 }
 
 export async function deletePost(slug: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient()
+  const supabase = getServiceClient() // solo se llama desde rutas que ya exigen sesion de administracion
   const { error } = await supabase
     .from("blog_posts")
     .delete()
