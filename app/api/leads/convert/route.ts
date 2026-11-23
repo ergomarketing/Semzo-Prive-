@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { isAuthorizedCron } from "@/lib/cron-auth"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,8 @@ const supabase = createClient(
 
 // Llamar desde el webhook de Stripe cuando un lead se convierte en socia
 export async function POST(req: NextRequest) {
+  // Solo llamadas internas con el secreto del servidor (Authorization: Bearer CRON_SECRET).
+  if (!isAuthorizedCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   try {
     const { email } = await req.json()
     if (!email) return NextResponse.json({ error: "email requerido" }, { status: 400 })

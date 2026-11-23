@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { EmailServiceProduction } from "@/app/lib/email-service-production"
+import { getSessionUserId } from "@/lib/session-user"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -18,7 +19,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
  */
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = request.headers.get("x-user-id")
+    const userId = await getSessionUserId() // sesion verificada; nunca la cabecera x-user-id
     const reservationId = params.id
 
     if (!userId) {
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  */
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = request.headers.get("x-user-id")
+    const userId = await getSessionUserId() // sesion verificada; nunca la cabecera x-user-id
     const reservationId = params.id
 
     if (!userId) {
@@ -334,7 +335,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
  */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = request.headers.get("x-user-id")
+    const userId = await getSessionUserId() // sesion verificada; nunca la cabecera x-user-id
     const reservationId = params.id
 
     if (!userId) {
