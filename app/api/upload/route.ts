@@ -1,7 +1,12 @@
 import { put } from "@vercel/blob"
 import { type NextRequest, NextResponse } from "next/server"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export async function POST(request: NextRequest) {
+  // Solo administracion: antes cualquiera podia subir ficheros al almacenamiento.
+  const authError = await requireAdminAuth(request)
+  if (authError) return authError
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File

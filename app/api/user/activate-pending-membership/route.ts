@@ -1,13 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
+import { getSessionUser } from "@/lib/session-user"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, userId } = await request.json()
-
-    if (!email || !userId) {
-      return NextResponse.json({ error: "Email y userId requeridos" }, { status: 400 })
+    // La identidad sale de la sesion, no del cuerpo: antes cualquiera podia activar una membresia pendiente
+    // a nombre de otra persona enviando su correo y un userId cualquiera.
+    const sessionUser = await getSessionUser()
+    if (!sessionUser || !sessionUser.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
+    const userId = sessionUser.id
+    const email = sessionUser.email
 
     // Buscar membresía pendiente por email
     const { data: pendingMembership } = await supabaseAdmin
