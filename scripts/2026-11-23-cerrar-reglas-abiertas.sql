@@ -38,3 +38,13 @@ drop policy if exists "System can manage membership intents" on public.membershi
 --    Original: "blog_posts_admin_all" FOR ALL TO public USING (true) WITH CHECK (true)
 --    Se mantiene "blog_posts_public_read" (solo publicados). La edicion va por la API de administracion.
 drop policy if exists "blog_posts_admin_all" on public.blog_posts;
+
+-- 7) (aplicado despues) Boletin y auditoria.
+--    Originales: "Authenticated users can view newsletter subscriptions" FOR SELECT TO authenticated USING (true);
+--                "Anyone can update newsletter subscription" FOR UPDATE TO anon, authenticated USING (email IS NOT NULL);
+--                "Anyone can subscribe to newsletter" FOR INSERT TO anon, authenticated WITH CHECK (email IS NOT NULL AND email <> '');
+--                "Authenticated users can view audit logs" FOR SELECT TO authenticated USING (true).
+drop policy if exists "Authenticated users can view newsletter subscriptions" on public.newsletter_subscriptions;
+drop policy if exists "Anyone can update newsletter subscription" on public.newsletter_subscriptions;
+drop policy if exists "Anyone can subscribe to newsletter" on public.newsletter_subscriptions;
+drop policy if exists "Authenticated users can view audit logs" on public.audit_log;
