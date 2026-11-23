@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
     const keepStatus = existingProfile.membership_status && existingProfile.membership_status !== "free"
 
     // Update campos básicos — sin phone para evitar constraint profiles_phone_unique
-    const { error: updateError } = await supabase
+    // membership_status solo lo escribe el servidor (la socia no puede editarlo desde su sesion)
+    const { error: updateError } = await getServiceClient()
       .from("profiles")
       .update({
         email: user.email!,

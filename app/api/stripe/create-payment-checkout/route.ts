@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
         metadata: { supabase_user_id: userId },
       })
       stripeCustomerId = customer.id
-      await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
+      await getServiceClient().from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
     }
 
     // IMPORTANTE: evitar VERCEL_URL en produccion (URL *.vercel.app pide login de Vercel).

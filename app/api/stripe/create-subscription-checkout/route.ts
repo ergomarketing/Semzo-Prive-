@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id
       console.log("[CHECKOUT DEBUG] 5b. stripe customer created", { stripeCustomerId })
 
-      await supabase
+      await getServiceClient()
         .from("profiles")
         .update({ stripe_customer_id: stripeCustomerId })
         .eq("id", userId)

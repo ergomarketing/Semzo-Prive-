@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@/app/lib/supabase/server"
+import { getServiceClient } from "@/lib/supabase-service"
 
 export const dynamic = "force-dynamic"
 
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         metadata: { supabase_user_id: userId },
       })
       stripeCustomerId = customer.id
-      await supabase.from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
+      await getServiceClient().from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
     }
 
     const vercelEnv = process.env.VERCEL_ENV

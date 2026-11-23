@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/app/lib/supabase/server"
 import Stripe from "stripe"
 import { syncMembershipFromStripe } from "./orchestrator"
+import { getServiceClient } from "@/lib/supabase-service"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
 
     if (!profileCheck) {
       console.log("[ACTIVATE] Perfil no encontrado, creando perfil base para:", user.id)
-      const { error: insertError } = await supabase
+      const { error: insertError } = await getServiceClient()
         .from("profiles")
         .insert({ id: user.id, membership_status: "free", created_at: new Date().toISOString() })
       if (insertError) {

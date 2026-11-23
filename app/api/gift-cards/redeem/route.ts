@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       const newUserBalance = currentUserBalance + newAmount
 
       // Actualizar balance del usuario
-      await supabase.from("profiles").update({ gift_card_balance: newUserBalance }).eq("id", user.id)
+      await db.from("profiles").update({ gift_card_balance: newUserBalance }).eq("id", user.id)
 
       console.log(`[v0] User ${user.id} gift card balance updated: ${newUserBalance / 100}€`)
     }
