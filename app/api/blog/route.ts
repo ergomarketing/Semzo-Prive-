@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { listPosts, getPost, createPost, deletePost, listAllPosts } from "@/lib/blog-supabase"
 import { slugifyBlog } from "@/lib/blog-slug"
+import { requireAdminAuth } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -9,6 +10,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
     const all = searchParams.get("all") === "true"
+
+    // El listado completo incluye borradores: solo administracion. Los articulos publicados siguen siendo publicos.
+    if (all) {
+      const authError = await requireAdminAuth()
+      if (authError) return authError
+    }
 
     if (slug) {
       const post = await getPost(slug)
@@ -25,6 +32,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { content, excerpt, image_url, author, published, category } = body
@@ -58,6 +67,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const body = await request.json()
     const { slug, ...updates } = body
@@ -79,6 +90,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authError = await requireAdminAuth()
+  if (authError) return authError
   try {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
