@@ -101,31 +101,19 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           // Security
+          // CSP estricta ACTIVA (desde 2026-11-24). Marcha atras: volver a 'Content-Security-Policy-Report-Only'
+          // (solo avisa en consola, no bloquea) o revertir este commit.
           {
             key: 'Content-Security-Policy',
             value: [
-              "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:",
-              "script-src * 'unsafe-inline' 'unsafe-eval'",
-              "style-src * 'unsafe-inline'",
-              "img-src * data: blob:",
-              "font-src * data:",
-              "connect-src * wss: ws:",
-              "frame-src * data: blob: https://verify.stripe.com https://js.stripe.com https://*.stripe.com",
-              "object-src 'none'",
-            ].join('; ')
-          },
-          // CSP estricta en MODO INFORME: el navegador avisa en consola de lo que
-          // bloquearia, pero no bloquea nada. Cuando no haya avisos, sustituye a la CSP de arriba.
-          {
-            key: 'Content-Security-Policy-Report-Only',
-            value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://www.google.com https://www.google.es https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://analytics.tiktok.com https://*.klaviyo.com https://*.clarity.ms https://js.stripe.com https://*.stripe.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://www.google.com https://www.google.es https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://analytics.tiktok.com https://*.klaviyo.com https://*.clarity.ms https://connect.facebook.net https://cdn.jsdelivr.net https://js.stripe.com https://*.stripe.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.doubleclick.net https://www.google.com https://www.google.es https://www.googleadservices.com https://*.tiktok.com https://*.tiktokw.us https://*.klaviyo.com https://*.clarity.ms https://*.stripe.com https://*.stripe.network https://*.public.blob.vercel-storage.com https://vitals.vercel-insights.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.doubleclick.net https://www.google.com https://www.google.es https://www.googleadservices.com https://*.tiktok.com https://*.tiktokw.us https://*.klaviyo.com https://*.clarity.ms https://*.facebook.com https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.stripe.com https://*.stripe.network https://*.public.blob.vercel-storage.com https://vitals.vercel-insights.com",
               "frame-src 'self' https://*.stripe.com https://*.stripe.network https://*.doubleclick.net https://www.googletagmanager.com https://www.google.com",
+              "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
