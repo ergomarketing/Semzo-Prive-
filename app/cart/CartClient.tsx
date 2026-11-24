@@ -469,6 +469,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           inputCode: rawCode.trim(), // Codigo tal como se escribio, para revalidar si cambia el ciclo
           discount: data.percentOff || data.amountOff || 0,
           type: data.percentOff ? "percent" : "fixed",
+          hideDiscount: !!data.hideDiscount, // No mostrar el % / importe (cupones solo trimestrales)
         })
         setCouponCode("")
       } else if (!silent) {
@@ -843,8 +844,9 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                       <div className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-indigo-dark" />
                         <span className="text-sm text-indigo-dark">
-                          Cupón {appliedCoupon.displayCode || appliedCoupon.code} aplicado (-{appliedCoupon.discount}
-                          {appliedCoupon.type === "percent" ? "%" : "€"})
+                          Cupón {appliedCoupon.displayCode || appliedCoupon.code} aplicado
+                          {!appliedCoupon.hideDiscount &&
+                            ` (-${appliedCoupon.discount}${appliedCoupon.type === "percent" ? "%" : "€"})`}
                         </span>
                       </div>
                       <button
@@ -936,10 +938,12 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm text-rose-pastel">
                       <span>Descuento ({appliedCoupon.displayCode || appliedCoupon.code})</span>
-                      <span>
-                        -{appliedCoupon.discount}
-                        {appliedCoupon.type === "percent" ? "%" : "€"}
-                      </span>
+                      {!appliedCoupon.hideDiscount && (
+                        <span>
+                          -{appliedCoupon.discount}
+                          {appliedCoupon.type === "percent" ? "%" : "€"}
+                        </span>
+                      )}
                     </div>
                   )}
 

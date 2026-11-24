@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
         `Descuento ${coupon.percent_off ? `${coupon.percent_off}%` : `${(coupon.amount_off || 0) / 100}€`}`,
       percentOff: coupon.percent_off || null,
       amountOff: coupon.amount_off ? coupon.amount_off / 100 : null,
+      // Cupones solo trimestrales: el carrito no muestra el porcentaje ni el importe del descuento
+      hideDiscount: coupon.metadata?.billing_cycle === "quarterly",
       finalAmount,
       discountAmount: Math.round(discountAmount * 100) / 100,
     })
