@@ -154,7 +154,7 @@ export default function BlackFridayClient() {
             {[
               "Bolsos de diseñador por suscripción",
               "Desde 59€/mes · Sin permanencia",
-              "Plazas limitadas en Marbella",
+              "Plazas limitadas",
             ].map((item) => (
               <div key={item} className="flex items-center gap-3">
                 <div className="h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
