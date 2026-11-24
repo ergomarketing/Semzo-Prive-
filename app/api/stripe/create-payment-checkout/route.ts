@@ -4,6 +4,7 @@ import { createClient } from "@/app/lib/supabase/server"
 import { canCreateReservations } from "@/lib/membership-state-mapper"
 import { getNextBagState, nextBagBlockMessage } from "@/lib/next-bag-queue"
 import { getServiceClient } from "@/lib/supabase-service"
+import { getValidStripeCustomerId } from "@/lib/stripe-customer"
 
 export const dynamic = "force-dynamic"
 
@@ -152,17 +153,12 @@ export async function POST(req: NextRequest) {
       .eq("id", userId)
       .single()
 
-    let stripeCustomerId = profile?.stripe_customer_id
-
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        email: profile?.email || undefined,
-        name: profile?.full_name || undefined,
-        metadata: { supabase_user_id: userId },
-      })
-      stripeCustomerId = customer.id
-      await getServiceClient().from("profiles").update({ stripe_customer_id: stripeCustomerId }).eq("id", userId)
-    }
+    const stripeCustomerId = await getValidStripeCustomerId(stripe, {
+      userId,
+      existingId: profile?.stripe_customer_id,
+      email: profile?.email,
+      name: profile?.full_name,
+    })
 
     // IMPORTANTE: evitar VERCEL_URL en produccion (URL *.vercel.app pide login de Vercel).
     const vercelEnv = process.env.VERCEL_ENV

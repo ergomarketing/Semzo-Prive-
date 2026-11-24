@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { getServiceClient } from "@/lib/supabase-service"
 import { MEMBERSHIP_PRICES } from "@/lib/membership-prices"
+import { getValidStripeCustomerId } from "@/lib/stripe-customer"
 
 // CRITICAL: No cache - authenticated mutation endpoint
 export const dynamic = "force-dynamic"
@@ -192,25 +193,14 @@ export async function POST(request: NextRequest) {
     console.log("[CHECKOUT DEBUG] 4. intentId resolved", { intentId })
 
     // Get or create Stripe customer
-    let stripeCustomerId = profile?.stripe_customer_id
-
-    if (!stripeCustomerId) {
-      console.log("[CHECKOUT DEBUG] 5a. creating stripe customer", { customerEmail })
-      const customer = await stripe.customers.create({
-        email: customerEmail,
-        name: profile?.full_name || undefined,
-        metadata: { supabase_user_id: userId },
-      })
-      stripeCustomerId = customer.id
-      console.log("[CHECKOUT DEBUG] 5b. stripe customer created", { stripeCustomerId })
-
-      await getServiceClient()
-        .from("profiles")
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq("id", userId)
-    } else {
-      console.log("[CHECKOUT DEBUG] 5. using existing stripe customer", { stripeCustomerId })
-    }
+    // Comprueba que el cliente guardado existe en Stripe; si no, crea uno nuevo (ver lib/stripe-customer.ts).
+    const stripeCustomerId = await getValidStripeCustomerId(stripe, {
+      userId,
+      existingId: profile?.stripe_customer_id,
+      email: customerEmail,
+      name: profile?.full_name,
+    })
+    console.log("[CHECKOUT DEBUG] 5. stripe customer", { stripeCustomerId })
 
     // Determinar modo:
     // - subscription: hay membershipType Y priceId (flujo normal recurrente)
