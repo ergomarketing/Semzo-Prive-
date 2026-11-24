@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { requireAdminAuth } from "@/lib/admin-auth"
+import { uniqueBagSlug } from "@/lib/bag-slug"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
@@ -245,11 +246,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    // La direccion web del bolso (/catalog/<slug>) sale del nombre; sin slug se queda con el codigo largo.
+    const slug = await uniqueBagSlug(supabase, body.brand, body.name)
+
     const { data, error } = await supabase
       .from("bags")
       .insert({
         name: body.name,
         brand: body.brand,
+        slug,
         description: body.description,
         membership_type: body.membership_type || "essentiel",
         price: body.price ? Number.parseFloat(body.price) : null,
