@@ -234,6 +234,21 @@ export async function POST(request: NextRequest) {
     // coupon.code es el coupon.id de Stripe devuelto por validate-coupon
     let couponId: string | null = coupon?.code || null
 
+    // Cupon solo trimestral: se comprueba aqui con el ciclo que sale del precio (no del navegador)
+    if (couponId) {
+      try {
+        const stripeCoupon = await stripe.coupons.retrieve(couponId)
+        if (stripeCoupon.metadata?.billing_cycle === "quarterly" && billingCycle !== "quarterly") {
+          return NextResponse.json(
+            { error: "Este código solo es válido en el plan trimestral (3 meses, pagas 2)" },
+            { status: 400 },
+          )
+        }
+      } catch (err) {
+        console.error("[CHECKOUT] no se pudo comprobar el cupon", { couponId, err })
+      }
+    }
+
     // Si el descuento vino de un Promotion Code (p.ej. PRIVE50), aplicarlo
     // como promotion_code en vez de coupon: asi Stripe IMPONE sus restricciones
     // nativas (first_time_transaction => solo 1a suscripcion, 1 vez por clienta).

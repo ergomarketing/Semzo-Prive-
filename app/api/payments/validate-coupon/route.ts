@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
 
 export async function POST(request: NextRequest) {
   try {
-    const { couponCode, amount } = await request.json()
+    const { couponCode, amount, billingCycle } = await request.json()
 
     if (!couponCode) {
       return NextResponse.json({ error: "Código de cupón requerido" }, { status: 400 })
@@ -60,6 +60,14 @@ export async function POST(request: NextRequest) {
     // Verificar si el cupón está activo
     if (!coupon.valid) {
       return NextResponse.json({ error: "Este cupón ya no está activo" }, { status: 400 })
+    }
+
+    // Cupones solo para el plan trimestral (metadata.billing_cycle = "quarterly" en el cupon de Stripe)
+    if (coupon.metadata?.billing_cycle === "quarterly" && billingCycle !== "quarterly") {
+      return NextResponse.json(
+        { error: "Este código solo es válido en el plan trimestral (3 meses, pagas 2)" },
+        { status: 400 },
+      )
     }
 
     // Calcular descuento

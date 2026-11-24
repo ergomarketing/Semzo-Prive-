@@ -456,7 +456,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
       const response = await fetch("/api/payments/validate-coupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ couponCode: rawCode.trim(), amount: total }),
+        body: JSON.stringify({ couponCode: rawCode.trim(), amount: total, billingCycle: cartAnalysis?.billingCycle }),
       })
 
       const data = await response.json()
@@ -466,6 +466,7 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
           code: data.code, // ID de Stripe (no el codigo ingresado)
           promotionCodeId: data.promotionCodeId || null, // Promotion Code (impone restricciones nativas)
           displayCode: rawCode.trim().toUpperCase(), // Para mostrar en UI
+          inputCode: rawCode.trim(), // Codigo tal como se escribio, para revalidar si cambia el ciclo
           discount: data.percentOff || data.amountOff || 0,
           type: data.percentOff ? "percent" : "fixed",
         })
@@ -674,6 +675,33 @@ export default function CartClient({ initialUser }: { initialUser?: any } = {}) 
     return items.length > 0 ? analyzeCartItems(items) : null
   }, [items])
   
+  // Si la clienta cambia de ciclo con un cupon aplicado, se revalida: un cupon solo trimestral deja de valer
+  const cartBillingCycle = cartAnalysis?.billingCycle
+  useEffect(() => {
+    if (!appliedCoupon?.inputCode) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const response = await fetch("/api/payments/validate-coupon", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ couponCode: appliedCoupon.inputCode, amount: total, billingCycle: cartBillingCycle }),
+        })
+        const data = await response.json()
+        if (!cancelled && (!response.ok || data.valid === false)) {
+          setAppliedCoupon(null)
+          setCouponError(data.error || "Cupón no válido")
+        }
+      } catch {
+        // Sin red no se quita el cupon: el servidor lo vuelve a comprobar al pagar
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartBillingCycle])
+
   // Bloquear checkout si el carrito tiene membresía y el usuario no está verificado
   // Excepción: si el total es 0€ con gift card, se permite pagar y la verificación va después
   const needsVerification = !!(cartAnalysis?.membershipType && !identityVerified && !(finalAmount === 0 && appliedGiftCard))
