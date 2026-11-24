@@ -114,6 +114,24 @@ const nextConfig = {
               "object-src 'none'",
             ].join('; ')
           },
+          // CSP estricta en MODO INFORME: el navegador avisa en consola de lo que
+          // bloquearia, pero no bloquea nada. Cuando no haya avisos, sustituye a la CSP de arriba.
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://www.google.com https://www.google.es https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://analytics.tiktok.com https://static.klaviyo.com https://js.stripe.com https://*.stripe.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.doubleclick.net https://www.google.com https://www.google.es https://www.googleadservices.com https://*.tiktok.com https://*.tiktokw.us https://a.klaviyo.com https://static.klaviyo.com https://*.stripe.com https://*.stripe.network https://*.public.blob.vercel-storage.com https://vitals.vercel-insights.com",
+              "frame-src 'self' https://*.stripe.com https://*.stripe.network https://*.doubleclick.net https://www.googletagmanager.com https://www.google.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'self'",
+            ].join('; ')
+          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
