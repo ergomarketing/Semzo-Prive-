@@ -118,7 +118,7 @@ export function NextBagCard() {
   if (data.hasBagInHand && data.reason === "window_closed" && data.windowOpensAt) {
     return (
       <p className="text-sm text-slate-500">
-        A partir del {formatDay(data.windowOpensAt)} podrás reservar tu próximo bolso, sin esperar a devolver el actual.
+        A partir del {formatDay(data.windowOpensAt)} podrás elegir tu próximo bolso. Te lo enviaremos en cuanto recibamos el que tienes ahora.
       </p>
     )
   }
