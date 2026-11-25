@@ -62,7 +62,7 @@ const FAQS = [
   },
   {
     q: "¿Qué pasa si me enamoro de un bolso?",
-    a: "Con Colecciona, las cuotas de membresía que has pagado se acumulan como crédito personal para comprar un bolso elegible, con un descuento máximo del 20 % sobre su precio de venta.",
+    a: "Con Colecciona, las cuotas de membresía que has pagado se acumulan como crédito personal para comprar un bolso elegible, con un descuento máximo del 40 % sobre su precio de venta.",
   },
   {
     q: "¿Los bolsos son auténticos?",

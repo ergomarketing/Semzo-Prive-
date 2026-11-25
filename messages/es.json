@@ -89,7 +89,7 @@
     "welcomeUser": "Bienvenida, {name}",
     "accessCollection": "Accede a tu colección de bolsos de lujo",
     "cardCredit": "Crédito Colecciona",
-    "cardCreditHint": "Saldo acumulado",
+    "cardCreditHint": "Saldo acumulado · descuento máx. 40 %",
     "tileComplete": "Completar",
     "panelEyebrow": "Tu espacio privado",
     "cardMyProfile": "Mi Perfil",
@@ -984,7 +984,7 @@
       },
       {
         "title": "Pasa a Colecciona y tu cuota se convierte en crédito.",
-        "desc": "Desde que activas el modo Colecciona sobre un bolso, el 100% de cada cuota mensual que pagas se acumula como crédito hacia su compra, con un descuento máximo del 20% sobre el precio del bolso."
+        "desc": "Desde que activas el modo Colecciona sobre un bolso, el 100% de cada cuota mensual que pagas se acumula como crédito hacia su compra, con un descuento máximo del 40% sobre el precio del bolso."
       },
       {
         "title": "Decide cuando estés lista.",
@@ -1008,7 +1008,8 @@
     "faqTitle1": "Preguntas sobre",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "En modo Colecciona, el 100% de tu cuota mensual se acumula como crédito personal mientras tu membresía está activa, para comprar cualquier bolso elegible con un descuento máximo del 20% sobre su precio de venta. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito." },
+      { "q": "¿Qué parte de mi cuota se convierte en crédito?", "a": "En modo Colecciona, el 100% de tu cuota mensual se acumula como crédito personal mientras tu membresía está activa, para comprar cualquier bolso elegible con un descuento máximo del 40% sobre su precio de venta. En modo alquiler, la cuota es de uso mensual; al pasar a Colecciona, las cuotas de alquiler ya pagadas en tu membresía actual se suman como crédito." },
+      { "q": "¿Cuánto crédito puedo usar al comprar un bolso?", "a": "Acumulas el 100% de tus cuotas como crédito. Al comprar, el crédito descuenta como máximo el 40% del precio de venta del bolso. Por ejemplo, en un bolso de 2.650 € el descuento máximo es de 1.060 € y pagas como mínimo 1.590 €. Si tu crédito es mayor que ese máximo, el sobrante no se pierde: sigue siendo tuyo mientras tu membresía esté activa y puedes usarlo en una compra posterior." },
       { "q": "¿Puedo usar el crédito en cualquier bolso, no solo el que llevo?", "a": "No. El crédito se acumula hacia el bolso que tienes en modo Colecciona y solo puede aplicarse a su compra." },
       { "q": "¿El crédito caduca si cancelo mi membresía?", "a": "Sí. Si cancelas la membresía, el crédito acumulado se pierde: no es dinero ni es reembolsable." },
       { "q": "¿Tengo que decidir en algún momento si compro o no?", "a": "No. Colecciona no tiene plazos ni obligación de compra. Puedes seguir disfrutando de tu membresía indefinidamente sin usar el crédito, o hacerlo tuyo el día que lo sientas." },

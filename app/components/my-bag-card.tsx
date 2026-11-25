@@ -231,8 +231,8 @@ export function MyBagCard() {
                   />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Cada cuota suma crédito. Al comprar, el crédito descuenta hasta el 20 % del precio del bolso (
-                  {formatEUR(targetPrice)}). Si compras hoy, pagarías {formatEUR(amountDue)}.
+                  Cada cuota suma crédito. Al comprar, el crédito descuenta hasta el 40 % del precio del bolso (
+                  {formatEUR(targetPrice)}). Si compras hoy, pagarías {formatEUR(amountDue)}. El crédito que no uses sigue siendo tuyo.
                 </p>
 
                 <ColeccionaAutochargeBox />
@@ -350,7 +350,7 @@ export function MyBagCard() {
             <AlertDialogDescription>
               Las cuotas de alquiler que ya has pagado en tu membresía actual se suman como crédito
               {bag.purchase_price ? ` para comprar este bolso (${formatEUR(bag.purchase_price)})` : ""}, y cada cuota nueva que
-              pagues también. El crédito descuenta hasta el 20 % del precio de venta. El bolso solo pasa a ser tuyo cuando
+              pagues también. El crédito descuenta hasta el 40 % del precio de venta. El bolso solo pasa a ser tuyo cuando
               finalizas la compra y pagas la diferencia; hasta entonces sigue siendo
               de SEMZO PRIVÉ.
             </AlertDialogDescription>

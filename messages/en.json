@@ -89,7 +89,7 @@
     "welcomeUser": "Welcome, {name}",
     "accessCollection": "Access your luxury bag collection",
     "cardCredit": "Collect credit",
-    "cardCreditHint": "Accumulated balance",
+    "cardCreditHint": "Accumulated balance · max. 40% discount",
     "tileComplete": "Complete",
     "panelEyebrow": "Your private space",
     "cardMyProfile": "My Profile",
@@ -984,7 +984,7 @@
       },
       {
         "title": "Switch to Colecciona and your fee becomes credit.",
-        "desc": "From the moment you activate Collect Mode on a bag, 100% of every monthly fee you pay builds up as credit toward buying it, with a maximum discount of 20% of the bag's sale price."
+        "desc": "From the moment you activate Collect Mode on a bag, 100% of every monthly fee you pay builds up as credit toward buying it, with a maximum discount of 40% of the bag's sale price."
       },
       {
         "title": "Decide whenever you're ready.",
@@ -1008,7 +1008,8 @@
     "faqTitle1": "Questions about",
     "faqTitle2": "Colecciona",
     "faqs": [
-      { "q": "What portion of my fee becomes credit?", "a": "In Collect Mode, 100% of your monthly fee builds up as personal credit while your membership stays active, to buy any eligible bag with a maximum discount of 20% of its sale price. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit." },
+      { "q": "What portion of my fee becomes credit?", "a": "In Collect Mode, 100% of your monthly fee builds up as personal credit while your membership stays active, to buy any eligible bag with a maximum discount of 40% of its sale price. In rental mode, your fee is a monthly usage fee; when you switch to Collect Mode, the rental fees you have already paid on your current membership are added as credit." },
+      { "q": "How much credit can I use when buying a bag?", "a": "You build up 100% of your fees as credit. When you buy, the credit discounts at most 40% of the bag's sale price. For example, on a €2,650 bag the maximum discount is €1,060 and you pay at least €1,590. If your credit is higher than that maximum, the excess is not lost: it stays yours while your membership is active and can be used on a later purchase." },
       { "q": "Can I use the credit on any bag, not just the one I'm carrying?", "a": "No. Credit builds up toward the bag you have in Collect Mode and can only be applied to its purchase." },
       { "q": "Does the credit expire if I cancel my membership?", "a": "Yes. If you cancel your membership, the accumulated credit is lost: it is not money and is not refundable." },
       { "q": "Do I have to decide at some point whether to buy or not?", "a": "No. Colecciona has no deadlines or purchase obligation. You can keep enjoying your membership indefinitely without using the credit, or make it yours the day you feel ready." },

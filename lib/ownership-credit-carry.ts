@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
  *
  *  - Se acumula con las cuotas pagadas (libro ownership_credit_entries).
  *  - Renunciar a un bolso o cambiar de bolso NO lo pierde: el siguiente Colecciona lo hereda (con el tope del precio).
- *  - Solo se gasta en una compra COMPLETADA, y solo lo que se descuenta (max. 20 % del precio): el resto sigue siendo
+ *  - Solo se gasta en una compra COMPLETADA, y solo lo que se descuenta (max. 40 % del precio): el resto sigue siendo
  *    de la socia (spentOnSale parte la entrada si hace falta). Las entradas gastadas llevan spent_at.
  *  - Se pierde al darse de baja de la membresia: las entradas se marcan con forfeited_at.
  */

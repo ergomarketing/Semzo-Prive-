@@ -77,7 +77,7 @@ export async function deleteLedgerEntry(supabase: SupabaseClient, stripeInvoiceI
 
 /**
  * Suma crédito a un progreso activo sin superar el precio. `reachedPrice` indica que se acaba de alcanzar el
- * descuento máximo (20 % del precio): a partir de ahí más crédito ya no abarata la compra. Usa comparación del
+ * descuento máximo (40 % del precio): a partir de ahí más crédito ya no abarata la compra. Usa comparación del
  * valor leído para no pisar un cambio concurrente (reintenta si cambió).
  * Nunca cambia el estado: alcanzar el precio deja status='active'.
  */

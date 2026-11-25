@@ -53,7 +53,7 @@ export async function closeColeccionaSale(supabase: SupabaseClient, input: Close
   const now = new Date().toISOString()
 
   const spendSaleCredit = async () => {
-    // El credito es de la socia: solo se gasta lo descontado en esta compra (precio - cobrado, con tope del 20 %);
+    // El credito es de la socia: solo se gasta lo descontado en esta compra (precio - cobrado, con tope del 40 %);
     // el resto de su credito sigue disponible para otra compra. Un fallo aqui no deshace la venta: se avisa.
     try {
       const priceCents = Math.round(Number(progress.purchase_price) * 100)

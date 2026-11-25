@@ -8,9 +8,9 @@
  */
 
 export const COLECCIONA_CONTRACT_VERSION = "v2"
-export const COLECCIONA_CONDITIONS_VERSION = "v2"
-/** Entrada en vigor de las Condiciones vigentes. v2 (2026-10-31): el crédito solo descuenta hasta el 20 % del precio. */
-export const COLECCIONA_CONDITIONS_EFFECTIVE_DATE = "31 de octubre de 2026"
+export const COLECCIONA_CONDITIONS_VERSION = "v3"
+/** Entrada en vigor de las Condiciones vigentes. v2 (2026-10-31): tope del 20 %. v3 (2026-11-25): el crédito descuenta hasta el 40 % del precio. */
+export const COLECCIONA_CONDITIONS_EFFECTIVE_DATE = "25 de noviembre de 2026"
 
 export const COLECCIONA_CONTRACT_DOCUMENT = "Contrato de compraventa Colecciona"
 export const COLECCIONA_CONDITIONS_DOCUMENT = "Condiciones del Programa Colecciona"
@@ -25,12 +25,13 @@ export const COLECCIONA_ANNEX_PHRASE = "Acepto expresamente el estado del bolso 
 
 /** Texto de las variables de las Condiciones v1 (aprobado por Erika, 2026-10-18). */
 export const COLECCIONA_CREDIT_RULE =
-  "Colecciona permite acumular el 100 % de las cuotas de membresía pagadas como crédito personal para la adquisición de cualquier bolso elegible de SEMZO PRIVÉ, con un descuento máximo del 20 % sobre el precio de venta del bolso elegido. " +
+  "Colecciona permite acumular el 100 % de las cuotas de membresía pagadas como crédito personal para la adquisición de cualquier bolso elegible de SEMZO PRIVÉ, con un descuento máximo del 40 % sobre el precio de venta del bolso elegido. " +
   "Cada cuota de membresía y cada Pase de Bolso pagados con dinero generan crédito por su importe íntegro, IVA incluido. " +
   "Se incluyen las cuotas anteriores a la activación de Colecciona correspondientes a la membresía vigente. " +
   "El crédito empieza a acumularse desde la fecha en que la socia activa Colecciona para un bolso concreto. " +
+  "El crédito que supere el descuento máximo no se pierde: permanece en el saldo de la socia mientras su membresía siga activa y puede aplicarse a una compra posterior. " +
   "Los pagos realizados con tarjetas regalo o cupones no generan crédito."
-export const COLECCIONA_CREDIT_CAP = "el 20 % del precio de venta del bolso elegido"
+export const COLECCIONA_CREDIT_CAP = "el 40 % del precio de venta del bolso elegido"
 
 /** Apartados del Anexo I (claves de bags.condition_report). */
 export const CONDITION_REPORT_FIELDS = [
