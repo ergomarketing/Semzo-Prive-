@@ -147,7 +147,12 @@ export default async function BagDetailPage({ params }: { params: Promise<{ id: 
       condition: data.condition || "Excelente",
       year: data.year || "2023",
       availability: {
-        status: data.status === "available" ? ("available" as const) : ("rented" as const),
+        status:
+          data.status === "available"
+            ? ("available" as const)
+            : data.status === "maintenance"
+              ? ("maintenance" as const)
+              : ("rented" as const),
       },
       purchase_price: data.purchase_price != null ? Number(data.purchase_price) : null,
       authenticity_certificate_url: data.authenticity_certificate_url || null,
