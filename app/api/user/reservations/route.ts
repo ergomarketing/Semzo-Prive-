@@ -294,7 +294,8 @@ export async function POST(request: NextRequest) {
 
     // LIMITE DE RESERVAS POR CICLO DE FACTURACION
     // Regla de negocio: el cupo se consume al RESERVAR, no al recibir.
-    // Cancelar una reserva NO devuelve el cupo del ciclo.
+    // Cancelar una reserva NO devuelve el cupo del ciclo, SALVO la primera cancelacion de la socia en el ciclo antes
+    // del envio (cancellation_reason = 'quota_refund', ver PATCH en [id]/route.ts): esa no cuenta.
     //
     // - Petite: cupo via pases (max 4, validado mas abajo).
     // - L'Essentiel monthly : 1 bolso/mes.
@@ -323,19 +324,21 @@ export async function POST(request: NextRequest) {
       }
       const cycleStart = new Date(cycleStartMs).toISOString()
 
-      // Contar TODAS las reservas del ciclo, incluidas las canceladas. Una reserva creada en cola cuenta para el
+      // Contar las reservas del ciclo, incluidas las canceladas (salvo las de cupo devuelto). Una reserva creada en cola cuenta para el
       // ciclo SIGUIENTE: se cuenta desde 7 dias antes del inicio del ciclo, y no cuenta en el ciclo en que se creo.
       const { count: directCount } = await supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("queued_from_prev_cycle", false)
+        .or("cancellation_reason.is.null,cancellation_reason.neq.quota_refund")
         .gte("created_at", cycleStart)
       const { count: queuedOriginCount } = await supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("queued_from_prev_cycle", true)
+        .or("cancellation_reason.is.null,cancellation_reason.neq.quota_refund")
         .gte("created_at", new Date(cycleStartMs - 7 * 24 * 60 * 60 * 1000).toISOString())
       const cycleReservations = (directCount || 0) + (queuedOriginCount || 0)
 

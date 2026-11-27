@@ -5,6 +5,9 @@ import { getSessionUserId } from "@/lib/session-user"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
+// Marca de una cancelacion de la socia que NO consume el cupo del ciclo (ver PATCH y el limite en ../route.ts)
+const QUOTA_REFUND_REASON = "quota_refund"
+
 // Estados permitidos y sus transiciones
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   pending: ["confirmed", "cancelled"],
@@ -163,11 +166,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
+    // CUPO DEVUELTO: si la socia cancela ella misma antes de que el bolso se envie (pending/confirmed), la PRIMERA
+    // cancelacion de cada ciclo no gasta el cupo del ciclo (un error o un cambio de idea no debe costar el bolso del mes).
+    // Las siguientes cancelaciones del mismo ciclo si cuentan (evita reservar y cancelar en bucle).
+    let cancellationFields: Record<string, string> = {}
+    if (status === "cancelled") {
+      cancellationFields = { cancelled_at: new Date().toISOString() }
+      try {
+        const { data: planRow } = await supabase
+          .from("user_memberships")
+          .select("billing_cycle")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        const cycle = (planRow?.billing_cycle || "monthly").toString().toLowerCase()
+        const cycleDays = cycle === "quarterly" || cycle === "trimestral" ? 90 : 30
+        const since = new Date(Date.now() - cycleDays * 24 * 60 * 60 * 1000).toISOString()
+        const { count: refundsInCycle } = await supabase
+          .from("reservations")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("cancellation_reason", QUOTA_REFUND_REASON)
+          .gte("cancelled_at", since)
+        if (!refundsInCycle) cancellationFields.cancellation_reason = QUOTA_REFUND_REASON
+      } catch (e) {
+        console.error("[API] Error calculando devolucion de cupo (se cancela sin devolverlo):", e)
+      }
+    }
+
     const { data: updatedReservation, error: updateError } = await supabase
       .from("reservations")
       .update({
         status: status,
         updated_at: new Date().toISOString(),
+        ...cancellationFields,
       })
       .eq("id", reservationId)
       .eq("user_id", userId)
