@@ -67,6 +67,8 @@ export async function GET(request: NextRequest) {
           serial_number: bag.serial_number,
           purchase_price: bag.purchase_price,
           authenticity_certificate_url: bag.authenticity_certificate_url,
+          // Ficha del estado (Anexo I Colecciona). Sin esto el formulario de edicion la abria vacia y al guardar la borraba.
+          condition_report: bag.condition_report,
           daily_price: bag.daily_price,
           monthly_price: bag.monthly_price,
           price: bag.price,
