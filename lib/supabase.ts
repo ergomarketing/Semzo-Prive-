@@ -1,4 +1,6 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+// OJO: se importa con otro nombre porque al final del archivo se exporta un alias `createClient` (compatibilidad)
+// que, si se llamaba igual, tapaba este import y hacia que el cliente de servicio fuese en realidad un cliente anon.
+import { createClient as createSupabaseJsClient, type SupabaseClient } from "@supabase/supabase-js"
 import { createBrowserClient, createServerClient } from "@supabase/ssr"
 import type { cookies } from "next/headers"
 
@@ -79,7 +81,7 @@ export function getSupabaseServiceRole(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseServiceKey) return null
 
   if (!globalRef[SERVICE_CLIENT]) {
-    globalRef[SERVICE_CLIENT] = createClient(
+    globalRef[SERVICE_CLIENT] = createSupabaseJsClient(
       supabaseUrl,
       supabaseServiceKey,
       {
