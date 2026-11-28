@@ -3,15 +3,106 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Check } from "lucide-react"
+import { Check, Copy } from "lucide-react"
+import { useCart } from "@/app/contexts/cart-context"
+
+const PROMO_CODE = "BLACKPRIVE"
+
+const offers = [
+  {
+    id: "essentiel",
+    name: "L'Essentiel",
+    cartName: "ESSENTIEL",
+    price: "118 €",
+    oldPrice: "141,60 €",
+    cartPrice: "142€",
+    image: "/images/membership-essentiel.jpeg",
+    brand: "Valentino",
+    description: "Membresía trimestral L'Essentiel",
+    highlight: false,
+  },
+  {
+    id: "signature",
+    name: "Signature",
+    cartName: "SIGNATURE",
+    price: "298 €",
+    oldPrice: "357,60 €",
+    cartPrice: "357€",
+    image: "/images/membership-signature-v2.jpg",
+    brand: "Dior",
+    description: "Membresía trimestral Signature",
+    highlight: true,
+  },
+  {
+    id: "prive",
+    name: "Privé",
+    cartName: "PRIVÉ",
+    price: "558 €",
+    oldPrice: "669,60 €",
+    cartPrice: "669€",
+    image: "/images/membership-prive.jpg",
+    brand: "Chanel",
+    description: "Membresía trimestral Privé",
+    highlight: false,
+  },
+]
+
+type Offer = (typeof offers)[number]
 
 export default function BlackFridayClient() {
-  const [form, setForm] = useState({ name: "", email: "", phone: "" })
+  const router = useRouter()
+  const { addItem } = useCart()
+  const [copied, setCopied] = useState(false)
+
+  const [form, setForm] = useState({ name: "", email: "" })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
+
+  const handleChoose = (offer: Offer) => {
+    const period = "quarterly" as const
+
+    localStorage.setItem(
+      "selectedMembership",
+      JSON.stringify({
+        id: offer.id,
+        name: offer.name,
+        price: offer.cartPrice,
+        billingCycle: period,
+        description: offer.description,
+        image: offer.image,
+        brand: offer.brand,
+        popular: offer.highlight,
+      }),
+    )
+
+    addItem({
+      id: `${offer.id}-membership-${period}`,
+      name: offer.cartName,
+      price: offer.cartPrice,
+      billingCycle: period,
+      description: offer.description,
+      image: offer.image,
+      brand: offer.brand,
+      itemType: "membership",
+      period,
+    })
+
+    router.push("/cart")
+  }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(PROMO_CODE)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,7 +116,7 @@ export default function BlackFridayClient() {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
-          phone: form.phone || null,
+          phone: null,
           preferences: {
             source: "black-friday-2026",
             newArrivals: true,
@@ -70,7 +161,7 @@ export default function BlackFridayClient() {
       </header>
 
       <main className="container mx-auto px-4 py-16 md:py-24">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-5xl text-center">
           <div className="mb-8 flex justify-center">
             <Image
               src="/images/semzo-20priv-c3-a9.png"
@@ -81,86 +172,115 @@ export default function BlackFridayClient() {
             />
           </div>
 
-          <h1 className="mb-4 font-serif text-4xl text-[#1a1a4b] md:text-5xl">Has sido invitada</h1>
+          <h1 className="mb-4 text-balance font-serif text-4xl text-[#1a1a4b] md:text-5xl">Tres meses. Pagas dos.</h1>
 
-          <p className="mb-8 text-lg text-gray-600 leading-relaxed">
-            Black Friday Privé. La lista recibe el acceso antes que nadie: el jueves 26 a las 18:00, en tu correo.
+          <p className="mx-auto mb-12 max-w-2xl text-pretty text-lg leading-relaxed text-gray-600">
+            Black Friday Privé. Membresía trimestral con el código {PROMO_CODE}. Hasta el lunes 30 a medianoche.
           </p>
 
-          {/* Card central */}
-          <div className="mb-12 rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
-            <p className="mb-2 text-sm uppercase tracking-wider text-gray-500">Lista privada SEMZO</p>
-            <p className="mb-2 font-serif text-3xl font-bold text-[#1a1a4b]">Acceso anticipado</p>
-            <p className="mb-8 text-sm text-gray-500">
-              Déjanos tu correo y te enviamos la invitación.
+          {/* Tarjetas de membresía */}
+          <div className="mb-12 grid gap-6 md:grid-cols-3">
+            {offers.map((offer) => (
+              <div
+                key={offer.id}
+                className={`flex flex-col rounded-2xl border bg-white p-8 shadow-lg ${
+                  offer.highlight ? "border-[#1a1a4b]" : "border-gray-200"
+                }`}
+              >
+                <p className="mb-2 text-sm uppercase tracking-wider text-gray-500">Membresía trimestral</p>
+                <h2 className="mb-6 font-serif text-3xl text-[#1a1a4b]">{offer.name}</h2>
+
+                <div className="mb-8 flex flex-1 flex-col items-center justify-center gap-1">
+                  <p className="font-serif text-4xl font-bold text-[#1a1a4b]">{offer.price}</p>
+                  <p className="text-sm text-gray-500">los tres meses</p>
+                  <p className="text-sm text-gray-400">
+                    <span className="sr-only">Precio anterior: </span>
+                    antes <span className="line-through">{offer.oldPrice}</span>
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={() => handleChoose(offer)}
+                  className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
+                >
+                  Elegir {offer.name}
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Bloque del código */}
+          <div className="mx-auto mb-12 max-w-2xl rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+            <p className="mb-2 text-sm uppercase tracking-wider text-gray-500">Tu código</p>
+            <p className="mb-6 font-serif text-5xl font-bold tracking-widest text-[#1a1a4b] md:text-6xl">{PROMO_CODE}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleCopy}
+              className="border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b]/5"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? "Código copiado" : "Copiar código"}
+            </Button>
+            <p className="mt-4 text-sm text-gray-500">Escríbelo al pagar</p>
+            <p className="sr-only" aria-live="polite">
+              {copied ? "Código copiado al portapapeles" : ""}
             </p>
+          </div>
+
+          <p className="mb-16 text-pretty text-gray-700">
+            Envío gratis en 24–48 h · Cambia de bolso cuando quieras · Sin permanencia tras el trimestre
+          </p>
+
+          {/* Newsletter */}
+          <div className="mx-auto max-w-md border-t border-gray-200 pt-10">
+            <p className="mb-4 text-sm text-gray-600">¿Aún no te decides? Únete a la lista.</p>
 
             {success ? (
-              <div className="flex flex-col items-center gap-3 py-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1a1a4b]">
-                  <Check className="h-6 w-6 text-white" />
-                </div>
-                <p className="font-serif text-xl text-[#1a1a4b]">Ya estás en la lista</p>
-                <p className="text-sm text-gray-500">El jueves 26 a las 18:00 te llega la invitación a este correo.</p>
-              </div>
+              <p className="flex items-center justify-center gap-2 text-sm text-[#1a1a4b]">
+                <Check className="h-4 w-4" />
+                Ya estás en la lista
+              </p>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                <div>
-                  <Input
-                    type="text"
-                    placeholder="Nombre"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="border-gray-300"
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    required
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="border-gray-300"
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="tel"
-                    placeholder="WhatsApp (opcional)"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="border-gray-300"
-                  />
-                </div>
-
-                {error && <p className="text-sm text-red-500">{error}</p>}
-
+              <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
+                <label htmlFor="bf-name" className="sr-only">
+                  Nombre
+                </label>
+                <Input
+                  id="bf-name"
+                  type="text"
+                  placeholder="Nombre"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="border-gray-300 bg-white"
+                />
+                <label htmlFor="bf-email" className="sr-only">
+                  Email
+                </label>
+                <Input
+                  id="bf-email"
+                  type="email"
+                  placeholder="Email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="border-gray-300 bg-white"
+                />
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#1a1a4b] text-white hover:bg-[#1a1a4b]/90"
-                  size="lg"
+                  variant="outline"
+                  className="border-[#1a1a4b] text-[#1a1a4b] hover:bg-[#1a1a4b]/5"
                 >
-                  {loading ? "Registrando..." : "Quiero mi invitación"}
+                  {loading ? "Enviando..." : "Unirme"}
                 </Button>
               </form>
             )}
-          </div>
-
-          {/* Bullets */}
-          <div className="flex flex-col items-center space-y-4">
-            {[
-              "Bolsos de diseñador por suscripción",
-              "Desde 59€/mes · Sin permanencia",
-              "Plazas limitadas",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <div className="h-2 w-2 shrink-0 rounded-full bg-[#1a1a4b]" />
-                <p className="text-gray-700">{item}</p>
-              </div>
-            ))}
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
         </div>
       </main>
